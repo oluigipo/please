@@ -26,11 +26,11 @@ ifeq ($(OS), Windows_NT)
 	LDFLAGS += -luser32 -lgdi32 -lhid
 	CFLAGS += -D_CRT_SECURE_NO_WARNINGS
 	
-	ifeq ($(MODE), x86)
-		CFLAGS += -m32
+	ifeq ($(ARCH), x86)
+		CFLAGS += -m32 -DX86
 		LDFLAGS += -m32 -Xlinker /subsystem:windows,5.01
 	else
-		CFLAGS += -m64
+		CFLAGS += -m64 -DX64
 		LDFLAGS += -m64 -Xlinker /subsystem:windows
 	endif
 else
