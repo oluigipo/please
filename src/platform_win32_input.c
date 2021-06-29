@@ -104,20 +104,13 @@ internal Input_KeyboardKey global_keyboard_key_table[] = {
 
 //~ Forward Declarations
 internal void Win32_CheckForGamepads(void);
-internal BOOL IsXInputDevice(const GUID* pGuidProductFromDirectInput);
+internal bool32 Win32_IsXInputDevice(const GUID* guid);
 
 //~ Functions
 internal bool32
 Win32_AreGUIDsEqual(const GUID* a, const GUID* b)
 {
-	bool32 result = false;
-	
-	result = result && (a->Data1 == b->Data1);
-	result = result && (a->Data2 == b->Data2);
-	result = result && (a->Data3 == b->Data3);
-	result = result && (memcmp(a->Data4, b->Data4, sizeof a->Data4) == 0);
-	
-	return result;
+	return memcmp(a, b, sizeof (GUID)) == 0;
 }
 
 internal int32
@@ -223,8 +216,7 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
 			if (result == DI_OK)
 			{
-				
-				
+				/*
 				Platform_DebugLog("%5li %5li %5li ", state.lX, state.lY, state.lZ);
 				Platform_DebugLog("%5li %5li %5li ", state.lRx, state.lRy, state.lRz);
 				Platform_DebugLog("%5li %5li ", state.rglSlider[0], state.rglSlider[1]);
@@ -232,7 +224,7 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 				for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
 					Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
 				Platform_DebugLog("\n");
-				
+				*/
 				
 				
 			}
@@ -256,13 +248,8 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 			if (result == ERROR_SUCCESS)
 			{
 				//- Left Stick
-				if (state.Gamepad.sThumbLX < 0)
-					gamepad->data.left[0] = (float32)state.Gamepad.sThumbLX / 32768.0f;
-				else gamepad->data.left[0] = (float32)state.Gamepad.sThumbLX / 32767.0f;
-				
-				if (state.Gamepad.sThumbLY < 0)
-					gamepad->data.left[1] = -(float32)state.Gamepad.sThumbLY / 32768.0f;
-				else gamepad->data.left[1] = -(float32)state.Gamepad.sThumbLY / 32767.0f;
+				gamepad->data.left[0] = ((float32)state.Gamepad.sThumbLX + 0.5f) /  32767.5f;
+				gamepad->data.left[1] = ((float32)state.Gamepad.sThumbLY + 0.5f) / -32767.5f;
 				
 				// NOTE(ljre): normalize
 				{
@@ -283,13 +270,8 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 				}
 				
 				//- Right Stick
-				if (state.Gamepad.sThumbRX < 0)
-					gamepad->data.right[0] = (float32)state.Gamepad.sThumbRX / 32768.0f;
-				else gamepad->data.right[0] = (float32)state.Gamepad.sThumbRX / 32767.0f;
-				
-				if (state.Gamepad.sThumbRY < 0)
-					gamepad->data.right[1] = -(float32)state.Gamepad.sThumbRY / 32768.0f;
-				else gamepad->data.right[1] = -(float32)state.Gamepad.sThumbRY / 32767.0f;
+				gamepad->data.right[0] = ((float32)state.Gamepad.sThumbRX + 0.5f) /  32767.5f;
+				gamepad->data.right[1] = ((float32)state.Gamepad.sThumbRY + 0.5f) / -32767.5f;
 				
 				// NOTE(ljre): normalize
 				{
@@ -362,7 +344,7 @@ DirectInputEnumDevicesCallback(LPCDIDEVICEINSTANCEW instance, LPVOID userdata)
 		return DIENUM_STOP;
 	
 	const GUID* guid = &instance->guidInstance;
-	if (IsXInputDevice(guid))
+	if (Win32_IsXInputDevice(guid))
 		return DIENUM_CONTINUE;
 	
 	// Check if device is already added
@@ -583,134 +565,41 @@ Input_SetGamepad(int32 index, float32 vibration)
 }
 
 //~ Not Mine!!
+// Borrowed from GLFW with modifications.
 //
+// Original: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L193
+// License: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/LICENSE.md
 //
-// https://docs.microsoft.com/en-us/windows/win32/xinput/xinput-and-directinput
-//
-#include <wbemidl.h>
-#include <oleauto.h>
-//#include <wmsstd.h>
-#define SAFE_RELEASE(T, p) { if ( (p) ) { T ## _Release(p); (p) = 0; } }
-
-// NOTE(ljre): Define GUIDs... I don't know why the fuck I need those
-DEFINE_GUID(CLSID_WbemLocator,
-			0x4590f811, 0x1d3a, 0x11d0, 0x89, 0x1f, 0x00, 0xaa, 0x00, 0x4b, 0x2e, 0x24);
-DEFINE_GUID(IID_IWbemLocator,
-			0xdc12a687, 0x737f, 0x11cf, 0x88, 0x4d, 0x00, 0xaa, 0x00, 0x4b, 0x2e, 0x24);
-
-//-----------------------------------------------------------------------------
-// Enum each PNP device using WMI and check each device ID to see if it contains 
-// "IG_" (ex. "VID_045E&PID_028E&IG_00").  If it does, then it's an XInput device
-// Unfortunately this information can not be found by just using DirectInput 
-//-----------------------------------------------------------------------------
-BOOL IsXInputDevice( const GUID* pGuidProductFromDirectInput )
+internal bool32 Win32_IsXInputDevice(const GUID* guid)
 {
-    IWbemLocator*           pIWbemLocator  = NULL;
-    IEnumWbemClassObject*   pEnumDevices   = NULL;
-    IWbemClassObject*       pDevices[20]   = {0};
-    IWbemServices*          pIWbemServices = NULL;
-    BSTR                    bstrNamespace  = NULL;
-    BSTR                    bstrDeviceID   = NULL;
-    BSTR                    bstrClassName  = NULL;
-    DWORD                   uReturned      = 0;
-    bool32                  bIsXinputDevice= false;
-    UINT                    iDevice        = 0;
-    VARIANT                 var;
-    HRESULT                 hr;
+    RAWINPUTDEVICELIST ridl[512];
+    UINT count = ArrayLength(ridl);
 	
-    // CoInit if needed
-    hr = CoInitialize(NULL);
-    bool32 bCleanupCOM = SUCCEEDED(hr);
+	count = GetRawInputDeviceList(ridl, &count, sizeof(RAWINPUTDEVICELIST));
+    if (count == (UINT)-1)
+        return false;
 	
-    // So we can call VariantClear() later, even if we never had a successful IWbemClassObject::Get().
-    VariantInit(&var);
-	
-    // Create WMI
-    hr = CoCreateInstance( &CLSID_WbemLocator,
-						  NULL,
-						  CLSCTX_INPROC_SERVER,
-						  __uuidof(IWbemLocator),
-						  (LPVOID*) &pIWbemLocator);
-    if( FAILED(hr) || pIWbemLocator == NULL )
-        goto LCleanup;
-	
-    bstrNamespace = SysAllocString( L"\\\\.\\root\\cimv2" );if( bstrNamespace == NULL ) goto LCleanup;        
-    bstrClassName = SysAllocString( L"Win32_PNPEntity" );   if( bstrClassName == NULL ) goto LCleanup;        
-    bstrDeviceID  = SysAllocString( L"DeviceID" );          if( bstrDeviceID == NULL )  goto LCleanup;        
-    
-    // Connect to WMI 
-    hr = IWbemLocator_ConnectServer( pIWbemLocator, bstrNamespace, NULL, NULL, 0L, 
-									0L, NULL, NULL, &pIWbemServices );
-    if( FAILED(hr) || pIWbemServices == NULL )
-        goto LCleanup;
-	
-    // Switch security level to IMPERSONATE. 
-    CoSetProxyBlanket( (void*)pIWbemServices, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, 
-					  RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE );                    
-	
-    hr = IWbemServices_CreateInstanceEnum( pIWbemServices, bstrClassName, 0, NULL, &pEnumDevices ); 
-    if( FAILED(hr) || pEnumDevices == NULL )
-        goto LCleanup;
-	
-    // Loop over all devices
-    for( ;; )
+    for (UINT i = 0; i < count; i++)
     {
-        // Get 20 at a time
-        hr = IEnumWbemClassObject_Next( pEnumDevices, 10000, 20, pDevices, &uReturned );
-        if( FAILED(hr) )
-            goto LCleanup;
-        if( uReturned == 0 )
+        RID_DEVICE_INFO rdi = { .cbSize = sizeof rdi, };
+        char name[256] = { 0 };
+        UINT rdi_size = sizeof rdi;
+		UINT name_size = sizeof name;
+		
+        if (RIM_TYPEHID != ridl[i].dwType)
+			continue;
+		if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdi_size))
+			continue;
+		if (guid->Data1 != MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId))
+            continue;
+		
+        if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICENAME, name, &name_size))
             break;
 		
-        for( iDevice=0; iDevice<uReturned; iDevice++ )
-        {
-            // For each device, get its device ID
-            hr = IWbemClassObject_Get( pDevices[iDevice], bstrDeviceID, 0L, &var, NULL, NULL );
-            if( SUCCEEDED( hr ) && var.vt == VT_BSTR && var.bstrVal != NULL )
-            {
-                // Check if the device ID contains "IG_".  If it does, then it's an XInput device
-				// This information can not be found from DirectInput 
-                if( wcsstr( var.bstrVal, L"IG_" ) )
-                {
-                    // If it does, then get the VID/PID from var.bstrVal
-                    DWORD dwPid = 0, dwVid = 0;
-                    WCHAR* strVid = wcsstr( var.bstrVal, L"VID_" );
-                    if( strVid && swscanf( strVid, L"VID_%4X", &dwVid ) != 1 )
-                        dwVid = 0;
-                    WCHAR* strPid = wcsstr( var.bstrVal, L"PID_" );
-                    if( strPid && swscanf( strPid, L"PID_%4X", &dwPid ) != 1 )
-                        dwPid = 0;
-					
-                    // Compare the VID/PID to the DInput device
-                    DWORD dwVidPid = (DWORD)MAKELONG( dwVid, dwPid );
-                    if( dwVidPid == pGuidProductFromDirectInput->Data1 )
-                    {
-                        bIsXinputDevice = true;
-                        goto LCleanup;
-                    }
-                }
-            }
-            VariantClear(&var);
-            SAFE_RELEASE( IWbemClassObject, pDevices[iDevice] );
-        }
+        name[sizeof name - 1] = '\0';
+        if (strstr(name, "IG_"))
+			return true;
     }
 	
-	LCleanup:
-    VariantClear(&var);
-    if(bstrNamespace)
-        SysFreeString(bstrNamespace);
-    if(bstrDeviceID)
-        SysFreeString(bstrDeviceID);
-    if(bstrClassName)
-        SysFreeString(bstrClassName);
-    for( iDevice=0; iDevice<20; iDevice++ )
-        SAFE_RELEASE( IWbemClassObject, pDevices[iDevice] );
-    SAFE_RELEASE( IEnumWbemClassObject, pEnumDevices );
-    SAFE_RELEASE( IWbemLocator, pIWbemLocator );
-    SAFE_RELEASE( IWbemServices, pIWbemServices );
-	
-    if( bCleanupCOM )
-        CoUninitialize();
-	
-    return bIsXinputDevice;
+    return false;
 }

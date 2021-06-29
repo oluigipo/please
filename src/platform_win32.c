@@ -2,13 +2,16 @@
 
 #if defined(__clang__)
 #   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wsign-conversion"
-#   pragma clang diagnostic ignored "-Wimplicit-int-conversion"
-#   pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+//#   pragma clang diagnostic ignored "-Wsign-conversion"
+//#   pragma clang diagnostic ignored "-Wimplicit-int-conversion"
+//#   pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+#   pragma clang diagnostic ignored "-Weverything"
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wsign-conversion"
-#   pragma GCC diagnostic ignored "-Wconversion"
+//#   pragma GCC diagnostic ignored "-Wsign-conversion"
+//#   pragma GCC diagnostic ignored "-Wconversion"
+#   pragma GCC diagnostic ignored "-Wall"
+#   pragma GCC diagnostic ignored "-Wextra"
 #else
 #   pragma warning(push, 0)
 #endif
@@ -17,11 +20,14 @@
 #include <windows.h>
 #include <dwmapi.h>
 #include <versionhelpers.h>
-#define INITGUID
+
+//#define INITGUID
 #define COBJMACROS
 #include <dbt.h>
 #include <xinput.h>
 #include <dinput.h>
+
+#include "platform_win32_guid.c"
 
 #include <stdio.h>
 #include <math.h>

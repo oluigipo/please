@@ -23,7 +23,7 @@ ifeq ($(OS), Windows_NT)
 	PLATFORM = win32
 	OUTPUT_NAME = game.exe
 	
-	LDFLAGS += -luser32 -lgdi32 -lhid -ldinput8 -lole32 -loleaut32
+	LDFLAGS += -luser32 -lgdi32 -lhid
 	CFLAGS += -D_CRT_SECURE_NO_WARNINGS
 	
 	ifeq ($(MODE), x86)

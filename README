@@ -1,8 +1,0 @@
-# please
-
-## APIs
-* Graphics: OpenGL;
-* Gamepad Input: DirectInput, XInput;
-
-## External Libraries
-* [stb_image]()
