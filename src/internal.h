@@ -32,7 +32,8 @@
 
 //~ Standard headers
 #include <stdint.h>
-#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 //~ Types
 typedef uint8_t uint8;
@@ -56,6 +57,26 @@ typedef int64_t bool64;
 
 typedef float float32;
 typedef double float64;
+
+#if 0
+#define UINT8_MIN 0
+#define UINT8_MAX 255
+#define UINT16_MIN 0
+#define UINT16_MAX 65535
+#define UINT32_MIN 0
+#define UINT32_MAX ((uint32)4294967295ULL)
+#define UINT64_MIN 0
+#define UINT64_MAX ((uint64)18446744073709551615ULL)
+
+#define INT8_MIN (-128)
+#define INT8_MAX 127
+#define INT16_MIN (-32768)
+#define INT16_MAX 32767
+#define INT32_MIN ((int32)-2147483648LL)
+#define INT32_MAX ((int32)2147483647LL)
+#define INT64_MIN ((int64)-9223372036854775808LL)
+#define INT64_MAX ((int64)9223372036854775807LL)
+#endif
 
 //~ Debug
 #ifndef DEBUG
@@ -92,6 +113,9 @@ API void Platform_PollEvents(void);
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);
+API void* Platform_VirtualAlloc(uintsize size);
+API void Platform_VirtualCommit(void* ptr, uintsize size);
+API void Platform_VirtualFree(void* ptr);
 API const OpenGL_VTable* Platform_GetOpenGLVTable(void);
 
 #ifdef DEBUG
@@ -101,8 +125,6 @@ API void Platform_DebugLog(const char* restrict format, ...);
 #   define Platform_DebugMessageBox(...) 0
 #   define Platform_DebugLog(...) 0
 #endif // DEBUG
-
-API void Input_LookForNewDevices(bool32 set);
 
 enum Input_KeyboardKey
 {

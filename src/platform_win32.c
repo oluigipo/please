@@ -1,42 +1,33 @@
 #include "internal.h"
 
+//- Disable Warnings
 #if defined(__clang__)
 #   pragma clang diagnostic push
-//#   pragma clang diagnostic ignored "-Wsign-conversion"
-//#   pragma clang diagnostic ignored "-Wimplicit-int-conversion"
-//#   pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
 #   pragma clang diagnostic ignored "-Weverything"
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic push
-//#   pragma GCC diagnostic ignored "-Wsign-conversion"
-//#   pragma GCC diagnostic ignored "-Wconversion"
 #   pragma GCC diagnostic ignored "-Wall"
 #   pragma GCC diagnostic ignored "-Wextra"
 #else
 #   pragma warning(push, 0)
 #endif
 
+//- Includes
 #define WIN32_LEAN_AND_MEAN
+#define COBJMACROS
+
 #include <windows.h>
 #include <dwmapi.h>
 #include <versionhelpers.h>
-
-//#define INITGUID
-#define COBJMACROS
 #include <dbt.h>
 #include <xinput.h>
 #include <dinput.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "platform_win32_guid.c"
 
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-
-#define __uuidof(x) &(IID_ ## x)
-
-// #include "ext/ps_rawinput.h"
-
+//- Enable Warnings
 #if defined(__clang__)
 #   pragma clang diagnostic pop
 #elif defined(__GNUC__)
@@ -44,8 +35,6 @@
 #else
 #   pragma warning(pop, 0)
 #endif
-
-//~ Types and Macros
 
 //~ Globals
 internal HANDLE global_heap;
@@ -58,7 +47,7 @@ internal HDC global_hdc;
 internal bool32 global_window_should_close;
 internal GraphicsAPI global_graphics_api;
 
-//~ Functions
+//~ Internal API
 internal int64
 Win32_GetTimer(void)
 {
@@ -91,10 +80,8 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 {
 	if (!buffer)
 	{
-		size = ((uintsize)MultiByteToWideChar(CP_UTF8, 0, str.data, (int32)str.len, NULL, 0) + 1);
-		size = size * sizeof(wchar_t);
-		
-		buffer = HeapAlloc(global_heap, 0, size);
+		size = 1 + (uintsize)MultiByteToWideChar(CP_UTF8, 0, str.data, (int32)str.len, NULL, 0);
+		buffer = HeapAlloc(global_heap, 0, size * sizeof(wchar_t));
 	}
 	
 	MultiByteToWideChar(CP_UTF8, 0, str.data, (int32)str.len, buffer, (int32)size);
@@ -103,11 +90,12 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 	return buffer;
 }
 
+//~ Entry Point
 #include "platform_win32_input.c"
 #include "platform_win32_opengl.c"
 
 internal LRESULT CALLBACK
-Win32_WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
+WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	LRESULT result = 0;
 	
@@ -118,6 +106,26 @@ Win32_WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_QUIT:
 		{
 			global_window_should_close = true;
+		} break;
+		
+		case WM_SYSKEYDOWN:
+		case WM_SYSKEYUP:
+		case WM_KEYUP:
+		case WM_KEYDOWN:
+		{
+			uint32 vkcode = (uint32)wparam;
+			bool32 was_down = ((lparam & (1 << 30)) != 0);
+			bool32 is_down = ((lparam & (1 << 31)) == 0);
+			
+			if (was_down == is_down || vkcode >= Input_KeyboardKey_Count)
+				break;
+			
+			Input_KeyboardKey key = global_keyboard_key_table[vkcode];
+			if (key)
+			{
+				global_keyboard_keys[key] &= ~1;
+				global_keyboard_keys[key] |= is_down;
+			}
 		} break;
 		
 		case WM_DEVICECHANGE:
@@ -156,7 +164,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	
 	WNDCLASSW window_class = {
 		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
-		.lpfnWndProc = Win32_WindowProc,
+		.lpfnWndProc = WindowProc,
 		.lpszClassName = global_class_name,
 		.hInstance = instance,
 	};
@@ -222,7 +230,7 @@ Platform_GetTime(void)
 API void
 Platform_PollEvents(void)
 {
-	Win32_UpdateInput();
+	Win32_UpdateInputPre();
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -230,6 +238,8 @@ Platform_PollEvents(void)
 		TranslateMessage(&message);
 		DispatchMessageW(&message);
 	}
+	
+	Win32_UpdateInputPos();
 }
 
 API void*
@@ -255,6 +265,24 @@ API void
 Platform_HeapFree(void* ptr)
 {
 	HeapFree(global_heap, 0, ptr);
+}
+
+API void*
+Platform_VirtualAlloc(uintsize size)
+{
+	return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+}
+
+API void
+Platform_VirtualCommit(void* ptr, uintsize size)
+{
+	VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+API void
+Platform_VirtualFree(void* ptr)
+{
+	VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
 API const OpenGL_VTable*

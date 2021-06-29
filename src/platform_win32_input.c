@@ -26,30 +26,38 @@ struct Win32_Gamepad
 		{
 			IDirectInputDevice8W* device;
 			GUID guid;
+			
+			int32 axes[6];
+			int32 axis_count;
+			int32 slider_count;
+			int32 buttons[32];
+			int32 button_count;
+			int32 povs[4];
+			int32 pov_count;
 		} dinput;
 	};
 } typedef Win32_Gamepad;
 
-#define XInputGetState Win32_ProcXInputGetState
-#define XInputSetState Win32_ProcXInputSetState
-#define DirectInput8Create Win32_DirectInput8Create
+#define XInputGetState global_proc_XInputGetState
+#define XInputSetState global_proc_XInputSetState
+#define DirectInput8Create global_proc_DirectInput8Create
 
-typedef DWORD WINAPI Win32_FnXInputGetState(DWORD index, XINPUT_STATE* state);
-typedef DWORD WINAPI Win32_FnXInputSetState(DWORD index, XINPUT_VIBRATION* vibration);
-typedef HRESULT WINAPI Win32_FnDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter);
+typedef DWORD WINAPI ProcXInputGetState(DWORD index, XINPUT_STATE* state);
+typedef DWORD WINAPI ProcXInputSetState(DWORD index, XINPUT_VIBRATION* vibration);
+typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter);
 
 //~ Globals
-internal bool8 global_keyboard_keys[Input_KeyboardKey_Count];
-internal Input_Mouse global_mouse;
-internal Win32_Gamepad global_gamepads[MAX_GAMEPAD_COUNT];
-internal int32 global_gamepad_free[MAX_GAMEPAD_COUNT];
-internal int32 global_gamepad_free_count;
+internal bool8           global_keyboard_keys[Input_KeyboardKey_Count];
+internal Input_Mouse     global_mouse;
+internal Win32_Gamepad   global_gamepads[MAX_GAMEPAD_COUNT];
+internal int32           global_gamepad_free[MAX_GAMEPAD_COUNT];
+internal int32           global_gamepad_free_count;
 internal IDirectInput8W* global_dinput;
-internal bool32 global_dinput_enabled;
+internal bool32          global_dinput_enabled;
 
-internal Win32_FnXInputGetState* XInputGetState;
-internal Win32_FnXInputSetState* XInputSetState;
-internal Win32_FnDirectInput8Create* DirectInput8Create;
+internal ProcXInputGetState*     XInputGetState;
+internal ProcXInputSetState*     XInputSetState;
+internal ProcDirectInput8Create* DirectInput8Create;
 
 internal Input_KeyboardKey global_keyboard_key_table[] = {
 	[0] = Input_KeyboardKey_Any,
@@ -102,34 +110,72 @@ internal Input_KeyboardKey global_keyboard_key_table[] = {
 	Input_KeyboardKey_Numpad9,
 };
 
-//~ Forward Declarations
-internal void Win32_CheckForGamepads(void);
-internal bool32 Win32_IsXInputDevice(const GUID* guid);
+//~ Not Mine!!
+// Borrowed from GLFW with modifications.
+//
+// Original: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L193
+// License: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/LICENSE.md
+//
+internal bool32 IsXInputDevice(const GUID* guid)
+{
+    RAWINPUTDEVICELIST ridl[512];
+    UINT count = ArrayLength(ridl);
+	
+	count = GetRawInputDeviceList(ridl, &count, sizeof(RAWINPUTDEVICELIST));
+    if (count == (UINT)-1)
+        return false;
+	
+    for (UINT i = 0; i < count; i++)
+    {
+        RID_DEVICE_INFO rdi = { .cbSize = sizeof rdi, };
+        char name[256] = { 0 };
+        UINT rdi_size = sizeof rdi;
+		UINT name_size = sizeof name;
+		
+        if (RIM_TYPEHID != ridl[i].dwType)
+			continue;
+		if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdi_size))
+			continue;
+		if (guid->Data1 != MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId))
+            continue;
+		
+        if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICENAME, name, &name_size))
+            break;
+		
+        name[sizeof name - 1] = '\0';
+        if (strstr(name, "IG_"))
+			return true;
+    }
+	
+    return false;
+}
 
 //~ Functions
 internal bool32
-Win32_AreGUIDsEqual(const GUID* a, const GUID* b)
+AreGUIDsEqual(const GUID* a, const GUID* b)
 {
 	return memcmp(a, b, sizeof (GUID)) == 0;
 }
 
 internal int32
-Win32_GenGamepadIndex(void)
+GenGamepadIndex(void)
 {
 	return global_gamepad_free[--global_gamepad_free_count];
 }
 
 internal void
-Win32_ReleaseGamepadIndex(int32 index)
+ReleaseGamepadIndex(int32 index)
 {
 	global_gamepad_free[global_gamepad_free_count++] = index;
 }
 
-DWORD WINAPI XInputGetStateStub(DWORD index, XINPUT_STATE* state) { return ERROR_DEVICE_NOT_CONNECTED; }
-DWORD WINAPI XInputSetStateStub(DWORD index, XINPUT_VIBRATION* state) { return ERROR_DEVICE_NOT_CONNECTED; }
+internal DWORD WINAPI
+XInputGetStateStub(DWORD index, XINPUT_STATE* state) { return ERROR_DEVICE_NOT_CONNECTED; }
+internal DWORD WINAPI
+XInputSetStateStub(DWORD index, XINPUT_VIBRATION* state) { return ERROR_DEVICE_NOT_CONNECTED; }
 
 internal void
-Win32_LoadXInput(void)
+LoadXInput(void)
 {
 	static const char* const dll_names[] = { "xinput1_4.dll", "xinput9_1_0.dll", "xinput1_3.dll" };
 	
@@ -151,7 +197,7 @@ Win32_LoadXInput(void)
 }
 
 internal void
-Win32_LoadDirectInput(void)
+LoadDirectInput(void)
 {
 	static const char* const dll_names[] = { "dinput8.dll", /* "dinput.dll" */ };
 	
@@ -178,32 +224,9 @@ Win32_LoadDirectInput(void)
 }
 
 internal void
-Win32_InitInput(void)
+UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
-	// NOTE(ljre): Fill 'free spaces stack'
-	global_gamepad_free_count = ArrayLength(global_gamepads);
-	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
-	{
-		global_gamepad_free[(int32)ArrayLength(global_gamepads) - i - 1] = i;
-	}
-	
-	Win32_LoadXInput();
-	Win32_LoadDirectInput();
-	
-	Win32_CheckForGamepads();
-}
-
-internal void
-Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
-{
-	for (int32 i = 0; i < ArrayLength(gamepad->data.buttons); ++i)
-	{
-		bool8 button = gamepad->data.buttons[i];
-		
-		button = (bool8)(button << 1) | (button & 1);
-		
-		gamepad->data.buttons[i] = button;
-	}
+	int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof *gamepad);
 	
 	switch (gamepad->api)
 	{
@@ -214,19 +237,38 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 			IDirectInputDevice8_Poll(gamepad->dinput.device);
 			
 			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
+			if (result == DIERR_NOTACQUIRED || result == DIERR_INPUTLOST)
+			{
+				IDirectInputDevice8_Acquire(gamepad->dinput.device);
+				IDirectInputDevice8_Poll(gamepad->dinput.device);
+				
+				result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
+			}
+			
 			if (result == DI_OK)
 			{
-				/*
-				Platform_DebugLog("%5li %5li %5li ", state.lX, state.lY, state.lZ);
-				Platform_DebugLog("%5li %5li %5li ", state.lRx, state.lRy, state.lRz);
-				Platform_DebugLog("%5li %5li ", state.rglSlider[0], state.rglSlider[1]);
-				Platform_DebugLog("%5li %5li %5li %5li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
-				for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
-					Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
-				Platform_DebugLog("\n");
-				*/
+#if 1
+				// NOTE(ljre): Debug Only
+				if (Input_KeyboardIsPressed(Input_KeyboardKey_Space))
+				{
+					Platform_DebugLog("%5li %5li %5li ", state.lX, state.lY, state.lZ);
+					Platform_DebugLog("%5li %5li %5li ", state.lRx, state.lRy, state.lRz);
+					Platform_DebugLog("%5li %5li ", state.rglSlider[0], state.rglSlider[1]);
+					Platform_DebugLog("%5li %5li %5li %5li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
+					for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
+						Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
+					Platform_DebugLog("\n");
+				}
+#endif
 				
-				
+				for (int32 i = 0; i < ArrayLength(gamepad->data.buttons); ++i)
+				{
+					bool8 button = gamepad->data.buttons[i];
+					
+					button = (bool8)(button << 1) | (button & 1);
+					
+					gamepad->data.buttons[i] = button;
+				}
 			}
 			else
 			{
@@ -235,7 +277,7 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 				
 				gamepad->connected = false;
 				gamepad->api = GamepadAPI_None;
-				Win32_ReleaseGamepadIndex(index);
+				ReleaseGamepadIndex(index);
 			}
 		} break;
 		
@@ -290,13 +332,14 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 						gamepad->data.right[1] = sinf(dir);
 					}
 				}
+				
 				//- LR & RB
 				gamepad->data.lt = (float32)state.Gamepad.bLeftTrigger / 255.0f;
 				gamepad->data.rt = (float32)state.Gamepad.bRightTrigger / 255.0f;
 				
 				//- Buttons
 #define _SetButton(_i, _v)\
-gamepad->data.buttons[_i] &= ~1;\
+gamepad->data.buttons[_i] <<= 1;\
 gamepad->data.buttons[_i] |= !!(state.Gamepad.wButtons & _v)
 				
 				_SetButton(Input_GamepadButton_Left, XINPUT_GAMEPAD_DPAD_LEFT);
@@ -316,11 +359,12 @@ gamepad->data.buttons[_i] |= !!(state.Gamepad.wButtons & _v)
 				
 #undef _SetButton
 			}
-			else
+			else if (result == ERROR_DEVICE_NOT_CONNECTED)
 			{
 				// NOTE(ljre): Controller is not connected!
 				gamepad->api = GamepadAPI_None;
 				gamepad->connected = false;
+				ReleaseGamepadIndex(index);
 			}
 		} break;
 		
@@ -328,23 +372,68 @@ gamepad->data.buttons[_i] |= !!(state.Gamepad.wButtons & _v)
 		{
 			// NOTE(ljre): This should be unreachable... just to be safe
 			gamepad->connected = false;
-		}
-		
-		default: //~ Unknown
-		{
-			Platform_DebugLog("[ERROR] Unknown GamepadAPI value: %i\n", gamepad->api);
+			ReleaseGamepadIndex(index);
 		} break;
 	}
 }
 
-internal BOOL
-DirectInputEnumDevicesCallback(LPCDIDEVICEINSTANCEW instance, LPVOID userdata)
+internal BOOL CALLBACK
+DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* userdata)
+{
+	Win32_Gamepad* gamepad = userdata;
+	const GUID* object_guid = &object->guidType;
+	
+	if (DIDFT_GETTYPE(object->dwType) & DIDFT_AXIS)
+	{
+		int32 axis_offset;
+		DIPROPRANGE range_property = {
+			.diph = {
+				.dwSize = sizeof range_property,
+				.dwHeaderSize = sizeof range_property.diph,
+				.dwObj = object->dwType,
+				.dwHow = DIPH_BYID,
+			},
+			.lMin = INT16_MIN,
+			.lMax = INT16_MAX,
+		};
+		
+		if (0) {}
+		else if (AreGUIDsEqual(object_guid, &GUID_Slider)) axis_offset = (int32)DIJOFS_SLIDER(gamepad->dinput.slider_count++);
+        else if (AreGUIDsEqual(object_guid, &GUID_XAxis )) axis_offset = (int32)DIJOFS_X;
+        else if (AreGUIDsEqual(object_guid, &GUID_YAxis )) axis_offset = (int32)DIJOFS_Y;
+        else if (AreGUIDsEqual(object_guid, &GUID_ZAxis )) axis_offset = (int32)DIJOFS_Z;
+        else if (AreGUIDsEqual(object_guid, &GUID_RxAxis)) axis_offset = (int32)DIJOFS_RX;
+        else if (AreGUIDsEqual(object_guid, &GUID_RyAxis)) axis_offset = (int32)DIJOFS_RY;
+        else if (AreGUIDsEqual(object_guid, &GUID_RzAxis)) axis_offset = (int32)DIJOFS_RZ;
+		else return DIENUM_CONTINUE;
+		
+		if (DI_OK != IDirectInputDevice8_SetProperty(gamepad->dinput.device, DIPROP_RANGE, &range_property.diph))
+			return DIENUM_CONTINUE;
+		
+		gamepad->dinput.axes[gamepad->dinput.axis_count++] = axis_offset;
+	}
+	else if (DIDFT_GETTYPE(object->dwType) & DIDFT_BUTTON)
+	{
+		int32 button_offset = (int32)DIJOFS_BUTTON(gamepad->dinput.button_count);
+		gamepad->dinput.buttons[gamepad->dinput.button_count++] = button_offset;
+	}
+	else if (DIDFT_GETTYPE(object->dwType) & DIDFT_POV)
+	{
+		int32 pov_offset = (int32)DIJOFS_POV(gamepad->dinput.pov_count);
+		gamepad->dinput.povs[gamepad->dinput.pov_count++] = pov_offset;
+	}
+	
+	return DIENUM_CONTINUE;
+}
+
+internal BOOL CALLBACK
+DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata)
 {
 	if (global_gamepad_free_count <= 0)
 		return DIENUM_STOP;
 	
 	const GUID* guid = &instance->guidInstance;
-	if (Win32_IsXInputDevice(guid))
+	if (IsXInputDevice(guid))
 		return DIENUM_CONTINUE;
 	
 	// Check if device is already added
@@ -352,49 +441,97 @@ DirectInputEnumDevicesCallback(LPCDIDEVICEINSTANCEW instance, LPVOID userdata)
 	{
 		if (global_gamepads[i].connected &&
 			global_gamepads[i].api == GamepadAPI_DirectInput &&
-			Win32_AreGUIDsEqual(guid, &global_gamepads[i].dinput.guid))
+			AreGUIDsEqual(guid, &global_gamepads[i].dinput.guid))
 		{
 			return DIENUM_CONTINUE;
 		}
 	}
 	
 	// It's not! Add it!
-	int32 index = Win32_GenGamepadIndex();
+	int32 index = GenGamepadIndex();
 	Win32_Gamepad* gamepad = &global_gamepads[index];
+	gamepad->dinput.axis_count = 0;
+	gamepad->dinput.slider_count = 0;
+	gamepad->dinput.button_count = 0;
+	gamepad->dinput.pov_count = 0;
 	
-	if (DI_OK == IDirectInput8_CreateDevice(global_dinput, guid, &gamepad->dinput.device, NULL))
-	{
-		IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick);
-		IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, global_window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
-		if (DI_OK == IDirectInputDevice8_Acquire(gamepad->dinput.device))
-		{
-			gamepad->connected = true;
-			gamepad->api = GamepadAPI_DirectInput;
-			gamepad->dinput.guid = *guid;
-			
-			Platform_DebugLog("Device Connected:\n");
-			Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
-			Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
-			Platform_DebugLog("\tGUID: %lx-%hx-%hx-%hx-%hx-%lx\n",
-							  guid->Data1, guid->Data2, guid->Data3,
-							  *(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
-			
-			return DIENUM_CONTINUE;
-		}
-		else
-		{
-			IDirectInputDevice8_Release(gamepad->dinput.device);
-		}
-	}
+	DIDEVCAPS capabilities = {
+		.dwSize = sizeof capabilities,
+	};
+	DIPROPDWORD word_property = {
+		.diph = {
+			.dwSize = sizeof word_property,
+			.dwHeaderSize = sizeof word_property.diph,
+			.dwObj = 0,
+			.dwHow = DIPH_DEVICE,
+		},
+		.dwData = DIPROPAXISMODE_ABS,
+	};
 	
-	// Failure
-	gamepad->connected = false;
-	gamepad->api = GamepadAPI_None;
-	Win32_ReleaseGamepadIndex(index);
+	if (DI_OK != IDirectInput8_CreateDevice(global_dinput, guid, &gamepad->dinput.device, NULL))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, global_window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_GetCapabilities(gamepad->dinput.device, &capabilities))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_SetProperty(gamepad->dinput.device, DIPROP_AXISMODE, &word_property.diph))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_EnumObjects(gamepad->dinput.device, DirectInputEnumObjectsCallback, gamepad, DIDFT_AXIS | DIDFT_BUTTON | DIDFT_POV))
+		goto _failure;
+	
+	if (DI_OK != IDirectInputDevice8_Acquire(gamepad->dinput.device))
+		goto _failure;
+	
+	// Success
+	gamepad->connected = true;
+	gamepad->api = GamepadAPI_DirectInput;
+	gamepad->dinput.guid = *guid;
+	
+	Platform_DebugLog("Device Connected:\n");
+	Platform_DebugLog("\tIndex: %i\n", index);
+	Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
+	Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
+	Platform_DebugLog("\tGUID: %lx-%hx-%hx-%hx-%hx-%lx\n",
+					  guid->Data1, guid->Data2, guid->Data3,
+					  *(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
+	
+	Platform_DebugLog("\tAxes: { ");
+	for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)
+		Platform_DebugLog("%02x, ", (uint32)gamepad->dinput.axes[i]);
+	Platform_DebugLog("}\n");
+	
+	Platform_DebugLog("\tButtons: { ");
+	for (int32 i = 0; i < gamepad->dinput.button_count; ++i)
+		Platform_DebugLog("%02x, ", (uint32)gamepad->dinput.buttons[i]);
+	Platform_DebugLog("}\n");
+	
+	Platform_DebugLog("\tPOVs: { ");
+	for (int32 i = 0; i < gamepad->dinput.pov_count; ++i)
+		Platform_DebugLog("%02x, ", (uint32)gamepad->dinput.povs[i]);
+	Platform_DebugLog("}\n");
 	
 	return DIENUM_CONTINUE;
+	
+	//-
+	_failure:
+	{
+		gamepad->connected = false;
+		gamepad->api = GamepadAPI_None;
+		IDirectInputDevice8_Release(gamepad->dinput.device);
+		ReleaseGamepadIndex(index);
+		
+		return DIENUM_CONTINUE;
+	}
 }
 
+//~ Internal API
 internal void
 Win32_CheckForGamepads(void)
 {
@@ -423,7 +560,7 @@ Win32_CheckForGamepads(void)
 		XINPUT_STATE dummy;
 		if (!already_exists && XInputGetState(i, &dummy) == ERROR_SUCCESS)
 		{
-			int32 index = Win32_GenGamepadIndex();
+			int32 index = GenGamepadIndex();
 			Win32_Gamepad* gamepad = &global_gamepads[index];
 			
 			gamepad->connected = true;
@@ -434,7 +571,39 @@ Win32_CheckForGamepads(void)
 }
 
 internal void
-Win32_UpdateInput(void)
+Win32_InitInput(void)
+{
+	// NOTE(ljre): Fill 'free spaces stack'
+	global_gamepad_free_count = ArrayLength(global_gamepads);
+	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
+	{
+		global_gamepad_free[(int32)ArrayLength(global_gamepads) - i - 1] = i;
+	}
+	
+	LoadXInput();
+	LoadDirectInput();
+	
+	Win32_CheckForGamepads();
+}
+
+internal void
+Win32_UpdateInputPre(void)
+{
+	// NOTE(ljre): Update Keyboard
+	{
+		for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
+		{
+			bool8 key = global_keyboard_keys[i];
+			
+			key = (bool8)(key << 1) | (key & 1);
+			
+			global_keyboard_keys[i] = key;
+		}
+	}
+}
+
+internal void
+Win32_UpdateInputPos(void)
 {
 	// NOTE(ljre): Get mouse cursor
 	{
@@ -449,18 +618,6 @@ Win32_UpdateInput(void)
 		global_mouse.pos[1] = (float32)mouse.x;
 	}
 	
-	// NOTE(ljre): Update Keyboard
-	{
-		for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
-		{
-			bool8 key = global_keyboard_keys[i];
-			
-			key = (bool8)(key << 1) | (key & 1);
-			
-			global_keyboard_keys[i] = key;
-		}
-	}
-	
 	// NOTE(ljre): Update Gamepads
 	{
 		for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
@@ -468,7 +625,7 @@ Win32_UpdateInput(void)
 			Win32_Gamepad* gamepad = &global_gamepads[i];
 			
 			if (gamepad->connected)
-				Win32_UpdateConnectedGamepad(gamepad, i);
+				UpdateConnectedGamepad(gamepad);
 		}
 	}
 }
@@ -480,7 +637,7 @@ Input_KeyboardIsPressed(int32 key)
 	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
 		return false;
 	
-	return !(global_keyboard_keys[key] & 3) && (global_keyboard_keys[key] & 1);
+	return !(global_keyboard_keys[key] & 2) && (global_keyboard_keys[key] & 1);
 }
 
 API bool32
@@ -498,7 +655,7 @@ Input_KeyboardIsReleased(int32 key)
 	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
 		return false;
 	
-	return (global_keyboard_keys[key] & 3) && !(global_keyboard_keys[key] & 1);
+	return (global_keyboard_keys[key] & 2) && !(global_keyboard_keys[key] & 1);
 }
 
 API bool32
@@ -562,44 +719,4 @@ Input_SetGamepad(int32 index, float32 vibration)
 		{
 		} break;
 	}
-}
-
-//~ Not Mine!!
-// Borrowed from GLFW with modifications.
-//
-// Original: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L193
-// License: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/LICENSE.md
-//
-internal bool32 Win32_IsXInputDevice(const GUID* guid)
-{
-    RAWINPUTDEVICELIST ridl[512];
-    UINT count = ArrayLength(ridl);
-	
-	count = GetRawInputDeviceList(ridl, &count, sizeof(RAWINPUTDEVICELIST));
-    if (count == (UINT)-1)
-        return false;
-	
-    for (UINT i = 0; i < count; i++)
-    {
-        RID_DEVICE_INFO rdi = { .cbSize = sizeof rdi, };
-        char name[256] = { 0 };
-        UINT rdi_size = sizeof rdi;
-		UINT name_size = sizeof name;
-		
-        if (RIM_TYPEHID != ridl[i].dwType)
-			continue;
-		if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdi_size))
-			continue;
-		if (guid->Data1 != MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId))
-            continue;
-		
-        if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICENAME, name, &name_size))
-            break;
-		
-        name[sizeof name - 1] = '\0';
-        if (strstr(name, "IG_"))
-			return true;
-    }
-	
-    return false;
 }

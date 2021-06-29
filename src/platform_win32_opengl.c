@@ -57,18 +57,8 @@ internal PFNDWMISCOMPOSITIONENABLEDPROC DwmIsCompositionEnabled;
 internal PFNDWMFLUSHPROC DwmFlush;
 
 //~ Functions
-internal bool32 Win32_LoadOpenGLFunctions(void);
-
 internal void
-Win32_DestroyOpenGLWindow(void)
-{
-	global_opengl.wglMakeCurrent(global_hdc, NULL);
-	global_opengl.wglDeleteContext(global_opengl.context);
-	DestroyWindow(global_window);
-}
-
-internal void
-Win32_OpenGLSwapBuffers(void)
+OpenGLSwapBuffers(void)
 {
 	global_opengl.vtable.glFlush();
 	global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
@@ -84,7 +74,7 @@ Win32_OpenGLSwapBuffers(void)
 }
 
 internal void*
-Win32_OpenGLGetProc(const char* name)
+OpenGLGetProc(const char* name)
 {
 	void* result = NULL;
 	
@@ -102,174 +92,10 @@ Win32_OpenGLGetProc(const char* name)
 }
 
 internal bool32
-Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
-{
-	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-	HWND window = CreateWindowExW(0, global_class_name, title, style,
-								  CW_USEDEFAULT, CW_USEDEFAULT,
-								  width, height,
-								  NULL, NULL, global_instance, NULL);
-	
-	if (!window)
-		return false;
-	
-	HDC hdc = GetDC(window);
-	
-	HMODULE library = LoadLibrary("opengl32.dll");
-	if (!library)
-	{
-		DestroyWindow(window);
-		return false;
-	}
-	
-	global_opengl.library = library;
-	global_opengl.wglGetProcAddress = (void*)GetProcAddress(library, "wglGetProcAddress");
-	global_opengl.wglCreateContext = (void*)GetProcAddress(library, "wglCreateContext");
-	global_opengl.wglMakeCurrent = (void*)GetProcAddress(library, "wglMakeCurrent");
-	global_opengl.wglDeleteContext = (void*)GetProcAddress(library, "wglDeleteContext");
-	global_opengl.wglSwapLayerBuffers = (void*)GetProcAddress(library, "wglSwapLayerBuffers");
-	
-	if (!global_opengl.wglGetProcAddress ||
-		!global_opengl.wglCreateContext ||
-		!global_opengl.wglMakeCurrent ||
-		!global_opengl.wglDeleteContext ||
-		!global_opengl.wglSwapLayerBuffers)
-	{
-		DestroyWindow(window);
-		return false;
-	}
-	
-	// Pixel Format
-	PIXELFORMATDESCRIPTOR pfd = {
-		sizeof(PIXELFORMATDESCRIPTOR),
-		1,
-		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-		PFD_TYPE_RGBA,
-		32,
-		0, 0, 0, 0, 0, 0,
-		0,
-		0,
-		0,
-		0, 0, 0, 0,
-		24,
-		8,
-		0,
-		PFD_MAIN_PLANE,
-		0,
-		0, 0, 0
-	};
-	
-	int32 pixel_format = ChoosePixelFormat(hdc, &pfd);
-	if (!pixel_format)
-	{
-		DestroyWindow(window);
-		return false;
-	}
-	
-	// Dummy Context
-	SetPixelFormat(hdc, pixel_format, &pfd);
-	HGLRC dummy_context = global_opengl.wglCreateContext(hdc);
-	global_opengl.wglMakeCurrent(hdc, dummy_context);
-	
-	// Load Functions
-	global_opengl.wglChoosePixelFormatARB = Win32_OpenGLGetProc("wglChoosePixelFormatARB");
-	global_opengl.wglCreateContextAttribsARB = Win32_OpenGLGetProc("wglCreateContextAttribsARB");
-	global_opengl.wglMakeContextCurrentARB = Win32_OpenGLGetProc("wglMakeContextCurrentARB");
-	global_opengl.wglSwapIntervalEXT = Win32_OpenGLGetProc("wglSwapIntervalEXT");
-	
-	// Real Pixel Format
-	int32 attribs[] =
-	{
-		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-		WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-		WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-		WGL_COLOR_BITS_ARB, 32,
-		WGL_DEPTH_BITS_ARB, 24,
-		WGL_STENCIL_BITS_ARB, 8,
-		0
-	};
-	
-	UINT num_formats = 0;
-	global_opengl.wglChoosePixelFormatARB(hdc, attribs, 0, 1, &pixel_format, &num_formats);
-	
-	if (!pixel_format)
-	{
-		global_opengl.wglMakeCurrent(hdc, NULL);
-		global_opengl.wglDeleteContext(dummy_context);
-		DestroyWindow(window);
-		return false;
-	}
-	
-	// Create Context
-	const int32 context_attribs[] = {
-		WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-		WGL_CONTEXT_MINOR_VERSION_ARB, 3,
-		WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-		0
-	};
-	
-	global_opengl.context = global_opengl.wglCreateContextAttribsARB(hdc, dummy_context, context_attribs);
-	
-	global_opengl.wglMakeCurrent(hdc, NULL);
-	global_opengl.wglDeleteContext(dummy_context);
-	
-	if (!global_opengl.context)
-	{
-		DestroyWindow(window);
-		return false;
-	}
-	
-	// Make Current
-	global_opengl.wglMakeCurrent(hdc, global_opengl.context);
-	global_opengl.wglDeleteContext(dummy_context);
-	
-	global_window = window;
-	global_hdc = hdc;
-	global_graphics_api = GraphicsAPI_OpenGL;
-	
-	// Load All Function
-	if (!Win32_LoadOpenGLFunctions())
-	{
-		Win32_DestroyOpenGLWindow();
-		return false;
-	}
-	
-	int32 interval = 1;
-	global_swap_interval = interval;
-	
-	if (IsWindowsVistaOrGreater())
-	{
-		HMODULE library = LoadLibrary("dwmapi.dll");
-		
-		if (library)
-		{
-			DwmIsCompositionEnabled = (void*)GetProcAddress(library, "DwmIsCompositionEnabled");
-			DwmFlush = (void*)GetProcAddress(library, "DwmFlush");
-			
-			BOOL enabled = IsWindows8OrGreater();
-			
-			if (enabled || (SUCCEEDED(DwmIsCompositionEnabled(&enabled)) && enabled))
-			{
-				global_should_flush_dwm = true;
-				interval = 0;
-			}
-		}
-	}
-	
-	global_opengl.wglSwapIntervalEXT(interval);
-	
-	global_opengl.vtable.glSwapBuffers = Win32_OpenGLSwapBuffers;
-	ShowWindow(global_window, SW_SHOWDEFAULT);
-	
-	return true;
-}
-
-internal bool32
-Win32_LoadOpenGLFunctions(void)
+LoadOpenGLFunctions(void)
 {
 	OpenGL_VTable* opengl = &global_opengl.vtable;
-	void* (*loader)(const char*) = Win32_OpenGLGetProc;
+	void* (*loader)(const char*) = OpenGLGetProc;
 	
 	opengl->glGetString = loader("glGetString");
 	if (!opengl->glGetString)
@@ -662,6 +488,179 @@ Win32_LoadOpenGLFunctions(void)
 	opengl->glColorP4uiv = (PFNGLCOLORP4UIVPROC)loader("glColorP4uiv");
 	opengl->glSecondaryColorP3ui = (PFNGLSECONDARYCOLORP3UIPROC)loader("glSecondaryColorP3ui");
 	opengl->glSecondaryColorP3uiv = (PFNGLSECONDARYCOLORP3UIVPROC)loader("glSecondaryColorP3uiv");
+	
+	return true;
+}
+
+//~ Internal API
+internal void
+Win32_DestroyOpenGLWindow(void)
+{
+	global_opengl.wglMakeCurrent(global_hdc, NULL);
+	global_opengl.wglDeleteContext(global_opengl.context);
+	DestroyWindow(global_window);
+}
+
+internal bool32
+Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
+{
+	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+	HWND window = CreateWindowExW(0, global_class_name, title, style,
+								  CW_USEDEFAULT, CW_USEDEFAULT,
+								  width, height,
+								  NULL, NULL, global_instance, NULL);
+	
+	if (!window)
+		return false;
+	
+	HDC hdc = GetDC(window);
+	
+	HMODULE library = LoadLibrary("opengl32.dll");
+	if (!library)
+	{
+		DestroyWindow(window);
+		return false;
+	}
+	
+	global_opengl.library = library;
+	global_opengl.wglGetProcAddress = (void*)GetProcAddress(library, "wglGetProcAddress");
+	global_opengl.wglCreateContext = (void*)GetProcAddress(library, "wglCreateContext");
+	global_opengl.wglMakeCurrent = (void*)GetProcAddress(library, "wglMakeCurrent");
+	global_opengl.wglDeleteContext = (void*)GetProcAddress(library, "wglDeleteContext");
+	global_opengl.wglSwapLayerBuffers = (void*)GetProcAddress(library, "wglSwapLayerBuffers");
+	
+	if (!global_opengl.wglGetProcAddress ||
+		!global_opengl.wglCreateContext ||
+		!global_opengl.wglMakeCurrent ||
+		!global_opengl.wglDeleteContext ||
+		!global_opengl.wglSwapLayerBuffers)
+	{
+		DestroyWindow(window);
+		return false;
+	}
+	
+	// Pixel Format
+	PIXELFORMATDESCRIPTOR pfd = {
+		sizeof(PIXELFORMATDESCRIPTOR),
+		1,
+		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+		PFD_TYPE_RGBA,
+		32,
+		0, 0, 0, 0, 0, 0,
+		0,
+		0,
+		0,
+		0, 0, 0, 0,
+		24,
+		8,
+		0,
+		PFD_MAIN_PLANE,
+		0,
+		0, 0, 0
+	};
+	
+	int32 pixel_format = ChoosePixelFormat(hdc, &pfd);
+	if (!pixel_format)
+	{
+		DestroyWindow(window);
+		return false;
+	}
+	
+	// Dummy Context
+	SetPixelFormat(hdc, pixel_format, &pfd);
+	HGLRC dummy_context = global_opengl.wglCreateContext(hdc);
+	global_opengl.wglMakeCurrent(hdc, dummy_context);
+	
+	// Load Functions
+	global_opengl.wglChoosePixelFormatARB = OpenGLGetProc("wglChoosePixelFormatARB");
+	global_opengl.wglCreateContextAttribsARB = OpenGLGetProc("wglCreateContextAttribsARB");
+	global_opengl.wglMakeContextCurrentARB = OpenGLGetProc("wglMakeContextCurrentARB");
+	global_opengl.wglSwapIntervalEXT = OpenGLGetProc("wglSwapIntervalEXT");
+	
+	// Real Pixel Format
+	int32 attribs[] =
+	{
+		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+		WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+		WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+		WGL_COLOR_BITS_ARB, 32,
+		WGL_DEPTH_BITS_ARB, 24,
+		WGL_STENCIL_BITS_ARB, 8,
+		0
+	};
+	
+	UINT num_formats = 0;
+	global_opengl.wglChoosePixelFormatARB(hdc, attribs, 0, 1, &pixel_format, &num_formats);
+	
+	if (!pixel_format)
+	{
+		global_opengl.wglMakeCurrent(hdc, NULL);
+		global_opengl.wglDeleteContext(dummy_context);
+		DestroyWindow(window);
+		return false;
+	}
+	
+	// Create Context
+	const int32 context_attribs[] = {
+		WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+		WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+		WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+		0
+	};
+	
+	global_opengl.context = global_opengl.wglCreateContextAttribsARB(hdc, dummy_context, context_attribs);
+	
+	global_opengl.wglMakeCurrent(hdc, NULL);
+	global_opengl.wglDeleteContext(dummy_context);
+	
+	if (!global_opengl.context)
+	{
+		DestroyWindow(window);
+		return false;
+	}
+	
+	// Make Current
+	global_opengl.wglMakeCurrent(hdc, global_opengl.context);
+	global_opengl.wglDeleteContext(dummy_context);
+	
+	global_window = window;
+	global_hdc = hdc;
+	global_graphics_api = GraphicsAPI_OpenGL;
+	
+	// Load All Function
+	if (!LoadOpenGLFunctions())
+	{
+		Win32_DestroyOpenGLWindow();
+		return false;
+	}
+	
+	int32 interval = 1;
+	global_swap_interval = interval;
+	
+	if (IsWindowsVistaOrGreater())
+	{
+		HMODULE library = LoadLibrary("dwmapi.dll");
+		
+		if (library)
+		{
+			DwmIsCompositionEnabled = (void*)GetProcAddress(library, "DwmIsCompositionEnabled");
+			DwmFlush = (void*)GetProcAddress(library, "DwmFlush");
+			
+			BOOL enabled = IsWindows8OrGreater();
+			
+			if (enabled || (SUCCEEDED(DwmIsCompositionEnabled(&enabled)) && enabled))
+			{
+				global_should_flush_dwm = true;
+				interval = 0;
+			}
+		}
+	}
+	
+	global_opengl.wglSwapIntervalEXT(interval);
+	
+	global_opengl.vtable.glSwapBuffers = OpenGLSwapBuffers;
+	ShowWindow(global_window, SW_SHOWDEFAULT);
 	
 	return true;
 }
