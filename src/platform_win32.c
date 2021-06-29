@@ -209,6 +209,7 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
 		}
 		
 		Win32_InitInput();
+		Platform_PollEvents();
 	}
 	
 	return ok;
