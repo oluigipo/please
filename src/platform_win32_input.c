@@ -220,8 +220,20 @@ Win32_UpdateConnectedGamepad(Win32_Gamepad* gamepad, int32 index)
 			DIJOYSTATE state;
 			IDirectInputDevice8_Poll(gamepad->dinput.device);
 			
-			if (DI_OK == IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state))
+			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
+			if (result == DI_OK)
 			{
+				
+				
+				Platform_DebugLog("%5li %5li %5li ", state.lX, state.lY, state.lZ);
+				Platform_DebugLog("%5li %5li %5li ", state.lRx, state.lRy, state.lRz);
+				Platform_DebugLog("%5li %5li ", state.rglSlider[0], state.rglSlider[1]);
+				Platform_DebugLog("%5li %5li %5li %5li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
+				for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
+					Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
+				Platform_DebugLog("\n");
+				
+				
 				
 			}
 			else
@@ -370,12 +382,20 @@ DirectInputEnumDevicesCallback(LPCDIDEVICEINSTANCEW instance, LPVOID userdata)
 	
 	if (DI_OK == IDirectInput8_CreateDevice(global_dinput, guid, &gamepad->dinput.device, NULL))
 	{
-		if (DI_OK == IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick) &&
-			DI_OK == IDirectInputDevice8_Acquire(gamepad->dinput.device))
+		IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick);
+		IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, global_window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE);
+		if (DI_OK == IDirectInputDevice8_Acquire(gamepad->dinput.device))
 		{
 			gamepad->connected = true;
 			gamepad->api = GamepadAPI_DirectInput;
 			gamepad->dinput.guid = *guid;
+			
+			Platform_DebugLog("Device Connected:\n");
+			Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
+			Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
+			Platform_DebugLog("\tGUID: %lx-%hx-%hx-%hx-%hx-%lx\n",
+							  guid->Data1, guid->Data2, guid->Data3,
+							  *(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
 			
 			return DIENUM_CONTINUE;
 		}

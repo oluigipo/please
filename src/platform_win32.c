@@ -158,8 +158,6 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	if (!RegisterClassW(&window_class))
 		Win32_ExitWithErrorMessage(L"Could not create window class.");
 	
-	Win32_InitInput();
-	
 	//- Run
 	return Engine_Main(argc, argv);
 }
@@ -195,6 +193,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
 		{
 			// TODO
 		}
+		
+		Win32_InitInput();
 	}
 	
 	return ok;
