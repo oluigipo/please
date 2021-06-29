@@ -1,3 +1,5 @@
+#include <gamepad_database.h>
+
 #define MAX_GAMEPAD_COUNT 8
 #define GAMEPAD_DEADZONE 0.4f
 
@@ -169,6 +171,24 @@ ReleaseGamepadIndex(int32 index)
 	global_gamepad_free[global_gamepad_free_count++] = index;
 }
 
+internal void
+NormalizeAxis(float32 axis[2])
+{
+	float32 dir = atan2f(axis[1], axis[0]);
+	float32 mag = sqrtf(axis[0]*axis[0] + axis[1]*axis[1]);
+	
+	if (mag < GAMEPAD_DEADZONE)
+	{
+		axis[0] = 0.0f;
+		axis[1] = 0.0f;
+	}
+	else
+	{
+		axis[0] = cosf(dir);
+		axis[1] = sinf(dir);
+	}
+}
+
 internal DWORD WINAPI
 XInputGetStateStub(DWORD index, XINPUT_STATE* state) { return ERROR_DEVICE_NOT_CONNECTED; }
 internal DWORD WINAPI
@@ -247,28 +267,110 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 			
 			if (result == DI_OK)
 			{
+				float32 left_x  = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[1]) + 0.5f) / 32767.5f;
+				float32 left_y  = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[0]) + 0.5f) / 32767.5f;
+				float32 right_x = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[3]) + 0.5f) / 32767.5f;
+				float32 right_y = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[2]) + 0.5f) / 32767.5f;
+				
+				gamepad->data.left[0] = left_x;
+				gamepad->data.left[1] = left_y;
+				NormalizeAxis(gamepad->data.left);
+				
+				gamepad->data.right[0] = right_x;
+				gamepad->data.right[1] = right_y;
+				NormalizeAxis(gamepad->data.right);
+				
+				const Input_GamepadButton buttons[] = {
+					Input_GamepadButton_Y,
+					Input_GamepadButton_B,
+					Input_GamepadButton_A,
+					Input_GamepadButton_X,
+					Input_GamepadButton_LB,
+					Input_GamepadButton_RB,
+					Input_GamepadButton_LT,
+					Input_GamepadButton_RT,
+					Input_GamepadButton_Back,
+					Input_GamepadButton_Start,
+					Input_GamepadButton_LS,
+					Input_GamepadButton_RS,
+				};
+				
+				for (int32 i = 0; i < gamepad->dinput.button_count; ++i)
+				{
+					gamepad->data.buttons[buttons[i]] <<= 1;
+					gamepad->data.buttons[buttons[i]] |= !!(*(LONG*)((uint8*)&state+gamepad->dinput.buttons[i])&128);
+				}
+				
+				const Input_GamepadButton directional[] = {
+					Input_GamepadButton_Up,
+					Input_GamepadButton_Right,
+					Input_GamepadButton_Down,
+					Input_GamepadButton_Left,
+				};
+				
+				for (int32 i = 0; i < ArrayLength(directional); ++i)
+				{
+					gamepad->data.buttons[directional[i]] <<= 1;
+				}
+				
+				if (gamepad->dinput.pov_count > 0)
+				{
+					LONG pov = *(LONG*)((uint8*)&state+gamepad->dinput.povs[0]);
+					if (pov != -1)
+					{
+						pov /= 100;
+						pov /= 45;
+						pov %= 8;
+						if (pov < 0)
+							pov += 8;
+						
+						gamepad->data.buttons[directional[pov/2]] |= 1;
+						if ((pov & 1) == 1)
+							gamepad->data.buttons[directional[(pov+1)%8/2]] |= 1;
+					}
+				}
+				
 #if 1
 				// NOTE(ljre): Debug Only
 				if (Input_KeyboardIsPressed(Input_KeyboardKey_Space))
 				{
-					Platform_DebugLog("%5li %5li %5li ", state.lX, state.lY, state.lZ);
-					Platform_DebugLog("%5li %5li %5li ", state.lRx, state.lRy, state.lRz);
-					Platform_DebugLog("%5li %5li ", state.rglSlider[0], state.rglSlider[1]);
-					Platform_DebugLog("%5li %5li %5li %5li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
+					Platform_DebugLog("Raw:");
+					Platform_DebugLog("%6li %6li %6li ", state.lX, state.lY, state.lZ);
+					Platform_DebugLog("%6li %6li %6li ", state.lRx, state.lRy, state.lRz);
+					Platform_DebugLog("%6li %6li ", state.rglSlider[0], state.rglSlider[1]);
+					Platform_DebugLog("%6li %6li %6li %6li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
 					for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
 						Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
 					Platform_DebugLog("\n");
+					
+					Platform_DebugLog("Cooked:\n");
+					Platform_DebugLog("\tLS: (%f, %f) - %c\n", gamepad->data.left[0], gamepad->data.left[1],
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_LS] & 1));
+					Platform_DebugLog("\tRS: (%f, %f) - %c\n", gamepad->data.right[0], gamepad->data.right[1],
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_RS] & 1));
+					Platform_DebugLog("\tA, B: %c, %c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_A] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_B] & 1));
+					Platform_DebugLog("\tX, Y: %c, %c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_X] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Y] & 1));
+					Platform_DebugLog("\tLB, RB: %c, %c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_LB] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_RB] & 1));
+					Platform_DebugLog("\tLT, RT: %c, %c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_LT] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_RT] & 1));
+					Platform_DebugLog("\tBack, Start: %c, %c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Back] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Start] & 1));
+					Platform_DebugLog("\tPOV right, up, left, down: %c%c%c%c\n",
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Right] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Up] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Left] & 1),
+									  '0' + (gamepad->data.buttons[Input_GamepadButton_Down] & 1));
 				}
 #endif
 				
-				for (int32 i = 0; i < ArrayLength(gamepad->data.buttons); ++i)
-				{
-					bool8 button = gamepad->data.buttons[i];
-					
-					button = (bool8)(button << 1) | (button & 1);
-					
-					gamepad->data.buttons[i] = button;
-				}
 			}
 			else
 			{
@@ -289,49 +391,14 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 			
 			if (result == ERROR_SUCCESS)
 			{
-				//- Left Stick
+				//- Sticks
 				gamepad->data.left[0] = ((float32)state.Gamepad.sThumbLX + 0.5f) /  32767.5f;
 				gamepad->data.left[1] = ((float32)state.Gamepad.sThumbLY + 0.5f) / -32767.5f;
+				NormalizeAxis(gamepad->data.left);
 				
-				// NOTE(ljre): normalize
-				{
-					float32 dir = atan2f(gamepad->data.left[1], gamepad->data.left[0]);
-					float32 mag = sqrtf(gamepad->data.left[0]*gamepad->data.left[0] +
-										gamepad->data.left[1]*gamepad->data.left[1]);
-					
-					if (mag < GAMEPAD_DEADZONE)
-					{
-						gamepad->data.left[0] = 0.0f;
-						gamepad->data.left[1] = 0.0f;
-					}
-					else
-					{
-						gamepad->data.left[0] = cosf(dir);
-						gamepad->data.left[1] = sinf(dir);
-					}
-				}
-				
-				//- Right Stick
 				gamepad->data.right[0] = ((float32)state.Gamepad.sThumbRX + 0.5f) /  32767.5f;
 				gamepad->data.right[1] = ((float32)state.Gamepad.sThumbRY + 0.5f) / -32767.5f;
-				
-				// NOTE(ljre): normalize
-				{
-					float32 dir = atan2f(gamepad->data.right[1], gamepad->data.right[0]);
-					float32 mag = sqrtf(gamepad->data.right[0]*gamepad->data.right[0] +
-										gamepad->data.right[1]*gamepad->data.right[1]);
-					
-					if (mag < GAMEPAD_DEADZONE)
-					{
-						gamepad->data.right[0] = 0.0f;
-						gamepad->data.right[1] = 0.0f;
-					}
-					else
-					{
-						gamepad->data.right[0] = cosf(dir);
-						gamepad->data.right[1] = sinf(dir);
-					}
-				}
+				NormalizeAxis(gamepad->data.right);
 				
 				//- LR & RB
 				gamepad->data.lt = (float32)state.Gamepad.bLeftTrigger / 255.0f;
@@ -498,9 +565,12 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	Platform_DebugLog("\tIndex: %i\n", index);
 	Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
 	Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
-	Platform_DebugLog("\tGUID: %lx-%hx-%hx-%hx-%hx-%lx\n",
+	Platform_DebugLog("\tGUID Instance: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
 					  guid->Data1, guid->Data2, guid->Data3,
 					  *(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
+	Platform_DebugLog("\tGUID Product: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
+					  instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3,
+					  *(uint16*)instance->guidProduct.Data4, ((uint16*)instance->guidProduct.Data4)[1], *(uint32*)instance->guidProduct.Data4);
 	
 	Platform_DebugLog("\tAxes: { ");
 	for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)

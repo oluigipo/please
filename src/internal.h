@@ -200,16 +200,18 @@ API const Input_Mouse* Input_GetMouse(void);
 
 enum Input_GamepadButton
 {
-	Input_GamepadButton_Left,
-	Input_GamepadButton_Right,
-	Input_GamepadButton_Up,
-	Input_GamepadButton_Down,
 	Input_GamepadButton_A,
 	Input_GamepadButton_B,
 	Input_GamepadButton_X,
 	Input_GamepadButton_Y,
+	Input_GamepadButton_Left,
+	Input_GamepadButton_Right,
+	Input_GamepadButton_Up,
+	Input_GamepadButton_Down,
 	Input_GamepadButton_LB,
 	Input_GamepadButton_RB,
+	Input_GamepadButton_LT,
+	Input_GamepadButton_RT,
 	Input_GamepadButton_RS,
 	Input_GamepadButton_LS,
 	Input_GamepadButton_Start,
@@ -233,9 +235,9 @@ struct Input_Gamepad
 API const Input_Gamepad* Input_GetGamepad(int32 index);
 API void Input_SetGamepad(int32 index, float32 vibration); // vibration = 0..1
 
-#define Input_GamepadIsPressed(gamepad, btn) (!((gamepad)->buttons[btn] & 3) && ((gamepad)->buttons[btn] & 1))
+#define Input_GamepadIsPressed(gamepad, btn) (!((gamepad)->buttons[btn] & 2) && ((gamepad)->buttons[btn] & 1))
 #define Input_GamepadIsDown(gamepad, btn) (((gamepad)->buttons[btn] & 1) != 0)
-#define Input_GamepadIsReleased(gamepad, btn) (((gamepad)->buttons[btn] & 3) && !((gamepad)->buttons[btn] & 1))
+#define Input_GamepadIsReleased(gamepad, btn) (((gamepad)->buttons[btn] & 2) && !((gamepad)->buttons[btn] & 1))
 #define Input_GamepadIsUp(gamepad, btn) (!((gamepad)->buttons[btn] & 1))
 
 #endif //INTERNAL_H
