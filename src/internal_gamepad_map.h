@@ -88,6 +88,6 @@ internal GamepadMappings global_gamepadmap_default = {
 	},
 };
 
-#include "internal_gamepad_map_database.inc"
+#include <internal_gamepad_map_database.inc>
 
 #endif //INTERNAL_GAMEPAD_MAP_H

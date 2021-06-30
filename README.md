@@ -1,6 +1,18 @@
 # please
 no description yet
 
+## License
+Everyone is free to use my code to do whatever they want.
+The license note in the file LICENSE is valid just for some of the stuff in the `src` folder.
+
+Exclusions:
+- Pieces of code I've directly borrowed from GLFW's source code in the file `src/platform_win32_input.c`. All of them have a comment specifying where and which license that code is under.
+
+Everything else in the `src` folder is either mine, or is available in the public domain.
+
+#### Little Note
+If you have any problems about this license, or if I am redistributing your code without permission, please make an issue or contact me directly!
+
 ## Build
 Clang is required, but you can use GCC if you want to. Just run `make` and you should be good to go.
 If you need to, here are some variables you can set:
