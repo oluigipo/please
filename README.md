@@ -13,7 +13,8 @@ Example: `make MODE=debug ARCH=x86 -j`
 * Graphics: OpenGL;
 * Gamepad Input: DirectInput, XInput;
 
-## External Libraries
+## External
 * [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 * [stb_truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h)
-* [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW.
+* [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW. Though GLFW in general is a really nice reference.
+* [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB): It was used to generate the `src/internal_gamepad_map_database.inc` file.
