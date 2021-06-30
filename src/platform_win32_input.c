@@ -1,7 +1,7 @@
 #include "internal_gamepad_map.h"
 
 #define MAX_GAMEPAD_COUNT 8
-#define GAMEPAD_DEADZONE 0.4f
+#define GAMEPAD_DEADZONE 0.3f
 
 //~ Types and Macros
 enum GamepadAPI
@@ -66,7 +66,7 @@ internal ProcXInputSetState*        XInputSetState;
 internal ProcXInputGetCapabilities* XInputGetCapabilities;
 internal ProcDirectInput8Create*    DirectInput8Create;
 
-internal Input_KeyboardKey global_keyboard_key_table[] = {
+internal const Input_KeyboardKey global_keyboard_key_table[] = {
 	[0] = Input_KeyboardKey_Any,
 	
 	[VK_ESCAPE] = Input_KeyboardKey_Escape,
@@ -189,8 +189,8 @@ NormalizeAxis(float32 axis[2])
 	}
 	else
 	{
-		axis[0] = cosf(dir);
-		axis[1] = sinf(dir);
+		axis[0] = cosf(dir) * mag;
+		axis[1] = sinf(dir) * mag;
 	}
 }
 
@@ -282,16 +282,18 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 	for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
 	{
 		out->buttons[i] <<= 1;
-		out->buttons[i] &= ~1;
 	}
 	
 	//- Translate Buttons
-	for (int32 i = 0; i < ArrayLength(map->buttons) && map->buttons[i]; ++i)
+	for (int32 i = 0; i < ArrayLength(map->buttons); ++i)
 	{
+		if (!map->buttons[i])
+			continue;
+		
 		Input_GamepadButton as_button = -1;
 		
 		uint8 lower = map->buttons[i] & 255;
-		uint8 higher = map->buttons[i] >> 8;
+		//uint8 higher = map->buttons[i] >> 8;
 		
 		switch (lower)
 		{
@@ -324,8 +326,11 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 	}
 	
 	//- Translate Axes
-	for (int32 i = 0; i < ArrayLength(map->axes) && map->axes[i]; ++i)
+	for (int32 i = 0; i < ArrayLength(map->axes); ++i)
 	{
+		if (!map->axes[i])
+			continue;
+		
 		uint8 lower = map->axes[i] & 255;
 		uint8 higher = map->axes[i] >> 8;
 		float32 value = axes[i];
@@ -354,8 +359,11 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 	}
 	
 	//- Translate Povs
-	for (int32 i = 0; i < ArrayLength(map->povs) && map->povs[i][0]; ++i)
+	for (int32 i = 0; i < ArrayLength(map->povs); ++i)
 	{
+		if (!map->povs[i][0])
+			continue;
+		
 		Input_GamepadButton as_button;
 		int32 pov = povs[i];
 		uint8 lower, higher;
@@ -927,8 +935,6 @@ Win32_InitInput(void)
 internal void
 Win32_UpdateInputPre(void)
 {
-	Trace("Win32_UpdateInputPre");
-	
 	// NOTE(ljre): Update Keyboard
 	{
 		for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
@@ -945,8 +951,6 @@ Win32_UpdateInputPre(void)
 internal void
 Win32_UpdateInputPos(void)
 {
-	Trace("Win32_UpdateInputPos");
-	
 	// NOTE(ljre): Get mouse cursor
 	{
 		global_mouse.old_pos[0] = global_mouse.pos[0];
@@ -1042,7 +1046,7 @@ Input_SetGamepad(int32 index, float32 vibration)
 	{
 		case GamepadAPI_DirectInput:
 		{
-			// TODO
+			// NOTE(ljre): You can't. At least afaik.
 		} break;
 		
 		case GamepadAPI_XInput:

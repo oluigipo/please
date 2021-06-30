@@ -1,7 +1,7 @@
 #include <cglm/cglm.h>
 
-#define GL (*opengl)
-internal const OpenGL_VTable* opengl;
+#define GL (*global_opengl_vtable)
+internal const OpenGL_VTable* global_opengl_vtable;
 internal int32 global_uniform_color;
 internal int32 global_uniform_matrix;
 internal mat4 global_proj;
@@ -113,10 +113,10 @@ DrawRectangle(vec4 color, vec3 pos, vec3 size)
 	glm_scale(matrix, size);
 	glm_mat4_mul(global_proj, matrix, matrix);
 	
-	opengl->glUniform4fv(global_uniform_color, 1, color);
-	opengl->glUniformMatrix4fv(global_uniform_matrix, 1, false, (float32*)matrix);
+	GL.glUniform4fv(global_uniform_color, 1, color);
+	GL.glUniformMatrix4fv(global_uniform_matrix, 1, false, (float32*)matrix);
 	
-	opengl->glDrawArrays(GL_TRIANGLES, 0, 6);
+	GL.glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 API int32
@@ -128,18 +128,18 @@ Engine_Main(int32 argc, char** argv)
 	if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL))
 		Platform_ExitWithErrorMessage(Str("É mole, o PC sequer aguenta OpenGL 3.3 :pepega"));
 	
-	opengl = Platform_GetOpenGLVTable();
+	global_opengl_vtable = Platform_GetOpenGLVTable();
 	
 #ifdef DEBUG
-	opengl->glEnable(GL_DEBUG_OUTPUT);
-	opengl->glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	opengl->glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
+	GL.glEnable(GL_DEBUG_OUTPUT);
+	GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	GL.glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
 #endif
 	
 	//opengl->glEnable(GL_BLEND);
 	//opengl->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	//opengl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	opengl->glViewport(0, 0, 600, 600);
+	GL.glViewport(0, 0, 600, 600);
 	glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, global_proj);
 	
 	float32 vertices[] = {
@@ -152,18 +152,18 @@ Engine_Main(int32 argc, char** argv)
 	};
 	
 	uint32 vbo, vao;
-	opengl->glGenBuffers(1, &vbo);
-	opengl->glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	opengl->glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+	GL.glGenBuffers(1, &vbo);
+	GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	GL.glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
 	
-	opengl->glGenVertexArrays(1, &vao);
-	opengl->glBindVertexArray(vao);
-	opengl->glEnableVertexAttribArray(0);
-	opengl->glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float32) * 2, 0);
+	GL.glGenVertexArrays(1, &vao);
+	GL.glBindVertexArray(vao);
+	GL.glEnableVertexAttribArray(0);
+	GL.glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float32) * 2, 0);
 	
 	uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
-	global_uniform_color = opengl->glGetUniformLocation(shader, "uColor");
-	global_uniform_matrix = opengl->glGetUniformLocation(shader, "uMatrix");
+	global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
+	global_uniform_matrix = GL.glGetUniformLocation(shader, "uMatrix");
 	
 	while (!Platform_WindowShouldClose())
 	{
@@ -171,8 +171,8 @@ Engine_Main(int32 argc, char** argv)
 		
 		if (gamepad)
 		{
-			opengl->glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
-			opengl->glClear(GL_COLOR_BUFFER_BIT);
+			GL.glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
+			GL.glClear(GL_COLOR_BUFFER_BIT);
 			
 			vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
 			vec4 colors[2] = {
@@ -180,8 +180,8 @@ Engine_Main(int32 argc, char** argv)
 				{ 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
 			};
 			
-			opengl->glBindVertexArray(vao);
-			opengl->glUseProgram(shader);
+			GL.glBindVertexArray(vao);
+			GL.glUseProgram(shader);
 			
 			// NOTE(ljre): Draw Axes
 			{
@@ -246,10 +246,10 @@ Engine_Main(int32 argc, char** argv)
 		}
 		else
 		{
-			opengl->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-			opengl->glClear(GL_COLOR_BUFFER_BIT);
+			GL.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			GL.glClear(GL_COLOR_BUFFER_BIT);
 		}
-		opengl->glSwapBuffers();
+		GL.glSwapBuffers();
 		Platform_PollEvents();
 	}
 	
