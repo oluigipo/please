@@ -808,6 +808,8 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 					 name[8], name[9], name[10]);
 		}
 		
+		//Platform_DebugLog("SDL's Device GUID: %s\n", guid_str);
+		
 		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i) {
 			const GamepadMappings* map = &global_gamepadmap_database[i];
 			
