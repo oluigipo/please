@@ -1,11 +1,7 @@
-#include "internal_gamepad_database.h"
+#include "internal_gamepad_map.h"
 
 #define MAX_GAMEPAD_COUNT 8
 #define GAMEPAD_DEADZONE 0.4f
-
-// TODO(ljre): Fix DPAD not working
-// TODO(ljre): Fix Triggers not working
-// TODO(ljre): Convert the entire database to 'internal_gamepad_database.h'
 
 //~ Types and Macros
 enum GamepadAPI
@@ -33,15 +29,15 @@ struct Win32_Gamepad
 			IDirectInputDevice8W* device;
 			GUID guid;
 			
-			int32 axes[6];
-			int32 axis_count;
-			int32 slider_count;
 			int32 buttons[32];
 			int32 button_count;
-			int32 povs[4];
+			int32 axes[16];
+			int32 axis_count;
+			int32 slider_count;
+			int32 povs[8];
 			int32 pov_count;
 			
-			GamepadMappings* map;
+			const GamepadMappings* map;
 		} dinput;
 	};
 } typedef Win32_Gamepad;
@@ -153,8 +149,8 @@ internal bool32 IsXInputDevice(const GUID* guid)
         if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICENAME, name, &name_size))
             break;
 		
-        name[sizeof name - 1] = '\0';
-        if (strstr(name, "IG_"))
+		name[sizeof name - 1] = '\0';
+		if (strstr(name, "IG_"))
 			return true;
     }
 	
@@ -279,15 +275,25 @@ LoadDirectInput(void)
 }
 
 internal void
-TranslateController(Input_Gamepad* out, GamepadMappings* map,
+TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 					const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
+	//- Update Buttons
+	for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
+	{
+		out->buttons[i] <<= 1;
+		out->buttons[i] &= ~1;
+	}
+	
 	//- Translate Buttons
 	for (int32 i = 0; i < ArrayLength(map->buttons) && map->buttons[i]; ++i)
 	{
 		Input_GamepadButton as_button = -1;
 		
-		switch (map->buttons[i])
+		uint8 lower = map->buttons[i] & 255;
+		uint8 higher = map->buttons[i] >> 8;
+		
+		switch (lower)
 		{
 			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
 			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
@@ -304,8 +310,8 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
 			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
 			
-			case GamepadObject_Pressure_LeftTrigger: out->lt = (float32)buttons[i]; break;
-			case GamepadObject_Pressure_RightTrigger: out->rt = (float32)buttons[i]; break;
+			case GamepadObject_Pressure_LeftTrigger: out->lt = (float32)(buttons[i] != 0); break;
+			case GamepadObject_Pressure_RightTrigger: out->rt = (float32)(buttons[i] != 0); break;
 			
 			// NOTE(ljre): Every other is invalid
 			default: break;
@@ -313,20 +319,34 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] <<= 1;
-			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+			out->buttons[as_button] |= buttons[i];
 		}
 	}
 	
 	//- Translate Axes
 	for (int32 i = 0; i < ArrayLength(map->axes) && map->axes[i]; ++i)
 	{
-		switch (map->axes[i])
+		uint8 lower = map->axes[i] & 255;
+		uint8 higher = map->axes[i] >> 8;
+		float32 value = axes[i];
+		
+		if (higher & (1 << 7))
+			value = -value;
+		
+		if (higher & (1 << 6))
+			value = value * 2.0f - 1.0f;
+		else if (higher & (1 << 5))
+			value = value * 0.5f + 1.0f;
+		
+		switch (lower)
 		{
-			case GamepadObject_Axis_LeftX: out->left[0] = axes[i]; break;
-			case GamepadObject_Axis_LeftY: out->left[1] = axes[i]; break;
-			case GamepadObject_Axis_RightX: out->right[0] = axes[i]; break;
-			case GamepadObject_Axis_RightY: out->right[1] = axes[i]; break;
+			case GamepadObject_Axis_LeftX: out->left[0] = value; break;
+			case GamepadObject_Axis_LeftY: out->left[1] = value; break;
+			case GamepadObject_Axis_RightX: out->right[0] = value; break;
+			case GamepadObject_Axis_RightY: out->right[1] = value; break;
+			
+			case GamepadObject_Pressure_LeftTrigger: out->lt = value; break;
+			case GamepadObject_Pressure_RightTrigger: out->rt = value; break;
 			
 			// NOTE(ljre): Every other is invalid
 			default: break;
@@ -336,17 +356,19 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 	//- Translate Povs
 	for (int32 i = 0; i < ArrayLength(map->povs) && map->povs[i][0]; ++i)
 	{
-		Input_GamepadButton as_button = -1;
+		Input_GamepadButton as_button;
 		int32 pov = povs[i];
+		uint8 lower, higher;
+		uint16 object;
 		
-		pov /= 45;
-		pov %= 8;
-		if (pov < 0)
-			pov += 8;
+		if (pov == -1)
+			continue;
 		
-		Platform_DebugMessageBox("[%i]   %i - %i", pov, map->povs[i][pov / 2], GamepadObject_Button_Left);
-		
-		switch (map->povs[i][pov / 2])
+		as_button = -1;
+		object = map->povs[i][pov >> 1];
+		lower = object & 255;
+		higher = object >> 8;
+		switch (lower)
 		{
 			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
 			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
@@ -368,8 +390,7 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] <<= 1;
-			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+			out->buttons[as_button] |= 1;
 		}
 		
 		// NOTE(ljre): if it's not pointing to an diagonal, ignore next step
@@ -377,7 +398,10 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 			continue;
 		
 		as_button = -1;
-		switch (map->povs[i][(pov+1) % 8 / 2])
+		object = map->povs[i][(pov+1 & 7) >> 1];
+		lower = object & 255;
+		higher = object >> 8;
+		switch (lower)
 		{
 			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
 			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
@@ -399,10 +423,13 @@ TranslateController(Input_Gamepad* out, GamepadMappings* map,
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] <<= 1;
-			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+			out->buttons[as_button] |= 1;
 		}
 	}
+	
+	//- The end of your pain
+	NormalizeAxis(out->left);
+	NormalizeAxis(out->right);
 }
 
 internal void
@@ -415,7 +442,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 		//~ DirectInput
 		case GamepadAPI_DirectInput:
 		{
-			DIJOYSTATE state;
+			DIJOYSTATE2 state;
 			IDirectInputDevice8_Poll(gamepad->dinput.device);
 			
 			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
@@ -460,7 +487,27 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 				for (int32 i = 0; i < pov_count; ++i)
 				{
 					LONG raw = *(LONG*)((uint8*)&state + gamepad->dinput.povs[i]);
-					povs[i] = (int32)(raw / 100);
+					if (raw == -1)
+					{
+						povs[i] = -1;
+						continue;
+					}
+					
+					// '(x%n + n) % n' is the same as 'x & (n-1)' when 'n' is a power of 2
+					// negative values are going to wrap around
+					raw = (raw / 4500) & 7;
+					
+					// Value of 'raw' is, assuming order Right, Up, Left, Down:
+					// 0 = Right
+					// 1 = Right & Up
+					// 2 = Up
+					// 3 = Up & Left
+					// 4 = Left
+					// 5 = Left & Down
+					// 6 = Down
+					// 7 = Down & Right
+					
+					povs[i] = (int32)raw;
 				}
 				
 				TranslateController(&gamepad->data, gamepad->dinput.map, buttons, axes, povs);
@@ -597,8 +644,11 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 			.lMax = INT16_MAX,
 		};
 		
-		if (0) {}
-		else if (AreGUIDsEqual(object_guid, &GUID_Slider)) axis_offset = (int32)DIJOFS_SLIDER(gamepad->dinput.slider_count++);
+		if (AreGUIDsEqual(object_guid, &GUID_Slider))
+		{
+			axis_offset = (int32)DIJOFS_SLIDER(gamepad->dinput.slider_count++);
+			axis_offset |= 0x40000000;
+		}
         else if (AreGUIDsEqual(object_guid, &GUID_XAxis )) axis_offset = (int32)DIJOFS_X;
         else if (AreGUIDsEqual(object_guid, &GUID_YAxis )) axis_offset = (int32)DIJOFS_Y;
         else if (AreGUIDsEqual(object_guid, &GUID_ZAxis )) axis_offset = (int32)DIJOFS_Z;
@@ -626,6 +676,29 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 	return DIENUM_CONTINUE;
 }
 
+internal int32
+SortGamepadCompare(const void* a, const void* b)
+{
+	int32 left  = *(const int32*)a;
+	int32 right = *(const int32*)b;
+	
+	return left - right;
+}
+
+internal void
+SortGamepadObjects(Win32_Gamepad* gamepad)
+{
+	qsort(gamepad->dinput.buttons, (uintsize)gamepad->dinput.button_count, sizeof(int32), SortGamepadCompare);
+	qsort(gamepad->dinput.axes, (uintsize)gamepad->dinput.axis_count, sizeof(int32), SortGamepadCompare);
+	qsort(gamepad->dinput.povs, (uintsize)gamepad->dinput.pov_count, sizeof(int32), SortGamepadCompare);
+	
+	// CleanUp
+	for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)
+	{
+		gamepad->dinput.axes[i] &= ~0x40000000;
+	}
+}
+
 internal BOOL CALLBACK
 DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata)
 {
@@ -633,7 +706,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		return DIENUM_STOP;
 	
 	const GUID* guid = &instance->guidInstance;
-	if (XInputGetState && IsXInputDevice(guid))
+	if (XInputGetState && IsXInputDevice(&instance->guidProduct))
 		return DIENUM_CONTINUE;
 	
 	// Check if device is already added
@@ -674,7 +747,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	if (DI_OK != IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, global_window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))
 		goto _failure;
 	
-	if (DI_OK != IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick))
+	if (DI_OK != IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick2))
 		goto _failure;
 	
 	if (DI_OK != IDirectInputDevice8_GetCapabilities(gamepad->dinput.device, &capabilities))
@@ -695,6 +768,52 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	gamepad->dinput.guid = *guid;
 	gamepad->dinput.map = &global_gamepadmap_default;
 	
+	SortGamepadObjects(gamepad);
+	
+	int32 index_of_map_being_used = -1;
+	
+	// NOTE(ljre): Look for a mapping for this gamepad
+	{
+		char guid_str[64];
+		char name[256];
+		
+		// NOTE(ljre): GLFW code with modifications!
+		// https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L452
+		
+		// Generate a joystick GUID that matches the SDL 2.0.5+ one
+		if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof name, NULL, NULL))
+			goto _just_use_default_map;
+		
+		if (memcmp(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
+		{
+			snprintf(guid_str, sizeof guid_str, "03000000%02x%02x0000%02x%02x000000000000",
+					 (uint8_t) instance->guidProduct.Data1,
+					 (uint8_t) (instance->guidProduct.Data1 >> 8),
+					 (uint8_t) (instance->guidProduct.Data1 >> 16),
+					 (uint8_t) (instance->guidProduct.Data1 >> 24));
+		}
+		else
+		{
+			snprintf(guid_str, sizeof guid_str, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
+					 name[0], name[1], name[2], name[3],
+					 name[4], name[5], name[6], name[7],
+					 name[8], name[9], name[10]);
+		}
+		
+		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i) {
+			const GamepadMappings* map = &global_gamepadmap_database[i];
+			
+			if (memcmp(guid_str, map->guid, ArrayLength(map->guid)) == 0)
+			{
+				gamepad->dinput.map = map;
+				index_of_map_being_used = i;
+				break;
+			}
+		}
+	}
+	
+	_just_use_default_map:;
+	
 	Platform_DebugLog("Device Connected:\n");
 	Platform_DebugLog("\tIndex: %i\n", index);
 	Platform_DebugLog("\tDriver: DirectInput\n");
@@ -706,6 +825,11 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	Platform_DebugLog("\tGUID Product: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
 					  instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3,
 					  *(uint16*)instance->guidProduct.Data4, ((uint16*)instance->guidProduct.Data4)[1], *(uint32*)instance->guidProduct.Data4);
+	
+	if (index_of_map_being_used == -1)
+		Platform_DebugLog("\tMappings: Default\n");
+	else
+		Platform_DebugLog("\tMappings: Index %i\n", index_of_map_being_used);
 	
 	Platform_DebugLog("\tAxes: { ");
 	for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)

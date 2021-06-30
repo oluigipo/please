@@ -105,7 +105,7 @@ LoadOpenGLFunctions(void)
 	if (!str)
 		return false;
 	
-	Platform_DebugLog("OpenGL Verson: %s\n", str);
+	Platform_DebugLog("OpenGL Version: %s\n", str);
 	
 #ifdef DEBUG
 	opengl->glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC)loader("glDebugMessageCallback");
@@ -523,6 +523,8 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 		DestroyWindow(window);
 		return false;
 	}
+	
+	Platform_DebugLog("Loaded Library: opengl32.dll\n");
 	
 	global_opengl.library = library;
 	global_opengl.wglGetProcAddress = (void*)GetProcAddress(library, "wglGetProcAddress");

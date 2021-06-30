@@ -105,10 +105,11 @@ CompileShader(const char* vertex_source, const char* fragment_source)
 }
 
 internal void
-DrawRectangle(mat4 where, vec4 color, vec3 size)
+DrawRectangle(vec4 color, vec3 pos, vec3 size)
 {
 	mat4 matrix;
-	glm_mat4_copy(where, matrix);
+	glm_mat4_identity(matrix);
+	glm_translate(matrix, pos);
 	glm_scale(matrix, size);
 	glm_mat4_mul(global_proj, matrix, matrix);
 	
@@ -173,7 +174,6 @@ Engine_Main(int32 argc, char** argv)
 			opengl->glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
 			opengl->glClear(GL_COLOR_BUFFER_BIT);
 			
-			mat4 pos;
 			vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
 			vec4 colors[2] = {
 				{ 0.3f, 0.3f, 0.3f, 1.0f }, // Enabled
@@ -185,22 +185,21 @@ Engine_Main(int32 argc, char** argv)
 			
 			// NOTE(ljre): Draw Axes
 			{
-				glm_mat4_identity(pos);
-				glm_translate(pos, (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f });
-				DrawRectangle(pos, black, (vec3) { 50.0f, 50.0f });
+				DrawRectangle(black,
+							  (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f },
+							  (vec3) { 50.0f, 50.0f });
 				
-				glm_translate(pos, (vec3) { gamepad->left[0] * 20.0f, gamepad->left[1] * 20.0f });
-				DrawRectangle(pos,
-							  colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_LS)],
+				DrawRectangle(colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_LS)],
+							  (vec3) { width / 2.0f - 100.0f + gamepad->left[0] * 20.0f,
+								  height / 2.0f + 100.0f + gamepad->left[1] * 20.0f },
 							  (vec3) { 20.0f, 20.0f });
 				
-				glm_mat4_identity(pos);
-				glm_translate(pos, (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f });
-				DrawRectangle(pos, black, (vec3) { 50.0f, 50.0f });
+				DrawRectangle(black,
+							  (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f },
+							  (vec3) { 50.0f, 50.0f });
 				
-				glm_translate(pos, (vec3) { gamepad->right[0] * 20.0f, gamepad->right[1] * 20.0f });
-				DrawRectangle(pos,
-							  colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_RS)],
+				DrawRectangle(colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_RS)],
+							  (vec3) { width / 2.0f + 100.0f + gamepad->right[0] * 20.0f, height / 2.0f + 100.0f + gamepad->right[1] * 20.0f },
 							  (vec3) { 20.0f, 20.0f });
 			}
 			
@@ -230,9 +229,7 @@ Engine_Main(int32 argc, char** argv)
 				
 				for (int32 i = 0; i < ArrayLength(buttons); ++i)
 				{
-					glm_mat4_identity(pos);
-					glm_translate(pos, buttons[i].pos);
-					DrawRectangle(pos, colors[Input_GamepadIsDown(gamepad, i)], buttons[i].size);
+					DrawRectangle(colors[Input_GamepadIsDown(gamepad, i)], buttons[i].pos, buttons[i].size);
 				}
 			}
 			
@@ -240,15 +237,11 @@ Engine_Main(int32 argc, char** argv)
 			{
 				vec4 color;
 				
-				glm_mat4_identity(pos);
-				glm_translate(pos, (vec3) { width * 0.20f, height * 0.23f });
-				glm_vec4_lerp(colors[0], colors[0], gamepad->lt, color);
-				DrawRectangle(pos, color, (vec3) { 60.0f, 30.0f });
+				glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
+				DrawRectangle(color, (vec3) { width * 0.20f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
 				
-				glm_mat4_identity(pos);
-				glm_translate(pos, (vec3) { width * 0.80f, height * 0.23f });
-				glm_vec4_lerp(colors[0], colors[0], gamepad->lt, color);
-				DrawRectangle(pos, color, (vec3) { 60.0f, 30.0f });
+				glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
+				DrawRectangle(color, (vec3) { width * 0.80f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
 			}
 		}
 		else
