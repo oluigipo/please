@@ -28,5 +28,6 @@ Example: `make MODE=debug ARCH=x86 -j`
 ## External
 * [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 * [stb_truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h)
+* [CGLM](https://github.com/recp/cglm)
 * [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW. Though GLFW in general is a really nice reference.
 * [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB): It was used to generate the `include/internal_gamepad_map_database.inc` file.
