@@ -145,6 +145,8 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 {
+	Trace("WinMain - Program Entry Point");
+	
 	// NOTE(ljre): __argc and __argv - those are public symbols
 	int32 argc = __argc;
 	char** argv = __argv;
@@ -180,14 +182,32 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 API void
 Platform_ExitWithErrorMessage(String message)
 {
+	Trace("Platform_ExitWithErrorMessage");
+	
 	wchar_t* msg = Win32_ConvertStringToWSTR(message, NULL, 0);
 	Win32_ExitWithErrorMessage(msg);
 	/* no return */
 }
 
+API void
+Platform_MessageBox(String title, String message)
+{
+	Trace("Platform_MessageBox");
+	
+	wchar_t* wtitle = Win32_ConvertStringToWSTR(title, NULL, 0);
+	wchar_t* wmessage = Win32_ConvertStringToWSTR(title, NULL, 0);
+	
+	MessageBoxW(NULL, wmessage, wtitle, MB_OK | MB_TOPMOST);
+	
+	Platform_HeapFree(wtitle);
+	Platform_HeapFree(wmessage);
+}
+
 API bool32
 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
 {
+	Trace("Platform_CreateWindow");
+	
 	wchar_t window_name[1024];
 	Win32_ConvertStringToWSTR(name, window_name, ArrayLength(window_name));
 	
@@ -246,12 +266,16 @@ Platform_PollEvents(void)
 API void*
 Platform_HeapAlloc(uintsize size)
 {
+	Trace("Platform_HeapAlloc");
+	
 	return HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
 }
 
 API void*
 Platform_HeapRealloc(void* ptr, uintsize size)
 {
+	Trace("Platform_HeapRealloc");
+	
 	void* result;
 	
 	if (ptr)
@@ -265,24 +289,29 @@ Platform_HeapRealloc(void* ptr, uintsize size)
 API void
 Platform_HeapFree(void* ptr)
 {
+	Trace("Platform_HeapFree");
+	
 	HeapFree(global_heap, 0, ptr);
 }
 
 API void*
 Platform_VirtualAlloc(uintsize size)
 {
+	Trace("Platform_VirtualAlloc");
 	return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
 }
 
 API void
 Platform_VirtualCommit(void* ptr, uintsize size)
 {
+	Trace("Platform_VirtualCommit");
 	VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 }
 
 API void
 Platform_VirtualFree(void* ptr)
 {
+	Trace("Platform_VirtualFree");
 	VirtualFree(ptr, 0, MEM_RELEASE);
 }
 

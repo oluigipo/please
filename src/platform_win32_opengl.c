@@ -504,6 +504,8 @@ Win32_DestroyOpenGLWindow(void)
 internal bool32
 Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 {
+	Trace("Win32_CreateOpenGLWindow");
+	
 	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
@@ -576,6 +578,17 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 	global_opengl.wglCreateContextAttribsARB = OpenGLGetProc("wglCreateContextAttribsARB");
 	global_opengl.wglMakeContextCurrentARB = OpenGLGetProc("wglMakeContextCurrentARB");
 	global_opengl.wglSwapIntervalEXT = OpenGLGetProc("wglSwapIntervalEXT");
+	
+	if (!global_opengl.wglChoosePixelFormatARB ||
+		!global_opengl.wglCreateContextAttribsARB ||
+		!global_opengl.wglMakeContextCurrentARB ||
+		!global_opengl.wglSwapIntervalEXT)
+	{
+		global_opengl.wglMakeCurrent(hdc, NULL);
+		global_opengl.wglDeleteContext(dummy_context);
+		DestroyWindow(window);
+		return false;
+	}
 	
 	// Real Pixel Format
 	int32 attribs[] =

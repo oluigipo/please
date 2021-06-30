@@ -125,7 +125,7 @@ Engine_Main(int32 argc, char** argv)
 	float32 height = 600.0f;
 	
 	if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL))
-		Platform_ExitWithErrorMessage(Str("Could not create window with OpenGL"));
+		Platform_ExitWithErrorMessage(Str("É mole, o PC sequer aguenta OpenGL 3.3 :pepega"));
 	
 	opengl = Platform_GetOpenGLVTable();
 	
@@ -163,7 +163,6 @@ Engine_Main(int32 argc, char** argv)
 	uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
 	global_uniform_color = opengl->glGetUniformLocation(shader, "uColor");
 	global_uniform_matrix = opengl->glGetUniformLocation(shader, "uMatrix");
-	
 	
 	while (!Platform_WindowShouldClose())
 	{

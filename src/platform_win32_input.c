@@ -318,7 +318,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 					NormalizeAxis(gamepad->data.right);
 				}
 				
-				const Input_GamepadButton buttons[] = {
+				static const Input_GamepadButton buttons[] = {
 					Input_GamepadButton_Y,
 					Input_GamepadButton_B,
 					Input_GamepadButton_A,
@@ -333,13 +333,17 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 					Input_GamepadButton_RS,
 				};
 				
-				for (int32 i = 0; i < gamepad->dinput.button_count; ++i)
+				int32 button_count = gamepad->dinput.button_count;
+				if (button_count > ArrayLength(buttons))
+					button_count = ArrayLength(buttons);
+				
+				for (int32 i = 0; i < button_count; ++i)
 				{
 					gamepad->data.buttons[buttons[i]] <<= 1;
 					gamepad->data.buttons[buttons[i]] |= !!(*(LONG*)((uint8*)&state+gamepad->dinput.buttons[i])&128);
 				}
 				
-				const Input_GamepadButton directional[] = {
+				static const Input_GamepadButton directional[] = {
 					Input_GamepadButton_Up,
 					Input_GamepadButton_Right,
 					Input_GamepadButton_Down,
@@ -644,6 +648,8 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 internal void
 Win32_CheckForGamepads(void)
 {
+	Trace("Win32_CheckForGamepads");
+	
 	// NOTE(ljre): Don't check for more devices if there isn't more space
 	if (global_gamepad_free_count <= 0)
 		return;
@@ -687,6 +693,8 @@ Win32_CheckForGamepads(void)
 internal void
 Win32_InitInput(void)
 {
+	Trace("Win32_InitInput");
+	
 	// NOTE(ljre): Fill 'free spaces stack'
 	global_gamepad_free_count = ArrayLength(global_gamepads);
 	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
@@ -703,6 +711,8 @@ Win32_InitInput(void)
 internal void
 Win32_UpdateInputPre(void)
 {
+	Trace("Win32_UpdateInputPre");
+	
 	// NOTE(ljre): Update Keyboard
 	{
 		for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
@@ -719,6 +729,8 @@ Win32_UpdateInputPre(void)
 internal void
 Win32_UpdateInputPos(void)
 {
+	Trace("Win32_UpdateInputPos");
+	
 	// NOTE(ljre): Get mouse cursor
 	{
 		global_mouse.old_pos[0] = global_mouse.pos[0];

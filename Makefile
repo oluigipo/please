@@ -46,8 +46,11 @@ else
 	endif
 endif
 
-all: engine.o platform.o game.o
+all: build engine.o platform.o game.o
 	$(LD) $(OBJS) -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
+
+build:
+	mkdir build
 
 game: game.o
 	$(LD) $(OBJS) -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)

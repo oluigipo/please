@@ -81,10 +81,16 @@ typedef double float64;
 //~ Debug
 #ifndef DEBUG
 #   define Assert(x) 0
+#   define Trace(x) 0
 #else
 #   undef NDEBUG
 #   include <assert.h>
 #   define Assert assert
+//#   define Trace(x) Platform_DebugLog("[TRACE] " x "\n")
+#endif
+
+#ifndef Trace
+#   define Trace(x) 0
 #endif
 
 //~ Others
@@ -106,6 +112,7 @@ enum GraphicsAPI
 } typedef GraphicsAPI;
 
 API void Platform_ExitWithErrorMessage(String message);
+API void Platform_MessageBox(String title, String message);
 API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags);
 API bool32 Platform_WindowShouldClose(void);
 API float64 Platform_CurrentTime(void);
