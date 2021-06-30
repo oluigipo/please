@@ -1,7 +1,11 @@
-#include <gamepad_database.h>
+#include "internal_gamepad_database.h"
 
 #define MAX_GAMEPAD_COUNT 8
 #define GAMEPAD_DEADZONE 0.4f
+
+// TODO(ljre): Fix DPAD not working
+// TODO(ljre): Fix Triggers not working
+// TODO(ljre): Convert the entire database to 'internal_gamepad_database.h'
 
 //~ Types and Macros
 enum GamepadAPI
@@ -36,6 +40,8 @@ struct Win32_Gamepad
 			int32 button_count;
 			int32 povs[4];
 			int32 pov_count;
+			
+			GamepadMappings* map;
 		} dinput;
 	};
 } typedef Win32_Gamepad;
@@ -273,6 +279,133 @@ LoadDirectInput(void)
 }
 
 internal void
+TranslateController(Input_Gamepad* out, GamepadMappings* map,
+					const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
+{
+	//- Translate Buttons
+	for (int32 i = 0; i < ArrayLength(map->buttons) && map->buttons[i]; ++i)
+	{
+		Input_GamepadButton as_button = -1;
+		
+		switch (map->buttons[i])
+		{
+			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			
+			case GamepadObject_Pressure_LeftTrigger: out->lt = (float32)buttons[i]; break;
+			case GamepadObject_Pressure_RightTrigger: out->rt = (float32)buttons[i]; break;
+			
+			// NOTE(ljre): Every other is invalid
+			default: break;
+		}
+		
+		if (as_button != -1)
+		{
+			out->buttons[as_button] <<= 1;
+			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+		}
+	}
+	
+	//- Translate Axes
+	for (int32 i = 0; i < ArrayLength(map->axes) && map->axes[i]; ++i)
+	{
+		switch (map->axes[i])
+		{
+			case GamepadObject_Axis_LeftX: out->left[0] = axes[i]; break;
+			case GamepadObject_Axis_LeftY: out->left[1] = axes[i]; break;
+			case GamepadObject_Axis_RightX: out->right[0] = axes[i]; break;
+			case GamepadObject_Axis_RightY: out->right[1] = axes[i]; break;
+			
+			// NOTE(ljre): Every other is invalid
+			default: break;
+		}
+	}
+	
+	//- Translate Povs
+	for (int32 i = 0; i < ArrayLength(map->povs) && map->povs[i][0]; ++i)
+	{
+		Input_GamepadButton as_button = -1;
+		int32 pov = povs[i];
+		
+		pov /= 45;
+		pov %= 8;
+		if (pov < 0)
+			pov += 8;
+		
+		Platform_DebugMessageBox("[%i]   %i - %i", pov, map->povs[i][pov / 2], GamepadObject_Button_Left);
+		
+		switch (map->povs[i][pov / 2])
+		{
+			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			
+			default: break;
+		}
+		
+		if (as_button != -1)
+		{
+			out->buttons[as_button] <<= 1;
+			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+		}
+		
+		// NOTE(ljre): if it's not pointing to an diagonal, ignore next step
+		if ((pov & 1) == 0)
+			continue;
+		
+		as_button = -1;
+		switch (map->povs[i][(pov+1) % 8 / 2])
+		{
+			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			
+			default: break;
+		}
+		
+		if (as_button != -1)
+		{
+			out->buttons[as_button] <<= 1;
+			out->buttons[as_button] = (out->buttons[as_button] & ~1) | buttons[i];
+		}
+	}
+}
+
+internal void
 UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
 	int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof *gamepad);
@@ -296,81 +429,41 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 			
 			if (result == DI_OK)
 			{
-				if (gamepad->dinput.axis_count > 1)
-				{
-					float32 left_x = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[1]) + 0.5f) / 32767.5f;
-					float32 left_y = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[0]) + 0.5f) / 32767.5f;
-					
-					gamepad->data.left[0] = left_x;
-					gamepad->data.left[1] = left_y;
-					
-					NormalizeAxis(gamepad->data.left);
-				}
+				bool8 buttons[32];
+				float32 axes[16];
+				int32 povs[8];
 				
-				if (gamepad->dinput.axis_count > 3)
-				{
-					float32 right_x = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[3]) + 0.5f) / 32767.5f;
-					float32 right_y = ((float32)*(LONG*)((uint8*)&state+gamepad->dinput.axes[2]) + 0.5f) / 32767.5f;
-					
-					gamepad->data.right[0] = right_x;
-					gamepad->data.right[1] = right_y;
-					
-					NormalizeAxis(gamepad->data.right);
-				}
-				
-				static const Input_GamepadButton buttons[] = {
-					Input_GamepadButton_Y,
-					Input_GamepadButton_B,
-					Input_GamepadButton_A,
-					Input_GamepadButton_X,
-					Input_GamepadButton_LB,
-					Input_GamepadButton_RB,
-					Input_GamepadButton_LT,
-					Input_GamepadButton_RT,
-					Input_GamepadButton_Back,
-					Input_GamepadButton_Start,
-					Input_GamepadButton_LS,
-					Input_GamepadButton_RS,
-				};
+				int32 axis_count = gamepad->dinput.axis_count;
+				if (axis_count > ArrayLength(axes))
+					axis_count = ArrayLength(axes);
 				
 				int32 button_count = gamepad->dinput.button_count;
 				if (button_count > ArrayLength(buttons))
 					button_count = ArrayLength(buttons);
 				
+				int32 pov_count = gamepad->dinput.pov_count;
+				if (pov_count > ArrayLength(povs))
+					pov_count = ArrayLength(povs);
+				
+				for (int32 i = 0; i < axis_count; ++i)
+				{
+					LONG raw = *(LONG*)((uint8*)&state + gamepad->dinput.axes[i]);
+					axes[i] = ((float32)raw + 0.5f) / 32767.5f;
+				}
+				
 				for (int32 i = 0; i < button_count; ++i)
 				{
-					gamepad->data.buttons[buttons[i]] <<= 1;
-					gamepad->data.buttons[buttons[i]] |= !!(*(LONG*)((uint8*)&state+gamepad->dinput.buttons[i])&128);
+					LONG raw = *(LONG*)((uint8*)&state + gamepad->dinput.buttons[i]);
+					buttons[i] = !!(raw & 128);
 				}
 				
-				static const Input_GamepadButton directional[] = {
-					Input_GamepadButton_Up,
-					Input_GamepadButton_Right,
-					Input_GamepadButton_Down,
-					Input_GamepadButton_Left,
-				};
-				
-				for (int32 i = 0; i < ArrayLength(directional); ++i)
+				for (int32 i = 0; i < pov_count; ++i)
 				{
-					gamepad->data.buttons[directional[i]] <<= 1;
+					LONG raw = *(LONG*)((uint8*)&state + gamepad->dinput.povs[i]);
+					povs[i] = (int32)(raw / 100);
 				}
 				
-				if (gamepad->dinput.pov_count > 0)
-				{
-					LONG pov = *(LONG*)((uint8*)&state+gamepad->dinput.povs[0]);
-					if (pov != -1)
-					{
-						pov /= 100;
-						pov /= 45;
-						pov %= 8;
-						if (pov < 0)
-							pov += 8;
-						
-						gamepad->data.buttons[directional[pov/2]] |= 1;
-						if ((pov & 1) == 1)
-							gamepad->data.buttons[directional[(pov+1)%8/2]] |= 1;
-					}
-				}
+				TranslateController(&gamepad->data, gamepad->dinput.map, buttons, axes, povs);
 				
 #if 1
 				// NOTE(ljre): Debug Only
@@ -399,9 +492,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 					Platform_DebugLog("\tLB, RB: %c, %c\n",
 									  '0' + (gamepad->data.buttons[Input_GamepadButton_LB] & 1),
 									  '0' + (gamepad->data.buttons[Input_GamepadButton_RB] & 1));
-					Platform_DebugLog("\tLT, RT: %c, %c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_LT] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_RT] & 1));
+					Platform_DebugLog("\tLT, RT: %f, %f\n", gamepad->data.lt, gamepad->data.rt);
 					Platform_DebugLog("\tBack, Start: %c, %c\n",
 									  '0' + (gamepad->data.buttons[Input_GamepadButton_Back] & 1),
 									  '0' + (gamepad->data.buttons[Input_GamepadButton_Start] & 1));
@@ -602,6 +693,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	gamepad->connected = true;
 	gamepad->api = GamepadAPI_DirectInput;
 	gamepad->dinput.guid = *guid;
+	gamepad->dinput.map = &global_gamepadmap_default;
 	
 	Platform_DebugLog("Device Connected:\n");
 	Platform_DebugLog("\tIndex: %i\n", index);

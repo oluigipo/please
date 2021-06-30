@@ -218,8 +218,6 @@ Engine_Main(int32 argc, char** argv)
 					
 					[Input_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
 					[Input_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
-					[Input_GamepadButton_LT] = { { width * 0.20f, height * 0.23f }, { 60.0f, 30.0f } },
-					[Input_GamepadButton_RT] = { { width * 0.80f, height * 0.23f }, { 60.0f, 30.0f } },
 					
 					[Input_GamepadButton_Up]    = { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
 					[Input_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
@@ -236,6 +234,21 @@ Engine_Main(int32 argc, char** argv)
 					glm_translate(pos, buttons[i].pos);
 					DrawRectangle(pos, colors[Input_GamepadIsDown(gamepad, i)], buttons[i].size);
 				}
+			}
+			
+			// NOTE(ljre): Draw Triggers
+			{
+				vec4 color;
+				
+				glm_mat4_identity(pos);
+				glm_translate(pos, (vec3) { width * 0.20f, height * 0.23f });
+				glm_vec4_lerp(colors[0], colors[0], gamepad->lt, color);
+				DrawRectangle(pos, color, (vec3) { 60.0f, 30.0f });
+				
+				glm_mat4_identity(pos);
+				glm_translate(pos, (vec3) { width * 0.80f, height * 0.23f });
+				glm_vec4_lerp(colors[0], colors[0], gamepad->lt, color);
+				DrawRectangle(pos, color, (vec3) { 60.0f, 30.0f });
 			}
 		}
 		else

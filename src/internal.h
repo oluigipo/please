@@ -217,8 +217,6 @@ enum Input_GamepadButton
 	Input_GamepadButton_Down,
 	Input_GamepadButton_LB,
 	Input_GamepadButton_RB,
-	Input_GamepadButton_LT,
-	Input_GamepadButton_RT,
 	Input_GamepadButton_RS,
 	Input_GamepadButton_LS,
 	Input_GamepadButton_Start,
