@@ -32,10 +32,11 @@
 #define PI64 3.141592653589793238462643383279
 #define PI32 ((float32)PI64)
 
-//~ Standard headers
+//~ Standard headers & Libraries
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <cglm/cglm.h>
 
 //~ Types
 typedef uint8_t uint8;
@@ -142,7 +143,7 @@ API void Platform_DebugLog(const char* restrict format, ...);
 #endif // DEBUG
 
 //- Platform Audio
-API int16* Audio_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate);
+API int16* Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate);
 
 //- Platform Input
 enum Input_KeyboardKey
@@ -215,7 +216,7 @@ struct Input_Mouse
 	bool8 buttons[Input_MouseButton_Count];
 } typedef Input_Mouse;
 
-API const Input_Mouse* Input_GetMouse(void);
+API void Input_GetMouse(Input_Mouse* out_mouse);
 
 enum Input_GamepadButton
 {
@@ -249,12 +250,28 @@ struct Input_Gamepad
 	bool8 buttons[Input_GamepadButton_Count];
 } typedef Input_Gamepad;
 
-API const Input_Gamepad* Input_GetGamepad(int32 index);
+// NOTE(ljre): Get the state of a gamepad. Returns true if gamepad is connected, false otherwise.
+API bool32 Input_GetGamepad(int32 index, Input_Gamepad* out_gamepad);
+
+// NOTE(ljre): Set the state of a gamepad. This may have no effect if gamepad or platform doesn't
+//             support it.
 API void Input_SetGamepad(int32 index, float32 vibration); // vibration = 0..1
 
-#define Input_GamepadIsPressed(gamepad, btn) (!((gamepad)->buttons[btn] & 2) && ((gamepad)->buttons[btn] & 1))
-#define Input_GamepadIsDown(gamepad, btn) (((gamepad)->buttons[btn] & 1) != 0)
-#define Input_GamepadIsReleased(gamepad, btn) (((gamepad)->buttons[btn] & 2) && !((gamepad)->buttons[btn] & 1))
-#define Input_GamepadIsUp(gamepad, btn) (!((gamepad)->buttons[btn] & 1))
+// NOTE(ljre): Fetch the currently connected gamepads and write them to 'out_gamepads' array and
+//             return how many were written, but never write more than 'max_count' gamepads.
+//
+//             If 'max_count' is not greater than 0, then just return the number of gamepads
+//             currently connected.
+API int32 Input_ConnectedGamepads(Input_Gamepad* out_gamepads, int32 max_count);
+
+// Same thing as above, but write their indices instead of their states.
+API int32 Input_ConnectedGamepadsIndices(int32* out_indices, int32 max_count);
+
+// NOTE(ljre): Helper macros - takes a Input_Mouse or Input_Gamepad, and a button enum.
+//             Returns true or false.
+#define Input_IsPressed(state, btn) (!((state).buttons[btn] & 2) && ((state).buttons[btn] & 1))
+#define Input_IsDown(state, btn) (((state).buttons[btn] & 1) != 0)
+#define Input_IsReleased(state, btn) (((state).buttons[btn] & 2) && !((state).buttons[btn] & 1))
+#define Input_IsUp(state, btn) (!((state).buttons[btn] & 1))
 
 #endif //INTERNAL_H

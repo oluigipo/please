@@ -3,6 +3,8 @@ LD = clang -fuse-ld=lld-link
 
 CFLAGS = -std=c99 -I./include -I./src
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wnewline-eof
+CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
+CFLAGS += -Werror=float-conversion -Werror=sign-conversion
 LDFLAGS = -L./lib
 
 OBJS = "./build/platform.o"

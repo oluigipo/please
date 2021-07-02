@@ -1,5 +1,3 @@
-#include <cglm/cglm.h>
-
 // NOTE(ljre): enable it!
 //#define ENABLE_FUNNY_MODE
 
@@ -114,6 +112,7 @@ DrawRectangle(vec4 color, vec3 pos, vec3 size)
 	glm_mat4_identity(matrix);
 	glm_translate(matrix, pos);
 	glm_scale(matrix, size);
+	glm_translate(matrix, (vec3) { -0.5f, -0.5f }); // NOTE(ljre): Center
 	glm_mat4_mul(global_proj, matrix, matrix);
 	
 	GL.glUniform4fv(global_uniform_color, 1, color);
@@ -123,7 +122,7 @@ DrawRectangle(vec4 color, vec3 pos, vec3 size)
 }
 
 internal float64
-lerp(float64 a, float64 b, float64 t)
+Lerp(float64 a, float64 b, float64 t)
 {
 	return a * (1.0-t) + b * t;
 }
@@ -150,16 +149,16 @@ Engine_Main(int32 argc, char** argv)
 	//opengl->glEnable(GL_BLEND);
 	//opengl->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	//opengl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	GL.glViewport(0, 0, 600, 600);
+	GL.glViewport(0, 0, (int32)width, (int32)height);
 	glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, global_proj);
 	
 	float32 vertices[] = {
-		-0.5f, -0.5f,
-		-0.5f, 0.5f,
-		0.5f, -0.5f,
-		0.5f, -0.5f,
-		-0.5f, 0.5f,
-		0.5f, 0.5f,
+		0.0f, 0.0f,
+		0.0f, 1.0f,
+		1.0f, 0.0f,
+		1.0f, 0.0f,
+		0.0f, 1.0f,
+		1.0f, 1.0f,
 	};
 	
 	uint32 vbo, vao;
@@ -183,13 +182,14 @@ Engine_Main(int32 argc, char** argv)
 	if (sample_count == -1)
 		Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
 	
-	uint32 sample_index = 0;
+	int32 frame_index = 0;
 	
 	while (!Platform_WindowShouldClose())
 	{
-		const Input_Gamepad* gamepad = Input_GetGamepad(0);
+		Input_Gamepad gamepad;
+		bool32 is_connected = Input_GetGamepad(0, &gamepad);
 		
-		if (gamepad)
+		if (is_connected)
 		{
 			GL.glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
 			GL.glClear(GL_COLOR_BUFFER_BIT);
@@ -209,17 +209,17 @@ Engine_Main(int32 argc, char** argv)
 							  (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f },
 							  (vec3) { 50.0f, 50.0f });
 				
-				DrawRectangle(colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_LS)],
-							  (vec3) { width / 2.0f - 100.0f + gamepad->left[0] * 20.0f,
-								  height / 2.0f + 100.0f + gamepad->left[1] * 20.0f },
+				DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_LS)],
+							  (vec3) { width / 2.0f - 100.0f + gamepad.left[0] * 20.0f,
+								  height / 2.0f + 100.0f + gamepad.left[1] * 20.0f },
 							  (vec3) { 20.0f, 20.0f });
 				
 				DrawRectangle(black,
 							  (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f },
 							  (vec3) { 50.0f, 50.0f });
 				
-				DrawRectangle(colors[Input_GamepadIsDown(gamepad, Input_GamepadButton_RS)],
-							  (vec3) { width / 2.0f + 100.0f + gamepad->right[0] * 20.0f, height / 2.0f + 100.0f + gamepad->right[1] * 20.0f },
+				DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_RS)],
+							  (vec3) { width / 2.0f + 100.0f + gamepad.right[0] * 20.0f, height / 2.0f + 100.0f + gamepad.right[1] * 20.0f },
 							  (vec3) { 20.0f, 20.0f });
 			}
 			
@@ -249,7 +249,7 @@ Engine_Main(int32 argc, char** argv)
 				
 				for (int32 i = 0; i < ArrayLength(buttons); ++i)
 				{
-					DrawRectangle(colors[Input_GamepadIsDown(gamepad, i)], buttons[i].pos, buttons[i].size);
+					DrawRectangle(colors[Input_IsDown(gamepad, i)], buttons[i].pos, buttons[i].size);
 				}
 			}
 			
@@ -257,10 +257,10 @@ Engine_Main(int32 argc, char** argv)
 			{
 				vec4 color;
 				
-				glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
+				glm_vec4_lerp(colors[0], colors[1], gamepad.lt, color);
 				DrawRectangle(color, (vec3) { width * 0.20f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
 				
-				glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
+				glm_vec4_lerp(colors[0], colors[1], gamepad.rt, color);
 				DrawRectangle(color, (vec3) { width * 0.80f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
 			}
 		}
@@ -277,33 +277,43 @@ Engine_Main(int32 argc, char** argv)
 			uint32 out_sample_count = 0;
 			uint32 out_sample_rate;
 			
-			int16* out_samples = Audio_RequestSoundBuffer(&out_sample_count, &out_channels, &out_sample_rate);
+			int16* out_samples = Platform_RequestSoundBuffer(&out_sample_count, &out_channels, &out_sample_rate);
 			int16* out_end_samples = out_samples + out_sample_count;
+			
+			float64 scale = (float32)sample_rate / (float32)out_sample_rate;
+			
+#ifdef ENABLE_FUNNY_MODE
+			scale *= 2.0f;
+#endif
 			
 			while (out_samples < out_end_samples)
 			{
-				float32 scale = (float32)sample_rate / (float32)out_sample_rate * 0.5f;
+				float64 index_to_use = (float64)frame_index * scale;
+				int16 left, right;
 				
-#ifdef ENABLE_FUNNY_MODE
-				scale = 1.0f;
-#endif
+				left =  (int16)Lerp((float64)samples[(int32) index_to_use   *channels],
+									(float64)samples[(int32)(index_to_use+1)*channels],
+									index_to_use - floor(index_to_use));
 				
-				float32 index_to_use = (float32)sample_index * scale;
+				if (channels > 1)
+				{
+					right = (int16)Lerp((float64)samples[(int32) index_to_use   *channels+1],
+										(float64)samples[(int32)(index_to_use+1)*channels+1],
+										index_to_use - floor(index_to_use));
+				}
+				else
+				{
+					right = left;
+				}
 				
-				int16 left =  (int16)glm_lerp((float32)samples[(int32) index_to_use   *2],
-											  (float32)samples[(int32)(index_to_use+1)*2],
-											  index_to_use - floorf(index_to_use));
-				int16 right = (int16)glm_lerp((float32)samples[(int32) index_to_use   *2+1],
-											  (float32)samples[(int32)(index_to_use+1)*2+1],
-											  index_to_use - floorf(index_to_use));
 				*out_samples++ = left / 4;
 				*out_samples++ = right / 4;
 				
-				sample_index += 1;
+				frame_index += 1;
 				
-				if (sample_index >= sample_count / 2)
+				if ((float64)frame_index * scale >= (float64)sample_count)
 				{
-					sample_index = 0;
+					frame_index = 0;
 				}
 			}
 		}

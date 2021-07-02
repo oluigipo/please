@@ -338,10 +338,21 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		if (higher & (1 << 7))
 			value = -value;
 		
+		// Input Limit
 		if (higher & (1 << 6))
-			value = value * 2.0f - 1.0f;
-		else if (higher & (1 << 5))
 			value = value * 0.5f + 1.0f;
+		else if (higher & (1 << 5))
+			value = value * 2.0f - 1.0f;
+		
+		value = glm_clamp(value, -1.0f, 1.0f);
+		
+		// Output Limit
+		if (higher & (1 << 4))
+			value = value * 2.0f - 1.0f;
+		else if (higher & (1 << 3))
+			value = value * 0.5f + 1.0f;
+		
+		value = glm_clamp(value, -1.0f, 1.0f);
 		
 		switch (lower)
 		{
@@ -654,7 +665,7 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 		
 		if (AreGUIDsEqual(object_guid, &GUID_Slider))
 		{
-			axis_offset = (int32)DIJOFS_SLIDER(gamepad->dinput.slider_count++);
+			axis_offset = (int32)DIJOFS_SLIDER(gamepad->dinput.slider_count);
 			axis_offset |= 0x40000000;
 		}
         else if (AreGUIDsEqual(object_guid, &GUID_XAxis )) axis_offset = (int32)DIJOFS_X;
@@ -667,6 +678,9 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 		
 		if (DI_OK != IDirectInputDevice8_SetProperty(gamepad->dinput.device, DIPROP_RANGE, &range_property.diph))
 			return DIENUM_CONTINUE;
+		
+		if (axis_offset & 0x40000000)
+			++gamepad->dinput.slider_count;
 		
 		gamepad->dinput.axes[gamepad->dinput.axis_count++] = axis_offset;
 	}
@@ -795,10 +809,10 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		if (memcmp(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
 		{
 			snprintf(guid_str, sizeof guid_str, "03000000%02x%02x0000%02x%02x000000000000",
-					 (uint8_t) instance->guidProduct.Data1,
-					 (uint8_t) (instance->guidProduct.Data1 >> 8),
-					 (uint8_t) (instance->guidProduct.Data1 >> 16),
-					 (uint8_t) (instance->guidProduct.Data1 >> 24));
+					 (uint8) instance->guidProduct.Data1,
+					 (uint8) (instance->guidProduct.Data1 >> 8),
+					 (uint8) (instance->guidProduct.Data1 >> 16),
+					 (uint8) (instance->guidProduct.Data1 >> 24));
 		}
 		else
 		{
@@ -1011,23 +1025,24 @@ Input_KeyboardIsUp(int32 key)
 	return !(global_keyboard_keys[key] & 1);
 }
 
-API const Input_Mouse*
-Input_GetMouse(void)
+API void
+Input_GetMouse(Input_Mouse* out_mouse)
 {
-	return &global_mouse;
+	*out_mouse = global_mouse;
 }
 
-API const Input_Gamepad*
-Input_GetGamepad(int32 index)
+API bool32
+Input_GetGamepad(int32 index, Input_Gamepad* out_gamepad)
 {
 	if (index < 0 || index >= ArrayLength(global_gamepads))
-		return NULL;
+		return false;
 	
 	Win32_Gamepad* gamepad = &global_gamepads[index];
 	if (!gamepad->connected)
-		return NULL;
+		return false;
 	
-	return &gamepad->data;
+	*out_gamepad = gamepad->data;
+	return true;
 }
 
 API void
@@ -1062,5 +1077,48 @@ Input_SetGamepad(int32 index, float32 vibration)
 		case GamepadAPI_None:
 		{
 		} break;
+	}
+}
+
+API int32
+Input_ConnectedGamepads(Input_Gamepad* gamepads, int32 max_count)
+{
+	// NOTE(ljre): Return how many gamepads were written to the array
+	if (max_count > 0)
+	{
+		int32 count = 0;
+		
+		for (int32 i = 0; i < ArrayLength(global_gamepads) && count < max_count; ++i)
+		{
+			if (global_gamepads[i].connected)
+				gamepads[count++] = global_gamepads[i].data;
+		}
+		
+		return count;
+	}
+	else // NOTE(ljre): Just return how many gamepads are connected
+	{
+		return (int32)ArrayLength(global_gamepads) - global_gamepad_free_count;
+	}
+}
+
+API int32
+Input_ConnectedGamepadsIndices(int32* indices, int32 max_count)
+{
+	if (max_count > 0)
+	{
+		int32 count = 0;
+		
+		for (int32 i = 0; i < ArrayLength(global_gamepads) && count < max_count; ++i)
+		{
+			if (global_gamepads[i].connected)
+				indices[count++] = i;
+		}
+		
+		return count;
+	}
+	else
+	{
+		return (int32)ArrayLength(global_gamepads) - global_gamepad_free_count;
 	}
 }

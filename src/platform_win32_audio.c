@@ -199,7 +199,7 @@ Win32_DeinitAudio(void)
 
 //~ API
 API int16*
-Audio_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate)
+Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate)
 {
 	if (global_frame_count_to_output > 0)
 	{
