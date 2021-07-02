@@ -26,8 +26,11 @@ Example: `make MODE=debug ARCH=x86 -j`
 * Gamepad Input: DirectInput, XInput;
 
 ## External
+Dependencies (my hope is that I replace them with my own implementation eventually... surely not in the near future):
 * [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
 * [stb_truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h)
+* [stb_vorbis](https://github.com/nothings/stb/blob/master/stb_vorbis.c)
 * [CGLM](https://github.com/recp/cglm)
+Others:
 * [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW. Though GLFW in general is a really nice reference.
 * [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB): It was used to generate the `include/internal_gamepad_map_database.inc` file.
