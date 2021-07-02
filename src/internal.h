@@ -19,7 +19,6 @@
 #endif
 
 #define internal static
-#define global extern
 #define true 1
 #define false 0
 #define API
@@ -106,6 +105,18 @@ API uint64 Random_U64(void);
 API uint32 Random_U32(void);
 API float64 Random_F64(void);
 
+struct Audio_SoundBuffer
+{
+    int32 channels;
+    int32 sample_rate;
+    int32 sample_count;
+    int16* samples;
+} typedef Audio_SoundBuffer;
+
+API bool32 Audio_LoadFile(String path, Audio_SoundBuffer* out_sound);
+API void Audio_FreeSoundBuffer(Audio_SoundBuffer* sound);
+API void Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume);
+
 //- Game
 API int32 Game_MainScene(void);
 
@@ -115,17 +126,29 @@ enum GraphicsAPI
     GraphicsAPI_None = 0,
     
     GraphicsAPI_OpenGL = 1,
+    GraphicsAPI_Direct3D = 2,
+    
+    GraphicsAPI_Any = GraphicsAPI_OpenGL | GraphicsAPI_Direct3D,
 } typedef GraphicsAPI;
+
+struct GraphicsContext
+{
+    GraphicsAPI api;
+    union
+    {
+        OpenGL_VTable* opengl;
+        void* d3d;
+    };
+} typedef GraphicsContext;
 
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);
-API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags);
+API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
 API bool32 Platform_WindowShouldClose(void);
 API float64 Platform_CurrentTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
-API const OpenGL_VTable* Platform_GetOpenGLVTable(void);
 
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
@@ -133,6 +156,9 @@ API void Platform_HeapFree(void* ptr);
 API void* Platform_VirtualAlloc(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
 API void Platform_VirtualFree(void* ptr);
+API void* Platform_ReadEntireFile(String path, uintsize* out_size);
+API bool32 Platform_WriteEntireFile(String path, const void* data, uintsize size);
+API void Platform_FreeFileMemory(void* ptr, uintsize size);
 
 #ifdef DEBUG
 API void Platform_DebugMessageBox(const char* restrict format, ...);
@@ -144,6 +170,7 @@ API void Platform_DebugLog(const char* restrict format, ...);
 
 //- Platform Audio
 API int16* Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate);
+API bool32 Platform_IsAudioAvailable(void);
 
 //- Platform Input
 enum Input_KeyboardKey

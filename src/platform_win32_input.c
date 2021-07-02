@@ -531,7 +531,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
                 
                 TranslateController(&gamepad->data, gamepad->dinput.map, buttons, axes, povs);
                 
-#if 1
+#ifdef DEBUG
                 // NOTE(ljre): Debug Only
                 if (Input_KeyboardIsPressed(Input_KeyboardKey_Space))
                 {

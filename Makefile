@@ -14,6 +14,9 @@ OBJS += "./build/game.o"
 ifeq ($(MODE), debug)
 	CFLAGS += -g -DDEBUG
 	LDFLAGS += -g
+else ifeq ($(MODE), safedebug)
+	CFLAGS += -g -DDEBUG -fsanitize=address
+	LDFLAGS += -g -fsanitize=address
 else
 	OPT = -O2 -fno-slp-vectorize -ffast-math -flto
 	

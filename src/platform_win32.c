@@ -54,7 +54,7 @@ internal int64 global_process_started_time;
 internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
-internal GraphicsAPI global_graphics_api;
+internal GraphicsContext global_graphics_context;
 
 //~ Internal API
 internal int64
@@ -103,6 +103,7 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 #include "platform_win32_input.c"
 #include "platform_win32_audio.c"
 #include "platform_win32_opengl.c"
+#include "platform_win32_direct3d.c"
 
 internal LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
@@ -214,7 +215,7 @@ Platform_MessageBox(String title, String message)
 }
 
 API bool32
-Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
+Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics)
 {
     Trace("Platform_CreateWindow");
     
@@ -225,6 +226,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
     
     if (flags & GraphicsAPI_OpenGL)
         ok = ok || Win32_CreateOpenGLWindow(width, height, window_name);
+    if (flags & GraphicsAPI_Direct3D)
+        ok = ok || Win32_CreateDirect3DWindow(width, height, window_name);
     
     if (ok)
     {
@@ -241,6 +244,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
         Win32_InitInput();
         Win32_InitAudio();
         Platform_PollEvents();
+        
+        *out_graphics = &global_graphics_context;
     }
     
     return ok;
@@ -279,7 +284,13 @@ API void
 Platform_FinishFrame(void)
 {
     Win32_FillAudioBuffer();
-    global_opengl.vtable.glSwapBuffers();
+    
+    switch (global_graphics_context.api)
+    {
+        case GraphicsAPI_OpenGL: global_graphics_context.opengl->glSwapBuffers(); break;
+        case GraphicsAPI_Direct3D: Sleep(16); break;
+        default: {} break;
+    }
 }
 
 API void*
@@ -334,10 +345,76 @@ Platform_VirtualFree(void* ptr)
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
-API const OpenGL_VTable*
-Platform_GetOpenGLVTable(void)
+API void*
+Platform_ReadEntireFile(String path, uintsize* out_size)
 {
-    return &global_opengl.vtable;
+    wchar_t wpath[1024];
+    Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
+    
+    HANDLE handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (handle == INVALID_HANDLE_VALUE)
+		return NULL;
+	
+	LARGE_INTEGER sizeStruct;
+	if (!GetFileSizeEx(handle, &sizeStruct))
+	{
+		CloseHandle(handle);
+		return NULL;
+	}
+	
+	uintsize size = (uintsize)sizeStruct.QuadPart;
+	void* memory = Platform_HeapAlloc(size);
+	if (!memory)
+	{
+		CloseHandle(handle);
+		return NULL;
+	}
+	
+	DWORD bytes_read;
+	if (!ReadFile(handle, memory, (DWORD)size, &bytes_read, NULL) ||
+		(uintsize)bytes_read != size)
+	{
+		Platform_HeapFree(memory);
+		memory = NULL;
+		out_size = NULL;
+	}
+	
+	if (out_size)
+		*out_size = (uintsize)bytes_read;
+	
+	CloseHandle(handle);
+	return memory;
+}
+
+API bool32
+Platform_WriteEntireFile(String path, const void* data, uintsize size)
+{
+    wchar_t wpath[1024];
+    Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
+    
+	bool32 result = true;
+	DWORD bytes_written;
+	
+	HANDLE handle = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	if (handle == INVALID_HANDLE_VALUE)
+		return false;
+	
+	if (!WriteFile(handle, data, (DWORD)size, &bytes_written, 0) ||
+        bytes_written != size)
+	{
+		result = false;
+	}
+	
+	CloseHandle(handle);
+	return result;
+}
+
+API void
+Platform_FreeFileMemory(void* ptr, uintsize size)
+{
+    // NOTE(ljre): Ignore parameter 'size' for this platform.
+    
+    Platform_HeapFree(ptr);
 }
 
 API uint64
@@ -371,5 +448,6 @@ Platform_DebugLog(const char* restrict format, ...)
     va_start(args, format);
     vprintf(format, args);
     va_end(args);
+    fflush(stdout);
 }
 #endif // DEBUG

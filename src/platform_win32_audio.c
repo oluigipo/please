@@ -14,8 +14,6 @@ internal bool32 global_audio_is_initialized = false;
 internal uint32 global_channels = 2;
 internal uint32 global_samples_per_second = 44100;
 internal uint32 global_latency_frame_count;
-internal uint32 global_buffer_frame_count;
-internal REFERENCE_TIME global_sound_buffer_duration;
 
 internal uint32 global_frame_count_to_output;
 internal int16* global_audio_buffer;
@@ -127,15 +125,17 @@ Win32_InitAudio(void)
         return;
     }
     
-    IAudioClient_GetBufferSize(global_audio_client, &global_buffer_frame_count);
-    
-    global_sound_buffer_duration = (REFERENCE_TIME)((float64)REFTIMES_PER_SEC *
-                                                    global_buffer_frame_count / global_samples_per_second);
+    result = IAudioClient_Start(global_audio_client);
+    if (result != S_OK)
+    {
+        IAudioClient_Release(global_audio_client);
+        IMMDevice_Release(global_audio_device);
+        IMMDeviceEnumerator_Release(global_audio_device_enumerator);
+        return;
+    }
     
     global_audio_buffer_sample_count = global_samples_per_second * 2;
     global_audio_buffer = Platform_HeapAlloc(global_audio_buffer_sample_count * sizeof(int16));
-    
-    IAudioClient_Start(global_audio_client);
     
     global_audio_is_initialized = true;
 }
@@ -212,4 +212,10 @@ Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint
     {
         return NULL;
     }
+}
+
+API bool32
+Platform_IsAudioAvailable(void)
+{
+    return global_audio_is_initialized;
 }

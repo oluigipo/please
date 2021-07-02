@@ -639,10 +639,6 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
     global_opengl.wglMakeCurrent(hdc, global_opengl.context);
     global_opengl.wglDeleteContext(dummy_context);
     
-    global_window = window;
-    global_hdc = hdc;
-    global_graphics_api = GraphicsAPI_OpenGL;
-    
     // Load All Function
     if (!LoadOpenGLFunctions())
     {
@@ -673,8 +669,14 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
     }
     
     global_opengl.wglSwapIntervalEXT(interval);
-    
     global_opengl.vtable.glSwapBuffers = OpenGLSwapBuffers;
+    
+    // Globals
+    global_window = window;
+    global_hdc = hdc;
+    global_graphics_context.api = GraphicsAPI_OpenGL;
+    global_graphics_context.opengl = &global_opengl.vtable;
+    
     ShowWindow(global_window, SW_SHOWDEFAULT);
     
     return true;

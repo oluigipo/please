@@ -1,8 +1,5 @@
-// NOTE(ljre): enable it!
-//#define ENABLE_FUNNY_MODE
-
-#define GL (*global_opengl_vtable)
-internal const OpenGL_VTable* global_opengl_vtable;
+#define GL (*global_graphics->opengl)
+internal const GraphicsContext* global_graphics;
 internal int32 global_uniform_color;
 internal int32 global_uniform_matrix;
 internal mat4 global_proj;
@@ -121,12 +118,6 @@ DrawRectangle(vec4 color, vec3 pos, vec3 size)
     GL.glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-internal float64
-Lerp(float64 a, float64 b, float64 t)
-{
-    return a * (1.0-t) + b * t;
-}
-
 API int32
 Engine_Main(int32 argc, char** argv)
 {
@@ -135,188 +126,159 @@ Engine_Main(int32 argc, char** argv)
     float32 width = 600.0f;
     float32 height = 600.0f;
     
-    if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL))
-        Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
+    if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_Any, &global_graphics))
+        Platform_MessageBox(Str("Warning!"), Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
     
-    global_opengl_vtable = Platform_GetOpenGLVTable();
-    
+    if (global_graphics->api == GraphicsAPI_OpenGL)
+    {
 #ifdef DEBUG
-    GL.glEnable(GL_DEBUG_OUTPUT);
-    GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    GL.glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
+        GL.glEnable(GL_DEBUG_OUTPUT);
+        GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        GL.glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
 #endif
-    
-    //opengl->glEnable(GL_BLEND);
-    //opengl->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    //opengl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    GL.glViewport(0, 0, (int32)width, (int32)height);
-    glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, global_proj);
-    
-    float32 vertices[] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f,
-    };
-    
-    uint32 vbo, vao;
-    GL.glGenBuffers(1, &vbo);
-    GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    GL.glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
-    
-    GL.glGenVertexArrays(1, &vao);
-    GL.glBindVertexArray(vao);
-    GL.glEnableVertexAttribArray(0);
-    GL.glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float32) * 2, 0);
-    
-    uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
-    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
-    global_uniform_matrix = GL.glGetUniformLocation(shader, "uMatrix");
+        
+        //opengl->glEnable(GL_BLEND);
+        //opengl->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        //opengl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GL.glViewport(0, 0, (int32)width, (int32)height);
+        glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, global_proj);
+        
+        float32 vertices[] = {
+            0.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 0.0f,
+            1.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 1.0f,
+        };
+        
+        uint32 vbo, vao;
+        GL.glGenBuffers(1, &vbo);
+        GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        GL.glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+        
+        GL.glGenVertexArrays(1, &vao);
+        GL.glBindVertexArray(vao);
+        GL.glEnableVertexAttribArray(0);
+        GL.glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float32) * 2, 0);
+        
+        uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
+        global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
+        global_uniform_matrix = GL.glGetUniformLocation(shader, "uMatrix");
+        
+        GL.glBindVertexArray(vao);
+        GL.glUseProgram(shader);
+    }
     
     // NOTE(ljre): Load Audio
-    int32 channels, sample_rate, sample_count;
-    int16* samples = NULL;
-    sample_count = stb_vorbis_decode_filename("music.ogg", &channels, &sample_rate, &samples);
-    if (sample_count == -1)
-        Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
+    Audio_SoundBuffer sound_music;
+    Audio_SoundBuffer sound_music2;
     
-    int32 frame_index = 0;
+    if (!Audio_LoadFile(Str("music.ogg"), &sound_music))
+    {
+        Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
+    }
+    else
+    {
+        Audio_Play(&sound_music, true, 0.4);
+    }
+    
+    if (!Audio_LoadFile(Str("music2.ogg"), &sound_music2))
+    {
+        Platform_MessageBox(Str("Warning!"), Str("Could not load 'music2.ogg' file. You can replace it and restart the application."));
+    }
+    else
+    {
+        Audio_Play(&sound_music2, false, 2.5);
+    }
     
     while (!Platform_WindowShouldClose())
     {
         Input_Gamepad gamepad;
         bool32 is_connected = Input_GetGamepad(0, &gamepad);
         
-        if (is_connected)
+        if (global_graphics->api == GraphicsAPI_OpenGL)
         {
-            GL.glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
-            GL.glClear(GL_COLOR_BUFFER_BIT);
-            
-            vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
-            vec4 colors[2] = {
-                { 0.3f, 0.3f, 0.3f, 1.0f }, // Enabled
-                { 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
-            };
-            
-            GL.glBindVertexArray(vao);
-            GL.glUseProgram(shader);
-            
-            // NOTE(ljre): Draw Axes
+            if (is_connected)
             {
-                DrawRectangle(black,
-                              (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f },
-                              (vec3) { 50.0f, 50.0f });
+                GL.glClearColor(0.5f, 0.0f, 1.0f, 1.0f);
+                GL.glClear(GL_COLOR_BUFFER_BIT);
                 
-                DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_LS)],
-                              (vec3) { width / 2.0f - 100.0f + gamepad.left[0] * 20.0f,
-                                  height / 2.0f + 100.0f + gamepad.left[1] * 20.0f },
-                              (vec3) { 20.0f, 20.0f });
-                
-                DrawRectangle(black,
-                              (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f },
-                              (vec3) { 50.0f, 50.0f });
-                
-                DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_RS)],
-                              (vec3) { width / 2.0f + 100.0f + gamepad.right[0] * 20.0f, height / 2.0f + 100.0f + gamepad.right[1] * 20.0f },
-                              (vec3) { 20.0f, 20.0f });
-            }
-            
-            // NOTE(ljre): Draw Buttons
-            {
-                struct Pair
-                {
-                    vec3 pos;
-                    vec3 size;
-                } buttons[] = {
-                    [Input_GamepadButton_Y] = { { width * 0.84f, height * 0.44f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_B] = { { width * 0.90f, height * 0.50f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_A] = { { width * 0.84f, height * 0.56f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_X] = { { width * 0.78f, height * 0.50f }, { 30.0f, 30.0f } },
-                    
-                    [Input_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
-                    [Input_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
-                    
-                    [Input_GamepadButton_Up]    = { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_Down]  = { { width * 0.16f, height * 0.56f }, { 30.0f, 30.0f } },
-                    [Input_GamepadButton_Left]  = { { width * 0.10f, height * 0.50f }, { 30.0f, 30.0f } },
-                    
-                    [Input_GamepadButton_Back]  = { { width * 0.45f, height * 0.48f }, { 25.0f, 15.0f } },
-                    [Input_GamepadButton_Start] = { { width * 0.55f, height * 0.48f }, { 25.0f, 15.0f } },
+                vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
+                vec4 colors[2] = {
+                    { 0.3f, 0.3f, 0.3f, 1.0f }, // Enabled
+                    { 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
                 };
                 
-                for (int32 i = 0; i < ArrayLength(buttons); ++i)
+                // NOTE(ljre): Draw Axes
                 {
-                    DrawRectangle(colors[Input_IsDown(gamepad, i)], buttons[i].pos, buttons[i].size);
+                    DrawRectangle(black,
+                                  (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f },
+                                  (vec3) { 50.0f, 50.0f });
+                    
+                    DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_LS)],
+                                  (vec3) { width / 2.0f - 100.0f + gamepad.left[0] * 20.0f,
+                                      height / 2.0f + 100.0f + gamepad.left[1] * 20.0f },
+                                  (vec3) { 20.0f, 20.0f });
+                    
+                    DrawRectangle(black,
+                                  (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f },
+                                  (vec3) { 50.0f, 50.0f });
+                    
+                    DrawRectangle(colors[Input_IsDown(gamepad, Input_GamepadButton_RS)],
+                                  (vec3) { width / 2.0f + 100.0f + gamepad.right[0] * 20.0f, height / 2.0f + 100.0f + gamepad.right[1] * 20.0f },
+                                  (vec3) { 20.0f, 20.0f });
+                }
+                
+                // NOTE(ljre): Draw Buttons
+                {
+                    struct Pair
+                    {
+                        vec3 pos;
+                        vec3 size;
+                    } buttons[] = {
+                        [Input_GamepadButton_Y] = { { width * 0.84f, height * 0.44f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_B] = { { width * 0.90f, height * 0.50f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_A] = { { width * 0.84f, height * 0.56f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_X] = { { width * 0.78f, height * 0.50f }, { 30.0f, 30.0f } },
+                        
+                        [Input_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
+                        [Input_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
+                        
+                        [Input_GamepadButton_Up]    = { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_Down]  = { { width * 0.16f, height * 0.56f }, { 30.0f, 30.0f } },
+                        [Input_GamepadButton_Left]  = { { width * 0.10f, height * 0.50f }, { 30.0f, 30.0f } },
+                        
+                        [Input_GamepadButton_Back]  = { { width * 0.45f, height * 0.48f }, { 25.0f, 15.0f } },
+                        [Input_GamepadButton_Start] = { { width * 0.55f, height * 0.48f }, { 25.0f, 15.0f } },
+                    };
+                    
+                    for (int32 i = 0; i < ArrayLength(buttons); ++i)
+                    {
+                        DrawRectangle(colors[Input_IsDown(gamepad, i)], buttons[i].pos, buttons[i].size);
+                    }
+                }
+                
+                // NOTE(ljre): Draw Triggers
+                {
+                    vec4 color;
+                    
+                    glm_vec4_lerp(colors[0], colors[1], gamepad.lt, color);
+                    DrawRectangle(color, (vec3) { width * 0.20f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
+                    
+                    glm_vec4_lerp(colors[0], colors[1], gamepad.rt, color);
+                    DrawRectangle(color, (vec3) { width * 0.80f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
                 }
             }
-            
-            // NOTE(ljre): Draw Triggers
+            else
             {
-                vec4 color;
-                
-                glm_vec4_lerp(colors[0], colors[1], gamepad.lt, color);
-                DrawRectangle(color, (vec3) { width * 0.20f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
-                
-                glm_vec4_lerp(colors[0], colors[1], gamepad.rt, color);
-                DrawRectangle(color, (vec3) { width * 0.80f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
+                GL.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                GL.glClear(GL_COLOR_BUFFER_BIT);
             }
-        }
-        else
-        {
-            GL.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            GL.glClear(GL_COLOR_BUFFER_BIT);
         }
         
-        // NOTE(ljre): Fill Audio
-        if (samples)
-        {
-            uint32 out_channels; // NOTE(ljre): for now, assuming 2 channels.
-            uint32 out_sample_count = 0;
-            uint32 out_sample_rate;
-            
-            int16* out_samples = Platform_RequestSoundBuffer(&out_sample_count, &out_channels, &out_sample_rate);
-            int16* out_end_samples = out_samples + out_sample_count;
-            
-            float64 scale = (float32)sample_rate / (float32)out_sample_rate;
-            
-#ifdef ENABLE_FUNNY_MODE
-            scale *= 2.0f;
-#endif
-            
-            while (out_samples < out_end_samples)
-            {
-                float64 index_to_use = (float64)frame_index * scale;
-                int16 left, right;
-                
-                left =  (int16)Lerp((float64)samples[(int32) index_to_use   *channels],
-                                    (float64)samples[(int32)(index_to_use+1)*channels],
-                                    index_to_use - floor(index_to_use));
-                
-                if (channels > 1)
-                {
-                    right = (int16)Lerp((float64)samples[(int32) index_to_use   *channels+1],
-                                        (float64)samples[(int32)(index_to_use+1)*channels+1],
-                                        index_to_use - floor(index_to_use));
-                }
-                else
-                {
-                    right = left;
-                }
-                
-                *out_samples++ = left / 4;
-                *out_samples++ = right / 4;
-                
-                frame_index += 1;
-                
-                if ((float64)frame_index * scale >= (float64)sample_count)
-                {
-                    frame_index = 0;
-                }
-            }
-        }
+        Engine_UpdateAudio();
         
         Platform_FinishFrame();
         Platform_PollEvents();

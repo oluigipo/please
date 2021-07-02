@@ -16,6 +16,7 @@
 
 //~ Files
 #include "engine_random.c"
+#include "engine_audio.c"
 #include "engine_main.c"
 
 //~ External
