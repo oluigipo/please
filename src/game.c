@@ -5,7 +5,7 @@
 API int32
 Game_MainScene(void)
 {
-	return 0;
+    return 0;
 }
 
 
