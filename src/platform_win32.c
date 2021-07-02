@@ -16,14 +16,23 @@
 #define WIN32_LEAN_AND_MEAN
 #define COBJMACROS
 
+// General
 #include <windows.h>
 #include <dwmapi.h>
 #include <versionhelpers.h>
 #include <dbt.h>
-#include <xinput.h>
-#include <dinput.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
+// Input
+#include <xinput.h>
+#include <dinput.h>
+
+// Audio
+#include <audioclient.h>
+#include <audiopolicy.h>
+#include <mmdeviceapi.h>
 
 #include "platform_win32_guid.c"
 
@@ -92,6 +101,7 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 
 //~ Entry Point
 #include "platform_win32_input.c"
+#include "platform_win32_audio.c"
 #include "platform_win32_opengl.c"
 
 internal LRESULT CALLBACK
@@ -195,7 +205,7 @@ Platform_MessageBox(String title, String message)
 	Trace("Platform_MessageBox");
 	
 	wchar_t* wtitle = Win32_ConvertStringToWSTR(title, NULL, 0);
-	wchar_t* wmessage = Win32_ConvertStringToWSTR(title, NULL, 0);
+	wchar_t* wmessage = Win32_ConvertStringToWSTR(message, NULL, 0);
 	
 	MessageBoxW(NULL, wmessage, wtitle, MB_OK | MB_TOPMOST);
 	
@@ -229,6 +239,7 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags)
 		}
 		
 		Win32_InitInput();
+		Win32_InitAudio();
 		Platform_PollEvents();
 	}
 	
@@ -261,6 +272,14 @@ Platform_PollEvents(void)
 	}
 	
 	Win32_UpdateInputPos();
+	Win32_UpdateAudio();
+}
+
+API void
+Platform_FinishFrame(void)
+{
+	Win32_FillAudioBuffer();
+	global_opengl.vtable.glSwapBuffers();
 }
 
 API void*
@@ -319,6 +338,16 @@ API const OpenGL_VTable*
 Platform_GetOpenGLVTable(void)
 {
 	return &global_opengl.vtable;
+}
+
+API uint64
+Platform_CurrentPosixTime(void)
+{
+	time_t result = time(NULL);
+	if (result == -1)
+		result = 0;
+	
+	return (uint64)result;
 }
 
 //- Debug

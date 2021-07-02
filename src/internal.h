@@ -29,6 +29,8 @@
 #define Megabytes(n) (1024*Kilobytes(n))
 #define Gigabytes(n) (1024*Megabytes(n))
 #define ArrayLength(x) (sizeof(x) / sizeof(*(x)))
+#define PI64 3.141592653589793238462643383279
+#define PI32 ((float32)PI64)
 
 //~ Standard headers
 #include <stdint.h>
@@ -80,8 +82,8 @@ typedef double float64;
 
 //~ Debug
 #ifndef DEBUG
-#   define Assert(x) 0
-#   define Trace(x) 0
+#   define Assert(x) ((void)0)
+#   define Trace(x) ((void)0)
 #else
 #   undef NDEBUG
 #   include <assert.h>
@@ -90,7 +92,7 @@ typedef double float64;
 #endif
 
 #ifndef Trace
-#   define Trace(x) 0
+#   define Trace(x) ((void)0)
 #endif
 
 //~ Others
@@ -99,6 +101,9 @@ typedef double float64;
 
 //~ Forward Declarations
 API int32 Engine_Main(int32 argc, char** argv);
+API uint64 Random_U64(void);
+API uint32 Random_U32(void);
+API float64 Random_F64(void);
 
 //- Game
 API int32 Game_MainScene(void);
@@ -116,23 +121,30 @@ API void Platform_MessageBox(String title, String message);
 API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags);
 API bool32 Platform_WindowShouldClose(void);
 API float64 Platform_CurrentTime(void);
+API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
+API void Platform_FinishFrame(void);
+API const OpenGL_VTable* Platform_GetOpenGLVTable(void);
+
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);
 API void* Platform_VirtualAlloc(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
 API void Platform_VirtualFree(void* ptr);
-API const OpenGL_VTable* Platform_GetOpenGLVTable(void);
 
 #ifdef DEBUG
 API void Platform_DebugMessageBox(const char* restrict format, ...);
 API void Platform_DebugLog(const char* restrict format, ...);
 #else // DEBUG
-#   define Platform_DebugMessageBox(...) 0
-#   define Platform_DebugLog(...) 0
+#   define Platform_DebugMessageBox(...) ((void)0)
+#   define Platform_DebugLog(...) ((void)0)
 #endif // DEBUG
 
+//- Platform Audio
+API int16* Audio_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate);
+
+//- Platform Input
 enum Input_KeyboardKey
 {
 	Input_KeyboardKey_Any = 0,

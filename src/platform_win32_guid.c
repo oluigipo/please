@@ -1,8 +1,26 @@
-// NOTE(ljre): needed by 'platform_win32_input.c'
+//~ NOTE(ljre): needed by 'platform_win32_input.c'
 #define IID_IDirectInput8W _def_IID_IDirectInput8W
-internal const GUID IID_IDirectInput8W = {0xBF798031,0x483A,0x4DA2,{0xAA,0x99,0x5D,0x64,0xED,0x36,0x97,0x00}};
+internal const GUID IID_IDirectInput8W =
+{0xBF798031,0x483A,0x4DA2,{0xAA,0x99,0x5D,0x64,0xED,0x36,0x97,0x00}};
 
-// NOTE(ljre): needed by 'c_dfDIJoystick'
+//~ NOTE(ljre): needed by 'platform_win32_audio.c'
+#define CLSID_MMDeviceEnumerator _def_CLSID_MMDeviceEnumerator
+internal const CLSID CLSID_MMDeviceEnumerator =
+{0xBCDE0395,0xE52F,0x467C,{0x8E,0x3D,0xC4,0x57,0x92,0x91,0x69,0x2E}};
+
+#define IID_IMMDeviceEnumerator _def_IID_IMMDeviceEnumerator
+internal const IID IID_IMMDeviceEnumerator =
+{0xA95664D2,0x9614,0x4F35,{0xA7,0x46,0xDE,0x8D,0xB6,0x36,0x17,0xE6}};
+
+#define IID_IAudioClient _def_IID_IAudioClient
+internal const IID IID_IAudioClient =
+{0x1CB9AD4C,0xDBFA,0x4c32,{0xB1,0x78,0xC2,0xF5,0x68,0xA7,0x03,0xB2}};
+
+#define IID_IAudioRenderClient _def_IID_IAudioRenderClient
+internal const IID IID_IAudioRenderClient =
+{0xF294ACFC,0x3146,0x4483,{0xA7,0xBF,0xAD,0xDC,0xA7,0xC2,0x60,0xE2}};
+
+//~ NOTE(ljre): needed by 'c_dfDIJoystick'
 #define GUID_XAxis _def_GUID_XAxis
 #define GUID_YAxis _def_GUID_YAxis
 #define GUID_ZAxis _def_GUID_ZAxis
@@ -25,7 +43,7 @@ internal const GUID GUID_POV = {0xA36D02F2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x
 #define DIDFT_OPTIONAL		0x80000000
 #endif
 
-// NOTE(ljre): Generated with https://github.com/elmindreda/c_dfDIJoystick2
+//~ NOTE(ljre): Generated with https://github.com/elmindreda/c_dfDIJoystick2
 //
 //             clang is too dumb to compile it - GCC worked for me:
 //                 gcc c_dfDIJoystick2.c -o test.exe -ldinput8 -lrpcrt4

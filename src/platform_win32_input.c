@@ -934,23 +934,19 @@ Win32_InitInput(void)
 	Win32_CheckForGamepads();
 }
 
-internal void
+internal inline void
 Win32_UpdateInputPre(void)
 {
 	// NOTE(ljre): Update Keyboard
+	for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
 	{
-		for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
-		{
-			bool8 key = global_keyboard_keys[i];
-			
-			key = (bool8)(key << 1) | (key & 1);
-			
-			global_keyboard_keys[i] = key;
-		}
+		bool8 key = global_keyboard_keys[i];
+		key = (bool8)(key << 1) | (key & 1);
+		global_keyboard_keys[i] = key;
 	}
 }
 
-internal void
+internal inline void
 Win32_UpdateInputPos(void)
 {
 	// NOTE(ljre): Get mouse cursor

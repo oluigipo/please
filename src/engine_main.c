@@ -1,5 +1,8 @@
 #include <cglm/cglm.h>
 
+// NOTE(ljre): enable it!
+//#define ENABLE_FUNNY_MODE
+
 #define GL (*global_opengl_vtable)
 internal const OpenGL_VTable* global_opengl_vtable;
 internal int32 global_uniform_color;
@@ -119,14 +122,22 @@ DrawRectangle(vec4 color, vec3 pos, vec3 size)
 	GL.glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+internal float64
+lerp(float64 a, float64 b, float64 t)
+{
+	return a * (1.0-t) + b * t;
+}
+
 API int32
 Engine_Main(int32 argc, char** argv)
 {
+	Random_Init();
+	
 	float32 width = 600.0f;
 	float32 height = 600.0f;
 	
 	if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL))
-		Platform_ExitWithErrorMessage(Str("É mole, o PC sequer aguenta OpenGL 3.3 :pepega"));
+		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
 	
 	global_opengl_vtable = Platform_GetOpenGLVTable();
 	
@@ -164,6 +175,15 @@ Engine_Main(int32 argc, char** argv)
 	uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
 	global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
 	global_uniform_matrix = GL.glGetUniformLocation(shader, "uMatrix");
+	
+	// NOTE(ljre): Load Audio
+	int32 channels, sample_rate, sample_count;
+	int16* samples = NULL;
+	sample_count = stb_vorbis_decode_filename("music.ogg", &channels, &sample_rate, &samples);
+	if (sample_count == -1)
+		Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
+	
+	uint32 sample_index = 0;
 	
 	while (!Platform_WindowShouldClose())
 	{
@@ -249,7 +269,46 @@ Engine_Main(int32 argc, char** argv)
 			GL.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 			GL.glClear(GL_COLOR_BUFFER_BIT);
 		}
-		GL.glSwapBuffers();
+		
+		// NOTE(ljre): Fill Audio
+		if (samples)
+		{
+			uint32 out_channels; // NOTE(ljre): for now, assuming 2 channels.
+			uint32 out_sample_count = 0;
+			uint32 out_sample_rate;
+			
+			int16* out_samples = Audio_RequestSoundBuffer(&out_sample_count, &out_channels, &out_sample_rate);
+			int16* out_end_samples = out_samples + out_sample_count;
+			
+			while (out_samples < out_end_samples)
+			{
+				float32 scale = (float32)sample_rate / (float32)out_sample_rate * 0.5f;
+				
+#ifdef ENABLE_FUNNY_MODE
+				scale = 1.0f;
+#endif
+				
+				float32 index_to_use = (float32)sample_index * scale;
+				
+				int16 left =  (int16)glm_lerp((float32)samples[(int32) index_to_use   *2],
+											  (float32)samples[(int32)(index_to_use+1)*2],
+											  index_to_use - floorf(index_to_use));
+				int16 right = (int16)glm_lerp((float32)samples[(int32) index_to_use   *2+1],
+											  (float32)samples[(int32)(index_to_use+1)*2+1],
+											  index_to_use - floorf(index_to_use));
+				*out_samples++ = left / 4;
+				*out_samples++ = right / 4;
+				
+				sample_index += 1;
+				
+				if (sample_index >= sample_count / 2)
+				{
+					sample_index = 0;
+				}
+			}
+		}
+		
+		Platform_FinishFrame();
 		Platform_PollEvents();
 	}
 	

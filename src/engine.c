@@ -10,8 +10,11 @@
 #include "ext/stb_image.h"
 #define STBTT_STATIC
 #include "ext/stb_truetype.h"
+#define STB_VORBIS_HEADER_ONLY
+#include "ext/stb_vorbis.h"
 
 //~ Files
+#include "engine_random.c"
 #include "engine_main.c"
 
 //~ External
@@ -40,6 +43,10 @@
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ext/stb_truetype.h"
+
+#undef STB_VORBIS_HEADER_ONLY
+#define STB_VORBIS_MAX_CHANNELS 2
+#include "ext/stb_vorbis.h"
 
 //- Enable warnings
 #if defined(__clang__)
