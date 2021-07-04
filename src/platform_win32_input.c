@@ -1,6 +1,6 @@
 #include "internal_gamepad_map.h"
 
-#define MAX_GAMEPAD_COUNT 8
+#define MAX_GAMEPAD_COUNT 16
 #define GAMEPAD_DEADZONE 0.3f
 
 //~ Types and Macros
@@ -149,7 +149,7 @@ internal bool32 IsXInputDevice(const GUID* guid)
         if ((UINT)-1 == GetRawInputDeviceInfoA(ridl[i].hDevice, RIDI_DEVICENAME, name, &name_size))
             break;
         
-        name[sizeof name - 1] = '\0';
+        name[sizeof(name) - 1] = '\0';
         if (strstr(name, "IG_"))
             return true;
     }
@@ -158,25 +158,25 @@ internal bool32 IsXInputDevice(const GUID* guid)
 }
 
 //~ Functions
-internal bool32
+internal inline bool32
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {
     return memcmp(a, b, sizeof (GUID)) == 0;
 }
 
-internal int32
+internal inline int32
 GenGamepadIndex(void)
 {
     return global_gamepad_free[--global_gamepad_free_count];
 }
 
-internal void
+internal inline void
 ReleaseGamepadIndex(int32 index)
 {
     global_gamepad_free[global_gamepad_free_count++] = index;
 }
 
-internal void
+internal inline void
 NormalizeAxis(float32 axis[2])
 {
     float32 dir = atan2f(axis[1], axis[0]);
@@ -212,7 +212,7 @@ LoadXInput(void)
     
     for (int32 i = 0; i < ArrayLength(dll_names); ++i)
     {
-        HMODULE library = LoadLibrary(dll_names[i]);
+        HMODULE library = LoadLibraryA(dll_names[i]);
         
         if (library)
         {
@@ -254,7 +254,7 @@ LoadDirectInput(void)
     bool32 loaded = false;
     for (int32 i = 0; i < ArrayLength(dll_names); ++i)
     {
-        HMODULE library = LoadLibrary(dll_names[i]);
+        HMODULE library = LoadLibraryA(dll_names[i]);
         
         if (library)
         {
@@ -412,7 +412,7 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
             out->buttons[as_button] |= 1;
         }
         
-        // NOTE(ljre): if it's not pointing to an diagonal, ignore next step
+        // NOTE(ljre): if it's not pointing to a diagonal, ignore next step
         if ((pov & 1) == 0)
             continue;
         
@@ -714,7 +714,7 @@ SortGamepadObjects(Win32_Gamepad* gamepad)
     qsort(gamepad->dinput.axes, (uintsize)gamepad->dinput.axis_count, sizeof(int32), SortGamepadCompare);
     qsort(gamepad->dinput.povs, (uintsize)gamepad->dinput.pov_count, sizeof(int32), SortGamepadCompare);
     
-    // CleanUp
+    // Cleanup
     for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)
     {
         gamepad->dinput.axes[i] &= ~0x40000000;
@@ -895,7 +895,8 @@ Win32_CheckForGamepads(void)
         return;
     
     // Direct Input
-    IDirectInput8_EnumDevices(global_dinput, DI8DEVCLASS_GAMECTRL, DirectInputEnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
+    if (global_dinput)
+        IDirectInput8_EnumDevices(global_dinput, DI8DEVCLASS_GAMECTRL, DirectInputEnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
     
     // XInput
     for (DWORD i = 0; i < 4 && global_gamepad_free_count > 0; ++i)
@@ -1076,6 +1077,7 @@ Input_SetGamepad(int32 index, float32 vibration)
         
         case GamepadAPI_None:
         {
+            // NOTE(ljre): unreachable
         } break;
     }
 }

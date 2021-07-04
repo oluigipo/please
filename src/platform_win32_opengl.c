@@ -46,7 +46,7 @@ struct Win32_OpenGL
     PFNWGLMAKECONTEXTCURRENTARBPROC wglMakeContextCurrentARB;
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
     
-    OpenGL_VTable vtable;
+    GraphicsContext_OpenGL vtable;
 } typedef Win32_OpenGL;
 
 //~ Globals
@@ -57,22 +57,6 @@ internal PFNDWMISCOMPOSITIONENABLEDPROC DwmIsCompositionEnabled;
 internal PFNDWMFLUSHPROC DwmFlush;
 
 //~ Functions
-internal void
-OpenGLSwapBuffers(void)
-{
-    global_opengl.vtable.glFlush();
-    global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
-    //SwapBuffers(global_hdc);
-    
-    if (global_should_flush_dwm)
-    {
-        int32 count = global_swap_interval;
-        
-        while (count --> 0)
-            DwmFlush();
-    }
-}
-
 internal void*
 OpenGLGetProc(const char* name)
 {
@@ -94,7 +78,7 @@ OpenGLGetProc(const char* name)
 internal bool32
 LoadOpenGLFunctions(void)
 {
-    OpenGL_VTable* opengl = &global_opengl.vtable;
+    GraphicsContext_OpenGL* opengl = &global_opengl.vtable;
     void* (*loader)(const char*) = OpenGLGetProc;
     
     opengl->glGetString = loader("glGetString");
@@ -501,6 +485,22 @@ Win32_DestroyOpenGLWindow(void)
     DestroyWindow(global_window);
 }
 
+internal void
+Win32_OpenGLSwapBuffers(void)
+{
+    global_opengl.vtable.glFlush();
+    global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
+    //SwapBuffers(global_hdc);
+    
+    if (global_should_flush_dwm)
+    {
+        int32 count = global_swap_interval;
+        
+        while (count --> 0)
+            DwmFlush();
+    }
+}
+
 internal bool32
 Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 {
@@ -669,7 +669,6 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
     }
     
     global_opengl.wglSwapIntervalEXT(interval);
-    global_opengl.vtable.glSwapBuffers = OpenGLSwapBuffers;
     
     // Globals
     global_window = window;

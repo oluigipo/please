@@ -11,13 +11,13 @@ typedef HRESULT WINAPI ProcCoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
 internal ProcCoCreateInstance* CoCreateInstance;
 internal ProcCoInitializeEx* CoInitializeEx;
 internal bool32 global_audio_is_initialized = false;
-internal uint32 global_channels = 2;
-internal uint32 global_samples_per_second = 44100;
-internal uint32 global_latency_frame_count;
+internal int32 global_channels = 2;
+internal int32 global_samples_per_second = 44100;
+internal int32 global_latency_frame_count;
 
-internal uint32 global_frame_count_to_output;
+internal int32 global_frame_count_to_output;
 internal int16* global_audio_buffer;
-internal uint32 global_audio_buffer_sample_count;
+internal int32 global_audio_buffer_sample_count;
 
 internal IMMDeviceEnumerator* global_audio_device_enumerator;
 internal IMMDevice* global_audio_device;
@@ -87,12 +87,12 @@ Win32_InitAudio(void)
     uint16 bytes_per_sample = sizeof(int16);
     uint16 bits_per_sample = bytes_per_sample * 8;
     uint16 block_align = (uint16)global_channels * bytes_per_sample;
-    uint32 average_bytes_per_second = (uint32)block_align * global_samples_per_second;
+    uint32 average_bytes_per_second = (uint32)block_align * (uint32)global_samples_per_second;
     
     WAVEFORMATEX new_wave_format = {
         WAVE_FORMAT_PCM,
         (uint16)global_channels,
-        global_samples_per_second,
+        (uint32)global_samples_per_second,
         average_bytes_per_second,
         block_align,
         bits_per_sample,
@@ -135,7 +135,7 @@ Win32_InitAudio(void)
     }
     
     global_audio_buffer_sample_count = global_samples_per_second * 2;
-    global_audio_buffer = Platform_HeapAlloc(global_audio_buffer_sample_count * sizeof(int16));
+    global_audio_buffer = Platform_HeapAlloc((uintsize)global_audio_buffer_sample_count * sizeof(int16));
     
     global_audio_is_initialized = true;
 }
@@ -151,7 +151,7 @@ Win32_UpdateAudio(void)
     uint32 padding;
     if (SUCCEEDED(IAudioClient_GetCurrentPadding(global_audio_client, &padding)))
     {
-        global_frame_count_to_output = (uint32)(global_latency_frame_count - padding);
+        global_frame_count_to_output = global_latency_frame_count - (int32)padding;
         
         if (global_frame_count_to_output > global_latency_frame_count)
             global_frame_count_to_output = global_latency_frame_count;
@@ -160,7 +160,7 @@ Win32_UpdateAudio(void)
             global_frame_count_to_output = global_audio_buffer_sample_count / 2;
     }
     
-    memset(global_audio_buffer, 0, global_audio_buffer_sample_count * sizeof(int16));
+    memset(global_audio_buffer, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
 }
 
 internal void
@@ -176,7 +176,7 @@ Win32_FillAudioBuffer(void)
         
         if (data)
         {
-            memcpy(data, global_audio_buffer, global_frame_count_to_output * global_channels * sizeof(int16));
+            memcpy(data, global_audio_buffer, (uintsize)(global_frame_count_to_output * global_channels) * sizeof(int16));
         }
         
         IAudioRenderClient_ReleaseBuffer(global_audio_render_client, global_frame_count_to_output, 0);
@@ -199,7 +199,7 @@ Win32_DeinitAudio(void)
 
 //~ API
 API int16*
-Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate)
+Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate)
 {
     if (global_frame_count_to_output > 0)
     {

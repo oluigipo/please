@@ -1259,9 +1259,8 @@ typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIPROC)(GLenum type, GLuint color);
 typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIVPROC)(GLenum type, const GLuint *color);
 typedef void (APIENTRYP PFNGLDEBUGMESSAGECALLBACKPROC)(GLDEBUGPROC callback, const void* userParam);
 
-struct OpenGL_VTable
+struct GraphicsContext_OpenGL
 {
-    void(*glSwapBuffers)(void);
 #ifdef DEBUG
     PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 #endif
@@ -1639,6 +1638,6 @@ struct OpenGL_VTable
     PFNGLCOLORP4UIVPROC glColorP4uiv;
     PFNGLSECONDARYCOLORP3UIPROC glSecondaryColorP3ui;
     PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
-} typedef OpenGL_VTable;
+} typedef GraphicsContext_OpenGL;
 
 #endif //INTERNAL_OPENGL_H

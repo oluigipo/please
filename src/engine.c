@@ -12,11 +12,13 @@
 #include "ext/stb_truetype.h"
 #define STB_VORBIS_HEADER_ONLY
 #define STB_VORBIS_STATIC
+#define STB_VORBIS_NO_STDIO
 #include "ext/stb_vorbis.h"
 
 //~ Files
 #include "engine_random.c"
 #include "engine_audio.c"
+#include "engine_render.c"
 #include "engine_main.c"
 
 //~ External

@@ -32,10 +32,32 @@
 #define PI32 ((float32)PI64)
 
 //~ Standard headers & Libraries
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Weverything"
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wall"
+#   pragma GCC diagnostic ignored "-Wextra"
+#else
+#   pragma warning(push, 0)
+#endif
+
+//- Includes
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <cglm/cglm.h>
+#include "ext/stb_truetype.h"
+
+//- Enable Warnings
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic pop
+#else
+#   pragma warning(pop, 0)
+#endif
 
 //~ Types
 typedef uint8_t uint8;
@@ -98,6 +120,7 @@ typedef double float64;
 //~ Others
 #include "internal_string.h"
 #include "internal_opengl.h"
+#include "internal_direct3d.h"
 
 //~ Forward Declarations
 API int32 Engine_Main(int32 argc, char** argv);
@@ -115,7 +138,22 @@ struct Audio_SoundBuffer
 
 API bool32 Audio_LoadFile(String path, Audio_SoundBuffer* out_sound);
 API void Audio_FreeSoundBuffer(Audio_SoundBuffer* sound);
-API void Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume);
+API void Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed);
+#define Audio_PlaySimple(sound, volume) Audio_Play(sound, false, volume, 1.0)
+API void Audio_StopByBuffer(const Audio_SoundBuffer* sound, int32 max);
+
+typedef uint32 ColorARGB;
+
+struct Render_Font
+{
+    stbtt_fontinfo info;
+    void* data;
+    uintsize data_size;
+    int32 ascent, descent, line_gap;
+} typedef Render_Font;
+
+API bool32 Render_LoadFontFromFile(String path, Render_Font* out_font);
+API void Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color);
 
 //- Game
 API int32 Game_MainScene(void);
@@ -136,14 +174,16 @@ struct GraphicsContext
     GraphicsAPI api;
     union
     {
-        OpenGL_VTable* opengl;
-        void* d3d;
+        GraphicsContext_OpenGL* opengl;
+        GraphicsContext_Direct3D* d3d;
     };
 } typedef GraphicsContext;
 
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);
 API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
+API int32 Platform_WindowWidth(void);
+API int32 Platform_WindowHeight(void);
 API bool32 Platform_WindowShouldClose(void);
 API float64 Platform_CurrentTime(void);
 API uint64 Platform_CurrentPosixTime(void);
@@ -163,13 +203,14 @@ API void Platform_FreeFileMemory(void* ptr, uintsize size);
 #ifdef DEBUG
 API void Platform_DebugMessageBox(const char* restrict format, ...);
 API void Platform_DebugLog(const char* restrict format, ...);
+API void Platform_DebugDumpBitmap(const char* restrict path, const void* data, int32 width, int32 height, int32 channels);
 #else // DEBUG
 #   define Platform_DebugMessageBox(...) ((void)0)
 #   define Platform_DebugLog(...) ((void)0)
 #endif // DEBUG
 
 //- Platform Audio
-API int16* Platform_RequestSoundBuffer(uint32* out_sample_count, uint32* out_channels, uint32* out_sample_rate);
+API int16* Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate);
 API bool32 Platform_IsAudioAvailable(void);
 
 //- Platform Input

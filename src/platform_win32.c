@@ -25,6 +25,9 @@
 #include <stdlib.h>
 #include <time.h>
 
+// Direct3D
+#include <d3d11.h>
+
 // Input
 #include <xinput.h>
 #include <dinput.h>
@@ -33,6 +36,14 @@
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
+
+#define INTERNAL_COMPLETE_D3D_CONTEXT
+#include "internal_direct3d.h"
+
+// NOTE(ljre): Last time I tried, MinGW didn't have 'dxgidebug.h' header.
+#if defined(DEBUG) && !defined(__GNUC__)
+#   include <dxgidebug.h>
+#endif
 
 #include "platform_win32_guid.c"
 
@@ -55,6 +66,9 @@ internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
 internal GraphicsContext global_graphics_context;
+
+internal int32 global_window_width;
+internal int32 global_window_height;
 
 //~ Internal API
 internal int64
@@ -116,7 +130,14 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
         case WM_DESTROY:
         case WM_QUIT:
         {
-            global_window_should_close = true;
+            if (global_window == window)
+                global_window_should_close = true;
+        } break;
+        
+        case WM_SIZE:
+        {
+            global_window_width = LOWORD(lparam);
+            global_window_height = HIWORD(lparam);
         } break;
         
         case WM_SYSKEYDOWN:
@@ -186,7 +207,9 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
         Win32_ExitWithErrorMessage(L"Could not create window class.");
     
     //- Run
-    return Engine_Main(argc, argv);
+    int32 result = Engine_Main(argc, argv);
+    
+    return result;
 }
 
 //~ API
@@ -241,6 +264,9 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
             // TODO
         }
         
+        global_window_width = width;
+        global_window_height = height;
+        
         Win32_InitInput();
         Win32_InitAudio();
         Platform_PollEvents();
@@ -255,6 +281,18 @@ API bool32
 Platform_WindowShouldClose(void)
 {
     return global_window_should_close;
+}
+
+API int32
+Platform_WindowWidth(void)
+{
+    return global_window_width;
+}
+
+API int32
+Platform_WindowHeight(void)
+{
+    return global_window_height;
 }
 
 API float64
@@ -287,8 +325,8 @@ Platform_FinishFrame(void)
     
     switch (global_graphics_context.api)
     {
-        case GraphicsAPI_OpenGL: global_graphics_context.opengl->glSwapBuffers(); break;
-        case GraphicsAPI_Direct3D: Sleep(16); break;
+        case GraphicsAPI_OpenGL: Win32_OpenGLSwapBuffers(); break;
+        case GraphicsAPI_Direct3D: Win32_Direct3DSwapBuffers(); break;
         default: {} break;
     }
 }
@@ -449,5 +487,56 @@ Platform_DebugLog(const char* restrict format, ...)
     vprintf(format, args);
     va_end(args);
     fflush(stdout);
+}
+
+API void
+Platform_DebugDumpBitmap(const char* restrict path, const void* data, int32 width, int32 height, int32 channels)
+{
+    FILE* file = fopen(path, "w");
+    if (!file)
+        return;
+    
+    fprintf(file, "P3\n%i %i 255\n", width, height);
+    int32 size = width*height;
+    const uint8* pixels = data;
+    
+    for (int32 i = 0; i < size; ++i)
+    {
+        int32 r, g, b;
+        
+        switch (channels)
+        {
+            case 1:
+            {
+                r = *pixels;
+                g = *pixels;
+                b = *pixels;
+                
+                ++pixels;
+            } break;
+            
+            case 2:
+            {
+                r = pixels[0];
+                g = pixels[1];
+                b = 0;
+                
+                pixels += 2;
+            } break;
+            
+            case 3:
+            {
+                r = pixels[0];
+                g = pixels[1];
+                b = pixels[2];
+                
+                pixels += 3;
+            } break;
+        }
+        
+        fprintf(file, "%i %i %i ", r, g, b);
+    }
+    
+    fclose(file);
 }
 #endif // DEBUG
