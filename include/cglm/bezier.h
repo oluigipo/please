@@ -11,13 +11,13 @@
 #include "common.h"
 
 #define GLM_BEZIER_MAT_INIT  {{-1.0f,  3.0f, -3.0f,  1.0f},                   \
-{ 3.0f, -6.0f,  3.0f,  0.0f},                   \
-{-3.0f,  3.0f,  0.0f,  0.0f},                   \
-{ 1.0f,  0.0f,  0.0f,  0.0f}}
+                              { 3.0f, -6.0f,  3.0f,  0.0f},                   \
+                              {-3.0f,  3.0f,  0.0f,  0.0f},                   \
+                              { 1.0f,  0.0f,  0.0f,  0.0f}}
 #define GLM_HERMITE_MAT_INIT {{ 2.0f, -3.0f,  0.0f,  1.0f},                   \
-{-2.0f,  3.0f,  0.0f,  0.0f},                   \
-{ 1.0f, -2.0f,  1.0f,  0.0f},                   \
-{ 1.0f, -1.0f,  0.0f,  0.0f}}
+                              {-2.0f,  3.0f,  0.0f,  0.0f},                   \
+                              { 1.0f, -2.0f,  1.0f,  0.0f},                   \
+                              { 1.0f, -1.0f,  0.0f,  0.0f}}
 /* for C only */
 #define GLM_BEZIER_MAT  ((mat4)GLM_BEZIER_MAT_INIT)
 #define GLM_HERMITE_MAT ((mat4)GLM_HERMITE_MAT_INIT)
@@ -48,15 +48,15 @@
 CGLM_INLINE
 float
 glm_bezier(float s, float p0, float c0, float c1, float p1) {
-	float x, xx, ss, xs3, a;
-	
-	x   = 1.0f - s;
-	xx  = x * x;
-	ss  = s * s;
-	xs3 = (s - ss) * 3.0f;
-	a   = p0 * xx + c0 * xs3;
-	
-	return a + s * (c1 * xs3 + p1 * ss - a);
+  float x, xx, ss, xs3, a;
+
+  x   = 1.0f - s;
+  xx  = x * x;
+  ss  = s * s;
+  xs3 = (s - ss) * 3.0f;
+  a   = p0 * xx + c0 * xs3;
+
+  return a + s * (c1 * xs3 + p1 * ss - a);
 }
 
 /*!
@@ -82,17 +82,17 @@ glm_bezier(float s, float p0, float c0, float c1, float p1) {
 CGLM_INLINE
 float
 glm_hermite(float s, float p0, float t0, float t1, float p1) {
-	float ss, d, a, b, c, e, f;
-	
-	ss = s  * s;
-	a  = ss + ss;
-	c  = a  + ss;
-	b  = a  * s;
-	d  = s  * ss;
-	f  = d  - ss;
-	e  = b  - c;
-	
-	return p0 * (e + 1.0f) + t0 * (f - ss + s) + t1 * f - p1 * e;
+  float ss, d, a, b, c, e, f;
+
+  ss = s  * s;
+  a  = ss + ss;
+  c  = a  + ss;
+  b  = a  * s;
+  d  = s  * ss;
+  f  = d  - ss;
+  e  = b  - c;
+
+  return p0 * (e + 1.0f) + t0 * (f - ss + s) + t1 * f - p1 * e;
 }
 
 /*!
@@ -109,46 +109,46 @@ glm_hermite(float s, float p0, float t0, float t1, float p1) {
 CGLM_INLINE
 float
 glm_decasteljau(float prm, float p0, float c0, float c1, float p1) {
-	float u, v, a, b, c, d, e, f;
-	int   i;
-	
-	if (prm - p0 < CGLM_DECASTEL_SMALL)
-		return 0.0f;
-	
-	if (p1 - prm < CGLM_DECASTEL_SMALL)
-		return 1.0f;
-	
-	u  = 0.0f;
-	v  = 1.0f;
-	
-	for (i = 0; i < (int)CGLM_DECASTEL_MAX; i++) {
-		/* de Casteljau Subdivision */
-		a  = (p0 + c0) * 0.5f;
-		b  = (c0 + c1) * 0.5f;
-		c  = (c1 + p1) * 0.5f;
-		d  = (a  + b)  * 0.5f;
-		e  = (b  + c)  * 0.5f;
-		f  = (d  + e)  * 0.5f; /* this one is on the curve! */
-		
-		/* The curve point is close enough to our wanted t */
-		if (fabsf(f - prm) < CGLM_DECASTEL_EPS)
-			return glm_clamp_zo((u  + v) * 0.5f);
-		
-		/* dichotomy */
-		if (f < prm) {
-			p0 = f;
-			c0 = e;
-			c1 = c;
-			u  = (u  + v) * 0.5f;
-		} else {
-			c0 = a;
-			c1 = d;
-			p1 = f;
-			v  = (u  + v) * 0.5f;
-		}
-	}
-	
-	return glm_clamp_zo((u  + v) * 0.5f);
+  float u, v, a, b, c, d, e, f;
+  int   i;
+
+  if (prm - p0 < CGLM_DECASTEL_SMALL)
+    return 0.0f;
+
+  if (p1 - prm < CGLM_DECASTEL_SMALL)
+    return 1.0f;
+
+  u  = 0.0f;
+  v  = 1.0f;
+
+  for (i = 0; i < CGLM_DECASTEL_MAX; i++) {
+    /* de Casteljau Subdivision */
+    a  = (p0 + c0) * 0.5f;
+    b  = (c0 + c1) * 0.5f;
+    c  = (c1 + p1) * 0.5f;
+    d  = (a  + b)  * 0.5f;
+    e  = (b  + c)  * 0.5f;
+    f  = (d  + e)  * 0.5f; /* this one is on the curve! */
+
+    /* The curve point is close enough to our wanted t */
+    if (fabsf(f - prm) < CGLM_DECASTEL_EPS)
+      return glm_clamp_zo((u  + v) * 0.5f);
+
+    /* dichotomy */
+    if (f < prm) {
+      p0 = f;
+      c0 = e;
+      c1 = c;
+      u  = (u  + v) * 0.5f;
+    } else {
+      c0 = a;
+      c1 = d;
+      p1 = f;
+      v  = (u  + v) * 0.5f;
+    }
+  }
+
+  return glm_clamp_zo((u  + v) * 0.5f);
 }
 
 #endif /* cglm_bezier_h */

@@ -15,20 +15,49 @@
    CGLM_INLINE void glm_versor_print(versor vec, FILE *ostream);
  */
 
+/*
+ cglm tried to enable print functions in debug mode and disable them in
+ release/production mode to eliminate printing costs.
+ 
+ if you need to force enable then define CGLM_DEFINE_PRINTS macro not DEBUG one
+ 
+ Print functions are enabled if:
+ 
+ - DEBUG or _DEBUG macro is defined (mostly defined automatically in debugging)
+ - CGLM_DEFINE_PRINTS macro is defined including release/production
+   which makes enabled printing always
+ - glmc_ calls for io are always prints
+
+ */
+
+/* DEPRECATED: CGLM_NO_PRINTS_NOOP (use CGLM_DEFINE_PRINTS) */
+
 #ifndef cglm_io_h
 #define cglm_io_h
 #if defined(DEBUG) || defined(_DEBUG) \
-   || defined(CGLM_DEFINE_PRINTS) || defined(CGLM_LIB_SRC)
+   || defined(CGLM_DEFINE_PRINTS) || defined(CGLM_LIB_SRC) \
+   || defined(CGLM_NO_PRINTS_NOOP)
 
 #include "common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#define CGLM_PRINT_PRECISION    5
-#define CGLM_PRINT_MAX_TO_SHORT 1e5
-#define CGLM_PRINT_COLOR        "\033[36m"
-#define CGLM_PRINT_COLOR_RESET  "\033[0m"
+#ifndef CGLM_PRINT_PRECISION
+#  define CGLM_PRINT_PRECISION    5
+#endif
+
+#ifndef CGLM_PRINT_MAX_TO_SHORT
+#  define CGLM_PRINT_MAX_TO_SHORT 1e5
+#endif
+
+#ifndef CGLM_PRINT_COLOR
+#  define CGLM_PRINT_COLOR        "\033[36m"
+#endif
+
+#ifndef CGLM_PRINT_COLOR_RESET
+#  define CGLM_PRINT_COLOR_RESET  "\033[0m"
+#endif
 
 CGLM_INLINE
 void
@@ -293,7 +322,7 @@ glm_aabb_print(vec3                    bbox[2],
 #undef m
 }
 
-#elif !defined(CGLM_NO_PRINTS_NOOP)
+#else
 
 #include "common.h"
 
@@ -301,15 +330,15 @@ glm_aabb_print(vec3                    bbox[2],
 #include <stdlib.h>
 
 /* NOOP: Remove print from DEBUG */
-#define glm_mat4_print(...)
-#define glm_mat3_print(...)
-#define glm_mat2_print(...)
-#define glm_vec4_print(...)
-#define glm_vec3_print(...)
-#define glm_ivec3_print(...)
-#define glm_vec2_print(...)
-#define glm_versor_print(...)
-#define glm_aabb_print(...)
+#define glm_mat4_print(v, s) (void)v; (void)s;
+#define glm_mat3_print(v, s) (void)v; (void)s;
+#define glm_mat2_print(v, s) (void)v; (void)s;
+#define glm_vec4_print(v, s) (void)v; (void)s;
+#define glm_vec3_print(v, s) (void)v; (void)s;
+#define glm_ivec3_print(v, s) (void)v; (void)s;
+#define glm_vec2_print(v, s) (void)v; (void)s;
+#define glm_versor_print(v, s) (void)v; (void)s;
+#define glm_aabb_print(v, t, s) (void)v; (void)t; (void)s;
 
 #endif
 #endif /* cglm_io_h */

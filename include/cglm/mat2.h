@@ -40,6 +40,10 @@
 #  include "simd/sse2/mat2.h"
 #endif
 
+#ifdef CGLM_NEON_FP
+#  include "simd/neon/mat2.h"
+#endif
+
 #define GLM_MAT2_IDENTITY_INIT  {{1.0f, 0.0f}, {0.0f, 1.0f}}
 #define GLM_MAT2_ZERO_INIT      {{0.0f, 0.0f}, {0.0f, 0.0f}}
 
@@ -56,7 +60,7 @@
 CGLM_INLINE
 void
 glm_mat2_copy(mat2 mat, mat2 dest) {
-  glm_vec4_copy(mat[0], dest[0]);
+  glm_vec4_ucopy(mat[0], dest[0]);
 }
 
 /*!
@@ -130,6 +134,8 @@ void
 glm_mat2_mul(mat2 m1, mat2 m2, mat2 dest) {
 #if defined( __SSE__ ) || defined( __SSE2__ )
   glm_mat2_mul_sse2(m1, m2, dest);
+#elif defined(CGLM_NEON_FP)
+  glm_mat2_mul_neon(m1, m2, dest);
 #else
   float a00 = m1[0][0], a01 = m1[0][1],
         a10 = m1[1][0], a11 = m1[1][1],
@@ -216,7 +222,16 @@ glm_mat2_trace(mat2 m) {
 CGLM_INLINE
 void
 glm_mat2_scale(mat2 m, float s) {
-  glm_vec4_scale(m[0], s, m[0]);
+#if defined( __SSE__ ) || defined( __SSE2__ )
+  glmm_store(m[0], _mm_mul_ps(_mm_loadu_ps(m[0]), _mm_set1_ps(s)));
+#elif defined(CGLM_NEON_FP)
+  vst1q_f32(m[0], vmulq_f32(vld1q_f32(m[0]), vdupq_n_f32(s)));
+#else
+  m[0][0] = m[0][0] * s;
+  m[0][1] = m[0][1] * s;
+  m[1][0] = m[1][0] * s;
+  m[1][1] = m[1][1] * s;
+#endif
 }
 
 /*!
