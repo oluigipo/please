@@ -13,8 +13,8 @@
 #define WGL_CONTEXT_PROFILE_MASK_ARB            0x9126
 #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB        0x0001
 
-#define DwmIsCompositionEnabled Win32_ProcDwmIsCompositionEnabled
-#define DwmFlush Win32_ProcDwnFlush
+#define DwmIsCompositionEnabled global_proc_DwmIsCompositionEnabled
+#define DwmFlush global_proc_DwnFlush
 
 typedef HRESULT(WINAPI* PFNDWMFLUSHPROC)(void);
 typedef HRESULT(WINAPI* PFNDWMISCOMPOSITIONENABLEDPROC)(BOOL*);

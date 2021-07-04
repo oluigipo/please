@@ -354,5 +354,5 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     GL.glBindTexture(GL_TEXTURE_2D, 0);
     GL.glDeleteTextures(1, &texture);
     
-    //Engine_PopMemory(bitmap);
+    Engine_PopMemory(bitmap);
 }

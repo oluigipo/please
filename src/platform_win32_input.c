@@ -3,6 +3,11 @@
 #define MAX_GAMEPAD_COUNT 16
 #define GAMEPAD_DEADZONE 0.3f
 
+// TODO(ljre): it's probably better to move TranslateController and GamepadMappings to
+//             the Engine instead of leaving it in the platform layer.
+
+// TODO(ljre): Make more tests - I still don't trust it enough.
+
 //~ Types and Macros
 enum GamepadAPI
 {
