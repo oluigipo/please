@@ -29,7 +29,7 @@ ifeq ($(OS), Windows_NT)
 	OUTPUT_NAME = game.exe
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid
-	CFLAGS += -D_CRT_SECURE_NO_WARNINGS
+	CFLAGS += -D_CRT_SECURE_NO_WARNINGS -DOS_WINDOWS
 	
 	ifeq ($(ARCH), x86)
 		CFLAGS += -m32 -DX86
@@ -44,15 +44,22 @@ else
 	
 	ifeq ($(UNAME), Linux)
 		PLATFORM = linux
+		CFLAGS += -DOS_LINUX
 	endif
 	
 	ifeq ($(UNAME), Darwin)
 		PLATFORM = mac
+		CFLAGS += -DOS_MAC
 	endif
 endif
 
 all: build engine.o platform.o game.o
 	$(LD) $(OBJS) -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
+
+unity: CFLAGS += -DUNITY_BUILD
+unity: build
+	$(CC) "./src/unity_build.c" -c -o "./build/unity_build.o" $(CFLAGS)
+	$(LD) "./build/unity_build.o" -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
 
 build:
 	mkdir build

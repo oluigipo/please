@@ -21,7 +21,12 @@
 #define internal static
 #define true 1
 #define false 0
-#define API
+
+#ifdef UNITY_BUILD
+#   define API static
+#else
+#   define API
+#endif
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
 #define Kilobytes(n) ((uintsize)(n) * 1024)
