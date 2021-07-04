@@ -129,6 +129,9 @@ typedef double float64;
 
 //~ Forward Declarations
 API int32 Engine_Main(int32 argc, char** argv);
+API void* Engine_PushMemory(uintsize size);
+API void Engine_PopMemory(void* ptr);
+
 API uint64 Random_U64(void);
 API uint32 Random_U32(void);
 API float64 Random_F64(void);

@@ -296,7 +296,7 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     int32 bitmap_width, bitmap_height;
     CalcBitmapSizeForText(font, scale, text, &bitmap_width, &bitmap_height);
     
-    uint8* bitmap = Platform_HeapAlloc((uintsize)(bitmap_width * bitmap_height));
+    uint8* bitmap = Engine_PushMemory((uintsize)(bitmap_width * bitmap_height));
     
     float32 xx = 0, yy = 0;
     int32 codepoint, it = 0;
@@ -354,5 +354,5 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     GL.glBindTexture(GL_TEXTURE_2D, 0);
     GL.glDeleteTextures(1, &texture);
     
-    Platform_HeapFree(bitmap);
+    //Engine_PopMemory(bitmap);
 }

@@ -1,10 +1,102 @@
-//~ Globals
+struct alignas(16) StackAllocatorHeader typedef StackAllocatorHeader;
+struct StackAllocatorHeader
+{
+    StackAllocatorHeader* previous;
+    uintsize size; // NOTE(ljre): This includes the size of the header itself
+};
 
-//~ Functions
+//~ Globals
+internal void* global_stack_memory;
+internal uintsize global_stack_commited_size;
+internal uintsize global_stack_reserved_size;
+internal StackAllocatorHeader* global_stack_header;
+internal const uintsize global_stack_commiting_pages = Megabytes(1);
+
+//~ API
+API void*
+Engine_PushMemory(uintsize size)
+{
+    uint8* result = NULL;
+    size = AlignUp(size, 15u) + sizeof(StackAllocatorHeader);
+    
+    if (global_stack_header)
+    {
+        result = (uint8*)global_stack_header + global_stack_header->size;
+    }
+    else
+    {
+        result = global_stack_memory;
+    }
+    
+    uintsize total_desired_size = (uintsize)(result - (uintsize)global_stack_memory + size);
+    
+    if (total_desired_size > global_stack_reserved_size)
+    {
+        result = Platform_HeapAlloc(size);
+    }
+    else
+    {
+        while (total_desired_size > global_stack_commited_size)
+        {
+            Platform_VirtualCommit((uint8*)global_stack_memory + global_stack_commited_size, global_stack_commiting_pages);
+            global_stack_commited_size += global_stack_commiting_pages;
+        }
+        
+        memset(result, 0, size);
+        
+        StackAllocatorHeader* header = (void*)result;
+        header->size = size;
+        header->previous = global_stack_header;
+        global_stack_header = header;
+        
+        result += sizeof(*header);
+    }
+    
+    return result;
+}
+
+API void
+Engine_PopMemory(void* ptr)
+{
+    if (ptr < global_stack_memory || (uint8*)ptr >= (uint8*)global_stack_memory + global_stack_reserved_size)
+    {
+        Platform_HeapFree(ptr);
+    }
+    else
+    {
+        StackAllocatorHeader* header = ptr;
+        header -= 1;
+        
+        if (global_stack_header == header)
+        {
+            global_stack_header = header->previous;
+        }
+        else
+        {
+            StackAllocatorHeader* next_header = (void*)((uint8*)header + header->size);
+            next_header->previous = header->previous;
+            
+            if (header->previous)
+            {
+                header->previous->size += header->size;
+            }
+        }
+    }
+}
+
 API int32
 Engine_Main(int32 argc, char** argv)
 {
     Random_Init();
+    
+    // NOTE(ljre): Init Global Stack Allocator
+    {
+        global_stack_reserved_size = Megabytes(128);
+        global_stack_memory = Platform_VirtualAlloc(global_stack_reserved_size);
+        global_stack_commited_size = global_stack_commiting_pages;
+        Platform_VirtualCommit(global_stack_memory, global_stack_commited_size);
+        global_stack_header = NULL;
+    }
     
     float32 width = 600.0f;
     float32 height = 600.0f;
@@ -159,6 +251,15 @@ Engine_Main(int32 argc, char** argv)
         }
         
         Engine_UpdateAudio();
+        
+#ifdef DEBUG
+        if (global_stack_header != NULL)
+        {
+            Platform_DebugMessageBox("Memory Leak!!!!\nFirst Header - Allocation Size: %zu", global_stack_header->size);
+        }
+#endif
+        // NOTE(ljre): Free all the memory
+        global_stack_header = NULL;
         
         Platform_FinishFrame();
         Platform_PollEvents();
