@@ -806,6 +806,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
         
         // NOTE(ljre): GLFW code with modifications!
         // https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L452
+        // License: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/LICENSE.md
         
         // Generate a joystick GUID that matches the SDL 2.0.5+ one
         if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof name, NULL, NULL))
