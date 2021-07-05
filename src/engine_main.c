@@ -102,7 +102,7 @@ Engine_Main(int32 argc, char** argv)
     float32 height = 600.0f;
     
     if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
-        Platform_MessageBox(Str("Warning!"), Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
+        Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
     
     Render_Init();
     
@@ -130,15 +130,18 @@ Engine_Main(int32 argc, char** argv)
     }
 #endif
     
+    Trace("Audio_LoadFile");
     Audio_SoundBuffer sound_music3;
     Audio_LoadFile(Str("music3.ogg"), &sound_music3);
     
     // NOTE(ljre): Load Font
+    Trace("Render_LoadFontFromFile");
     Render_Font font;
-    Render_LoadFontFromFile(Str("C:/Windows/Fonts/Arial.ttf"), &font);
+    Render_LoadFontFromFile(Str("arial.ttf"), &font);
     
     int32 controller_index = 0;
     
+    Trace("Game Loop");
     while (!Platform_WindowShouldClose())
     {
         if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
@@ -225,11 +228,11 @@ Engine_Main(int32 argc, char** argv)
         }
         else
         {
-            Render_ClearBackground(0xFF000000);
+            Render_ClearBackground(0xFF110011);
         }
         
         // NOTE(ljre): Draw Controller Index
-        {
+        if (false) {
             char buf[128];
             snprintf(buf, sizeof buf, "Controller Index: %i", controller_index);
             Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, 0xFFFFFFFF);

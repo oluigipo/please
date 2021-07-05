@@ -176,6 +176,8 @@ CalcBitmapSizeForText(const Render_Font* font, float32 scale, String text, int32
 internal void
 Render_Init(void)
 {
+    Trace("Render_Init");
+    
     global_width = (float32)Platform_WindowWidth();
     global_height = (float32)Platform_WindowHeight();
     
@@ -226,7 +228,7 @@ Render_Init(void)
 internal void
 Render_Deinit(void)
 {
-    
+    Trace("Render_Init");
 }
 
 internal void

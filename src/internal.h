@@ -203,7 +203,7 @@ API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);
 API void* Platform_VirtualAlloc(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
-API void Platform_VirtualFree(void* ptr);
+API void Platform_VirtualFree(void* ptr, uintsize size);
 API void* Platform_ReadEntireFile(String path, uintsize* out_size);
 API bool32 Platform_WriteEntireFile(String path, const void* data, uintsize size);
 API void Platform_FreeFileMemory(void* ptr, uintsize size);

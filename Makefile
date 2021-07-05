@@ -1,10 +1,6 @@
-CC = clang
-LD = clang -fuse-ld=lld-link
-
 CFLAGS = -std=c99 -I./include -I./src
-CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wnewline-eof
-CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
-CFLAGS += -Werror=float-conversion -Werror=sign-conversion
+CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wnewline-eof -Wno-format
+CFLAGS += -Wno-missing-braces
 LDFLAGS = -L./lib
 
 OBJS = "./build/platform.o"
@@ -28,7 +24,13 @@ ifeq ($(OS), Windows_NT)
 	PLATFORM = win32
 	OUTPUT_NAME = game.exe
 	
+	CC = clang
+	LD = clang -fuse-ld=lld-link
+	
 	LDFLAGS += -luser32 -lgdi32 -lhid
+	
+	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
+	CFLAGS += -Werror=float-conversion -Werror=sign-conversion
 	CFLAGS += -D_CRT_SECURE_NO_WARNINGS -DOS_WINDOWS
 	
 	ifeq ($(ARCH), x86)
@@ -42,9 +44,13 @@ else
 	UNAME := $(shell uname -s)
 	OUTPUT_NAME = game
 	
+	CC = clang
+	LD = clang
+	
 	ifeq ($(UNAME), Linux)
 		PLATFORM = linux
 		CFLAGS += -DOS_LINUX
+		LDFLAGS += -lm -lX11 -ldl
 	endif
 	
 	ifeq ($(UNAME), Darwin)

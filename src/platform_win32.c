@@ -377,7 +377,7 @@ Platform_VirtualCommit(void* ptr, uintsize size)
 }
 
 API void
-Platform_VirtualFree(void* ptr)
+Platform_VirtualFree(void* ptr, uintsize size)
 {
     Trace("Platform_VirtualFree");
     VirtualFree(ptr, 0, MEM_RELEASE);
