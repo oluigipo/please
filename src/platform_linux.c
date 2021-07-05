@@ -118,11 +118,7 @@ Platform_PollEvents(void)
     XEvent event;
     while (XCheckWindowEvent(global_display, global_window, mask, &event))
     {
-        Platform_DebugLog("Event ran!\n");
-        if (event.type == Expose)
-        {
-            Platform_DebugLog("Expose!\n");
-        }
+        // TODO
     }
 }
 

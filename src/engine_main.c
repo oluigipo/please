@@ -137,7 +137,7 @@ Engine_Main(int32 argc, char** argv)
     // NOTE(ljre): Load Font
     Trace("Render_LoadFontFromFile");
     Render_Font font;
-    Render_LoadFontFromFile(Str("arial.ttf"), &font);
+    bool32 font_loaded = Render_LoadFontFromFile(Str("arial.ttf"), &font);
     
     int32 controller_index = 0;
     
@@ -232,7 +232,7 @@ Engine_Main(int32 argc, char** argv)
         }
         
         // NOTE(ljre): Draw Controller Index
-        if (false) {
+        if (font_loaded) {
             char buf[128];
             snprintf(buf, sizeof buf, "Controller Index: %i", controller_index);
             Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, 0xFFFFFFFF);
@@ -241,7 +241,7 @@ Engine_Main(int32 argc, char** argv)
         if (sound_music3.samples)
         {
             // NOTE(ljre): Draw funny
-            {
+            if (font_loaded) {
                 Render_DrawText(&font, Str("Press J, K, or L!"), (vec3) { 30.0f, 550.0f }, 24.0f, 0xFFFFFFFF);
             }
             

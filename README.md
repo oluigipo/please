@@ -22,8 +22,10 @@ If you need to, here are some variables you can set:
 Example: `make MODE=debug ARCH=x86 -j`
 
 ## APIs
-* Graphics: OpenGL;
+* Graphics: OpenGL, Direct3D 11 (very barely, and not working);
 * Gamepad Input: DirectInput, XInput;
+* Audio: WASAPI;
+* Platforms: Win32, X11;
 
 ## External
 Dependencies (my hope is that I replace them with my own implementation eventually... surely not in the near future):
