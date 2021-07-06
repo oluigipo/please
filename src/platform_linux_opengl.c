@@ -549,7 +549,7 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
     
     // TODO(ljre): is this necessary?
     XMapWindow(global_display, global_window);
-    XStoreName(global_display, global_window, title);
+    Xutf8SetWMProperties(global_display, global_window, title, NULL, NULL, 0, NULL, NULL, NULL);
     
     GLXContext dummy_context = global_opengl.glXCreateContext(global_display, visual_info, NULL, GL_TRUE);
     global_opengl.glXMakeCurrent(global_display, global_window, dummy_context);

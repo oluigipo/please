@@ -67,10 +67,18 @@ API bool32
 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics)
 {
     Trace("Platform_CreateWindow");
-    char title[Kilobytes(1)];
+    char local_buffer[Kilobytes(1)];
+    const char* title;
     
-    // TODO(ljre): Proper UTF-8 Decoding
-    snprintf(title, sizeof title, "%.*s\n", name.len, name.data);
+    if (name.len > 0 && name.data[name.len-1] == 0)
+    {
+        title = name.data;
+    }
+    else
+    {
+        snprintf(local_buffer, sizeof local_buffer, "%.*s", name.len, name.data);
+        title = local_buffer;
+    }
     
     global_display = XOpenDisplay(NULL);
     if (!global_display)
