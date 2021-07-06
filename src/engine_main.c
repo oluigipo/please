@@ -87,7 +87,7 @@ Engine_PopMemory(void* ptr)
 API int32
 Engine_Main(int32 argc, char** argv)
 {
-    Random_Init();
+    Engine_InitRandom();
     
     // NOTE(ljre): Init Global Stack Allocator
     {

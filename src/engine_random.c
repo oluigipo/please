@@ -10,7 +10,8 @@ __rotl(const uint64 x, int32 k) {
 }
 
 //~ Internal API
-internal void Random_Init(void) {
+internal void
+Engine_InitRandom(void) {
     static const uint64 jump[] = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
     
     global_random_seed[0] = Platform_CurrentPosixTime();
@@ -25,7 +26,7 @@ internal void Random_Init(void) {
                 s0 ^= global_random_seed[0];
                 s1 ^= global_random_seed[1];
             }
-            Random_U64();
+            Engine_RandomU64();
         }
     }
     
@@ -35,7 +36,7 @@ internal void Random_Init(void) {
 
 // Generates a random number between 0 and UINT64_MAX
 API uint64
-Random_U64(void) {
+Engine_RandomU64(void) {
     const uint64 s0 = global_random_seed[0];
     uint64 s1 = global_random_seed[1];
     const uint64 result = __rotl(s0 + s1, 17) + s0;
@@ -49,12 +50,12 @@ Random_U64(void) {
 
 // NOTE(ljre): good enough
 API float64
-Random_F64(void) {
-    return (float64)Random_U64() / (float64)UINT64_MAX;
+Engine_RandomF64(void) {
+    return (float64)Engine_RandomU64() / (float64)UINT64_MAX;
 }
 
 API uint32
-Random_U32(void) {
-    uint64 result = Random_U64();
+Engine_RandomU32(void) {
+    uint64 result = Engine_RandomU64();
     return (uint32)(result >> 32); // the higher bits are more random.
 }

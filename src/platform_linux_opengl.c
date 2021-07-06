@@ -515,7 +515,18 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
         return false;
     }
     
-    GLint visual_attributes[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
+    GLint visual_attributes[] = {
+        GLX_RGBA,
+        GLX_DEPTH_SIZE, 24,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        GLX_STENCIL_SIZE, 8,
+        GLX_DOUBLEBUFFER,
+        None
+    };
+    
     XVisualInfo* visual_info = global_opengl.glXChooseVisual(global_display, 0, visual_attributes);
     Window root_window = DefaultRootWindow(global_display);
     
@@ -529,7 +540,7 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
     
     XSetWindowAttributes window_attributes = {
         .colormap = color_map,
-        .event_mask = ExposureMask | KeyPressMask,
+        .event_mask = ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask,
     };
     
     global_window = XCreateWindow(global_display, root_window, 0, 0, (uint32)width, (uint32)height, 0,
@@ -557,7 +568,6 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
         GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
     };
     
-    Platform_DebugLog("Framebuffer Config\n");
     int32 framebuffer_config_count;
     GLXFBConfig* framebuffer_config = global_opengl.glXChooseFBConfig(global_display, 0, framebuffer_attribs,
                                                                       &framebuffer_config_count);

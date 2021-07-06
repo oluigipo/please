@@ -42,8 +42,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "ext/stb_image.h"
 
-#define STBTT_malloc(x,u) ((void)(u),Platform_HeapAlloc(x))
-#define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
+//#define STBTT_malloc(x,u) ((void)(u),Platform_HeapAlloc(x))
+//#define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
+#define STBTT_malloc(x,u) ((void)(u),Engine_PushMemory(x))
+#define STBTT_free(x,u) ((void)(u),Engine_PopMemory(x))
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ext/stb_truetype.h"

@@ -1,13 +1,20 @@
 #include "internal.h"
 
+#undef internal
+
 #define __USE_MISC
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <X11/keysymdef.h>
+#include <X11/XKBlib.h>
 #include <GL/glx.h>
 #include <dlfcn.h>
+
+#define internal static
 
 //~ Globals
 internal Display* global_display;
@@ -113,13 +120,33 @@ Platform_GetTime(void)
 API void
 Platform_PollEvents(void)
 {
-    int64 mask = 0xFFFFFFFF;
+    Linux_UpdateInputPre();
+    
+    int64 mask = KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask;
     
     XEvent event;
     while (XCheckWindowEvent(global_display, global_window, mask, &event))
     {
-        // TODO
+        switch (event.type)
+        {
+            case KeyPress:
+            case KeyRelease:
+            {
+                KeySym key = XkbKeycodeToKeysym(global_display, (KeyCode)event.xkey.keycode, 0, 0);
+                
+                Linux_ProcessKeyboardEvent(key, (event.type == KeyPress), event.xkey.state);
+                
+                //Platform_DebugLog("%i - %i - %i - %i - %i - %i\n", event.xkey.type, event.xkey.x, event.xkey.y, event.xkey.state, event.xkey.keycode, key);
+            } break;
+            case ButtonPress:
+            case ButtonRelease:
+            {
+                Linux_ProcessMouseEvent(event.xbutton.button, (event.type == ButtonPress));
+            } break;
+        }
     }
+    
+    Linux_UpdateInputPos();
 }
 
 API void
