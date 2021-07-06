@@ -1,0 +1,3 @@
+[submodule "include/cglm"]
+	path = include/cglm
+	url = https://github.com/recp/cglm/tree/master/include
