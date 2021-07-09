@@ -62,15 +62,15 @@ Discord_Init(int64 appid)
     };
     
     static struct IDiscordActivityEvents activity_events = {
-        
+        0
     };
     
     static struct IDiscordRelationshipEvents relationship_events = {
-        
+        0
     };
     
     static struct IDiscordLobbyEvents lobby_events = {
-        
+        0
     };
     
     // Init

@@ -132,6 +132,8 @@ API int32 Engine_Main(int32 argc, char** argv);
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
 
+#include "internal_list.h"
+
 #ifdef USE_DISCORD_GAME_SDK
 API bool32 Discord_Init(int64 appid);
 API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);

@@ -118,7 +118,7 @@ Engine_Main(int32 argc, char** argv)
     Render_Init();
     
     // NOTE(ljre): Load Audio
-#if 1
+#if 0
     Audio_SoundBuffer sound_music;
     Audio_SoundBuffer sound_music2;
     
