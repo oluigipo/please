@@ -676,7 +676,5 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
     global_graphics_context.api = GraphicsAPI_OpenGL;
     global_graphics_context.opengl = &global_opengl.vtable;
     
-    ShowWindow(global_window, SW_SHOWDEFAULT);
-    
     return true;
 }

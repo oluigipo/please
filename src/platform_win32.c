@@ -56,6 +56,12 @@
 #   pragma warning(pop, 0)
 #endif
 
+struct Win32_DeferredEvents
+{
+    int32 window_x, window_y;
+    int32 window_width, window_height;
+} typedef Win32_DeferredEvents;
+
 //~ Globals
 internal HANDLE global_heap;
 internal const wchar_t* global_class_name;
@@ -66,9 +72,45 @@ internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
 internal GraphicsContext global_graphics_context;
+internal Win32_DeferredEvents global_deferred_events = { -1, -1, -1, -1 };
 
 internal int32 global_window_width;
 internal int32 global_window_height;
+internal RECT global_monitor;
+
+//~ Functions
+internal void
+ProcessDeferredEvents(void)
+{
+    // NOTE(ljre): Window Position & Size
+    {
+        UINT flags = SWP_NOSIZE | SWP_NOMOVE;
+        
+        int32 x = global_deferred_events.window_x;
+        int32 y = global_deferred_events.window_y;
+        int32 width = global_deferred_events.window_width;
+        int32 height = global_deferred_events.window_height;
+        
+        if (x != -1 && y != -1)
+            flags &=~ (UINT)SWP_NOMOVE;
+        
+        if (width != -1 && height != -1)
+        {
+            flags &=~ (UINT)SWP_NOSIZE;
+            
+            global_window_width = width;
+            global_window_height = height;
+        }
+        
+        if (flags != (SWP_NOSIZE | SWP_NOMOVE))
+            SetWindowPos(global_window, NULL, x, y, width, height, flags | SWP_NOZORDER);
+        
+        global_deferred_events.window_x = -1;
+        global_deferred_events.window_y = -1;
+        global_deferred_events.window_width = -1;
+        global_deferred_events.window_height = -1;
+    }
+}
 
 //~ Internal API
 internal int64
@@ -267,11 +309,25 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
         global_window_width = width;
         global_window_height = height;
         
+        // NOTE(ljre): Get Monitor Size
+        {
+            HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO info;
+            info.cbSize = sizeof info;
+            
+            if (GetMonitorInfoA(monitor, &info))
+            {
+                global_monitor = info.rcWork;
+            }
+        }
+        
         Win32_InitInput();
         Win32_InitAudio();
+        Platform_CenterWindow();
         Platform_PollEvents();
         
         *out_graphics = &global_graphics_context;
+        ShowWindow(global_window, SW_SHOWDEFAULT);
     }
     
     return ok;
@@ -295,6 +351,29 @@ Platform_WindowHeight(void)
     return global_window_height;
 }
 
+API void
+Platform_SetWindow(int32 x, int32 y, int32 width, int32 height)
+{
+    if (x != -1)
+        global_deferred_events.window_x = x;
+    if (y != -1)
+        global_deferred_events.window_y = y;
+    if (width != -1)
+        global_deferred_events.window_width = width;
+    if (height != -1)
+        global_deferred_events.window_height = height;
+}
+
+API void
+Platform_CenterWindow(void)
+{
+    int32 monitor_width = global_monitor.right - global_monitor.left;
+    int32 monitor_height = global_monitor.bottom - global_monitor.top;
+    
+    global_deferred_events.window_x = monitor_width / 2 - global_window_width / 2 + global_monitor.left;
+    global_deferred_events.window_y = monitor_height / 2 - global_window_height / 2 + global_monitor.top;
+}
+
 API float64
 Platform_GetTime(void)
 {
@@ -306,6 +385,7 @@ API void
 Platform_PollEvents(void)
 {
     Win32_UpdateInputPre();
+    ProcessDeferredEvents();
     
     MSG message;
     while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -463,6 +543,25 @@ Platform_CurrentPosixTime(void)
         result = 0;
     
     return (uint64)result;
+}
+
+API void*
+Platform_LoadDiscordLibrary(void)
+{
+    HMODULE library = LoadLibraryA("discord_game_sdk.dll");
+    if (!library)
+        return NULL;
+    
+    void* result = GetProcAddress(library, "DiscordCreate");
+    
+    if (!result)
+    {
+        FreeLibrary(library);
+        return NULL;
+    }
+    
+    Platform_DebugLog("Loaded Library: discord_game_sdk.dll\n");
+    return result;
 }
 
 //- Debug

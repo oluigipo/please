@@ -1,3 +1,20 @@
+// TODO(ljre): Gamepad Input. Unfortunately I couldn't get my USB gamepad to
+//             work inside VirtualBox :(
+//
+// Resources:
+// - https://ourmachinery.com/post/gamepad-implementation-on-linux/
+// - https://github.com/MysteriousJ/Joystick-Input-Examples
+
+struct Linux_Gamepad
+{
+    char path[256];
+    int fd;
+    //GamepadMappings* map;
+    
+    
+    
+} typedef Linux_Gamepad;
+
 //~ Globals
 internal Input_Mouse global_mouse;
 internal bool8 global_keyboard_keys[Input_KeyboardKey_Count];
@@ -56,6 +73,63 @@ internal const Input_KeyboardKey global_keyboard_key_table[] = {
 };
 
 //~ Functions
+internal bool32
+EntryNameIsGamepad(const char* restrict entry_name)
+{
+    const char* const restrict gamepads_suffix = "-event-joystick";
+    
+    const char* a = entry_name;
+    const char* b = gamepads_suffix;
+    
+    // NOTE(ljre): Checks if string 'a' ends with string 'b'
+    while (*a)
+    {
+        if (*a++ != *b)
+            b = gamepads_suffix;
+        else
+            ++b;
+    }
+    
+    return !*b;
+}
+
+internal void
+CheckForNewGamepads(void)
+{
+    DIR* directory = opendir("/dev/input/by-id");
+    if (!directory)
+        return;
+    
+    struct dirent* entry;
+    while (entry = readdir(directory), entry)
+    {
+        if (entry->d_name[0] == '.')
+            continue;
+        
+        Platform_DebugLog("Directory Entry: %s\n", entry->d_name);
+        
+        if (!EntryNameIsGamepad(entry->d_name))
+            continue;
+        
+        char path[256];
+        snprintf(path, sizeof path, "/dev/input/by-id/%s", entry->d_name);
+        
+        int32 fd = open(path, O_RDONLY);
+        
+        // TODO(ljre):
+    }
+    
+    closedir(directory);
+}
+
+//~ Private API
+internal void
+Linux_InitInput(void)
+{
+    // TODO(ljre):
+    //CheckForNewGamepads();
+}
+
 internal void
 Linux_ProcessKeyboardEvent(KeySym key, bool32 pressed, uint32 state)
 {

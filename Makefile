@@ -1,7 +1,13 @@
-CFLAGS = -std=c99 -I./include -I./src
+CFLAGS =
+LDFLAGS =
+
+CUSTOMC ?=
+CUSTOMLD ?=
+
+CFLAGS += -std=c99 -I./include -I./src
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wnewline-eof -Wno-format
-CFLAGS += -Wno-missing-braces
-LDFLAGS = -L./lib
+CFLAGS += -Wno-missing-braces $(CUSTOMC)
+LDFLAGS += -L./lib $(CUSTOMLD)
 
 OBJS = "./build/platform.o"
 OBJS += "./build/engine.o"

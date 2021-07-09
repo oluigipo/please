@@ -10,12 +10,13 @@
 //~ Globals
 internal const GraphicsContext* global_graphics;
 internal const float32 global_quad_vertices[] = {
-    0.0f, 0.0f,
-    0.0f, 1.0f,
-    1.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 1.0f,
-    1.0f, 1.0f,
+    // Position          // Normals           // Texcoords
+    0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f,
+    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f,
+    1.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 1.0f,
 };
 
 internal float32 global_width;
@@ -28,15 +29,17 @@ internal uint32 global_white_texture;
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
-"layout (location = 0) in vec2 aPosition;\n"
+"layout (location = 0) in vec3 aPosition;\n"
+"layout (location = 1) in vec3 aNormal;\n"
+"layout (location = 2) in vec2 aTexCoord;\n"
 
 "out vec2 vTexCoord;"
 
 "uniform mat4 uMatrix;\n"
 
 "void main() {"
-"    gl_Position = uMatrix * vec4(aPosition, 0.0, 1.0);"
-"    vTexCoord = aPosition;"
+"    gl_Position = uMatrix * vec4(aPosition, 1.0);"
+"    vTexCoord = aTexCoord;"
 "}"
 ;
 
@@ -168,8 +171,8 @@ CalcBitmapSizeForText(const Render_Font* font, float32 scale, String text, int32
     if (line_width > width)
 		width = line_width;
 	
-    *out_width = width;
-    *out_height = height;
+    *out_width = width + 1;
+    *out_height = height + 1;
 }
 
 //~ Temporary Internal API
@@ -201,8 +204,13 @@ Render_Init(void)
     
     GL.glGenVertexArrays(1, &vao);
     GL.glBindVertexArray(vao);
+    
     GL.glEnableVertexAttribArray(0);
-    GL.glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float32) * 2, 0);
+    GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(float32) * 8, 0);
+    GL.glEnableVertexAttribArray(1);
+    GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(float32) * 8, (void*)(sizeof(float32) * 3));
+    GL.glEnableVertexAttribArray(2);
+    GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(float32) * 8, (void*)(sizeof(float32) * 6));
     
     uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
     global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
@@ -334,7 +342,7 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     //Platform_DebugDumpBitmap("test.ppm", bitmap, bitmap_width, bitmap_height, 1);
     
     mat4 matrix = GLM_MAT4_IDENTITY;
-    glm_translate(matrix, (vec3) { pos[0], pos[1] + (float32)bitmap_height, pos[2] });
+    glm_translate(matrix, (vec3) { pos[0], pos[1], pos[2] });
     glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
     glm_mat4_mul(global_proj, matrix, matrix);
     

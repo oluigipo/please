@@ -16,6 +16,10 @@
 #include "ext/stb_vorbis.h"
 
 //~ Files
+#ifdef USE_DISCORD_GAME_SDK
+#   include "engine_discord.c"
+#endif
+
 #include "engine_random.c"
 #include "engine_audio.c"
 #include "engine_render.c"

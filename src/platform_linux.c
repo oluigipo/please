@@ -13,6 +13,8 @@
 #include <X11/XKBlib.h>
 #include <GL/glx.h>
 #include <dlfcn.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 #define internal static
 
@@ -36,6 +38,9 @@ int32 main(int32 argc, char* argv[])
     Trace("main - Program Entry Point");
     
     int32 result = Engine_Main(argc, argv);
+    
+    if (global_display)
+        XCloseDisplay(global_display);
     
     return result;
 }
@@ -94,6 +99,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
         global_window_height = height;
         
         *out_graphics = &global_graphics_context;
+        
+        Linux_InitInput();
     }
     
     return ok;

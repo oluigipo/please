@@ -132,6 +132,16 @@ API int32 Engine_Main(int32 argc, char** argv);
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
 
+#ifdef USE_DISCORD_GAME_SDK
+API bool32 Discord_Init(int64 appid);
+API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
+API void Discord_UpdateActivity(int32 type, String name, String state, String details);
+#else
+#   define Discord_Init(...) (__VA_ARGS__, 0)
+#   define Discord_UpdateActivityAssets(...) ((void)(__VA_ARGS__))
+#   define Discord_UpdateActivity(...) ((void)(__VA_ARGS__))
+#endif
+
 API uint64 Engine_RandomU64(void);
 API uint32 Engine_RandomU32(void);
 API float64 Engine_RandomF64(void);
@@ -187,17 +197,25 @@ struct GraphicsContext
     };
 } typedef GraphicsContext;
 
+// NOTE(ljre): This function also does general initialization
+API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
+
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);
-API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
 API int32 Platform_WindowWidth(void);
 API int32 Platform_WindowHeight(void);
 API bool32 Platform_WindowShouldClose(void);
+API void Platform_SetWindow(int32 x, int32 y, int32 width, int32 height); // NOTE(ljre): use -1 to don't change it
+API void Platform_CenterWindow(void);
 API float64 Platform_CurrentTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
 
+// Optional Libraries
+API void* Platform_LoadDiscordLibrary(void);
+
+// Memory
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);

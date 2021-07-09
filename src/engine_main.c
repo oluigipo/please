@@ -104,6 +104,17 @@ Engine_Main(int32 argc, char** argv)
     if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
         Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
     
+#ifdef USE_DISCORD_GAME_SDK
+    if (Discord_Init(778719957956689922ll))
+    {
+        Platform_DebugLog("[INFO] Discord Initialized!\n");
+    }
+    else
+    {
+        Platform_DebugLog("[INFO] Discord failed to initialize.\n");
+    }
+#endif
+    
     Render_Init();
     
     // NOTE(ljre): Load Audio
@@ -131,7 +142,7 @@ Engine_Main(int32 argc, char** argv)
 #endif
     
     Trace("Audio_LoadFile");
-    Audio_SoundBuffer sound_music3;
+    Audio_SoundBuffer sound_music3 = { 0 };
     Audio_LoadFile(Str("music3.ogg"), &sound_music3);
     
     // NOTE(ljre): Load Font
@@ -242,7 +253,7 @@ Engine_Main(int32 argc, char** argv)
         {
             // NOTE(ljre): Draw funny
             if (font_loaded) {
-                Render_DrawText(&font, Str("Press J, K, or L!"), (vec3) { 30.0f, 550.0f }, 24.0f, 0xFFFFFFFF);
+                Render_DrawText(&font, Str("Press J, K, or L!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
             }
             
             if (Input_KeyboardIsPressed('L'))
@@ -264,9 +275,12 @@ Engine_Main(int32 argc, char** argv)
         // NOTE(ljre): Free all the memory
         global_stack_header = NULL;
         
+        Discord_Update();
         Platform_FinishFrame();
         Platform_PollEvents();
     }
+    
+    Discord_Deinit();
     
     return 0;
 }

@@ -10,6 +10,7 @@ struct String
 #define Str(x) (String) StrI(x)
 #define StrI(x) { sizeof(x), (x) }
 #define StrFmt(x) (x).len, (x).data
+#define StrNull (String) { 0 }
 
 internal int32
 String_Decode(String str, int32* index)
