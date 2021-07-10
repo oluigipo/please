@@ -138,10 +138,14 @@ API void Engine_PopMemory(void* ptr);
 API bool32 Discord_Init(int64 appid);
 API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
 API void Discord_UpdateActivity(int32 type, String name, String state, String details);
+API void Discord_Update(void);
+API void Discord_Deinit(void);
 #else
-#   define Discord_Init(...) (__VA_ARGS__, 0)
+#   define Discord_Init(...) ((void)(__VA_ARGS__), 0)
 #   define Discord_UpdateActivityAssets(...) ((void)(__VA_ARGS__))
 #   define Discord_UpdateActivity(...) ((void)(__VA_ARGS__))
+#   define Discord_Update() ((void)0)
+#   define Discord_Deinit() ((void)0)
 #endif
 
 API uint64 Engine_RandomU64(void);
@@ -172,8 +176,33 @@ struct Render_Font
     int32 ascent, descent, line_gap;
 } typedef Render_Font;
 
+struct Render_Camera
+{
+    vec3 pos;
+    
+    union
+    {
+        // NOTE(ljre): 2D Stuff
+        struct { vec2 scale; float32 angle; };
+        
+        // NOTE(ljre): 3D Stuff
+        struct { vec3 dir; vec3 up; };
+    };
+} typedef Render_Camera;
+
+struct Render_3DModel
+{
+    uint32 vbo, vao, ebo;
+    int32 index_count;
+} typedef Render_3DModel;
+
+API void Render_ClearBackground(ColorARGB color);
+API void Render_Begin2D(const Render_Camera* camera);
+API void Render_Begin3D(const Render_Camera* camera);
 API bool32 Render_LoadFontFromFile(String path, Render_Font* out_font);
 API void Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color);
+API bool32 Render_Load3DModelFromFile(String path, Render_3DModel* out);
+API void Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB color);
 
 //- Game
 API int32 Game_MainScene(void);

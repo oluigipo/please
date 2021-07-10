@@ -7,25 +7,47 @@
 #   define D3DCall(x) (x)
 #endif
 
+struct Vertex
+{
+    vec3 position;
+    vec3 normal;
+    vec2 texcoord;
+} typedef Vertex;
+
+struct Render_3DModel
+{
+    uint32 vbo, vao, ebo;
+    int32 index_count;
+} typedef Render_3DModel;
+
 //~ Globals
 internal const GraphicsContext* global_graphics;
-internal const float32 global_quad_vertices[] = {
-    // Position          // Normals           // Texcoords
-    0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f,
-    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
-    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f,
-    0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f,
-    1.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 1.0f,
+internal const Vertex global_quad_vertices[] = {
+    // Positions         // Normals           // Texcoords
+    { 0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, },
+    { 1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f, },
+    { 1.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 1.0f, },
+    { 0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f, },
+};
+
+internal const uint32 global_quad_indices[] = {
+    0, 1, 2,
+    2, 3, 0
 };
 
 internal float32 global_width;
 internal float32 global_height;
-internal int32 global_uniform_color;
-internal int32 global_uniform_matrix;
-internal int32 global_uniform_texture;
-internal mat4 global_proj;
+internal mat4 global_view;
+internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
 internal uint32 global_white_texture;
+
+internal uint32 global_default_shader;
+internal uint32 global_default_3dshader;
+internal uint32 global_current_shader;
+internal int32 global_uniform_color;
+internal int32 global_uniform_view;
+internal int32 global_uniform_model;
+internal int32 global_uniform_texture;
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
@@ -35,10 +57,11 @@ internal const char* const global_vertex_shader =
 
 "out vec2 vTexCoord;"
 
-"uniform mat4 uMatrix;\n"
+"uniform mat4 uView;\n"
+"uniform mat4 uModel;\n"
 
 "void main() {"
-"    gl_Position = uMatrix * vec4(aPosition, 1.0);"
+"    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
 "    vTexCoord = aTexCoord;"
 "}"
 ;
@@ -55,6 +78,42 @@ internal const char* const global_fragment_shader =
 
 "void main() {"
 "    oFragColor = uColor * texture(uTexture, vTexCoord);"
+"}"
+;
+
+internal const char* const global_vertex_3dshader =
+"#version 330 core\n"
+"layout (location = 0) in vec3 aPosition;\n"
+"layout (location = 1) in vec3 aNormal;\n"
+"layout (location = 2) in vec2 aTexCoord;\n"
+
+"out vec2 vTexCoord;"
+"out vec3 vNormal;"
+
+"uniform mat4 uView;\n"
+"uniform mat4 uModel;\n"
+
+"void main() {"
+"    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
+"    vNormal = vec3(uModel * vec4(aNormal, 1.0));"
+"    vTexCoord = aTexCoord;"
+"}"
+;
+
+internal const char* const global_fragment_3dshader =
+"#version 330 core\n"
+
+"in vec2 vTexCoord;"
+"in vec3 vNormal;"
+
+"out vec4 oFragColor;"
+
+"uniform vec4 uColor;"
+"uniform sampler2D uTexture;"
+
+"void main() {"
+"    vec4 color = vec4(vec3(uColor) * max(0.0, dot(normalize(vNormal), vec3(0.0, 0.0, -1.0))), uColor.a);"
+"    oFragColor = color * texture(uTexture, vTexCoord);"
 "}"
 ;
 
@@ -177,14 +236,12 @@ CalcBitmapSizeForText(const Render_Font* font, float32 scale, String text, int32
 
 //~ Temporary Internal API
 internal void
-Render_Init(void)
+Engine_InitRender(void)
 {
     Trace("Render_Init");
     
     global_width = (float32)Platform_WindowWidth();
     global_height = (float32)Platform_WindowHeight();
-    
-    glm_ortho(0.0f, global_width, global_height, 0.0f, -1.0f, 1.0f, global_proj);
     
 #ifdef DEBUG
     GL.glEnable(GL_DEBUG_OUTPUT);
@@ -192,12 +249,13 @@ Render_Init(void)
     GL.glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
 #endif
     
+    GL.glEnable(GL_DEPTH_TEST);
     GL.glEnable(GL_BLEND);
     GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     GL.glViewport(0, 0, (int32)global_width, (int32)global_height);
     
-    uint32 vbo, vao;
+    uint32 vbo, vao, ebo;
     GL.glGenBuffers(1, &vbo);
     GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
     GL.glBufferData(GL_ARRAY_BUFFER, sizeof global_quad_vertices, global_quad_vertices, GL_STATIC_DRAW);
@@ -206,19 +264,22 @@ Render_Init(void)
     GL.glBindVertexArray(vao);
     
     GL.glEnableVertexAttribArray(0);
-    GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(float32) * 8, 0);
+    GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
     GL.glEnableVertexAttribArray(1);
-    GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(float32) * 8, (void*)(sizeof(float32) * 3));
+    GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     GL.glEnableVertexAttribArray(2);
-    GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(float32) * 8, (void*)(sizeof(float32) * 6));
+    GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
     
-    uint32 shader = CompileShader(global_vertex_shader, global_fragment_shader);
-    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
-    global_uniform_matrix = GL.glGetUniformLocation(shader, "uMatrix");
-    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    GL.glGenBuffers(1, &ebo);
+    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof global_quad_indices, global_quad_indices, GL_STATIC_DRAW);
     
-    GL.glBindVertexArray(vao);
-    GL.glUseProgram(shader);
+    global_quad_vbo = vbo;
+    global_quad_vao = vao;
+    global_quad_ebo = ebo;
+    
+    global_default_shader = CompileShader(global_vertex_shader, global_fragment_shader);
+    global_default_3dshader = CompileShader(global_vertex_3dshader, global_fragment_3dshader);
     
     uint32 white_texture[] = {
         0xFFFFFFFF, 0xFFFFFFFF,
@@ -234,12 +295,13 @@ Render_Init(void)
 }
 
 internal void
-Render_Deinit(void)
+Engine_DeinitRender(void)
 {
-    Trace("Render_Init");
+    Trace("Render_Deinit");
 }
 
-internal void
+//~ API
+API void
 Render_ClearBackground(ColorARGB color)
 {
     vec4 color_vec;
@@ -249,23 +311,79 @@ Render_ClearBackground(ColorARGB color)
     GL.glClear(GL_COLOR_BUFFER_BIT);
 }
 
-internal void
+API void
+Render_Begin2D(const Render_Camera* camera)
+{
+    mat4 proj;
+    glm_ortho(0.0f, global_width, global_height, 0.0f, -1.0f, 1.0f, proj);
+    
+    glm_mat4_identity(global_view);
+    if (camera)
+    {
+        glm_translate(global_view, (vec3) { camera->pos[0], camera->pos[1], 0.0f });
+        glm_rotate(global_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+        glm_scale(global_view, (vec3) { camera->scale[0], camera->scale[1], 0.0f });
+    }
+    
+    glm_mat4_mul(proj, global_view, global_view);
+    
+    GL.glDisable(GL_DEPTH_TEST);
+    
+    uint32 shader = global_default_shader;
+    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
+    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
+    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
+    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    
+    global_current_shader = shader;
+}
+
+API void
+Render_Begin3D(const Render_Camera* camera)
+{
+    mat4 proj;
+    glm_perspective(90.0f, global_width / global_height, 0.01f, 100.0f, proj);
+    
+    glm_mat4_identity(global_view);
+    if (camera)
+    {
+        glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, global_view);
+    }
+    
+    glm_mat4_mul(proj, global_view, global_view);
+    
+    GL.glEnable(GL_DEPTH_TEST);
+    GL.glClear(GL_DEPTH_BUFFER_BIT);
+    
+    uint32 shader = global_default_3dshader;
+    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
+    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
+    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
+    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    
+    global_current_shader = shader;
+}
+
+API void
 Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
 {
     mat4 matrix = GLM_MAT4_IDENTITY;
     glm_translate(matrix, pos);
     glm_scale(matrix, size);
     glm_translate(matrix, (vec3) { -0.5f, -0.5f }); // NOTE(ljre): Center
-    glm_mat4_mul(global_proj, matrix, matrix);
     
+    GL.glUseProgram(global_current_shader);
     GL.glUniform4fv(global_uniform_color, 1, color);
-    GL.glUniformMatrix4fv(global_uniform_matrix, 1, false, (float32*)matrix);
+    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)global_view);
+    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
     GL.glUniform1i(global_uniform_texture, 0);
     
     GL.glActiveTexture(GL_TEXTURE0);
     GL.glBindTexture(GL_TEXTURE_2D, global_white_texture);
     
-    GL.glDrawArrays(GL_TRIANGLES, 0, 6);
+    GL.glBindVertexArray(global_quad_vao);
+    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+    GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
     GL.glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -344,7 +462,6 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     mat4 matrix = GLM_MAT4_IDENTITY;
     glm_translate(matrix, (vec3) { pos[0], pos[1], pos[2] });
     glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
-    glm_mat4_mul(global_proj, matrix, matrix);
     
     GL.glActiveTexture(GL_TEXTURE0);
     
@@ -355,14 +472,115 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
 	GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
     GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
     
+    GL.glUseProgram(global_current_shader);
     GL.glUniform4fv(global_uniform_color, 1, color_vec);
-    GL.glUniformMatrix4fv(global_uniform_matrix, 1, false, (float32*)matrix);
+    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)global_view);
+    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
     GL.glUniform1i(global_uniform_texture, 0);
     
-    GL.glDrawArrays(GL_TRIANGLES, 0, 6);
+    GL.glBindVertexArray(global_quad_vao);
+    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+    GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
     GL.glBindTexture(GL_TEXTURE_2D, 0);
     GL.glDeleteTextures(1, &texture);
     
     Engine_PopMemory(bitmap);
+}
+
+API void
+Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB color)
+{
+    vec4 color_vec;
+    ColorToVec4(color, color_vec);
+    
+    GL.glBindVertexArray(model->vao);
+    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
+    
+    GL.glUseProgram(global_current_shader);
+    
+    GL.glUniform4fv(global_uniform_color, 1, color_vec);
+    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (const float32*)global_view);
+    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (const float32*)where);
+    GL.glUniform1i(global_uniform_texture, 0);
+    
+    GL.glActiveTexture(GL_TEXTURE0);
+    GL.glBindTexture(GL_TEXTURE_2D, global_white_texture);
+    
+    GL.glDrawElements(GL_TRIANGLES, model->index_count, GL_UNSIGNED_INT, 0);
+}
+
+API bool32
+Render_Load3DModelFromFile(String path, Render_3DModel* out)
+{
+    // TODO(ljre): Bad data error handling
+    
+    static const char header[] = "simple obj\n";
+    bool32 result = true;
+    
+    uintsize size;
+    char* data = Platform_ReadEntireFile(path, &size);
+    if (!data)
+        return false;
+    
+    char* head = data;
+    
+    if (strncmp(head, header, sizeof(header) - 1) == 0)
+    {
+        head += sizeof(header) - 1;
+        
+        uintsize vertex_count = strtoul(head, &head, 10);
+        Vertex* vertices = Engine_PushMemory(sizeof(Vertex) * vertex_count);
+        
+        for (int32 i = 0; i < vertex_count; ++i)
+        {
+            Vertex* v = vertices + i;
+            
+            v->position[0] = strtof(head, &head);
+            v->position[1] = strtof(head, &head);
+            v->position[2] = strtof(head, &head);
+            v->normal[0] = strtof(head, &head);
+            v->normal[1] = strtof(head, &head);
+            v->normal[2] = strtof(head, &head);
+            v->texcoord[0] = strtof(head, &head);
+            v->texcoord[1] = strtof(head, &head);
+        }
+        
+        uintsize index_count = strtoul(head, &head, 10);
+        uint32* indices = Engine_PushMemory(sizeof(uint32) * index_count);
+        for (int32 i = 0; i < index_count; ++i)
+        {
+            indices[i] = (uint32)strtoul(head, &head, 10);
+        }
+        
+        GL.glGenBuffers(1, &out->vbo);
+        GL.glBindBuffer(GL_ARRAY_BUFFER, out->vbo);
+        GL.glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(Vertex) * vertex_count), vertices, GL_STATIC_DRAW);
+        
+        GL.glGenBuffers(1, &out->ebo);
+        GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out->ebo);
+        GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(sizeof(uint32) * index_count), indices, GL_STATIC_DRAW);
+        
+        GL.glGenVertexArrays(1, &out->vao);
+        GL.glBindVertexArray(out->vao);
+        
+        GL.glEnableVertexAttribArray(0);
+        GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
+        GL.glEnableVertexAttribArray(1);
+        GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        GL.glEnableVertexAttribArray(2);
+        GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
+        
+        out->index_count = (int32)index_count;
+        
+        Engine_PopMemory(indices);
+        Engine_PopMemory(vertices);
+    }
+    else
+    {
+        result = false;
+    }
+    
+    Platform_FreeFileMemory(data, size);
+    return result;
 }
