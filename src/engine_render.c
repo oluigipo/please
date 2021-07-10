@@ -14,12 +14,6 @@ struct Vertex
     vec2 texcoord;
 } typedef Vertex;
 
-struct Render_3DModel
-{
-    uint32 vbo, vao, ebo;
-    int32 index_count;
-} typedef Render_3DModel;
-
 //~ Globals
 internal const GraphicsContext* global_graphics;
 internal const Vertex global_quad_vertices[] = {
@@ -40,14 +34,18 @@ internal float32 global_height;
 internal mat4 global_view;
 internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
 internal uint32 global_white_texture;
+internal vec3 global_dirlight;
 
 internal uint32 global_default_shader;
 internal uint32 global_default_3dshader;
 internal uint32 global_current_shader;
+
 internal int32 global_uniform_color;
 internal int32 global_uniform_view;
 internal int32 global_uniform_model;
+internal int32 global_uniform_inverse_model;
 internal int32 global_uniform_texture;
+internal int32 global_uniform_dirlight;
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
@@ -89,13 +87,16 @@ internal const char* const global_vertex_3dshader =
 
 "out vec2 vTexCoord;"
 "out vec3 vNormal;"
+"out vec3 vFragPos;"
 
 "uniform mat4 uView;\n"
 "uniform mat4 uModel;\n"
+"uniform mat4 uInverseModel;\n"
 
 "void main() {"
 "    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
-"    vNormal = vec3(uModel * vec4(aNormal, 1.0));"
+"    vFragPos = vec3(uModel * vec4(aPosition, 1.0));"
+"    vNormal = mat3(transpose(uInverseModel)) * aNormal;" // TODO(ljre): Review this.
 "    vTexCoord = aTexCoord;"
 "}"
 ;
@@ -105,14 +106,20 @@ internal const char* const global_fragment_3dshader =
 
 "in vec2 vTexCoord;"
 "in vec3 vNormal;"
+"in vec3 vFragPos;"
 
 "out vec4 oFragColor;"
 
 "uniform vec4 uColor;"
 "uniform sampler2D uTexture;"
+"uniform vec3 uDirLight;"
 
 "void main() {"
-"    vec4 color = vec4(vec3(uColor) * max(0.0, dot(normalize(vNormal), vec3(0.0, 0.0, -1.0))), uColor.a);"
+"    vec3 ambient = vec3(0.2);"
+
+"    vec3 diffuse = vec3(max( 0.0, dot(normalize(vNormal), uDirLight) ));"
+
+"    vec4 color = vec4(vec3(uColor) * (diffuse + ambient), uColor.a);"
 "    oFragColor = color * texture(uTexture, vTexCoord);"
 "}"
 ;
@@ -292,12 +299,20 @@ Engine_InitRender(void)
 	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, white_texture);
     GL.glBindTexture(GL_TEXTURE_2D, 0);
+    
+    global_dirlight[0] = 1.0f;
+    global_dirlight[1] = 2.0f;
+    global_dirlight[2] = 0.5f;
+    
+    glm_vec3_normalize(global_dirlight);
 }
 
 internal void
 Engine_DeinitRender(void)
 {
     Trace("Render_Deinit");
+    
+    // TODO(ljre): deinit
 }
 
 //~ API
@@ -334,6 +349,8 @@ Render_Begin2D(const Render_Camera* camera)
     global_uniform_view = GL.glGetUniformLocation(shader, "uView");
     global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
+    global_uniform_inverse_model = GL.glGetUniformLocation(shader, "uInverseModel");
     
     global_current_shader = shader;
 }
@@ -360,6 +377,8 @@ Render_Begin3D(const Render_Camera* camera)
     global_uniform_view = GL.glGetUniformLocation(shader, "uView");
     global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
+    global_uniform_inverse_model = GL.glGetUniformLocation(shader, "uInverseModel");
     
     global_current_shader = shader;
 }
@@ -494,6 +513,9 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     vec4 color_vec;
     ColorToVec4(color, color_vec);
     
+    mat4 inversed_where;
+    glm_mat4_inv_fast((vec4*)where, inversed_where);
+    
     GL.glBindVertexArray(model->vao);
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
     
@@ -503,6 +525,11 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     GL.glUniformMatrix4fv(global_uniform_view, 1, false, (const float32*)global_view);
     GL.glUniformMatrix4fv(global_uniform_model, 1, false, (const float32*)where);
     GL.glUniform1i(global_uniform_texture, 0);
+    
+    if (global_uniform_dirlight != -1)
+        GL.glUniform3fv(global_uniform_dirlight, 1, global_dirlight);
+    if (global_uniform_inverse_model != -1)
+        GL.glUniformMatrix4fv(global_uniform_inverse_model, 1, false, (const float32*)inversed_where);
     
     GL.glActiveTexture(GL_TEXTURE0);
     GL.glBindTexture(GL_TEXTURE_2D, global_white_texture);

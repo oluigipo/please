@@ -4,6 +4,7 @@
 //
 
 #include "internal.h"
+#include "internal_list.h"
 
 //~ Libraries
 #define STB_IMAGE_STATIC

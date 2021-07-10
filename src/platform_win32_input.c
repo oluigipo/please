@@ -194,8 +194,8 @@ NormalizeAxis(float32 axis[2])
     }
     else
     {
-        axis[0] = cosf(dir) * mag;
-        axis[1] = sinf(dir) * mag;
+        if (axis[0] < -0.05f || axis[0] > 0.05f) axis[0] = cosf(dir) * mag; else axis[0] = 0.0f;
+        if (axis[1] < -0.05f || axis[1] > 0.05f) axis[1] = sinf(dir) * mag; else axis[1] = 0.0f;
     }
 }
 

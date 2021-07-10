@@ -128,12 +128,15 @@ typedef double float64;
 #include "internal_direct3d.h"
 
 //~ Forward Declarations
-API int32 Engine_Main(int32 argc, char** argv);
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
+API int32 Engine_Main(int32 argc, char** argv);
+API uint64 Engine_RandomU64(void);
+API uint32 Engine_RandomU32(void);
+API float64 Engine_RandomF64(void);
 
-#include "internal_list.h"
 
+//- Discord Game SDK
 #ifdef USE_DISCORD_GAME_SDK
 API bool32 Discord_Init(int64 appid);
 API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
@@ -148,10 +151,7 @@ API void Discord_Deinit(void);
 #   define Discord_Deinit() ((void)0)
 #endif
 
-API uint64 Engine_RandomU64(void);
-API uint32 Engine_RandomU32(void);
-API float64 Engine_RandomF64(void);
-
+//- Audio
 struct Audio_SoundBuffer
 {
     int32 channels;
@@ -166,6 +166,7 @@ API void Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume,
 #define Audio_PlaySimple(sound, volume) Audio_Play(sound, false, volume, 1.0)
 API void Audio_StopByBuffer(const Audio_SoundBuffer* sound, int32 max);
 
+//- Rendering
 typedef uint32 ColorARGB;
 
 struct Render_Font
@@ -204,10 +205,10 @@ API void Render_DrawText(const Render_Font* font, String text, vec3 pos, float32
 API bool32 Render_Load3DModelFromFile(String path, Render_3DModel* out);
 API void Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB color);
 
-//- Game
+//~ Game
 API int32 Game_MainScene(void);
 
-//- Platform
+//~ Platform
 enum GraphicsAPI
 {
     GraphicsAPI_None = 0,

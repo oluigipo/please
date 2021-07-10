@@ -86,32 +86,35 @@ Engine_PopMemory(void* ptr)
 
 //~ Entry Point
 internal void
-DrawGamepadLayout(const Input_Gamepad* gamepad, float32 width, float32 height)
+DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 width, float32 height)
 {
     vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
     vec4 colors[2] = {
-        { 0.3f, 0.3f, 0.3f, 1.0f }, // Enabled
+        { 0.5f, 0.5f, 0.5f, 1.0f }, // Enabled
         { 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
     };
+    
+    float32 xscale = width / 600.0f;
+    float32 yscale = height / 600.0f;
     
     // NOTE(ljre): Draw Axes
     {
         Render_DrawRectangle(black,
-                             (vec3) { width / 2.0f - 100.0f, height / 2.0f + 100.0f },
-                             (vec3) { 50.0f, 50.0f });
+                             (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+                             (vec3) { 50.0f * xscale, 50.0f * yscale });
         
         Render_DrawRectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_LS)],
-                             (vec3) { width / 2.0f - 100.0f + gamepad->left[0] * 20.0f,
-                                 height / 2.0f + 100.0f + gamepad->left[1] * 20.0f },
-                             (vec3) { 20.0f, 20.0f });
+                             (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
+                                 y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
+                             (vec3) { 20.0f * xscale, 20.0f * yscale });
         
         Render_DrawRectangle(black,
-                             (vec3) { width / 2.0f + 100.0f, height / 2.0f + 100.0f },
-                             (vec3) { 50.0f, 50.0f });
+                             (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+                             (vec3) { 50.0f * xscale, 50.0f * yscale });
         
         Render_DrawRectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_RS)],
-                             (vec3) { width / 2.0f + 100.0f + gamepad->right[0] * 20.0f, height / 2.0f + 100.0f + gamepad->right[1] * 20.0f },
-                             (vec3) { 20.0f, 20.0f });
+                             (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
+                             (vec3) { 20.0f * xscale, 20.0f * yscale });
     }
     
     // NOTE(ljre): Draw Buttons
@@ -140,6 +143,11 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 width, float32 height)
         
         for (int32 i = 0; i < ArrayLength(buttons); ++i)
         {
+            buttons[i].pos[0] += x;
+            buttons[i].pos[1] += y;
+            buttons[i].size[0] *= xscale;
+            buttons[i].size[1] *= yscale;
+            
             Render_DrawRectangle(colors[Input_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size);
         }
     }
@@ -149,10 +157,14 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 width, float32 height)
         vec4 color;
         
         glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
-        Render_DrawRectangle(color, (vec3) { width * 0.20f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
+        Render_DrawRectangle(color,
+                             (vec3) { x + width * 0.20f, y + height * 0.23f },
+                             (vec3) { 60.0f * xscale, 30.0f * yscale });
         
         glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
-        Render_DrawRectangle(color, (vec3) { width * 0.80f, height * 0.23f }, (vec3) { 60.0f, 30.0f });
+        Render_DrawRectangle(color,
+                             (vec3) { x + width * 0.80f, y + height * 0.23f },
+                             (vec3) { 60.0f * xscale, 30.0f * yscale });
     }
 }
 
@@ -169,8 +181,8 @@ Engine_Main(int32 argc, char** argv)
     }
     
     // NOTE(ljre): Window width & height
-    float32 width = 600.0f;
-    float32 height = 600.0f;
+    float32 width = 1280.0f;
+    float32 height = 720.0f;
     
     if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
         Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
@@ -187,19 +199,16 @@ Engine_Main(int32 argc, char** argv)
     }
     
     // NOTE(ljre): Load Audio
-#if 0
+#if 1
     Audio_SoundBuffer sound_music;
-    Audio_SoundBuffer sound_music2;
     
-    if (!Audio_LoadFile(Str("music.ogg"), &sound_music) ||
-        Audio_LoadFile(Str("music2.ogg"), &sound_music2))
+    if (!Audio_LoadFile(Str("music.ogg"), &sound_music))
     {
         Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
     }
     else
     {
-        Audio_Play(&sound_music, true, 0.3, 2.0);
-        Audio_Play(&sound_music2, false, 2.5, 1.0);
+        Audio_Play(&sound_music, true, 0.4, 1.0);
     }
 #endif
     
@@ -210,11 +219,20 @@ Engine_Main(int32 argc, char** argv)
     // NOTE(ljre): Load Font
     Trace("Render_LoadFontFromFile");
     Render_Font font;
-    bool32 font_loaded = Render_LoadFontFromFile(Str("arial.ttf"), &font);
+    bool32 font_loaded = Render_LoadFontFromFile(Str("c:/windows/fonts/arial.ttf"), &font);
     
     int32 controller_index = 0;
+    
+    float32 camera_yaw = PI32;
+    float32 camera_pitch = 0.0f;
+    float32 sensitivity = 0.05f;
+    float32 camera_total_speed = 0.075f;
+    float32 camera_height = 1.9f;
+    float32 moving_time = 0.0f;
+    vec2 camera_speed = { 0 };
+    
     Render_Camera camera = {
-        .pos = { 0.0f, 0.0f, 0.0f },
+        .pos = { 0.0f, camera_height, 0.0f },
         .dir = { 0.0f, 0.0f, -1.0f },
         .up = { 0.0f, 1.0f, 0.0f },
     };
@@ -233,29 +251,78 @@ Engine_Main(int32 argc, char** argv)
         Input_Gamepad gamepad;
         bool32 is_connected = Input_GetGamepad(controller_index, &gamepad);
         
-        Render_ClearBackground(is_connected ? 0xFF7F00FF : 0xFF110011);
+        if (is_connected)
+        {
+            //~ NOTE(ljre): Camera Direction
+            if (gamepad.right[0] != 0.0f)
+            {
+                camera_yaw += gamepad.right[0] * sensitivity;
+                camera_yaw = fmodf(camera_yaw, PI32 * 2.0f);
+            }
+            
+            if (gamepad.right[1] != 0.0f)
+            {
+                camera_pitch += -gamepad.right[1] * sensitivity;
+                camera_pitch = glm_clamp(camera_pitch, -PI32 * 0.49f, PI32 * 0.49f);
+            }
+            
+            float32 pitched = cosf(camera_pitch);
+            
+            camera.dir[0] = cosf(camera_yaw) * pitched;
+            camera.dir[1] = sinf(camera_pitch);
+            camera.dir[2] = sinf(camera_yaw) * pitched;
+            glm_vec3_normalize(camera.dir);
+            
+            vec3 right;
+            glm_vec3_cross((vec3) { 0.0f, 1.0f, 0.0f }, camera.dir, right);
+            
+            glm_vec3_cross(camera.dir, right, camera.up);
+            
+            //~ Movement
+            vec2 speed;
+            
+            speed[0] = -gamepad.left[1];
+            speed[1] =  gamepad.left[0];
+            
+            glm_vec2_rotate(speed, camera_yaw, speed);
+            glm_vec2_scale(speed, camera_total_speed, speed);
+            glm_vec2_lerp(camera_speed, speed, 0.2f, camera_speed);
+            
+            camera.pos[0] += camera_speed[0];
+            camera.pos[2] += camera_speed[1];
+            
+            //~ Bump
+            float32 d = glm_vec2_distance2(camera_speed, GLM_VEC2_ZERO);
+            if (d > 0.0001f)
+            {
+                moving_time += 0.3f;
+                camera.pos[1] = camera_height + sinf(moving_time) * 0.04f;
+            }
+        }
+        
+        Render_ClearBackground(is_connected ? 0xFF2D81FF : 0xFF110011);
         
         //~ NOTE(ljre): 3D World
         Render_Begin3D(&camera);
         {
-            //- NOTE(ljre): Draw Model
             mat4 where = GLM_MAT4_IDENTITY;
-            glm_translate(where, (vec3) { -0.25f, -0.25f, -0.5f });
-            glm_rotate(where, (float32)Platform_GetTime(), (vec3) { 0.0f, 1.0f, 0.0f });
-            glm_scale(where, (vec3) { 0.25f, 0.25f, 0.25f });
-            glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
             
-            Render_Draw3DModel(&model, where, 0xFFFFFFFF);
+            //- NOTE(ljre): Draw Models
+            glm_translate(where, (vec3) { 0.0f, 0.5f, 0.0f });
+            glm_rotate(where, (float32)Platform_GetTime(), (vec3) { 0.0f, 1.0f, 0.0f });
+            glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
+            Render_Draw3DModel(&model, where, 0xFFFFAAFF);
+            
+            glm_mat4_identity(where);
+            glm_translate(where, (vec3) { 0.0f, -1.0f, 0.0f });
+            glm_scale(where, (vec3) { 20.0f, 2.0f, 20.0f });
+            glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
+            Render_Draw3DModel(&model, where, 0xFF008000);
         }
         
         //~ NOTE(ljre): 2D User Interface
         Render_Begin2D(NULL);
         {
-            if (is_connected)
-            {
-                DrawGamepadLayout(&gamepad, width, height);
-            }
-            
             //- NOTE(ljre): Draw Controller Index
             if (font_loaded) {
                 char buf[128];
@@ -263,18 +330,23 @@ Engine_Main(int32 argc, char** argv)
                 Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, 0xFFFFFFFF);
             }
             
+            if (is_connected)
+            {
+                DrawGamepadLayout(&gamepad, 0.0f, 0.0f, 300.0f, 300.0f);
+            }
+            
             //- NOTE(ljre): Audio Testing
             if (sound_music3.samples)
             {
                 if (font_loaded) {
-                    Render_DrawText(&font, Str("Press J, K, or L!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
+                    Render_DrawText(&font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
                 }
                 
-                if (Input_KeyboardIsPressed('L'))
+                if (Input_IsPressed(gamepad, Input_GamepadButton_A))
                     Audio_Play(&sound_music3, false, 0.5, 1.5);
-                if (Input_KeyboardIsPressed('K'))
+                if (Input_IsPressed(gamepad, Input_GamepadButton_X))
                     Audio_Play(&sound_music3, false, 0.5, 1.0);
-                if (Input_KeyboardIsPressed('J'))
+                if (Input_IsPressed(gamepad, Input_GamepadButton_B))
                     Audio_Play(&sound_music3, false, 0.5, 0.75);
             }
         }
