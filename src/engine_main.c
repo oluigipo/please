@@ -195,7 +195,13 @@ Engine_Main(int32 argc, char** argv)
     Render_3DModel model;
     if (!Render_Load3DModelFromFile(Str("./assets/cube.sobj"), &model))
     {
-        Platform_MessageBox(Str("Error"), Str("Could not load cube :("));
+        Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
+    }
+    
+    Render_3DModel tree_model;
+    if (!Render_Load3DModelFromFile(Str("./assets/first_tree.sobj"), &tree_model))
+    {
+        Platform_ExitWithErrorMessage(Str(":("));
     }
     
     // NOTE(ljre): Load Audio
@@ -212,7 +218,6 @@ Engine_Main(int32 argc, char** argv)
     }
 #endif
     
-    Trace("Audio_LoadFile");
     Audio_SoundBuffer sound_music3 = { 0 };
     Audio_LoadFile(Str("music3.ogg"), &sound_music3);
     
@@ -236,6 +241,28 @@ Engine_Main(int32 argc, char** argv)
         .dir = { 0.0f, 0.0f, -1.0f },
         .up = { 0.0f, 1.0f, 0.0f },
     };
+    
+    struct RotatingCube {
+        vec3 pos;
+        ColorARGB color;
+    };
+    
+    struct RotatingCube rotating_cubes[30];
+    for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
+    {
+        rotating_cubes[i].pos[0] = Engine_RandomF32Range(-20.0f, 20.0f);
+        rotating_cubes[i].pos[1] = Engine_RandomF32Range(3.0f, 10.0f);
+        rotating_cubes[i].pos[2] = Engine_RandomF32Range(-20.0f, 20.0f);
+        
+        static const ColorARGB colors[] = {
+            0xFFFF0000, 0xFFFF3E00, 0xFFFF8100, 0xFFFFC100, 0xFFFFFF00, 0xFFC1FF00,
+            0xFF81FF00, 0xFF3EFF00, 0xFF00FF00, 0xFF00FF3E, 0xFF00FF81, 0xFF00FFC1,
+            0xFF00FFFF, 0xFF00C1FF, 0xFF0081FF, 0xFF003EFF, 0xFF0000FF, 0xFF3E00FF,
+            0xFF8100FF, 0xFFC100FF, 0xFFFF00FF, 0xFFFF00C1, 0xFFFF0081, 0xFFFF003E,
+        };
+        
+        rotating_cubes[i].color = colors[Engine_RandomU64() % ArrayLength(colors)];
+    }
     
     Trace("Game Loop");
     while (!Platform_WindowShouldClose())
@@ -305,19 +332,30 @@ Engine_Main(int32 argc, char** argv)
         //~ NOTE(ljre): 3D World
         Render_Begin3D(&camera);
         {
-            mat4 where = GLM_MAT4_IDENTITY;
+            mat4 where;
             
             //- NOTE(ljre): Draw Models
-            glm_translate(where, (vec3) { 0.0f, 0.5f, 0.0f });
-            glm_rotate(where, (float32)Platform_GetTime(), (vec3) { 0.0f, 1.0f, 0.0f });
-            glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
-            Render_Draw3DModel(&model, where, 0xFFFFAAFF);
+            for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
+            {
+                struct RotatingCube* cube = &rotating_cubes[i];
+                
+                glm_mat4_identity(where);
+                glm_translate(where, (vec3) { cube->pos[0], cube->pos[1] + 0.5f, cube->pos[2] });
+                glm_rotate(where, (float32)Platform_GetTime() + (float32)i, (vec3) { 0.0f, 1.0f, 0.0f });
+                glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
+                Render_Draw3DModel(&model, where, cube->color);
+            }
             
+            // Ground
             glm_mat4_identity(where);
             glm_translate(where, (vec3) { 0.0f, -1.0f, 0.0f });
             glm_scale(where, (vec3) { 20.0f, 2.0f, 20.0f });
             glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
             Render_Draw3DModel(&model, where, 0xFF008000);
+            
+            // Tree
+            glm_mat4_identity(where);
+            Render_Draw3DModel(&tree_model, where, 0xFFFFFFFF);
         }
         
         //~ NOTE(ljre): 2D User Interface

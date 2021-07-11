@@ -194,6 +194,7 @@ struct Render_Camera
 struct Render_3DModel
 {
     uint32 vbo, vao, ebo;
+    uint32 diffuse;
     int32 index_count;
 } typedef Render_3DModel;
 

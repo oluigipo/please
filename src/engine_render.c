@@ -14,6 +14,33 @@ struct Vertex
     vec2 texcoord;
 } typedef Vertex;
 
+enum RenderBufferMode
+{
+    RenderBufferMode_None = 0,
+    
+    RenderBufferMode_3DModel,
+    RenderBufferMode_Sprite,
+} typedef RenderBufferMode;
+
+struct RenderBuffer
+{
+    uint32 texture;
+    uint32 vao, ebo;
+    int32 ebo_size;
+    
+    RenderBufferMode mode;
+    int32 len;
+    int32 cap;
+    
+    void* elements;
+} typedef RenderBuffer;
+
+struct RenderBufferElement3DModel
+{
+    mat4 model;
+    mat4 inversed_model;
+} typedef RenderBufferElement3DModel;
+
 //~ Globals
 internal const GraphicsContext* global_graphics;
 internal const Vertex global_quad_vertices[] = {
@@ -359,7 +386,7 @@ API void
 Render_Begin3D(const Render_Camera* camera)
 {
     mat4 proj;
-    glm_perspective(90.0f, global_width / global_height, 0.01f, 100.0f, proj);
+    glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
     
     glm_mat4_identity(global_view);
     if (camera)
@@ -532,16 +559,15 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
         GL.glUniformMatrix4fv(global_uniform_inverse_model, 1, false, (const float32*)inversed_where);
     
     GL.glActiveTexture(GL_TEXTURE0);
-    GL.glBindTexture(GL_TEXTURE_2D, global_white_texture);
+    GL.glBindTexture(GL_TEXTURE_2D, model->diffuse ? model->diffuse : global_white_texture);
     
     GL.glDrawElements(GL_TRIANGLES, model->index_count, GL_UNSIGNED_INT, 0);
 }
 
+// TODO(ljre): Loading from .obj files. This is a mess.
 API bool32
 Render_Load3DModelFromFile(String path, Render_3DModel* out)
 {
-    // TODO(ljre): Bad data error handling
-    
     static const char header[] = "simple obj\n";
     bool32 result = true;
     
@@ -555,6 +581,23 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
     if (strncmp(head, header, sizeof(header) - 1) == 0)
     {
         head += sizeof(header) - 1;
+        
+        out->diffuse = 0;
+        
+        char working_folder[512];
+        {
+            int32 len = snprintf(working_folder, sizeof working_folder, "%.*s", StrFmt(path));
+            
+            char* last = NULL;
+            for (int32 i = 0; i < len; ++i)
+            {
+                if (working_folder[i] == '/')
+                    last = &working_folder[i];
+            }
+            
+            if (last)
+                last[1] = 0;
+        }
         
         uintsize vertex_count = strtoul(head, &head, 10);
         Vertex* vertices = Engine_PushMemory(sizeof(Vertex) * vertex_count);
@@ -570,7 +613,7 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
             v->normal[1] = strtof(head, &head);
             v->normal[2] = strtof(head, &head);
             v->texcoord[0] = strtof(head, &head);
-            v->texcoord[1] = strtof(head, &head);
+            v->texcoord[1] = 1.0f - strtof(head, &head);
         }
         
         uintsize index_count = strtoul(head, &head, 10);
@@ -599,6 +642,44 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
         
         out->index_count = (int32)index_count;
+        
+        while (*head)
+        {
+            while (*head == ' ' || *head == '\n') ++head;
+            
+            if (strncmp(head, "diffuse ", 8) == 0 && !out->diffuse)
+            {
+                char* end = head + 8;
+                String filename = { .data = end };
+                while (*end && *end != '\n') ++end, ++filename.len;
+                head = end;
+                
+                char image_path[512];
+                snprintf(image_path, sizeof image_path, "%s%.*s", working_folder, StrFmt(filename));
+                
+                int32 width, height, channels;
+                uint8* data = stbi_load(image_path, &width, &height, &channels, 4);
+                
+                if (data)
+                {
+                    GL.glGenTextures(1, &out->diffuse);
+                    GL.glBindTexture(GL_TEXTURE_2D, out->diffuse);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                    
+                    stbi_image_free(data);
+                }
+                else
+                {
+                    Platform_DebugMessageBox("%s", image_path);
+                }
+            }
+            else
+            {
+                ++head;
+            }
+        }
         
         Engine_PopMemory(indices);
         Engine_PopMemory(vertices);

@@ -54,6 +54,16 @@ Engine_RandomF64(void) {
     return (float64)Engine_RandomU64() / (float64)UINT64_MAX;
 }
 
+API float32
+Engine_RandomF32Range(float32 start, float32 end)
+{
+    float64 s = (float64)start;
+    float64 e = (float64)end;
+    float64 r = Engine_RandomF64();
+    
+    return (float32)(r * (e - s) + s);
+}
+
 API uint32
 Engine_RandomU32(void) {
     uint64 result = Engine_RandomU64();
