@@ -67,4 +67,27 @@ String_Length(String str)
     return len;
 }
 
+internal inline int32
+String_Compare(String a, String b)
+{
+    if (a.len != b.len)
+        return (int32)a.len - (int32)b.len;
+    
+    return strncmp(a.data, b.data, a.len);
+}
+
+internal inline bool32
+String_EndsWith(String check, String s)
+{
+    if (s.len > check.len)
+        return false;
+    
+    String substr = {
+        .data = check.data + (check.len - s.len),
+        .len = s.len,
+    };
+    
+    return strncmp(substr.data, s.data, substr.len);
+}
+
 #endif //INTERNAL_STRING_H

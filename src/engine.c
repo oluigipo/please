@@ -21,6 +21,8 @@
 #   include "engine_discord.c"
 #endif
 
+#include "engine_file_json.c"
+#include "engine_file_gltf.c"
 #include "engine_random.c"
 #include "engine_audio.c"
 #include "engine_render.c"

@@ -568,126 +568,12 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
 API bool32
 Render_Load3DModelFromFile(String path, Render_3DModel* out)
 {
-    static const char header[] = "simple obj\n";
-    bool32 result = true;
-    
     uintsize size;
-    char* data = Platform_ReadEntireFile(path, &size);
+    uint8* data = Platform_ReadEntireFile(path, &size);
     if (!data)
         return false;
     
-    char* head = data;
-    
-    if (strncmp(head, header, sizeof(header) - 1) == 0)
-    {
-        head += sizeof(header) - 1;
-        
-        out->diffuse = 0;
-        
-        char working_folder[512];
-        {
-            int32 len = snprintf(working_folder, sizeof working_folder, "%.*s", StrFmt(path));
-            
-            char* last = NULL;
-            for (int32 i = 0; i < len; ++i)
-            {
-                if (working_folder[i] == '/')
-                    last = &working_folder[i];
-            }
-            
-            if (last)
-                last[1] = 0;
-        }
-        
-        uintsize vertex_count = strtoul(head, &head, 10);
-        Vertex* vertices = Engine_PushMemory(sizeof(Vertex) * vertex_count);
-        
-        for (int32 i = 0; i < vertex_count; ++i)
-        {
-            Vertex* v = vertices + i;
-            
-            v->position[0] = strtof(head, &head);
-            v->position[1] = strtof(head, &head);
-            v->position[2] = strtof(head, &head);
-            v->normal[0] = strtof(head, &head);
-            v->normal[1] = strtof(head, &head);
-            v->normal[2] = strtof(head, &head);
-            v->texcoord[0] = strtof(head, &head);
-            v->texcoord[1] = 1.0f - strtof(head, &head);
-        }
-        
-        uintsize index_count = strtoul(head, &head, 10);
-        uint32* indices = Engine_PushMemory(sizeof(uint32) * index_count);
-        for (int32 i = 0; i < index_count; ++i)
-        {
-            indices[i] = (uint32)strtoul(head, &head, 10);
-        }
-        
-        GL.glGenBuffers(1, &out->vbo);
-        GL.glBindBuffer(GL_ARRAY_BUFFER, out->vbo);
-        GL.glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(Vertex) * vertex_count), vertices, GL_STATIC_DRAW);
-        
-        GL.glGenBuffers(1, &out->ebo);
-        GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out->ebo);
-        GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(sizeof(uint32) * index_count), indices, GL_STATIC_DRAW);
-        
-        GL.glGenVertexArrays(1, &out->vao);
-        GL.glBindVertexArray(out->vao);
-        
-        GL.glEnableVertexAttribArray(0);
-        GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
-        GL.glEnableVertexAttribArray(1);
-        GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-        GL.glEnableVertexAttribArray(2);
-        GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
-        
-        out->index_count = (int32)index_count;
-        
-        while (*head)
-        {
-            while (*head == ' ' || *head == '\n') ++head;
-            
-            if (strncmp(head, "diffuse ", 8) == 0 && !out->diffuse)
-            {
-                char* end = head + 8;
-                String filename = { .data = end };
-                while (*end && *end != '\n') ++end, ++filename.len;
-                head = end;
-                
-                char image_path[512];
-                snprintf(image_path, sizeof image_path, "%s%.*s", working_folder, StrFmt(filename));
-                
-                int32 width, height, channels;
-                uint8* data = stbi_load(image_path, &width, &height, &channels, 4);
-                
-                if (data)
-                {
-                    GL.glGenTextures(1, &out->diffuse);
-                    GL.glBindTexture(GL_TEXTURE_2D, out->diffuse);
-                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                    GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                    
-                    stbi_image_free(data);
-                }
-                else
-                {
-                    Platform_DebugMessageBox("%s", image_path);
-                }
-            }
-            else
-            {
-                ++head;
-            }
-        }
-        
-        Engine_PopMemory(indices);
-        Engine_PopMemory(vertices);
-    }
-    else
-    {
-        result = false;
-    }
+    bool32 result = Engine_ParseGltf(data, size, out);
     
     Platform_FreeFileMemory(data, size);
     return result;
