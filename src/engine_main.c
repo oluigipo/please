@@ -84,6 +84,17 @@ Engine_PopMemory(void* ptr)
     }
 }
 
+API void*
+Engine_PushMemoryState(void)
+{
+    return global_stack_header;
+}
+
+API void Engine_PopMemoryState(void* state)
+{
+    global_stack_header = state;
+}
+
 //~ Entry Point
 internal void
 DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 width, float32 height)
@@ -193,13 +204,13 @@ Engine_Main(int32 argc, char** argv)
     
     // NOTE(ljre): Load model in custom format 'simple obj (.sobj)'
     Render_3DModel model;
-    if (!Render_Load3DModelFromFile(Str("./assets/cube.sobj"), &model))
+    if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))
     {
         Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
     }
     
     Render_3DModel tree_model;
-    if (!Render_Load3DModelFromFile(Str("./assets/first_tree.sobj"), &tree_model))
+    if (!Render_Load3DModelFromFile(Str("./assets/first_tree.glb"), &tree_model))
     {
         Platform_ExitWithErrorMessage(Str(":("));
     }

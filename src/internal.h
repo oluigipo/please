@@ -130,11 +130,13 @@ typedef double float64;
 //~ Forward Declarations
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
+API void* Engine_PushMemoryState(void);
+API void Engine_PopMemoryState(void* state);
+
 API int32 Engine_Main(int32 argc, char** argv);
 API uint64 Engine_RandomU64(void);
 API uint32 Engine_RandomU32(void);
 API float64 Engine_RandomF64(void);
-
 
 //- Discord Game SDK
 #ifdef USE_DISCORD_GAME_SDK
@@ -193,9 +195,14 @@ struct Render_Camera
 
 struct Render_3DModel
 {
+    mat4 transform;
     uint32 vbo, vao, ebo;
     uint32 diffuse;
+    
     int32 index_count;
+    int32 index_type;
+    
+    int32 prim_mode;
 } typedef Render_3DModel;
 
 API void Render_ClearBackground(ColorARGB color);

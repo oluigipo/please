@@ -70,10 +70,31 @@ String_Length(String str)
 internal inline int32
 String_Compare(String a, String b)
 {
-    if (a.len != b.len)
-        return (int32)a.len - (int32)b.len;
+    const char* ap = a.data;
+    const char* bp = b.data;
     
-    return strncmp(a.data, b.data, a.len);
+    const char* ap_end = ap + a.len;
+    const char* bp_end = bp + b.len;
+    
+    while (ap < ap_end && !ap_end[-1]) --ap_end;
+    while (bp < bp_end && !bp_end[-1]) --bp_end;
+    
+    while (ap < ap_end && bp < bp_end)
+    {
+        if (*ap != *bp)
+            return (int32)*ap - (int32)*bp;
+        
+        ++ap;
+        ++bp;
+    }
+    
+    int32 alen = (int32)(ap_end - ap);
+    int32 blen = (int32)(bp_end - bp);
+    
+    if (alen != blen)
+        return alen - blen;
+    
+    return 0;
 }
 
 internal inline bool32

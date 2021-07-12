@@ -36,7 +36,7 @@ ifeq ($(OS), Windows_NT)
 	LDFLAGS += -luser32 -lgdi32 -lhid
 	
 	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
-	CFLAGS += -Werror=float-conversion -Werror=sign-conversion
+	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
 	CFLAGS += -D_CRT_SECURE_NO_WARNINGS -DOS_WINDOWS
 	
 	ifeq ($(ARCH), x86)

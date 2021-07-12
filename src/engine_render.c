@@ -370,6 +370,7 @@ Render_Begin2D(const Render_Camera* camera)
     glm_mat4_mul(proj, global_view, global_view);
     
     GL.glDisable(GL_DEPTH_TEST);
+    GL.glDisable(GL_CULL_FACE);
     
     uint32 shader = global_default_shader;
     global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
@@ -397,6 +398,7 @@ Render_Begin3D(const Render_Camera* camera)
     glm_mat4_mul(proj, global_view, global_view);
     
     GL.glEnable(GL_DEPTH_TEST);
+    GL.glEnable(GL_CULL_FACE);
     GL.glClear(GL_DEPTH_BUFFER_BIT);
     
     uint32 shader = global_default_3dshader;
@@ -540,8 +542,12 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     vec4 color_vec;
     ColorToVec4(color, color_vec);
     
-    mat4 inversed_where;
-    glm_mat4_inv_fast((vec4*)where, inversed_where);
+    mat4 matrix;
+    glm_mat4_copy((vec4*)where, matrix);
+    glm_mat4_mul(matrix, (vec4*)model->transform, matrix);
+    
+    mat4 inversed_matrix;
+    glm_mat4_inv_fast(matrix, inversed_matrix);
     
     GL.glBindVertexArray(model->vao);
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
@@ -550,21 +556,20 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     
     GL.glUniform4fv(global_uniform_color, 1, color_vec);
     GL.glUniformMatrix4fv(global_uniform_view, 1, false, (const float32*)global_view);
-    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (const float32*)where);
+    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (const float32*)matrix);
     GL.glUniform1i(global_uniform_texture, 0);
     
     if (global_uniform_dirlight != -1)
         GL.glUniform3fv(global_uniform_dirlight, 1, global_dirlight);
     if (global_uniform_inverse_model != -1)
-        GL.glUniformMatrix4fv(global_uniform_inverse_model, 1, false, (const float32*)inversed_where);
+        GL.glUniformMatrix4fv(global_uniform_inverse_model, 1, false, (const float32*)inversed_matrix);
     
     GL.glActiveTexture(GL_TEXTURE0);
     GL.glBindTexture(GL_TEXTURE_2D, model->diffuse ? model->diffuse : global_white_texture);
     
-    GL.glDrawElements(GL_TRIANGLES, model->index_count, GL_UNSIGNED_INT, 0);
+    GL.glDrawElements((GLenum)model->prim_mode, model->index_count, (GLenum)model->index_type, 0);
 }
 
-// TODO(ljre): Loading from .obj files. This is a mess.
 API bool32
 Render_Load3DModelFromFile(String path, Render_3DModel* out)
 {
@@ -573,8 +578,89 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
     if (!data)
         return false;
     
-    bool32 result = Engine_ParseGltf(data, size, out);
+    void* state = Engine_PushMemoryState();
     
+    Engine_GltfJson model;
+    bool32 result = Engine_ParseGltf(data, size, &model);
+    
+    // TODO(ljre)
+    if (result)
+    {
+        GltfJson_Primitive* prim = &model.meshes[model.nodes[model.scenes[model.scene].nodes[0]].mesh].primitives[0];
+        GltfJson_BufferView* view;
+        int32 total_size = 0;
+        
+        const uint8* pos_buffer;
+        int32 pos_size;
+        
+        const uint8* norm_buffer;
+        int32 norm_size;
+        
+        const uint8* uv_buffer;
+        int32 uv_size;
+        
+        const uint8* indices_buffer;
+        int32 indices_size;
+        
+        // NOTE(ljre): Position
+        view = &model.buffer_views[model.accessors[prim->attributes.position].buffer_view];
+        pos_buffer = model.buffers[view->buffer].data + view->byte_offset;
+        pos_size = view->byte_length;
+        total_size += pos_size;
+        
+        // NOTE(ljre): Normal
+        view = &model.buffer_views[model.accessors[prim->attributes.normal].buffer_view];
+        norm_buffer = model.buffers[view->buffer].data + view->byte_offset;
+        norm_size = view->byte_length;
+        total_size += norm_size;
+        
+        // NOTE(ljre): Texcoords
+        view = &model.buffer_views[model.accessors[prim->attributes.texcoord_0].buffer_view];
+        uv_buffer = model.buffers[view->buffer].data + view->byte_offset;
+        uv_size = view->byte_length;
+        total_size += uv_size;
+        
+        GL.glGenBuffers(1, &out->vbo);
+        GL.glBindBuffer(GL_ARRAY_BUFFER, out->vbo);
+        GL.glBufferData(GL_ARRAY_BUFFER, total_size, NULL, GL_STATIC_DRAW);
+        
+        GL.glBufferSubData(GL_ARRAY_BUFFER, 0, pos_size, pos_buffer);
+        GL.glBufferSubData(GL_ARRAY_BUFFER, pos_size, norm_size, norm_buffer);
+        GL.glBufferSubData(GL_ARRAY_BUFFER, pos_size + norm_size, uv_size, uv_buffer);
+        
+        // NOTE(ljre): VAO
+        GL.glGenVertexArrays(1, &out->vao);
+        GL.glBindVertexArray(out->vao);
+        
+        GL.glEnableVertexAttribArray(0);
+        GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
+        GL.glEnableVertexAttribArray(1);
+        GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(vec3), (void*)pos_size);
+        GL.glEnableVertexAttribArray(2);
+        GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(vec2), (void*)(pos_size + norm_size));
+        
+        // NOTE(ljre): Indices
+        view = &model.buffer_views[model.accessors[prim->indices].buffer_view];
+        indices_buffer = model.buffers[view->buffer].data + view->byte_offset;
+        indices_size = view->byte_length;
+        
+        GL.glGenBuffers(1, &out->ebo);
+        GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out->ebo);
+        GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices_buffer, GL_STATIC_DRAW);
+        
+        out->prim_mode = prim->mode;
+        out->index_type = model.accessors[prim->indices].component_type;
+        out->index_count = model.accessors[prim->indices].count;
+        glm_mat4_copy(model.nodes[model.scenes[model.scene].nodes[0]].transform, out->transform);
+        // TODO(ljre): Textures
+        out->diffuse = 0;
+        
+        GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
+        GL.glBindVertexArray(0);
+        GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+    
+    Engine_PopMemoryState(state);
     Platform_FreeFileMemory(data, size);
     return result;
 }

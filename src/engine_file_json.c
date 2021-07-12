@@ -131,11 +131,11 @@ FindEndOfValue(const uint8* begin, const uint8* end)
             while (it < end && it[0] != '"' && it[-1] != '\\')
                 ++it;
             
-            if (it >= end)
+            if (++it >= end)
                 return NULL;
         } break;
         
-        // case '0': // NOTE(ljre): a number cannot start with 0... really
+        case '0':
         case '1': case '2': case '3': case'4':
         case '5': case '6': case '7': case'8':
         case '9':
@@ -223,7 +223,7 @@ Json_NextIndex(Json_ArrayIndex* index)
         return false;
     
     const Json_Value* value = index->object;
-    Assert(value->kind == Json_ValueKind_Object);
+    Assert(value->kind == Json_ValueKind_Array);
     Assert(value->begin < value->end);
     
     if (!index->begin)
@@ -231,7 +231,7 @@ Json_NextIndex(Json_ArrayIndex* index)
         index->begin = IgnoreWhiteSpacesLeft(value->begin + 1, value->end);
         index->end = IgnoreWhiteSpacesRight(index->begin, value->end);
         
-        if (index->begin + 2 >= index->end)
+        if (index->begin >= index->end)
             return false;
     }
     else
@@ -251,11 +251,49 @@ Json_NextIndex(Json_ArrayIndex* index)
         index->end = value->end;
     }
     
-    index->end = FindEndOfValue(index->end, index->end);
+    index->end = FindEndOfValue(index->begin, index->end);
     if (!index->end)
         return false;
     
     return true;
+}
+
+internal void
+Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
+{
+    Assert(index);
+    Assert(value);
+    Assert(index->begin < index->end);
+    
+    value->begin = index->begin;
+    value->end = index->end;
+    
+    switch (*value->begin)
+    {
+        case '{': value->kind = Json_ValueKind_Object; break;
+        case '[': value->kind = Json_ValueKind_Array; break;
+        case '"': value->kind = Json_ValueKind_String; break;
+        
+        case '0':
+        case '1': case '2': case '3': case'4':
+        case '5': case '6': case '7': case'8':
+        case '9': value->kind = Json_ValueKind_Number; break;
+        
+        default: value->kind = Json_ValueKind_Invalid; break;
+    }
+}
+
+internal uintsize
+Json_ArrayLength(const Json_Value* value)
+{
+    Assert(value);
+    Assert(value->kind == Json_ValueKind_Array);
+    
+    uintsize len = 0;
+    for (Json_ArrayIndex index = { value }; Json_NextIndex(&index); )
+        ++len;
+    
+    return len;
 }
 
 internal bool32
@@ -309,7 +347,7 @@ Json_NextField(Json_Field* field)
     field->name_end = it;
     
     // NOTE(ljre): ':'
-    it = IgnoreWhiteSpacesLeft(it, field->end);
+    it = IgnoreWhiteSpacesLeft(it + 1, field->end);
     if (it >= field->end || it[0] != ':')
         return false;
     
@@ -339,12 +377,13 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
     value->begin = field->value_begin;
     value->end = field->end;
     
-    switch (*field->begin)
+    switch (*value->begin)
     {
         case '{': value->kind = Json_ValueKind_Object; break;
         case '[': value->kind = Json_ValueKind_Array; break;
         case '"': value->kind = Json_ValueKind_String; break;
         
+        case '0':
         case '1': case '2': case '3': case'4':
         case '5': case '6': case '7': case'8':
         case '9': value->kind = Json_ValueKind_Number; break;
@@ -353,13 +392,74 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
     }
 }
 
-internal void
-Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
+internal bool32
+Json_FindField(const Json_Value* object, String name, Json_Field* out)
 {
-    if (size > 0)
+    Assert(object);
+    Assert(object->kind == Json_ValueKind_Object);
+    
+    Json_Field field = { object };
+    while (Json_NextField(&field))
     {
-        out_state->begin = data;
-        out_state->end = data + size;
+        if (String_Compare(Json_RawFieldName(&field), name) == 0)
+        {
+            *out = field;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+internal bool32
+Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
+{
+    Assert(array);
+    Assert(array->kind == Json_ValueKind_Array);
+    
+    Json_ArrayIndex index = { array };
+    int32 current_i = 0;
+    while (Json_NextIndex(&index))
+    {
+        if (current_i == i)
+        {
+            *out = index;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+internal bool32
+Json_FindFieldValue(const Json_Value* object, String name, Json_Value* out)
+{
+    Json_Field field;
+    if (!Json_FindField(object, name, &field))
+        return false;
+    
+    Json_FieldValue(&field, out);
+    return true;
+}
+
+internal bool32
+Json_FindIndexValue(const Json_Value* array, int32 i, Json_Value* out)
+{
+    Json_ArrayIndex index;
+    if (!Json_FindIndex(array, i, &index))
+        return false;
+    
+    Json_IndexValue(&index, out);
+    return true;
+}
+
+internal void
+Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_state)
+{
+    if (begin + 1 < end)
+    {
+        out_state->begin = begin;
+        out_state->end = end;
         
         out_state->begin = IgnoreWhiteSpacesLeft(out_state->begin, out_state->end);
         if (out_state->begin >= out_state->end)
@@ -374,6 +474,7 @@ Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
                 case '[': out_state->kind = Json_ValueKind_Array; break;
                 case '"': out_state->kind = Json_ValueKind_String; break;
                 
+                case '0':
                 case '1': case '2': case '3': case'4':
                 case '5': case '6': case '7': case'8':
                 case '9': out_state->kind = Json_ValueKind_Number; break;
@@ -386,4 +487,10 @@ Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
     {
         out_state->kind = Json_ValueKind_Invalid;
     }
+}
+
+internal inline void
+Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
+{
+    Json_InitFromBufferRange(data, data + size, out_state);
 }
