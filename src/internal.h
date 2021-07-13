@@ -126,6 +126,7 @@ typedef double float64;
 #include "internal_string.h"
 #include "internal_opengl.h"
 #include "internal_direct3d.h"
+#include "internal_assets.h"
 
 //~ Forward Declarations
 API void* Engine_PushMemory(uintsize size);
@@ -154,30 +155,14 @@ API void Discord_Deinit(void);
 #endif
 
 //- Audio
-struct Audio_SoundBuffer
-{
-    int32 channels;
-    int32 sample_rate;
-    int32 sample_count;
-    int16* samples;
-} typedef Audio_SoundBuffer;
-
-API bool32 Audio_LoadFile(String path, Audio_SoundBuffer* out_sound);
-API void Audio_FreeSoundBuffer(Audio_SoundBuffer* sound);
-API void Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed);
+API bool32 Audio_LoadFile(String path, Asset_SoundBuffer* out_sound);
+API void Audio_FreeSoundBuffer(Asset_SoundBuffer* sound);
+API void Audio_Play(const Asset_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed);
 #define Audio_PlaySimple(sound, volume) Audio_Play(sound, false, volume, 1.0)
-API void Audio_StopByBuffer(const Audio_SoundBuffer* sound, int32 max);
+API void Audio_StopByBuffer(const Asset_SoundBuffer* sound, int32 max);
 
 //- Rendering
 typedef uint32 ColorARGB;
-
-struct Render_Font
-{
-    stbtt_fontinfo info;
-    void* data;
-    uintsize data_size;
-    int32 ascent, descent, line_gap;
-} typedef Render_Font;
 
 struct Render_Camera
 {
@@ -193,34 +178,74 @@ struct Render_Camera
     };
 } typedef Render_Camera;
 
-struct Render_Material
+typedef struct Render_Entity Render_Entity;
+enum Render_EntityKind
 {
-    vec3 ambient;
-    uint32 diffuse;
-    uint32 specular;
-    uint32 normal;
-    float32 shininess;
-} typedef Render_Material;
+    Render_EntityKind_PointLight,
+    Render_EntityKind_3DModel,
+} typedef Render_EntityKind;
 
 struct Render_3DModel
 {
-    mat4 transform;
-    uint32 vbo, vao, ebo;
-    Render_Material material;
-    
-    int32 index_count;
-    int32 index_type;
-    
-    int32 prim_mode;
+    Render_Entity* entity;
+    Asset_3DModel* asset;
+    vec4 color;
 } typedef Render_3DModel;
 
-API void Render_ClearBackground(ColorARGB color);
+struct Render_PointLight
+{
+    Render_Entity* entity;
+    
+    float32 constant, linear, quadratic;
+    
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+} typedef Render_PointLight;
+
+struct Render_Entity
+{
+    vec3 position;
+    vec3 scale;
+    vec3 rotation;
+    Render_EntityKind kind;
+    
+    union {
+        void* handle;
+        Render_PointLight* point_light;
+        Render_3DModel* model;
+    };
+};
+
+#define MANAGER_MAX_ENTITIES 256
+#define MAX_POINT_LIGHTS_COUNT 8
+
+struct Render_Manager
+{
+    vec3 dirlight;
+    Asset_3DModel* cube_model;
+    
+    Render_Entity entities[MANAGER_MAX_ENTITIES];
+    Render_Entity* free_spaces[MANAGER_MAX_ENTITIES];
+    
+    Render_PointLight point_lights[MAX_POINT_LIGHTS_COUNT];
+    Render_3DModel models[MANAGER_MAX_ENTITIES];
+    
+    int32 entity_count;
+    int32 free_space_count;
+    int32 point_lights_count;
+    int32 model_count;
+} typedef Render_Manager;
+
+API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
 API void Render_Begin2D(const Render_Camera* camera);
-API void Render_Begin3D(const Render_Camera* camera);
-API bool32 Render_LoadFontFromFile(String path, Render_Font* out_font);
-API void Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color);
-API bool32 Render_Load3DModelFromFile(String path, Render_3DModel* out);
-API void Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB color);
+API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
+API void Render_DrawText(const Asset_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color);
+API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
+
+API Render_Entity* Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind);
+API void Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle);
+API void Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera);
 
 //~ Game
 API int32 Game_MainScene(void);

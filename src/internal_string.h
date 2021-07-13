@@ -10,6 +10,8 @@ struct String
 #define Str(x) (String) StrI(x)
 #define StrI(x) { sizeof(x), (x) }
 #define StrFmt(x) (x).len, (x).data
+#define StrMacro_(x) #x
+#define StrMacro(x) StrMacro_(x)
 #define StrNull (String) { 0 }
 
 internal int32

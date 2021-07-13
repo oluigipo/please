@@ -203,21 +203,21 @@ Engine_Main(int32 argc, char** argv)
     Discord_Init(778719957956689922ll);
     
     // NOTE(ljre): Load model in custom format 'simple obj (.sobj)'
-    Render_3DModel model;
+    Asset_3DModel model;
     if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))
     {
         Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
     }
     
-    Render_3DModel tree_model;
+    Asset_3DModel tree_model;
     if (!Render_Load3DModelFromFile(Str("./assets/first_tree.glb"), &tree_model))
     {
-        Platform_ExitWithErrorMessage(Str(":("));
+        Platform_ExitWithErrorMessage(Str("Could not load tree model :("));
     }
     
     // NOTE(ljre): Load Audio
 #if 1
-    Audio_SoundBuffer sound_music;
+    Asset_SoundBuffer sound_music;
     
     if (!Audio_LoadFile(Str("music.ogg"), &sound_music))
     {
@@ -229,12 +229,12 @@ Engine_Main(int32 argc, char** argv)
     }
 #endif
     
-    Audio_SoundBuffer sound_music3 = { 0 };
+    Asset_SoundBuffer sound_music3 = { 0 };
     Audio_LoadFile(Str("music3.ogg"), &sound_music3);
     
     // NOTE(ljre): Load Font
     Trace("Render_LoadFontFromFile");
-    Render_Font font;
+    Asset_Font font;
     bool32 font_loaded = Render_LoadFontFromFile(Str("c:/windows/fonts/arial.ttf"), &font);
     
     int32 controller_index = 0;
@@ -253,17 +253,46 @@ Engine_Main(int32 argc, char** argv)
         .up = { 0.0f, 1.0f, 0.0f },
     };
     
-    struct RotatingCube {
-        vec3 pos;
-        ColorARGB color;
-    };
+    //~ NOTE(ljre): Entities
+    Render_Manager manager = { 0 };
+    manager.dirlight[0] = 1.0f;
+    manager.dirlight[1] = 2.0f;
+    manager.dirlight[2] = 0.5f;
+    glm_vec3_normalize(manager.dirlight);
     
-    struct RotatingCube rotating_cubes[30];
+    manager.cube_model = &model;
+    
+    //- Ground
+    Render_Entity* ground = Render_AddToManager(&manager, Render_EntityKind_3DModel);
+    
+    ground->scale[0] = 20.0f;
+    ground->scale[1] = 2.0f;
+    ground->scale[2] = 20.0f;
+    ground->position[0] = 0.0f;
+    ground->position[1] = -2.0f;
+    ground->position[2] = 0.0f;
+    ground->model->color[0] = 0.0f;
+    ground->model->color[1] = 0.5f;
+    ground->model->color[2] = 0.0f;
+    ground->model->color[3] = 1.0f;
+    ground->model->asset = &model;
+    
+    //- Tree
+    Render_Entity* tree = Render_AddToManager(&manager, Render_EntityKind_3DModel);
+    
+    ColorToVec4(0xFFFFFFFF, tree->model->color);
+    tree->model->asset = &tree_model;
+    
+    //- Rotating Cubes
+    Render_Entity* rotating_cubes[30];
     for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
     {
-        rotating_cubes[i].pos[0] = Engine_RandomF32Range(-20.0f, 20.0f);
-        rotating_cubes[i].pos[1] = Engine_RandomF32Range(3.0f, 10.0f);
-        rotating_cubes[i].pos[2] = Engine_RandomF32Range(-20.0f, 20.0f);
+        rotating_cubes[i] = Render_AddToManager(&manager, Render_EntityKind_3DModel);
+        
+        rotating_cubes[i]->position[0] = Engine_RandomF32Range(-20.0f, 20.0f);
+        rotating_cubes[i]->position[1] = Engine_RandomF32Range(3.0f, 10.0f);
+        rotating_cubes[i]->position[2] = Engine_RandomF32Range(-20.0f, 20.0f);
+        rotating_cubes[i]->model->asset = &model;
         
         static const ColorARGB colors[] = {
             0xFFFF0000, 0xFFFF3E00, 0xFFFF8100, 0xFFFFC100, 0xFFFFFF00, 0xFFC1FF00,
@@ -272,8 +301,50 @@ Engine_Main(int32 argc, char** argv)
             0xFF8100FF, 0xFFC100FF, 0xFFFF00FF, 0xFFFF00C1, 0xFFFF0081, 0xFFFF003E,
         };
         
-        rotating_cubes[i].color = colors[Engine_RandomU64() % ArrayLength(colors)];
+        ColorToVec4(colors[Engine_RandomU64() % ArrayLength(colors)], rotating_cubes[i]->model->color);
     }
+    
+    //- Lights
+    Render_Entity* light1 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
+    Render_Entity* light2 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
+    
+    light1->position[0] = 1.0f;
+    light1->position[1] = 2.0f;
+    light1->position[2] = 5.0f;
+    light1->scale[0] = 0.25f;
+    light1->scale[1] = 0.25f;
+    light1->scale[2] = 0.25f;
+    light1->point_light->ambient[0] = 0.2f;
+    light1->point_light->ambient[1] = 0.0f;
+    light1->point_light->ambient[2] = 0.0f;
+    light1->point_light->diffuse[0] = 1.0f;
+    light1->point_light->diffuse[1] = 0.0f;
+    light1->point_light->diffuse[2] = 0.0f;
+    light1->point_light->specular[0] = 0.8f;
+    light1->point_light->specular[1] = 0.0f;
+    light1->point_light->specular[2] = 0.0f;
+    light1->point_light->constant = 1.0f;
+    light1->point_light->linear = 0.09f;
+    light1->point_light->quadratic = 0.032f;
+    
+    light2->position[0] = 1.0f;
+    light2->position[1] = 2.0f;
+    light2->position[2] = -5.0f;
+    light2->scale[0] = 0.25f;
+    light2->scale[1] = 0.25f;
+    light2->scale[2] = 0.25f;
+    light2->point_light->ambient[0] = 0.0f;
+    light2->point_light->ambient[1] = 0.0f;
+    light2->point_light->ambient[2] = 1.0f;
+    light2->point_light->diffuse[0] = 0.0f;
+    light2->point_light->diffuse[1] = 0.0f;
+    light2->point_light->diffuse[2] = 1.0f;
+    light2->point_light->specular[0] = 0.0f;
+    light2->point_light->specular[1] = 0.0f;
+    light2->point_light->specular[2] = 0.8f;
+    light2->point_light->constant = 1.0f;
+    light2->point_light->linear = 0.09f;
+    light2->point_light->quadratic = 0.032f;
     
     Trace("Game Loop");
     while (!Platform_WindowShouldClose())
@@ -344,61 +415,34 @@ Engine_Main(int32 argc, char** argv)
             camera.pos[1] = camera_height + sinf(moving_time) * 0.04f;
         }
         
-        Render_ClearBackground(is_connected ? 0xFF2D81FF : 0xFF110011);
+        if (is_connected)
+            Render_ClearBackground(0.05f, 0.0f, 0.1f, 1.0f);
+        else
+            Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
         
         //~ NOTE(ljre): 3D World
-        Render_Begin3D(&camera);
+        for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
         {
-            mat4 where;
-            
-            //- NOTE(ljre): Draw Models
-            for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
-            {
-                struct RotatingCube* cube = &rotating_cubes[i];
-                
-                glm_mat4_identity(where);
-                glm_translate(where, (vec3) { cube->pos[0], cube->pos[1] + 0.5f, cube->pos[2] });
-                glm_rotate(where, (float32)Platform_GetTime() + (float32)i, (vec3) { 0.0f, 1.0f, 0.0f });
-                glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
-                Render_Draw3DModel(&model, where, cube->color);
-            }
-            
-            // Ground
-            glm_mat4_identity(where);
-            glm_translate(where, (vec3) { 0.0f, -1.0f, 0.0f });
-            glm_scale(where, (vec3) { 20.0f, 2.0f, 20.0f });
-            glm_translate(where, (vec3) { -0.5f, -0.5f, -0.5f });
-            Render_Draw3DModel(&model, where, 0xFF008000);
-            
-            // Tree
-            glm_mat4_identity(where);
-            Render_Draw3DModel(&tree_model, where, 0xFFFFFFFF);
+            rotating_cubes[i]->rotation[1] = (float32)Platform_GetTime() + (float32)i;
         }
+        
+        Render_DrawManager(&manager, &camera);
         
         //~ NOTE(ljre): 2D User Interface
         Render_Begin2D(NULL);
+        
+        //- NOTE(ljre): Draw Controller Index
+        if (font_loaded) {
+            char buf[128];
+            snprintf(buf, sizeof buf, "Controller Index: %i", controller_index);
+            Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, 0xFFFFFFFF);
+            
+            Render_DrawText(&font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
+        }
+        
+        if (is_connected)
         {
-            //- NOTE(ljre): Draw Controller Index
-            if (font_loaded) {
-                char buf[128];
-                snprintf(buf, sizeof buf, "Controller Index: %i", controller_index);
-                Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, 0xFFFFFFFF);
-            }
-            
-            if (is_connected)
-            {
-                DrawGamepadLayout(&gamepad, 0.0f, 0.0f, 300.0f, 300.0f);
-            }
-            
-            //- NOTE(ljre): Audio Testing
-            if (sound_music3.samples)
-            {
-                if (font_loaded) {
-                    Render_DrawText(&font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
-                }
-                
-                
-            }
+            DrawGamepadLayout(&gamepad, 0.0f, 0.0f, 300.0f, 300.0f);
         }
         
         //~ NOTE(ljre): Finish Frame

@@ -1,6 +1,6 @@
 struct Audio_PlayingBuffer
 {
-    Audio_SoundBuffer sound;
+    Asset_SoundBuffer sound;
     int32 frame_index;
     bool32 loop;
     float64 volume;
@@ -156,7 +156,7 @@ Engine_UpdateAudio(void)
 
 //~ API
 API bool32
-Audio_LoadFile(String path, Audio_SoundBuffer* out_sound)
+Audio_LoadFile(String path, Asset_SoundBuffer* out_sound)
 {
     uintsize size;
     void* memory = Platform_ReadEntireFile(path, &size);
@@ -177,13 +177,13 @@ Audio_LoadFile(String path, Audio_SoundBuffer* out_sound)
 }
 
 API void
-Audio_FreeSoundBuffer(Audio_SoundBuffer* sound)
+Audio_FreeSoundBuffer(Asset_SoundBuffer* sound)
 {
     Platform_HeapFree(sound->samples);
 }
 
 API void
-Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed)
+Audio_Play(const Asset_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed)
 {
     Audio_PlayingBuffer* playing = PushPlayingBufferIndex();
     
@@ -198,7 +198,7 @@ Audio_Play(const Audio_SoundBuffer* sound, bool32 loop, float64 volume, float64 
 }
 
 API void
-Audio_StopByBuffer(const Audio_SoundBuffer* sound, int32 max)
+Audio_StopByBuffer(const Asset_SoundBuffer* sound, int32 max)
 {
     for (int32 i = 0; i < global_playing_buffer_count && max != 0;)
     {

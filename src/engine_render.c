@@ -41,6 +41,17 @@ struct RenderBufferElement3DModel
     mat4 inversed_model;
 } typedef RenderBufferElement3DModel;
 
+struct PointLightsUniformData
+{
+    int32 constant;
+    int32 linear;
+    int32 quadratic;
+    
+    int32 ambient;
+    int32 diffuse;
+    int32 specular;
+} typedef PointLightsUniformData;
+
 //~ Globals
 internal const GraphicsContext* global_graphics;
 internal const Vertex global_quad_vertices[] = {
@@ -63,7 +74,6 @@ internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
 internal uint32 global_default_diffuse_texture;
 internal uint32 global_default_normal_texture;
 internal uint32 global_default_specular_texture;
-internal vec3 global_dirlight;
 internal vec3 global_viewpos;
 
 internal uint32 global_default_shader;
@@ -77,14 +87,20 @@ internal int32 global_uniform_texture;
 internal int32 global_uniform_inversed_model;
 internal int32 global_uniform_dirlight;
 internal int32 global_uniform_viewpos;
-internal int32 global_uniform_dirlight_ambient;
-internal int32 global_uniform_dirlight_diffuse;
-internal int32 global_uniform_dirlight_specular;
+
 internal int32 global_uniform_material_ambient;
 internal int32 global_uniform_material_diffuse;
 internal int32 global_uniform_material_specular;
 internal int32 global_uniform_material_normal;
 internal int32 global_uniform_material_shininess;
+
+internal int32 global_uniform_dirlight_ambient;
+internal int32 global_uniform_dirlight_diffuse;
+internal int32 global_uniform_dirlight_specular;
+
+internal int32 global_uniform_pointlights_count;
+internal int32 global_uniform_pointlights_positions[MAX_POINT_LIGHTS_COUNT];
+internal PointLightsUniformData global_uniform_pointlights_data[MAX_POINT_LIGHTS_COUNT];
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
@@ -130,6 +146,7 @@ internal const char* const global_vertex_3dshader =
 "out vec3 vFragPos;"
 "out vec3 vDirLight;"
 "out vec3 vViewPos;"
+"out vec3 vPointLightsPositions[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
 
 "uniform mat4 uView;\n"
 "uniform mat4 uModel;\n"
@@ -137,14 +154,15 @@ internal const char* const global_vertex_3dshader =
 "uniform vec3 uDirLight;\n"
 "uniform vec3 uViewPos;\n"
 
+"uniform vec3 uPointLightsPositions[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
+"uniform int uPointLightsCount;"
+
 "void main() {"
 "    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
 "    vTexCoord = aTexCoord;"
 
-//"    vec3 bitangent = cross(aNormal, aTangent.xyz) * aTangent.w;"
 "    vec3 t = normalize(mat3(uInversedModel) * aTangent.xyz);"
 "    vec3 n = normalize(mat3(uInversedModel) * aNormal);"
-//"    vec3 b = normalize(mat3(uInversedModel) * bitangent);"
 "    vec3 b = cross(n, t) * aTangent.w;"
 
 "    vTbn = transpose(mat3(t, b, n));"
@@ -152,6 +170,10 @@ internal const char* const global_vertex_3dshader =
 "    vFragPos = vTbn * vec3(uModel * vec4(aPosition, 1.0));"
 "    vDirLight = vTbn * uDirLight;"
 "    vViewPos = vTbn * uViewPos;"
+
+"    for (int i = 0; i < uPointLightsCount; ++i) {"
+"        vPointLightsPositions[i] = vTbn * uPointLightsPositions[i];"
+"    }"
 "}"
 ;
 
@@ -163,6 +185,7 @@ internal const char* const global_fragment_3dshader =
 "in vec3 vFragPos;\n"
 "in vec3 vDirLight;\n"
 "in vec3 vViewPos;\n"
+"in vec3 vPointLightsPositions[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
 
 "out vec4 oFragColor;\n"
 
@@ -176,30 +199,74 @@ internal const char* const global_fragment_3dshader =
 "    float shininess;"
 "};"
 
-"struct Light {"
+"struct DirLight {"
 "    vec3 ambient;"
 "    vec3 diffuse;"
 "    vec3 specular;"
 "};"
 
-"uniform Light uDirLightProp;"
-"uniform Material uMaterial;"
+"struct PointLight {"
+"    float constant;"
+"    float linear;"
+"    float quadratic;"
 
-"void main() {"
-"    vec3 normal = texture(uMaterial.normal, vTexCoord).rgb * 2.0 - 1.0;"
-//"    vec3 normal = vec3(0.0, 0.0, 1.0);"
-"    vec3 viewDir = normalize(vViewPos - vFragPos);"
+"    vec3 ambient;"
+"    vec3 diffuse;"
+"    vec3 specular;"
+"};"
+
+"uniform Material uMaterial;"
+"uniform DirLight uDirLightProp;"
+"uniform PointLight uPointLights[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
+"uniform int uPointLightsCount;"
+
+"vec3 CalculateDirLight(vec3 normal, vec3 viewDir, vec3 diffuseSample, vec3 specularSample) {"
 "    vec3 reflectDir = reflect(-vDirLight, normal);"
 
-"    vec3 ambient = texture(uMaterial.diffuse, vTexCoord).rgb * uMaterial.ambient;"
-"    vec3 diffuse = texture(uMaterial.diffuse, vTexCoord).rgb * max(0.0, dot(normal, vDirLight));"
-"    vec3 specular = texture(uMaterial.specular, vTexCoord).rgb * pow(max(0.0, dot(viewDir, reflectDir)), uMaterial.shininess);"
+"    vec3 ambient = diffuseSample * uMaterial.ambient;"
+"    vec3 diffuse = diffuseSample * max(0.0, dot(normal, vDirLight));"
+"    vec3 specular = specularSample * pow(max(0.0, dot(viewDir, reflectDir)), uMaterial.shininess);"
 
 "    ambient *= uDirLightProp.ambient;"
 "    diffuse *= uDirLightProp.diffuse;"
 "    specular *= uDirLightProp.specular;"
 
-"    oFragColor = vec4(uColor.rgb * (ambient + diffuse + specular), uColor.a);"
+"    return ambient + diffuse + specular;"
+"}"
+
+"vec3 CalculatePointLight(vec3 normal, vec3 viewDir, vec3 diffuseSample, vec3 specularSample, int i) {"
+"    vec3 lightDir = normalize(vPointLightsPositions[i] - vFragPos);"
+"    float diff = max(dot(normal, lightDir), 0.0);"
+
+"    vec3 reflectDir = reflect(-lightDir, normal);"
+"    float spec = pow(max(dot(viewDir, reflectDir), 0.0), uMaterial.shininess);"
+
+"    float distance = length(vPointLightsPositions[i] - vFragPos);"
+"    float attenuation = 1.0 / (uPointLights[i].constant + uPointLights[i].linear * distance + uPointLights[i].quadratic * (distance * distance));"
+
+"    vec3 ambient  = uPointLights[i].ambient * diffuseSample;"
+"    vec3 diffuse  = uPointLights[i].diffuse * diff * diffuseSample;"
+"    vec3 specular = uPointLights[i].specular * spec * specularSample;"
+
+"    ambient  *= attenuation;"
+"    diffuse  *= attenuation;"
+"    specular *= attenuation;"
+"    return ambient + diffuse + specular;"
+"}"
+
+"void main() {"
+"    vec3 normal = texture(uMaterial.normal, vTexCoord).rgb * 2.0 - 1.0;"
+"    vec3 viewDir = normalize(vViewPos - vFragPos);"
+
+"    vec3 diffuseSample = texture(uMaterial.diffuse, vTexCoord).rgb * uColor.rgb;"
+"    vec3 specularSample = texture(uMaterial.specular, vTexCoord).rgb;"
+
+"    vec3 color = CalculateDirLight(normal, viewDir, diffuseSample, specularSample);"
+"    for (int i = 0; i < uPointLightsCount; ++i) {"
+"        color += CalculatePointLight(normal, viewDir, diffuseSample, specularSample, i);"
+"    }"
+
+"    oFragColor = vec4(color, uColor.a);"
 "}\n"
 ;
 
@@ -289,7 +356,7 @@ ColorToVec4(ColorARGB color, vec4 out)
 }
 
 internal void
-CalcBitmapSizeForText(const Render_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
+CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
     int32 width = 0, line_width = 0, height = 0;
 	int32 codepoint, it = 0;
@@ -316,8 +383,50 @@ CalcBitmapSizeForText(const Render_Font* font, float32 scale, String text, int32
     if (line_width > width)
 		width = line_width;
 	
-    *out_width = width + 1;
-    *out_height = height + 1;
+    *out_width = width + 2;
+    *out_height = height + 2;
+}
+
+internal void
+GetCurrentShaderUniforms(uint32 shader)
+{
+    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
+    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
+    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
+    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
+    global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
+    global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
+    global_uniform_viewpos = GL.glGetUniformLocation(shader, "uViewPos");
+    global_uniform_dirlight_ambient = GL.glGetUniformLocation(shader, "uDirLightProp.ambient");
+    global_uniform_dirlight_diffuse = GL.glGetUniformLocation(shader, "uDirLightProp.diffuse");
+    global_uniform_dirlight_specular = GL.glGetUniformLocation(shader, "uDirLightProp.specular");
+    global_uniform_material_ambient = GL.glGetUniformLocation(shader, "uMaterial.ambient");
+    global_uniform_material_diffuse = GL.glGetUniformLocation(shader, "uMaterial.diffuse");
+    global_uniform_material_specular = GL.glGetUniformLocation(shader, "uMaterial.specular");
+    global_uniform_material_normal = GL.glGetUniformLocation(shader, "uMaterial.normal");
+    global_uniform_material_shininess = GL.glGetUniformLocation(shader, "uMaterial.shininess");
+    
+    global_uniform_pointlights_count = GL.glGetUniformLocation(shader, "uPointLightsCount");
+    for (int32 i = 0; i < MAX_POINT_LIGHTS_COUNT; ++i)
+    {
+        char buf[128];
+        
+        snprintf(buf, sizeof buf, "uPointLightsPositions[%i]", i);
+        global_uniform_pointlights_positions[i] = GL.glGetUniformLocation(shader, buf);
+        
+        snprintf(buf, sizeof buf, "uPointLights[%i].constant", i);
+        global_uniform_pointlights_data[i].constant = GL.glGetUniformLocation(shader, buf);
+        snprintf(buf, sizeof buf, "uPointLights[%i].linear", i);
+        global_uniform_pointlights_data[i].linear = GL.glGetUniformLocation(shader, buf);
+        snprintf(buf, sizeof buf, "uPointLights[%i].quadratic", i);
+        global_uniform_pointlights_data[i].quadratic = GL.glGetUniformLocation(shader, buf);
+        snprintf(buf, sizeof buf, "uPointLights[%i].ambient", i);
+        global_uniform_pointlights_data[i].ambient = GL.glGetUniformLocation(shader, buf);
+        snprintf(buf, sizeof buf, "uPointLights[%i].diffuse", i);
+        global_uniform_pointlights_data[i].diffuse = GL.glGetUniformLocation(shader, buf);
+        snprintf(buf, sizeof buf, "uPointLights[%i].specular", i);
+        global_uniform_pointlights_data[i].specular = GL.glGetUniformLocation(shader, buf);
+    }
 }
 
 //~ Temporary Internal API
@@ -401,12 +510,6 @@ Engine_InitRender(void)
     GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, specular_texture);
     
     GL.glBindTexture(GL_TEXTURE_2D, 0);
-    
-    global_dirlight[0] = 1.0f;
-    global_dirlight[1] = 2.0f;
-    global_dirlight[2] = 0.5f;
-    
-    glm_vec3_normalize(global_dirlight);
 }
 
 internal void
@@ -419,12 +522,9 @@ Engine_DeinitRender(void)
 
 //~ API
 API void
-Render_ClearBackground(ColorARGB color)
+Render_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 {
-    vec4 color_vec;
-    ColorToVec4(color, color_vec);
-    
-    GL.glClearColor(color_vec[0], color_vec[1], color_vec[2], color_vec[3]);
+    GL.glClearColor(r, g, b, a);
     GL.glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -447,51 +547,8 @@ Render_Begin2D(const Render_Camera* camera)
     GL.glDisable(GL_DEPTH_TEST);
     GL.glDisable(GL_CULL_FACE);
     
-    uint32 shader = global_default_shader;
-    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
-    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
-    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
-    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
-    
-    global_current_shader = shader;
-}
-
-API void
-Render_Begin3D(const Render_Camera* camera)
-{
-    mat4 proj;
-    glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
-    
-    glm_mat4_identity(global_view);
-    if (camera)
-    {
-        glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, global_view);
-    }
-    
-    glm_mat4_mul(proj, global_view, global_view);
-    glm_vec3_copy((float32*)camera->pos, global_viewpos);
-    
-    GL.glEnable(GL_DEPTH_TEST);
-    GL.glEnable(GL_CULL_FACE);
-    GL.glClear(GL_DEPTH_BUFFER_BIT);
-    
-    uint32 shader = global_default_3dshader;
-    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
-    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
-    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
-    global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
-    global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
-    global_uniform_viewpos = GL.glGetUniformLocation(shader, "uViewPos");
-    global_uniform_dirlight_ambient = GL.glGetUniformLocation(shader, "uDirLightProp.ambient");
-    global_uniform_dirlight_diffuse = GL.glGetUniformLocation(shader, "uDirLightProp.diffuse");
-    global_uniform_dirlight_specular = GL.glGetUniformLocation(shader, "uDirLightProp.specular");
-    global_uniform_material_ambient = GL.glGetUniformLocation(shader, "uMaterial.ambient");
-    global_uniform_material_diffuse = GL.glGetUniformLocation(shader, "uMaterial.diffuse");
-    global_uniform_material_specular = GL.glGetUniformLocation(shader, "uMaterial.specular");
-    global_uniform_material_normal = GL.glGetUniformLocation(shader, "uMaterial.normal");
-    global_uniform_material_shininess = GL.glGetUniformLocation(shader, "uMaterial.shininess");
-    
-    global_current_shader = shader;
+    global_current_shader = global_default_shader;
+    GetCurrentShaderUniforms(global_current_shader);
 }
 
 API void
@@ -519,9 +576,9 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
 }
 
 API bool32
-Render_LoadFontFromFile(String path, Render_Font* out_font)
+Render_LoadFontFromFile(String path, Asset_Font* out_font)
 {
-    Render_Font result;
+    Asset_Font result;
     result.data = Platform_ReadEntireFile(path, &result.data_size);
     
     if (result.data)
@@ -545,7 +602,7 @@ Render_LoadFontFromFile(String path, Render_Font* out_font)
 }
 
 API void
-Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color)
+Render_DrawText(const Asset_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color)
 {
     float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
     vec4 color_vec;
@@ -618,56 +675,8 @@ Render_DrawText(const Render_Font* font, String text, vec3 pos, float32 char_hei
     Engine_PopMemory(bitmap);
 }
 
-API void
-Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB color)
-{
-    vec4 color_vec;
-    ColorToVec4(color, color_vec);
-    
-    mat4 matrix;
-    glm_mat4_copy((vec4*)where, matrix);
-    glm_mat4_mul(matrix, (vec4*)model->transform, matrix);
-    
-    mat4 inversed_matrix;
-    glm_mat4_inv(matrix, inversed_matrix);
-    glm_mat4_transpose(inversed_matrix);
-    
-    GL.glBindVertexArray(model->vao);
-    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
-    
-    GL.glUseProgram(global_current_shader);
-    
-    GL.glUniform4fv(global_uniform_color, 1, color_vec);
-    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (const float32*)global_view);
-    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (const float32*)matrix);
-    GL.glUniform3fv(global_uniform_dirlight, 1, global_dirlight);
-    GL.glUniformMatrix4fv(global_uniform_inversed_model, 1, false, (const float32*)inversed_matrix);
-    GL.glUniform3fv(global_uniform_viewpos, 1, global_viewpos);
-    
-    GL.glUniform3f(global_uniform_dirlight_ambient, 0.1f, 0.1f, 0.1f);
-    GL.glUniform3f(global_uniform_dirlight_diffuse, 1.0f, 1.0f, 1.0f);
-    GL.glUniform3f(global_uniform_dirlight_specular, 0.5f, 0.5f, 0.5f);
-    
-    GL.glUniform3fv(global_uniform_material_ambient, 1, model->material.ambient);
-    GL.glUniform1i(global_uniform_material_diffuse, 0);
-    GL.glUniform1i(global_uniform_material_specular, 1);
-    GL.glUniform1i(global_uniform_material_normal, 2);
-    GL.glUniform1f(global_uniform_material_shininess, model->material.shininess);
-    
-    GL.glActiveTexture(GL_TEXTURE0);
-    GL.glBindTexture(GL_TEXTURE_2D, model->material.diffuse ? model->material.diffuse : global_default_diffuse_texture);
-    
-    GL.glActiveTexture(GL_TEXTURE1);
-    GL.glBindTexture(GL_TEXTURE_2D, model->material.specular ? model->material.specular : global_default_specular_texture);
-    
-    GL.glActiveTexture(GL_TEXTURE2);
-    GL.glBindTexture(GL_TEXTURE_2D, model->material.normal ? model->material.normal : global_default_normal_texture);
-    
-    GL.glDrawElements((GLenum)model->prim_mode, model->index_count, (GLenum)model->index_type, 0);
-}
-
 API bool32
-Render_Load3DModelFromFile(String path, Render_3DModel* out)
+Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
     uintsize size;
     uint8* data = Platform_ReadEntireFile(path, &size);
@@ -756,8 +765,8 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out->ebo);
         GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices_buffer, GL_STATIC_DRAW);
         
-        out->prim_mode = prim->mode;
-        out->index_type = model.accessors[prim->indices].component_type;
+        out->prim_mode = (uint32)prim->mode;
+        out->index_type = (uint32)model.accessors[prim->indices].component_type;
         out->index_count = model.accessors[prim->indices].count;
         glm_mat4_copy(model.nodes[model.scenes[model.scene].nodes[0]].transform, out->transform);
         // TODO(ljre): Textures
@@ -767,30 +776,111 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         out->material.diffuse = 0;
         out->material.specular = 0;
         out->material.normal = 0;
-        out->material.shininess = 2.0f;
+        out->material.shininess = 1.0f;
         
         if (prim->material != -1)
         {
             GltfJson_Material* mat = &model.materials[prim->material];
             
+            out->material.base_color[0] = mat->pbr_metallic_roughness.base_color_factor[0];
+            out->material.base_color[1] = mat->pbr_metallic_roughness.base_color_factor[1];
+            out->material.base_color[2] = mat->pbr_metallic_roughness.base_color_factor[2];
+            out->material.base_color[3] = mat->pbr_metallic_roughness.base_color_factor[3];
+            
             if (mat->pbr_metallic_roughness.base_color_texture.specified)
             {
                 GltfJson_Texture* tex = &model.textures[mat->pbr_metallic_roughness.base_color_texture.index];
+                GltfJson_Sampler* sampler = &model.samplers[tex->sampler];
                 GltfJson_Image* image = &model.images[tex->source];
                 GltfJson_BufferView* view = &model.buffer_views[image->buffer_view];
+                bool32 needs_mipmaps = false;
                 
                 int32 width, height, channels;
                 uint8* data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
                                                     view->byte_length,
-                                                    &width, &height, &channels, 4);
+                                                    &width, &height, &channels, 3);
                 
                 GL.glGenTextures(1, &out->material.diffuse);
                 GL.glBindTexture(GL_TEXTURE_2D, out->material.diffuse);
-                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                
+                if (sampler->mag_filter != -1)
+                {
+                    needs_mipmaps = needs_mipmaps || (sampler->mag_filter != GL_NEAREST &&
+                                                      sampler->mag_filter != GL_LINEAR);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter);
+                }
+                else
+                {
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                }
+                
+                if (sampler->min_filter != -1)
+                {
+                    needs_mipmaps = needs_mipmaps || (sampler->min_filter != GL_NEAREST &&
+                                                      sampler->min_filter != GL_LINEAR);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter);
+                }
+                else
+                {
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                }
+                
+                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, sampler->wrap_s);
+                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, sampler->wrap_t);
+                
+                GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                if (needs_mipmaps)
+                    GL.glGenerateMipmap(GL_TEXTURE_2D);
                 GL.glBindTexture(GL_TEXTURE_2D, 0);
             }
+            
+            if (mat->normal_texture.specified)
+            {
+                GltfJson_Texture* tex = &model.textures[mat->normal_texture.index];
+                GltfJson_Sampler* sampler = &model.samplers[tex->sampler];
+                GltfJson_Image* image = &model.images[tex->source];
+                GltfJson_BufferView* view = &model.buffer_views[image->buffer_view];
+                bool32 needs_mipmaps = false;
+                
+                int32 width, height, channels;
+                uint8* data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
+                                                    view->byte_length,
+                                                    &width, &height, &channels, 3);
+                
+                GL.glGenTextures(1, &out->material.normal);
+                GL.glBindTexture(GL_TEXTURE_2D, out->material.normal);
+                
+                if (sampler->mag_filter != -1)
+                {
+                    needs_mipmaps = needs_mipmaps || (sampler->mag_filter != GL_NEAREST &&
+                                                      sampler->mag_filter != GL_LINEAR);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter);
+                }
+                else
+                {
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                }
+                
+                if (sampler->min_filter != -1)
+                {
+                    needs_mipmaps = needs_mipmaps || (sampler->min_filter != GL_NEAREST &&
+                                                      sampler->min_filter != GL_LINEAR);
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter);
+                }
+                else
+                {
+                    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                }
+                
+                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, sampler->wrap_s);
+                GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, sampler->wrap_t);
+                
+                GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                if (needs_mipmaps)
+                    GL.glGenerateMipmap(GL_TEXTURE_2D);
+                GL.glBindTexture(GL_TEXTURE_2D, 0);
+            }
+            
         }
         
         GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -801,4 +891,239 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
     Engine_PopMemoryState(state);
     Platform_FreeFileMemory(data, size);
     return result;
+}
+
+API Render_Entity*
+Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
+{
+    Render_Entity* result;
+    
+    //- NOTE(ljre): Get Component Handle
+    int32* comp_count;
+    void* comp_ptr;
+    uintsize comp_size;
+    Render_Entity** comp_handle_ptr;
+    
+    if (kind == Render_EntityKind_PointLight &&
+        mgr->point_lights_count < ArrayLength(mgr->point_lights))
+    {
+        comp_count = &mgr->point_lights_count;
+        comp_ptr = &mgr->point_lights[mgr->point_lights_count];
+        comp_handle_ptr = &mgr->point_lights[mgr->point_lights_count].entity;
+        comp_size = sizeof(*mgr->point_lights);
+    }
+    else if (kind == Render_EntityKind_3DModel &&
+             mgr->model_count < ArrayLength(mgr->models))
+    {
+        comp_count = &mgr->model_count;
+        comp_ptr = &mgr->models[mgr->model_count];
+        comp_handle_ptr = &mgr->models[mgr->model_count].entity;
+        comp_size = sizeof(*mgr->models);
+    }
+    else
+    {
+        return NULL;
+    }
+    
+    //- NOTE(ljre): Get Entity Handle
+    if (mgr->free_space_count > 0)
+    {
+        result = mgr->free_spaces[--mgr->free_space_count];
+    }
+    else if (mgr->entity_count < ArrayLength(mgr->entities))
+    {
+        result = &mgr->entities[mgr->entity_count++];
+    }
+    else
+    {
+        return NULL;
+    }
+    
+    //- Done
+    memset(result, 0, sizeof *result);
+    memset(comp_ptr, 0, comp_size);
+    
+    result->handle = comp_ptr;
+    result->kind = kind;
+    ++*comp_count;
+    *comp_handle_ptr = result;
+    
+    result->scale[0] = 1.0f;
+    result->scale[1] = 1.0f;
+    result->scale[2] = 1.0f;
+    
+    return result;
+}
+
+API void
+Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
+{
+    Assert(handle);
+    
+    switch (handle->kind)
+    {
+        case Render_EntityKind_PointLight:
+        {
+            if (mgr->point_lights_count > 1)
+            {
+                *handle->point_light = mgr->point_lights[mgr->point_lights_count-1];
+                
+                handle->point_light->entity->point_light = handle->point_light;
+            }
+            --mgr->point_lights_count;
+        } break;
+        
+        case Render_EntityKind_3DModel:
+        {
+            if (mgr->model_count > 1)
+            {
+                *handle->model = mgr->models[mgr->model_count-1];
+                handle->model->entity->model = handle->model;
+            }
+            --mgr->model_count;
+        } break;
+    }
+    
+    mgr->free_spaces[mgr->free_space_count++] = handle;
+}
+
+API void
+Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
+{
+    mat4 view;
+    mat4 matrix;
+    mat4 inversed_matrix;
+    
+    vec3 viewpos;
+    
+    //~ NOTE(ljre): Setup
+    {
+        mat4 proj;
+        glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
+        
+        glm_mat4_identity(view);
+        if (camera)
+        {
+            glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, view);
+        }
+        
+        glm_mat4_mul(proj, view, view);
+        glm_vec3_copy((float32*)camera->pos, viewpos);
+        
+        GL.glEnable(GL_DEPTH_TEST);
+        GL.glEnable(GL_CULL_FACE);
+        GL.glClear(GL_DEPTH_BUFFER_BIT);
+    }
+    
+    //~ NOTE(ljre): Point Lights
+    {
+        global_current_shader = global_default_shader;
+        GL.glUseProgram(global_current_shader);
+        GetCurrentShaderUniforms(global_current_shader);
+        
+        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
+        GL.glUniform1i(global_uniform_texture, 0);
+        
+        for (int32 i = 0; i < mgr->point_lights_count; ++i)
+        {
+            Render_PointLight* const light = &mgr->point_lights[i];
+            Render_Entity* const entity = light->entity;
+            Asset_3DModel* const asset = mgr->cube_model;
+            
+            glm_mat4_identity(matrix);
+            glm_translate(matrix, entity->position);
+            glm_rotate(matrix, entity->rotation[0], (vec3) { 1.0f, 0.0f, 0.0f });
+            glm_rotate(matrix, entity->rotation[1], (vec3) { 0.0f, 1.0f, 0.0f });
+            glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
+            glm_scale(matrix, entity->scale);
+            
+            GL.glUniform4f(global_uniform_color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
+            GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
+            
+            GL.glActiveTexture(GL_TEXTURE0);
+            GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
+            
+            GL.glBindVertexArray(asset->vao);
+            GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
+            
+            GL.glDrawElements(asset->prim_mode, asset->index_count, asset->index_type, 0);
+        }
+    }
+    
+    //~ NOTE(ljre): Models
+    {
+        global_current_shader = global_default_3dshader;
+        GL.glUseProgram(global_current_shader);
+        GetCurrentShaderUniforms(global_current_shader);
+        
+        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
+        GL.glUniform3fv(global_uniform_dirlight, 1, mgr->dirlight);
+        GL.glUniform3fv(global_uniform_viewpos, 1, viewpos);
+        
+        GL.glUniform3f(global_uniform_dirlight_ambient, 0.1f, 0.0f, 0.15f);
+        GL.glUniform3f(global_uniform_dirlight_diffuse, 0.3f, 0.3f, 0.3f);
+        GL.glUniform3f(global_uniform_dirlight_specular, 0.2f, 0.2f, 0.2f);
+        
+        GL.glUniform1i(global_uniform_material_diffuse, 0);
+        GL.glUniform1i(global_uniform_material_specular, 1);
+        GL.glUniform1i(global_uniform_material_normal, 2);
+        
+        GL.glUniform1i(global_uniform_pointlights_count, mgr->point_lights_count);
+        for (int32 i = 0; i < mgr->point_lights_count; ++i)
+        {
+            Render_PointLight* const l = &mgr->point_lights[i];
+            Render_Entity* const e = l->entity;
+            
+            GL.glUniform3fv(global_uniform_pointlights_positions[i], 1, e->position);
+            GL.glUniform1f(global_uniform_pointlights_data[i].constant, l->constant);
+            GL.glUniform1f(global_uniform_pointlights_data[i].linear, l->linear);
+            GL.glUniform1f(global_uniform_pointlights_data[i].quadratic, l->quadratic);
+            GL.glUniform3fv(global_uniform_pointlights_data[i].ambient, 1, l->ambient);
+            GL.glUniform3fv(global_uniform_pointlights_data[i].diffuse, 1, l->diffuse);
+            GL.glUniform3fv(global_uniform_pointlights_data[i].specular, 1, l->specular);
+        }
+        
+        //- NOTE(ljre): Render Models
+        for (int32 i = 0; i < mgr->model_count; ++i)
+        {
+            Render_3DModel* const model = &mgr->models[i];
+            Asset_3DModel* const asset = model->asset;
+            Render_Entity* const entity = model->entity;
+            
+            glm_mat4_identity(matrix);
+            glm_translate(matrix, entity->position);
+            glm_rotate(matrix, entity->rotation[0], (vec3) { 1.0f, 0.0f, 0.0f });
+            glm_rotate(matrix, entity->rotation[1], (vec3) { 0.0f, 1.0f, 0.0f });
+            glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
+            glm_scale(matrix, entity->scale);
+            
+            glm_mat4_mul(matrix, asset->transform, matrix);
+            glm_mat4_inv(matrix, inversed_matrix);
+            glm_mat4_transpose(inversed_matrix);
+            
+            GL.glBindVertexArray(asset->vao);
+            GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
+            
+            GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
+            GL.glUniformMatrix4fv(global_uniform_inversed_model, 1, false, (float32*)inversed_matrix);
+            
+            GL.glUniform4fv(global_uniform_color, 1, model->color);
+            GL.glUniform3fv(global_uniform_material_ambient, 1, asset->material.ambient);
+            GL.glUniform1f(global_uniform_material_shininess, asset->material.shininess);
+            
+            GL.glActiveTexture(GL_TEXTURE0);
+            GL.glBindTexture(GL_TEXTURE_2D, asset->material.diffuse ? asset->material.diffuse : global_default_diffuse_texture);
+            
+            GL.glActiveTexture(GL_TEXTURE1);
+            GL.glBindTexture(GL_TEXTURE_2D, asset->material.specular ? asset->material.specular : global_default_specular_texture);
+            
+            GL.glActiveTexture(GL_TEXTURE2);
+            GL.glBindTexture(GL_TEXTURE_2D, asset->material.normal ? asset->material.normal : global_default_normal_texture);
+            
+            GL.glDrawElements(asset->prim_mode, asset->index_count, asset->index_type, 0);
+        }
+    }
+    
+    GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    GL.glBindVertexArray(0);
 }
