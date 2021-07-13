@@ -33,6 +33,7 @@ enum Json_ValueKind
     Json_ValueKind_Array,
     Json_ValueKind_Number,
     Json_ValueKind_String,
+    Json_ValueKind_Bool,
 } typedef Json_ValueKind;
 
 struct Json_Value
@@ -135,7 +136,7 @@ FindEndOfValue(const uint8* begin, const uint8* end)
                 return NULL;
         } break;
         
-        case '0':
+        case '-': case '0':
         case '1': case '2': case '3': case'4':
         case '5': case '6': case '7': case'8':
         case '9':
@@ -147,7 +148,12 @@ FindEndOfValue(const uint8* begin, const uint8* end)
                 return NULL;
         } break;
         
-        default: return NULL;
+        default:
+        {
+            --it;
+            while (it < end && (*it >= 'a' && *it <= 'z'))
+                ++it;
+        } break;
     }
     
     return it;
@@ -199,6 +205,16 @@ Json_NumberValueI64(const Json_Value* value)
     buf[len] = 0;
     
     return strtoll(buf, NULL, 10);
+}
+
+internal bool32
+Json_BoolValue(const Json_Value* value)
+{
+    Assert(value);
+    Assert(value->begin);
+    Assert(value->kind == Json_ValueKind_Bool);
+    
+    return strncmp((const char*)value->begin, "true", (uintsize)(value->end - value->begin)) == 0;
 }
 
 internal String
@@ -274,12 +290,25 @@ Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
         case '[': value->kind = Json_ValueKind_Array; break;
         case '"': value->kind = Json_ValueKind_String; break;
         
-        case '0':
+        case '-': case '0':
         case '1': case '2': case '3': case'4':
         case '5': case '6': case '7': case'8':
         case '9': value->kind = Json_ValueKind_Number; break;
         
-        default: value->kind = Json_ValueKind_Invalid; break;
+        default:
+        {
+            uintsize len = (uintsize)(value->end - value->begin);
+            
+            if (strncmp((const char*)value->begin, "true", len) == 0 ||
+                strncmp((const char*)value->begin, "false", len) == 0)
+            {
+                value->kind = Json_ValueKind_Bool;
+            }
+            else
+            {
+                value->kind = Json_ValueKind_Invalid;
+            }
+        } break;
     }
 }
 
@@ -383,12 +412,25 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
         case '[': value->kind = Json_ValueKind_Array; break;
         case '"': value->kind = Json_ValueKind_String; break;
         
-        case '0':
+        case '-': case '0':
         case '1': case '2': case '3': case'4':
         case '5': case '6': case '7': case'8':
         case '9': value->kind = Json_ValueKind_Number; break;
         
-        default: value->kind = Json_ValueKind_Invalid; break;
+        default:
+        {
+            uintsize len = (uintsize)(value->end - value->begin);
+            
+            if (strncmp((const char*)value->begin, "true", len) == 0 ||
+                strncmp((const char*)value->begin, "false", len) == 0)
+            {
+                value->kind = Json_ValueKind_Bool;
+            }
+            else
+            {
+                value->kind = Json_ValueKind_Invalid;
+            }
+        } break;
     }
 }
 
@@ -474,12 +516,25 @@ Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_s
                 case '[': out_state->kind = Json_ValueKind_Array; break;
                 case '"': out_state->kind = Json_ValueKind_String; break;
                 
-                case '0':
+                case '-': case '0':
                 case '1': case '2': case '3': case'4':
                 case '5': case '6': case '7': case'8':
                 case '9': out_state->kind = Json_ValueKind_Number; break;
                 
-                default: out_state->kind = Json_ValueKind_Invalid; break;
+                default:
+                {
+                    uintsize len = (uintsize)(out_state->end - out_state->begin);
+                    
+                    if (strncmp((const char*)out_state->begin, "true", len) == 0 ||
+                        strncmp((const char*)out_state->begin, "false", len) == 0)
+                    {
+                        out_state->kind = Json_ValueKind_Bool;
+                    }
+                    else
+                    {
+                        out_state->kind = Json_ValueKind_Invalid;
+                    }
+                } break;
             }
         }
     }

@@ -329,6 +329,11 @@ Engine_Main(int32 argc, char** argv)
             camera.pos[0] += camera_speed[0];
             camera.pos[2] += camera_speed[1];
             
+            if (Input_IsDown(gamepad, Input_GamepadButton_A))
+                camera_height += 0.05f;
+            else if (Input_IsDown(gamepad, Input_GamepadButton_B))
+                camera_height -= 0.05f;
+            
             //~ Bump
             float32 d = glm_vec2_distance2(camera_speed, GLM_VEC2_ZERO);
             if (d > 0.0001f)
@@ -391,12 +396,7 @@ Engine_Main(int32 argc, char** argv)
                     Render_DrawText(&font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, 0xFFFFFFFF);
                 }
                 
-                if (Input_IsPressed(gamepad, Input_GamepadButton_A))
-                    Audio_Play(&sound_music3, false, 0.5, 1.5);
-                if (Input_IsPressed(gamepad, Input_GamepadButton_X))
-                    Audio_Play(&sound_music3, false, 0.5, 1.0);
-                if (Input_IsPressed(gamepad, Input_GamepadButton_B))
-                    Audio_Play(&sound_music3, false, 0.5, 0.75);
+                
             }
         }
         

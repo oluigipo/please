@@ -196,8 +196,12 @@ struct Render_Camera
 struct Render_3DModel
 {
     mat4 transform;
+    
     uint32 vbo, vao, ebo;
+    
     uint32 diffuse;
+    uint32 normal;
+    uint32 specular;
     
     int32 index_count;
     int32 index_type;

@@ -70,9 +70,12 @@ internal uint32 global_current_shader;
 internal int32 global_uniform_color;
 internal int32 global_uniform_view;
 internal int32 global_uniform_model;
-internal int32 global_uniform_inverse_model;
+internal int32 global_uniform_inversed_model;
 internal int32 global_uniform_texture;
 internal int32 global_uniform_dirlight;
+internal int32 global_uniform_dirlight_color;
+internal int32 global_uniform_normalmap;
+internal int32 global_uniform_has_normalmap;
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
@@ -111,44 +114,68 @@ internal const char* const global_vertex_3dshader =
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
 "layout (location = 2) in vec2 aTexCoord;\n"
+"layout (location = 3) in vec4 aTangent;\n"
 
 "out vec2 vTexCoord;"
-"out vec3 vNormal;"
+"out mat3 vTbn;"
 "out vec3 vFragPos;"
+"out vec3 vDirLight;"
+"out vec3 vNormal;"
 
 "uniform mat4 uView;\n"
 "uniform mat4 uModel;\n"
-"uniform mat4 uInverseModel;\n"
+"uniform mat4 uInversedModel;\n"
+"uniform vec3 uDirLight;\n"
 
 "void main() {"
 "    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
-"    vFragPos = vec3(uModel * vec4(aPosition, 1.0));"
-"    vNormal = mat3(transpose(uInverseModel)) * aNormal;" // TODO(ljre): Review this.
 "    vTexCoord = aTexCoord;"
+
+"    vec3 t = normalize(mat3(uModel) * aTangent.xyz);"
+"    vec3 n = normalize(mat3(uModel) * aNormal);"
+"    vec3 b = cross(n, t) * aTangent.w;"
+
+"    vTbn = transpose(mat3(t, b, n));"
+
+"    vFragPos = vTbn * vec3(uModel * vec4(aPosition, 1.0));"
+"    vDirLight = vTbn * uDirLight;"
+"    vNormal = vTbn * vec3(1.0, 0.0, 0.0);"
 "}"
 ;
 
 internal const char* const global_fragment_3dshader =
 "#version 330 core\n"
 
-"in vec2 vTexCoord;"
-"in vec3 vNormal;"
-"in vec3 vFragPos;"
+"in vec2 vTexCoord;\n"
+"in mat3 vTbn;\n"
+"in vec3 vFragPos;\n"
+"in vec3 vDirLight;\n"
+"in vec3 vNormal;\n"
 
-"out vec4 oFragColor;"
+"out vec4 oFragColor;\n"
 
-"uniform vec4 uColor;"
-"uniform sampler2D uTexture;"
-"uniform vec3 uDirLight;"
+"uniform vec4 uColor;\n"
+"uniform vec3 uDirLightColor;\n"
 
-"void main() {"
-"    vec3 ambient = vec3(0.2);"
+"uniform sampler2D uTexture;\n"
+"uniform sampler2D uNormalMap;\n"
+"uniform bool uHasNormalMap;\n"
 
-"    vec3 diffuse = vec3(max( 0.0, dot(normalize(vNormal), uDirLight) ));"
+"void main() {\n"
+"    vec3 normal;\n"
+"    if (uHasNormalMap)\n"
+"        normal = texture(uNormalMap, vTexCoord).rgb;\n"
+"    else\n"
+"        normal = vec3(0.0, 0.0, 1.0);\n"
+"    normal = normalize(normal * 2.0 - 1.0);\n"
 
-"    vec4 color = vec4(vec3(uColor) * (diffuse + ambient), uColor.a);"
-"    oFragColor = color * texture(uTexture, vTexCoord);"
-"}"
+"    vec3 color = texture(uTexture, vTexCoord).rgb;\n"
+"    vec3 ambient = vec3(0.2) * color;\n"
+"    vec3 diffuse = vec3(max( 0.0, dot(vDirLight, normal) )) * uDirLightColor * color;\n"
+
+"    oFragColor = vec4(vec3(uColor) * (diffuse + ambient), uColor.a);\n"
+"    oFragColor = vec4(vNormal, 1.0);"
+"}\n"
 ;
 
 //~ Functions
@@ -376,9 +403,12 @@ Render_Begin2D(const Render_Camera* camera)
     global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
     global_uniform_view = GL.glGetUniformLocation(shader, "uView");
     global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
+    global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
     global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
-    global_uniform_inverse_model = GL.glGetUniformLocation(shader, "uInverseModel");
+    global_uniform_dirlight_color = GL.glGetUniformLocation(shader, "uDirLightColor");
+    global_uniform_normalmap = GL.glGetUniformLocation(shader, "uNormalMap");
+    global_uniform_has_normalmap = GL.glGetUniformLocation(shader, "uHasNormalMap");
     
     global_current_shader = shader;
 }
@@ -405,9 +435,12 @@ Render_Begin3D(const Render_Camera* camera)
     global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
     global_uniform_view = GL.glGetUniformLocation(shader, "uView");
     global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
+    global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
     global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
-    global_uniform_inverse_model = GL.glGetUniformLocation(shader, "uInverseModel");
+    global_uniform_dirlight_color = GL.glGetUniformLocation(shader, "uDirLightColor");
+    global_uniform_normalmap = GL.glGetUniformLocation(shader, "uNormalMap");
+    global_uniform_has_normalmap = GL.glGetUniformLocation(shader, "uHasNormalMap");
     
     global_current_shader = shader;
 }
@@ -547,7 +580,8 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     glm_mat4_mul(matrix, (vec4*)model->transform, matrix);
     
     mat4 inversed_matrix;
-    glm_mat4_inv_fast(matrix, inversed_matrix);
+    glm_mat4_inv(matrix, inversed_matrix);
+    //glm_mat4_transpose(inversed_matrix);
     
     GL.glBindVertexArray(model->vao);
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
@@ -561,11 +595,28 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     
     if (global_uniform_dirlight != -1)
         GL.glUniform3fv(global_uniform_dirlight, 1, global_dirlight);
-    if (global_uniform_inverse_model != -1)
-        GL.glUniformMatrix4fv(global_uniform_inverse_model, 1, false, (const float32*)inversed_matrix);
+    if (global_uniform_dirlight_color != -1)
+        GL.glUniform3f(global_uniform_dirlight_color, 1.0f, 1.0f, 1.0f);
+    if (global_uniform_inversed_model != -1)
+        GL.glUniformMatrix4fv(global_uniform_inversed_model, 1, false, (const float32*)inversed_matrix);
+    
+    if (global_uniform_has_normalmap != -1)
+    {
+        if (model->normal && global_uniform_normalmap != -1)
+        {
+            GL.glUniform1i(global_uniform_has_normalmap, true);
+            GL.glUniform1i(global_uniform_normalmap, 1);
+        }
+        else
+        {
+            GL.glUniform1i(global_uniform_has_normalmap, false);
+        }
+    }
     
     GL.glActiveTexture(GL_TEXTURE0);
     GL.glBindTexture(GL_TEXTURE_2D, model->diffuse ? model->diffuse : global_white_texture);
+    GL.glActiveTexture(GL_TEXTURE1);
+    GL.glBindTexture(GL_TEXTURE_2D, model->normal);
     
     GL.glDrawElements((GLenum)model->prim_mode, model->index_count, (GLenum)model->index_type, 0);
 }
@@ -599,6 +650,9 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         const uint8* uv_buffer;
         int32 uv_size;
         
+        const uint8* tan_buffer;
+        int32 tan_size;
+        
         const uint8* indices_buffer;
         int32 indices_size;
         
@@ -620,6 +674,12 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         uv_size = view->byte_length;
         total_size += uv_size;
         
+        // NOTE(ljre): Tangent
+        view = &model.buffer_views[model.accessors[prim->attributes.tangent].buffer_view];
+        tan_buffer = model.buffers[view->buffer].data + view->byte_offset;
+        tan_size = view->byte_length;
+        total_size += tan_size;
+        
         GL.glGenBuffers(1, &out->vbo);
         GL.glBindBuffer(GL_ARRAY_BUFFER, out->vbo);
         GL.glBufferData(GL_ARRAY_BUFFER, total_size, NULL, GL_STATIC_DRAW);
@@ -627,6 +687,7 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         GL.glBufferSubData(GL_ARRAY_BUFFER, 0, pos_size, pos_buffer);
         GL.glBufferSubData(GL_ARRAY_BUFFER, pos_size, norm_size, norm_buffer);
         GL.glBufferSubData(GL_ARRAY_BUFFER, pos_size + norm_size, uv_size, uv_buffer);
+        GL.glBufferSubData(GL_ARRAY_BUFFER, pos_size + norm_size + uv_size, tan_size, tan_buffer);
         
         // NOTE(ljre): VAO
         GL.glGenVertexArrays(1, &out->vao);
@@ -638,6 +699,8 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(vec3), (void*)pos_size);
         GL.glEnableVertexAttribArray(2);
         GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(vec2), (void*)(pos_size + norm_size));
+        GL.glEnableVertexAttribArray(3);
+        GL.glVertexAttribPointer(3, 4, GL_FLOAT, false, sizeof(vec4), (void*)(pos_size + norm_size + uv_size));
         
         // NOTE(ljre): Indices
         view = &model.buffer_views[model.accessors[prim->indices].buffer_view];
@@ -654,6 +717,8 @@ Render_Load3DModelFromFile(String path, Render_3DModel* out)
         glm_mat4_copy(model.nodes[model.scenes[model.scene].nodes[0]].transform, out->transform);
         // TODO(ljre): Textures
         out->diffuse = 0;
+        out->normal = 0;
+        out->specular = 0;
         
         GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
         GL.glBindVertexArray(0);
