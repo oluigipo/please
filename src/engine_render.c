@@ -1081,7 +1081,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     {
         GL.glGenTextures(1, &mgr->shadow_depthmap);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -1100,9 +1100,9 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     //- NOTE(ljre): Draw to Framebuffer
     {
         {
-            float32 umbrella = 30.0f;
+            float32 umbrella = 20.0f;
             mat4 proj;
-            glm_ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.5f, umbrella + 20.0f, proj);
+            glm_ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.5f, umbrella + 10.0f, proj);
             
             glm_lookat((vec3) { mgr->dirlight[0] * umbrella, mgr->dirlight[1] * umbrella, mgr->dirlight[2] * umbrella },
                        (vec3) { 0.0f, 0.0f, 0.0f },

@@ -282,7 +282,7 @@ API int32 Platform_WindowHeight(void);
 API bool32 Platform_WindowShouldClose(void);
 API void Platform_SetWindow(int32 x, int32 y, int32 width, int32 height); // NOTE(ljre): use -1 to don't change it
 API void Platform_CenterWindow(void);
-API float64 Platform_CurrentTime(void);
+API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
