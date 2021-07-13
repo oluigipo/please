@@ -224,6 +224,7 @@ struct Render_Manager
 {
     vec3 dirlight;
     Asset_3DModel* cube_model;
+    uint32 shadow_fbo, shadow_depthmap;
     
     Render_Entity entities[MANAGER_MAX_ENTITIES];
     Render_Entity* free_spaces[MANAGER_MAX_ENTITIES];

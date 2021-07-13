@@ -256,7 +256,7 @@ Engine_Main(int32 argc, char** argv)
     //~ NOTE(ljre): Entities
     Render_Manager manager = { 0 };
     manager.dirlight[0] = 1.0f;
-    manager.dirlight[1] = 2.0f;
+    manager.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
     manager.dirlight[2] = 0.5f;
     glm_vec3_normalize(manager.dirlight);
     
@@ -271,9 +271,9 @@ Engine_Main(int32 argc, char** argv)
     ground->position[0] = 0.0f;
     ground->position[1] = -2.0f;
     ground->position[2] = 0.0f;
-    ground->model->color[0] = 0.0f;
-    ground->model->color[1] = 0.5f;
-    ground->model->color[2] = 0.0f;
+    ground->model->color[0] = 1.0f;
+    ground->model->color[1] = 1.0f;
+    ground->model->color[2] = 1.0f;
     ground->model->color[3] = 1.0f;
     ground->model->asset = &model;
     
@@ -281,6 +281,7 @@ Engine_Main(int32 argc, char** argv)
     Render_Entity* tree = Render_AddToManager(&manager, Render_EntityKind_3DModel);
     
     ColorToVec4(0xFFFFFFFF, tree->model->color);
+    tree->position[1] += 0.1f;
     tree->model->asset = &tree_model;
     
     //- Rotating Cubes
@@ -305,6 +306,7 @@ Engine_Main(int32 argc, char** argv)
     }
     
     //- Lights
+#if 1
     Render_Entity* light1 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
     Render_Entity* light2 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
     
@@ -317,10 +319,10 @@ Engine_Main(int32 argc, char** argv)
     light1->point_light->ambient[0] = 0.2f;
     light1->point_light->ambient[1] = 0.0f;
     light1->point_light->ambient[2] = 0.0f;
-    light1->point_light->diffuse[0] = 1.0f;
+    light1->point_light->diffuse[0] = 0.8f;
     light1->point_light->diffuse[1] = 0.0f;
     light1->point_light->diffuse[2] = 0.0f;
-    light1->point_light->specular[0] = 0.8f;
+    light1->point_light->specular[0] = 1.0f;
     light1->point_light->specular[1] = 0.0f;
     light1->point_light->specular[2] = 0.0f;
     light1->point_light->constant = 1.0f;
@@ -345,6 +347,7 @@ Engine_Main(int32 argc, char** argv)
     light2->point_light->constant = 1.0f;
     light2->point_light->linear = 0.09f;
     light2->point_light->quadratic = 0.032f;
+#endif
     
     Trace("Game Loop");
     while (!Platform_WindowShouldClose())
@@ -416,7 +419,7 @@ Engine_Main(int32 argc, char** argv)
         }
         
         if (is_connected)
-            Render_ClearBackground(0.05f, 0.0f, 0.1f, 1.0f);
+            Render_ClearBackground(0.1f, 0.15f, 0.3f, 1.0f);
         else
             Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
         
