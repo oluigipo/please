@@ -339,8 +339,9 @@ Engine_Main(int32 argc, char** argv)
             if (d > 0.0001f)
             {
                 moving_time += 0.3f;
-                camera.pos[1] = camera_height + sinf(moving_time) * 0.04f;
             }
+            
+            camera.pos[1] = camera_height + sinf(moving_time) * 0.04f;
         }
         
         Render_ClearBackground(is_connected ? 0xFF2D81FF : 0xFF110011);

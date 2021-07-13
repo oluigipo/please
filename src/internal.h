@@ -193,15 +193,20 @@ struct Render_Camera
     };
 } typedef Render_Camera;
 
+struct Render_Material
+{
+    vec3 ambient;
+    uint32 diffuse;
+    uint32 specular;
+    uint32 normal;
+    float32 shininess;
+} typedef Render_Material;
+
 struct Render_3DModel
 {
     mat4 transform;
-    
     uint32 vbo, vao, ebo;
-    
-    uint32 diffuse;
-    uint32 normal;
-    uint32 specular;
+    Render_Material material;
     
     int32 index_count;
     int32 index_type;
