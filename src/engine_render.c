@@ -73,7 +73,6 @@ internal int32 global_uniform_model;
 internal int32 global_uniform_inversed_model;
 internal int32 global_uniform_texture;
 internal int32 global_uniform_dirlight;
-internal int32 global_uniform_dirlight_color;
 internal int32 global_uniform_normalmap;
 internal int32 global_uniform_has_normalmap;
 
@@ -120,7 +119,6 @@ internal const char* const global_vertex_3dshader =
 "out mat3 vTbn;"
 "out vec3 vFragPos;"
 "out vec3 vDirLight;"
-"out vec3 vNormal;"
 
 "uniform mat4 uView;\n"
 "uniform mat4 uModel;\n"
@@ -131,15 +129,16 @@ internal const char* const global_vertex_3dshader =
 "    gl_Position = uView * uModel * vec4(aPosition, 1.0);"
 "    vTexCoord = aTexCoord;"
 
-"    vec3 t = normalize(mat3(uModel) * aTangent.xyz);"
-"    vec3 n = normalize(mat3(uModel) * aNormal);"
+//"    vec3 bitangent = cross(aNormal, aTangent.xyz) * aTangent.w;"
+"    vec3 t = normalize(mat3(uInversedModel) * aTangent.xyz);"
+"    vec3 n = normalize(mat3(uInversedModel) * aNormal);"
+//"    vec3 b = normalize(mat3(uInversedModel) * bitangent);"
 "    vec3 b = cross(n, t) * aTangent.w;"
 
 "    vTbn = transpose(mat3(t, b, n));"
 
 "    vFragPos = vTbn * vec3(uModel * vec4(aPosition, 1.0));"
 "    vDirLight = vTbn * uDirLight;"
-"    vNormal = vTbn * vec3(1.0, 0.0, 0.0);"
 "}"
 ;
 
@@ -150,31 +149,28 @@ internal const char* const global_fragment_3dshader =
 "in mat3 vTbn;\n"
 "in vec3 vFragPos;\n"
 "in vec3 vDirLight;\n"
-"in vec3 vNormal;\n"
 
 "out vec4 oFragColor;\n"
 
 "uniform vec4 uColor;\n"
-"uniform vec3 uDirLightColor;\n"
-
 "uniform sampler2D uTexture;\n"
 "uniform sampler2D uNormalMap;\n"
 "uniform bool uHasNormalMap;\n"
 
 "void main() {\n"
 "    vec3 normal;\n"
-"    if (uHasNormalMap)\n"
+"    if (uHasNormalMap) {\n"
 "        normal = texture(uNormalMap, vTexCoord).rgb;\n"
-"    else\n"
+"        normal = normalize(normal * 2.0 - 1.0);\n"
+"    } else {\n"
 "        normal = vec3(0.0, 0.0, 1.0);\n"
-"    normal = normalize(normal * 2.0 - 1.0);\n"
+"    }\n"
 
-"    vec3 color = texture(uTexture, vTexCoord).rgb;\n"
-"    vec3 ambient = vec3(0.2) * color;\n"
-"    vec3 diffuse = vec3(max( 0.0, dot(vDirLight, normal) )) * uDirLightColor * color;\n"
+"    vec4 color = texture(uTexture, vTexCoord) * uColor;\n"
+"    vec3 ambient = vec3(0.2) * color.rgb;\n"
+"    vec3 diffuse = vec3(max( 0.0, dot(normal, vDirLight) )) * color.rgb;\n"
 
-"    oFragColor = vec4(vec3(uColor) * (diffuse + ambient), uColor.a);\n"
-"    oFragColor = vec4(vNormal, 1.0);"
+"    oFragColor = vec4(diffuse + ambient, color.a);\n"
 "}\n"
 ;
 
@@ -406,7 +402,6 @@ Render_Begin2D(const Render_Camera* camera)
     global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
     global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
-    global_uniform_dirlight_color = GL.glGetUniformLocation(shader, "uDirLightColor");
     global_uniform_normalmap = GL.glGetUniformLocation(shader, "uNormalMap");
     global_uniform_has_normalmap = GL.glGetUniformLocation(shader, "uHasNormalMap");
     
@@ -438,7 +433,6 @@ Render_Begin3D(const Render_Camera* camera)
     global_uniform_inversed_model = GL.glGetUniformLocation(shader, "uInversedModel");
     global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
     global_uniform_dirlight = GL.glGetUniformLocation(shader, "uDirLight");
-    global_uniform_dirlight_color = GL.glGetUniformLocation(shader, "uDirLightColor");
     global_uniform_normalmap = GL.glGetUniformLocation(shader, "uNormalMap");
     global_uniform_has_normalmap = GL.glGetUniformLocation(shader, "uHasNormalMap");
     
@@ -581,7 +575,7 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     
     mat4 inversed_matrix;
     glm_mat4_inv(matrix, inversed_matrix);
-    //glm_mat4_transpose(inversed_matrix);
+    glm_mat4_transpose(inversed_matrix);
     
     GL.glBindVertexArray(model->vao);
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
@@ -595,8 +589,6 @@ Render_Draw3DModel(const Render_3DModel* model, const mat4 where, ColorARGB colo
     
     if (global_uniform_dirlight != -1)
         GL.glUniform3fv(global_uniform_dirlight, 1, global_dirlight);
-    if (global_uniform_dirlight_color != -1)
-        GL.glUniform3f(global_uniform_dirlight_color, 1.0f, 1.0f, 1.0f);
     if (global_uniform_inversed_model != -1)
         GL.glUniformMatrix4fv(global_uniform_inversed_model, 1, false, (const float32*)inversed_matrix);
     
