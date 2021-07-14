@@ -284,6 +284,7 @@ API void Platform_SetWindow(int32 x, int32 y, int32 width, int32 height); // NOT
 API void Platform_CenterWindow(void);
 API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
+API float32 Platform_GetDeltaTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
 

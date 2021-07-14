@@ -1081,7 +1081,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     {
         GL.glGenTextures(1, &mgr->shadow_depthmap);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -1101,10 +1101,13 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     {
         {
             float32 umbrella = 20.0f;
+            float32 range = 30.0f;
             mat4 proj;
-            glm_ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.5f, umbrella + 10.0f, proj);
+            glm_ortho(-range, range, -range, range, 0.5f, 100.0f, proj);
             
-            glm_lookat((vec3) { mgr->dirlight[0] * umbrella, mgr->dirlight[1] * umbrella, mgr->dirlight[2] * umbrella },
+            glm_lookat((vec3) { mgr->dirlight[0] * umbrella,
+                           mgr->dirlight[1] * umbrella,
+                           mgr->dirlight[2] * umbrella },
                        (vec3) { 0.0f, 0.0f, 0.0f },
                        (vec3) { 0.0f, 1.0f, 0.0f }, light_space_matrix);
             glm_mat4_mul(proj, light_space_matrix, light_space_matrix);
@@ -1265,4 +1268,27 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     GL.glBindVertexArray(0);
+    
+    if (false) {
+        mat4 view, matrix;
+        glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, view);
+        glm_mat4_identity(matrix);
+        
+        GL.glUseProgram(global_default_shader);
+        GetCurrentShaderUniforms(global_default_shader);
+        
+        GL.glUniform4fv(global_uniform_color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
+        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
+        GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
+        GL.glUniform1i(global_uniform_texture, 0);
+        
+        GL.glActiveTexture(GL_TEXTURE0);
+        GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
+        
+        GL.glBindVertexArray(global_quad_vao);
+        GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+        GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        
+        GL.glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }

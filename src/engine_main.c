@@ -424,9 +424,18 @@ Engine_Main(int32 argc, char** argv)
             Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
         
         //~ NOTE(ljre): 3D World
+        float32 t = (float32)Platform_GetTime();
+        
         for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
         {
-            rotating_cubes[i]->rotation[1] = (float32)Platform_GetTime() + (float32)i;
+            rotating_cubes[i]->rotation[1] = t + (float32)i;
+        }
+        
+        if (false)
+        {
+            manager.dirlight[0] = cosf(t);
+            manager.dirlight[1] = sinf(t);
+            manager.dirlight[2] = cosf(t);
         }
         
         Render_DrawManager(&manager, &camera);
