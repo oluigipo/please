@@ -404,15 +404,6 @@ CompileShader(const char* vertex_source, const char* fragment_source)
 }
 
 internal void
-ColorToVec4(ColorARGB color, vec4 out)
-{
-    out[0] = (float32)(color>>16 & 0xFF) / 255.0f;
-    out[1] = (float32)(color>>8 & 0xFF) / 255.0f;
-    out[2] = (float32)(color & 0xFF) / 255.0f;
-    out[3] = (float32)(color>>24 & 0xFF) / 255.0f;
-}
-
-internal void
 CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
     int32 width = 0, line_width = 0, height = 0;
@@ -662,11 +653,9 @@ Render_LoadFontFromFile(String path, Asset_Font* out_font)
 }
 
 API void
-Render_DrawText(const Asset_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color)
+Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color)
 {
     float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
-    vec4 color_vec;
-    ColorToVec4(color, color_vec);
     
     int32 bitmap_width, bitmap_height;
     CalcBitmapSizeForText(font, scale, text, &bitmap_width, &bitmap_height);
@@ -720,7 +709,7 @@ Render_DrawText(const Asset_Font* font, String text, vec3 pos, float32 char_heig
     GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
     
     GL.glUseProgram(global_current_shader);
-    GL.glUniform4fv(global_uniform_color, 1, color_vec);
+    GL.glUniform4fv(global_uniform_color, 1, color);
     GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)global_view);
     GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
     GL.glUniform1i(global_uniform_texture, 0);
@@ -829,7 +818,6 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
         out->index_type = (uint32)model.accessors[prim->indices].component_type;
         out->index_count = model.accessors[prim->indices].count;
         glm_mat4_copy(model.nodes[model.scenes[model.scene].nodes[0]].transform, out->transform);
-        // TODO(ljre): Textures
         out->material.ambient[0] = 1.0f;
         out->material.ambient[1] = 1.0f;
         out->material.ambient[2] = 1.0f;

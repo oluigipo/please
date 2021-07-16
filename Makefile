@@ -23,7 +23,7 @@ else
 	OPT = -O2 -fno-slp-vectorize -ffast-math -flto
 	
 	CFLAGS += $(OPT)
-	LDFLAGS += $(OPT)
+	LDFLAGS += $(OPT) -static
 endif
 
 ifeq ($(OS), Windows_NT)

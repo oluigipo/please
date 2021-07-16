@@ -2,30 +2,31 @@
 #define INTERNAL_H
 
 #ifdef __cplusplus
-#   error This code should not be compiled as C++ code.
+extern "C" {
 #endif
-
-//~ Macros
+    
 #ifdef __GNUC__
 #   define alignas(_) __attribute__((aligned(_)))
 #else
 #   define alignas(_) __declspec(align(_))
 #endif
-
-#if 0
-;
-#define restrict
-#define NULL
-#endif
-
+    
 #define internal static
 #define true 1
 #define false 0
-
-#ifdef UNITY_BUILD
+    
+#if defined(UNITY_BUILD)
 #   define API static
+#elif defined(__cplusplus)
+#   define API extern "C"
 #else
 #   define API
+#endif
+    
+#if 0
+}
+#define restrict
+#define NULL
 #endif
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
@@ -129,15 +130,25 @@ typedef double float64;
 #include "internal_assets.h"
 
 //~ Forward Declarations
+
+// A scene is a function pointer that should return the next scene to
+// run, or NULL if the game should close.
+typedef void* Scene;
+
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
 API void* Engine_PushMemoryState(void);
 API void Engine_PopMemoryState(void* state);
 
 API int32 Engine_Main(int32 argc, char** argv);
+API void Engine_FinishFrame(void);
 API uint64 Engine_RandomU64(void);
 API uint32 Engine_RandomU32(void);
 API float64 Engine_RandomF64(void);
+API float32 Engine_RandomF32Range(float32 start, float32 end);
+API float32 Engine_DeltaTime(void);
+
+API Scene Game_MainScene(void);
 
 //- Discord Game SDK
 #ifdef USE_DISCORD_GAME_SDK
@@ -162,8 +173,6 @@ API void Audio_Play(const Asset_SoundBuffer* sound, bool32 loop, float64 volume,
 API void Audio_StopByBuffer(const Asset_SoundBuffer* sound, int32 max);
 
 //- Rendering
-typedef uint32 ColorARGB;
-
 struct Render_Camera
 {
     vec3 pos;
@@ -238,18 +247,17 @@ struct Render_Manager
     int32 model_count;
 } typedef Render_Manager;
 
+API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
+API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
+
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
 API void Render_Begin2D(const Render_Camera* camera);
-API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
-API void Render_DrawText(const Asset_Font* font, String text, vec3 pos, float32 char_height, ColorARGB color);
-API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
+API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size);
+API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color);
 
 API Render_Entity* Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind);
 API void Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle);
 API void Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera);
-
-//~ Game
-API int32 Game_MainScene(void);
 
 //~ Platform
 enum GraphicsAPI
@@ -284,7 +292,6 @@ API void Platform_SetWindow(int32 x, int32 y, int32 width, int32 height); // NOT
 API void Platform_CenterWindow(void);
 API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
-API float32 Platform_GetDeltaTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
 
@@ -295,7 +302,7 @@ API void* Platform_LoadDiscordLibrary(void);
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);
-API void* Platform_VirtualAlloc(uintsize size);
+API void* Platform_VirtualReserve(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
 API void Platform_VirtualFree(void* ptr, uintsize size);
 API void* Platform_ReadEntireFile(String path, uintsize* out_size);
@@ -443,5 +450,9 @@ API int32 Input_ConnectedGamepadsIndices(int32* out_indices, int32 max_count);
 #define Input_IsDown(state, btn) (((state).buttons[btn] & 1) != 0)
 #define Input_IsReleased(state, btn) (((state).buttons[btn] & 2) && !((state).buttons[btn] & 1))
 #define Input_IsUp(state, btn) (!((state).buttons[btn] & 1))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //INTERNAL_H

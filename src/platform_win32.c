@@ -443,7 +443,7 @@ Platform_HeapFree(void* ptr)
 }
 
 API void*
-Platform_VirtualAlloc(uintsize size)
+Platform_VirtualReserve(uintsize size)
 {
     Trace("Platform_VirtualAlloc");
     return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
