@@ -5,7 +5,7 @@ CUSTOMC ?=
 CUSTOMLD ?=
 
 CFLAGS += -std=c99 -I./include -I./src
-CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wnewline-eof -Wno-format
+CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
 CFLAGS += -Wno-missing-braces $(CUSTOMC)
 LDFLAGS += -L./lib $(CUSTOMLD)
 
@@ -20,10 +20,10 @@ else ifeq ($(MODE), safedebug)
 	CFLAGS += -g -DDEBUG -fsanitize=address
 	LDFLAGS += -g -fsanitize=address
 else
-	OPT = -O2 -fno-slp-vectorize -ffast-math -flto
+	OPT = -O1 -ffast-math -flto
 	
 	CFLAGS += $(OPT)
-	LDFLAGS += $(OPT) -static
+	LDFLAGS += $(OPT)
 endif
 
 ifeq ($(OS), Windows_NT)
@@ -33,7 +33,7 @@ ifeq ($(OS), Windows_NT)
 	CC = clang
 	LD = clang -fuse-ld=lld-link
 	
-	LDFLAGS += -luser32 -lgdi32 -lhid
+	LDFLAGS += -luser32 -lgdi32 -lhid -static
 	
 	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
 	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
@@ -56,7 +56,7 @@ else
 	ifeq ($(UNAME), Linux)
 		PLATFORM = linux
 		CFLAGS += -DOS_LINUX
-		LDFLAGS += -lm -lX11 -ldl
+		LDFLAGS += -lm -lX11 -ldl -lasound
 	endif
 	
 	ifeq ($(UNAME), Darwin)

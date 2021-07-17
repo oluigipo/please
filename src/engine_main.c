@@ -135,8 +135,11 @@ API int32
 Engine_Main(int32 argc, char** argv)
 {
     // NOTE(ljre): Init Global Stack Allocator
-    global_stack_reserved_size = Gigabytes(4);
+    global_stack_reserved_size = Gigabytes(1);
     global_stack_memory = Platform_VirtualReserve(global_stack_reserved_size);
+    if (!global_stack_memory)
+        Platform_ExitWithErrorMessage(Str("Could not reserve enough memory."));
+    
     global_stack_commited_size = global_stack_commiting_pages;
     Platform_VirtualCommit(global_stack_memory, global_stack_commited_size);
     global_stack_header = NULL;

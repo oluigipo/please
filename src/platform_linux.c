@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "internal.h"
 
 #undef internal
@@ -15,6 +16,8 @@
 #include <dlfcn.h>
 #include <dirent.h>
 #include <fcntl.h>
+
+#include <alsa/asoundlib.h>
 
 #define internal static
 
@@ -41,6 +44,8 @@ int32 main(int32 argc, char* argv[])
     
     if (global_display)
         XCloseDisplay(global_display);
+    
+    Linux_DeinitAudio();
     
     return result;
 }
@@ -89,6 +94,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
     if (!global_display)
         return false;
     
+    XInitThreads();
+    
     bool32 ok = false;
     
     ok = ok || (flags & GraphicsAPI_OpenGL && Linux_CreateOpenGLWindow(width, height, title));
@@ -101,6 +108,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
         *out_graphics = &global_graphics_context;
         
         Linux_InitInput();
+        Linux_InitAudio();
+        Linux_UpdateAudio();
     }
     
     return ok;
@@ -162,11 +171,14 @@ Platform_PollEvents(void)
     }
     
     Linux_UpdateInputPos();
+    Linux_UpdateAudio();
 }
 
 API void
 Platform_FinishFrame(void)
 {
+    Linux_FillAudioBuffer();
+    
     switch (global_graphics_context.api)
     {
         case GraphicsAPI_OpenGL: Linux_OpenGLSwapBuffers(); break;

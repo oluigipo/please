@@ -72,7 +72,7 @@ Engine_UpdateAudio(void)
 {
     // TODO(ljre): Better audio mixing!!!!
     
-    int32 out_channels; // NOTE(ljre): for now, assuming 2 channels.
+    int32 out_channels;
     int32 out_sample_count = 0;
     int32 out_sample_rate;
     
@@ -130,8 +130,15 @@ Engine_UpdateAudio(void)
             left  = Clamp(left,  INT16_MIN, INT16_MAX);
             right = Clamp(right, INT16_MIN, INT16_MAX);
             
-            *out_it++ += (int16)left;
-            *out_it++ += (int16)right;
+            if (out_channels == 2)
+            {
+                *out_it++ += (int16)left;
+                *out_it++ += (int16)right;
+            }
+            else
+            {
+                *out_it++ += left;
+            }
             
             playing->frame_index += 1;
             

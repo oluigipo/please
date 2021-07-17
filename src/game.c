@@ -124,7 +124,7 @@ Game_MainScene(void)
     
     // NOTE(ljre): Load Font
     Asset_Font font;
-    bool32 font_loaded = Render_LoadFontFromFile(Str("c:/windows/fonts/arial.ttf"), &font);
+    bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &font);
     
     int32 controller_index = 0;
     

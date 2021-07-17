@@ -47,6 +47,7 @@
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wall"
 #   pragma GCC diagnostic ignored "-Wextra"
+#   pragma GCC diagnostic ignored "-Wsign-conversion"
 #else
 #   pragma warning(push, 0)
 #endif
