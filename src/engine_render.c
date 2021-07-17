@@ -233,13 +233,30 @@ internal const char* const global_fragment_3dshader =
 "uniform PointLight uPointLights[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
 "uniform int uPointLightsCount;"
 
+"float map(float v, float a1, float b1, float a2, float b2) {"
+"    return (v - a1) / (b1 - a1) * (b2 - a2) + a2;"
+"}"
+
 "float CalculateShadow() {"
 "    vec3 coords = vFragPosInDirLight.xyz / vFragPosInDirLight.w;"
 "    coords = coords * 0.5 + 0.5;"
-"    float currentDepth = coords.z - 0.005;"
-"    vec2 texel = 1.0 / textureSize(uDirLightProp.shadowmap, 0);"
+"    const float bias = 0.005;"
+"    float currentDepth = coords.z - bias;"
+"    vec2 texel = 1.0 / textureSize(uDirLightProp.shadowmap, 0) * 0.5;"
 
-"    float shadow = 0.0;"
+"    float shadow;"
+#if 0
+
+"    shadow = texture(uDirLightProp.shadowmap, coords.xy).r - currentDepth;"
+"    shadow = map(shadow, 0.0, -currentDepth, 0.0, 1.0);"
+"    shadow = clamp(shadow, 0.0, 1.0);"
+
+#elif 0
+
+"    shadow = currentDepth > texture(uDirLightProp.shadowmap, coords.xy).r ? 1.0 : 0.0;"
+
+#else
+"    shadow = 0.0;"
 
 "    shadow += currentDepth > texture(uDirLightProp.shadowmap, coords.xy+vec2(-1.0, 1.0)*texel).r ? 1.0 : 0.0;"
 "    shadow += currentDepth > texture(uDirLightProp.shadowmap, coords.xy+vec2(0.0, 1.0)*texel).r ? 1.0 : 0.0;"
@@ -252,6 +269,7 @@ internal const char* const global_fragment_3dshader =
 "    shadow += currentDepth > texture(uDirLightProp.shadowmap, coords.xy+vec2(1.0, -1.0)*texel).r ? 1.0 : 0.0;"
 
 "    shadow /= 9.0;"
+#endif
 
 "    return shadow;"
 "}"
@@ -605,7 +623,7 @@ Render_Begin2D(const Render_Camera* camera)
 API void
 Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
 {
-    mat4 matrix = GLM_MAT4_IDENTITY;
+    mat4 matrix = GLM_MAT4_IDENTITY_INIT;
     glm_translate(matrix, pos);
     glm_scale(matrix, size);
     glm_translate(matrix, (vec3) { -0.5f, -0.5f }); // NOTE(ljre): Center
@@ -695,7 +713,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
     
     //Platform_DebugDumpBitmap("test.ppm", bitmap, bitmap_width, bitmap_height, 1);
     
-    mat4 matrix = GLM_MAT4_IDENTITY;
+    mat4 matrix = GLM_MAT4_IDENTITY_INIT;
     glm_translate(matrix, (vec3) { pos[0], pos[1], pos[2] });
     glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
     
@@ -1070,8 +1088,10 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glGenTextures(1, &mgr->shadow_depthmap);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
         GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         GL.glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
@@ -1091,7 +1111,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
             float32 umbrella = 20.0f;
             float32 range = 30.0f;
             mat4 proj;
-            glm_ortho(-range, range, -range, range, 0.5f, 100.0f, proj);
+            glm_ortho(-range, range, -range, range, 0.5f, 80.0f, proj);
             
             glm_lookat((vec3) { mgr->dirlight[0] * umbrella,
                            mgr->dirlight[1] * umbrella,
@@ -1105,7 +1125,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glViewport(0, 0, depthmap_width, depthmap_height);
         GL.glClear(GL_DEPTH_BUFFER_BIT);
         GL.glUseProgram(global_default_shadowshader);
-        GL.glCullFace(GL_FRONT);
+        //GL.glCullFace(GL_FRONT);
         
         GetCurrentShaderUniforms(global_default_shadowshader);
         

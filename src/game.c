@@ -318,13 +318,6 @@ Game_MainScene(void)
             rotating_cubes[i]->rotation[1] = t + (float32)i;
         }
         
-        if (false)
-        {
-            manager.dirlight[0] = cosf(t);
-            manager.dirlight[1] = sinf(t);
-            manager.dirlight[2] = cosf(t);
-        }
-        
         Render_DrawManager(&manager, &camera);
         
         //~ NOTE(ljre): 2D User Interface
