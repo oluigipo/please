@@ -116,11 +116,8 @@ typedef double float64;
 #   undef NDEBUG
 #   include <assert.h>
 #   define Assert assert
-//#   define Trace(x) Platform_DebugLog("[TRACE] " x "\n")
-#endif
-
-#ifndef Trace
-#   define Trace(x) ((void)0)
+#   define Trace(x) ((void)(0))
+#   define EndTrace() ((void)(0))
 #endif
 
 //~ Others

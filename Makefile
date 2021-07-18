@@ -4,7 +4,7 @@ LDFLAGS =
 CUSTOMC ?=
 CUSTOMLD ?=
 
-CFLAGS += -std=c99 -I./include -I./src
+CFLAGS += -I./include -I./src
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
 CFLAGS += -Wno-missing-braces $(CUSTOMC)
 LDFLAGS += -L./lib $(CUSTOMLD)
@@ -30,7 +30,7 @@ ifeq ($(OS), Windows_NT)
 	PLATFORM = win32
 	OUTPUT_NAME = game.exe
 	
-	CC = clang
+	CC = clang -std=c99
 	LD = clang -fuse-ld=lld-link
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static
@@ -50,7 +50,7 @@ else
 	UNAME := $(shell uname -s)
 	OUTPUT_NAME = game
 	
-	CC = clang
+	CC = clang -std=c99
 	LD = clang
 	
 	ifeq ($(UNAME), Linux)
@@ -70,8 +70,7 @@ all: build engine.o platform.o game.o
 
 unity: CFLAGS += -DUNITY_BUILD
 unity: build
-	$(CC) "./src/unity_build.c" -c -o "./build/unity_build.o" $(CFLAGS)
-	$(LD) "./build/unity_build.o" -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
+	$(CC) "./src/unity_build.c" -o "./build/$(OUTPUT_NAME)" $(CFLAGS) $(LDFLAGS)
 
 build:
 	mkdir build

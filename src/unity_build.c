@@ -1,3 +1,7 @@
+#ifndef UNITY_BUILD
+#   define UNITY_BUILD
+#endif
+
 #if defined(OS_WINDOWS)
 #   include "platform_win32.c"
 #elif defined(OS_LINUX)
