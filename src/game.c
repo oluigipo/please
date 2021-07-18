@@ -107,6 +107,12 @@ Game_MainScene(void)
         Platform_ExitWithErrorMessage(Str("Could not load tree model :("));
     }
     
+    Asset_3DModel corset_model;
+    if (!Render_Load3DModelFromFile(Str("./assets/corset.glb"), &corset_model))
+    {
+        Platform_ExitWithErrorMessage(Str("Could not load corset model :("));
+    }
+    
     // NOTE(ljre): Load Audio
     Asset_SoundBuffer sound_music;
     
@@ -172,6 +178,17 @@ Game_MainScene(void)
     ColorToVec4(0xFFFFFFFF, tree->model->color);
     tree->position[1] += 0.1f;
     tree->model->asset = &tree_model;
+    
+    //- Corset
+    for (int32 i = 0; i < 70; ++i) {
+        Render_Entity* corset = Render_AddToManager(&manager, Render_EntityKind_3DModel);
+        
+        ColorToVec4(0xFFFFFFFF, corset->model->color);
+        corset->position[0] = Engine_RandomF32Range(-5.0f, 5.0f);
+        corset->position[1] = 0.1f;
+        corset->position[2] = Engine_RandomF32Range(-5.0f, 5.0f);
+        corset->model->asset = &corset_model;
+    }
     
     //- Rotating Cubes
     Render_Entity* rotating_cubes[30];

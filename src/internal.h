@@ -234,6 +234,7 @@ struct Render_Manager
     vec3 dirlight;
     Asset_3DModel* cube_model;
     uint32 shadow_fbo, shadow_depthmap;
+    uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
     
     Render_Entity entities[MANAGER_MAX_ENTITIES];
     Render_Entity* free_spaces[MANAGER_MAX_ENTITIES];

@@ -137,7 +137,7 @@ Engine_UpdateAudio(void)
             }
             else
             {
-                *out_it++ += left;
+                *out_it++ += (int16)left;
             }
             
             playing->frame_index += 1;
