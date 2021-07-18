@@ -1,4 +1,4 @@
-#define SOUND_LATENCY_FPS 60
+#define SOUND_LATENCY_FPS 10
 
 //~ Globals
 internal bool32 global_audio_is_initialized = false;
@@ -16,6 +16,8 @@ internal snd_pcm_t *global_playback_handle;
 internal void
 Linux_InitAudio(void)
 {
+    return; // TODO(ljre): Finish audio on linux.
+    
     snd_pcm_hw_params_t* params;
     
     if (0 > snd_pcm_open(&global_playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0))
@@ -25,16 +27,16 @@ Linux_InitAudio(void)
     }
     
     snd_pcm_hw_params_malloc(&params);
-	snd_pcm_hw_params_any(global_playback_handle, params);
+    snd_pcm_hw_params_any(global_playback_handle, params);
     
     snd_pcm_hw_params_set_access(global_playback_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-	snd_pcm_hw_params_set_format(global_playback_handle, params, SND_PCM_FORMAT_S16_LE);
-	snd_pcm_hw_params_set_rate_near(global_playback_handle, params, &global_samples_per_second, 0);
-	snd_pcm_hw_params_set_channels(global_playback_handle, params, global_channels);
+    snd_pcm_hw_params_set_format(global_playback_handle, params, SND_PCM_FORMAT_S16_LE);
+    snd_pcm_hw_params_set_rate_near(global_playback_handle, params, &global_samples_per_second, 0);
+    snd_pcm_hw_params_set_channels(global_playback_handle, params, global_channels);
     
     snd_pcm_hw_params(global_playback_handle, params);
     
-	snd_pcm_hw_params_free(params);
+    snd_pcm_hw_params_free(params);
     
     //- Audio Buffer
     global_latency_frame_count = global_samples_per_second / global_channels * SOUND_LATENCY_FPS;
