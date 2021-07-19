@@ -4,14 +4,10 @@ LDFLAGS =
 CUSTOMC ?=
 CUSTOMLD ?=
 
-CFLAGS += -I./include -I./src
+CFLAGS += -Iinclude -Isrc
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
 CFLAGS += -Wno-missing-braces $(CUSTOMC)
-LDFLAGS += -L./lib $(CUSTOMLD)
-
-OBJS = "./build/platform.o"
-OBJS += "./build/engine.o"
-OBJS += "./build/game.o"
+LDFLAGS += -Llib $(CUSTOMLD)
 
 ifeq ($(MODE), debug)
 	CFLAGS += -g -DDEBUG
@@ -32,12 +28,13 @@ ifeq ($(OS), Windows_NT)
 	
 	CC = clang -std=c99
 	LD = clang -fuse-ld=lld-link
+	CLEAN = del "build\*.o" "build\*.pdb" "build\*.exp" "build\*.lib" "build\*.ilk"
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static
 	
 	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
 	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
-	CFLAGS += -D_CRT_SECURE_NO_WARNINGS -DOS_WINDOWS
+	CFLAGS += -D_CRT_SECURE_NO_WARNINGS
 	
 	ifeq ($(ARCH), x86)
 		CFLAGS += -m32 -DX86
@@ -52,38 +49,30 @@ else
 	
 	CC = clang -std=c99
 	LD = clang
+	CLEAN = rm "build/*.o"
 	
 	ifeq ($(UNAME), Linux)
 		PLATFORM = linux
-		CFLAGS += -DOS_LINUX
 		LDFLAGS += -lm -lX11 -ldl -lasound
 	endif
 	
 	ifeq ($(UNAME), Darwin)
 		PLATFORM = mac
-		CFLAGS += -DOS_MAC
 	endif
 endif
 
-all: build engine.o platform.o game.o
-	$(LD) $(OBJS) -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
+all: default
+.PHONY: all default unity clean
 
-unity: CFLAGS += -DUNITY_BUILD
-unity: build
-	$(CC) "./src/unity_build.c" -c -o "./build/unity_build.o" $(CFLAGS)
-	$(LD) "./build/unity_build.o" -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
+unity: build/unity_build.o src/*.c src/*.h
+	$(LD) $< -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
+default: build/engine.o build/platform_$(PLATFORM).o build/game.o
+	$(LD) $^ -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
+clean:
+	$(CLEAN)
 
 build:
 	mkdir build
-
-game: game.o
-	$(LD) $(OBJS) -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
-
-platform.o:
-	$(CC) "./src/platform_$(PLATFORM).c" -c -o "./build/platform.o" $(CFLAGS)
-
-engine.o:
-	$(CC) "./src/engine.c" -c -o "./build/engine.o" $(CFLAGS)
-
-game.o:
-	$(CC) "./src/game.c" -c -o "./build/game.o" $(CFLAGS)
+build/%.o: src/%*.c src/internal*.h | build
+	$(CC) $< -c -o $@ $(CFLAGS)
+src/unity_build.c:

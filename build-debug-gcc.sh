@@ -1,0 +1,1 @@
+gcc "src/engine.c" "src/game.c" "src/platform_linux.c" -Iinclude -DDEBUG -g -lm -lX11 -ldl -lasound
