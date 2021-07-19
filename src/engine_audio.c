@@ -70,6 +70,8 @@ InterpolateSample(float64 frame_index, int32 channels, int32 channel_index, cons
 internal void
 Engine_UpdateAudio(void)
 {
+    Trace("Engine_UpdateAudio");
+    
     // TODO(ljre): Better audio mixing!!!!
     
     int32 out_channels;
@@ -165,6 +167,8 @@ Engine_UpdateAudio(void)
 API bool32
 Audio_LoadFile(String path, Asset_SoundBuffer* out_sound)
 {
+    Trace("Audio_LoadFile");
+    
     uintsize size;
     void* memory = Platform_ReadEntireFile(path, &size);
     

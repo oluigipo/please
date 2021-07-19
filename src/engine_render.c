@@ -391,6 +391,8 @@ OpenGLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severit
 internal uint32
 CompileShader(const char* vertex_source, const char* fragment_source)
 {
+    Trace("CompileShader");
+    
     char info[512];
     int32 success;
     
@@ -448,6 +450,8 @@ CompileShader(const char* vertex_source, const char* fragment_source)
 internal void
 CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
+    Trace("CalcBitmapSizeForText");
+    
     int32 width = 0, line_width = 0, height = 0;
 	int32 codepoint, it = 0;
 	
@@ -480,6 +484,8 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 internal void
 GetCurrentShaderUniforms(uint32 shader)
 {
+    Trace("GetCurrentShaderUniforms");
+    
     global_uniform_position = GL.glGetUniformLocation(shader, "uPosition");
     global_uniform_normal = GL.glGetUniformLocation(shader, "uNormal");
     global_uniform_albedo = GL.glGetUniformLocation(shader, "uAlbedo");
@@ -1201,7 +1207,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     if (!mgr->shadow_fbo || !mgr->gbuffer)
         Render_ProperlySetupManager(mgr);
     
-    //- NOTE(ljre): Draw to Framebuffer
+    //~ NOTE(ljre): Draw to Framebuffer
     {
         {
             float32 umbrella = 20.0f;
@@ -1256,8 +1262,6 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     GL.glCullFace(GL_BACK);
     
     //~ NOTE(ljre): GBuffer
-    
-    // NOTE(ljre): Render to GBuffer
     {
         GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
         GL.glDisable(GL_BLEND);

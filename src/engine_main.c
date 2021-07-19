@@ -65,6 +65,8 @@ Engine_PushMemory(uintsize size)
 API void
 Engine_PopMemory(void* ptr)
 {
+    Trace("Engine_PopMemory");
+    
     if (ptr < global_stack_memory || (uint8*)ptr >= (uint8*)global_stack_memory + global_stack_reserved_size)
     {
         Platform_HeapFree(ptr);
@@ -112,6 +114,8 @@ Engine_DeltaTime(void)
 API void
 Engine_FinishFrame(void)
 {
+    Trace("Engine_FinishFrame");
+    
     Engine_UpdateAudio();
     Discord_Update();
     

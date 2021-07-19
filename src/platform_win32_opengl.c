@@ -78,6 +78,8 @@ OpenGLGetProc(const char* name)
 internal bool32
 LoadOpenGLFunctions(void)
 {
+    Trace("LoadOpenGLFunctions");
+    
     GraphicsContext_OpenGL* opengl = &global_opengl.vtable;
     void* (*loader)(const char*) = OpenGLGetProc;
     
