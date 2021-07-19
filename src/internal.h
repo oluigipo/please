@@ -111,13 +111,18 @@ typedef double float64;
 //~ Debug
 #ifndef DEBUG
 #   define Assert(x) ((void)0)
-#   define Trace(x) ((void)0)
 #else
 #   undef NDEBUG
 #   include <assert.h>
 #   define Assert assert
-#   define Trace(x) ((void)(0))
-#   define EndTrace() ((void)(0))
+#endif
+
+#if defined(TRACY_ENABLE) // NOTE(ljre):     :)
+#    include "../../tracy/TracyC.h"
+internal void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
+#    define Trace(x) TracyCZoneN(_ctx __attribute((cleanup(___my_tracy_zone_end))),x,true)
+#else
+#    define Trace(x) ((void)0)
 #endif
 
 //~ Others
@@ -256,6 +261,7 @@ API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, fl
 API Render_Entity* Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind);
 API void Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle);
 API void Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera);
+API void Render_ProperlySetupManager(Render_Manager* mgr);
 
 //~ Platform
 enum GraphicsAPI

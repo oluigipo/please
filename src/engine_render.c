@@ -654,6 +654,8 @@ Render_Begin2D(const Render_Camera* camera)
 API void
 Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
 {
+    Trace("Render_DrawRectangle");
+    
     mat4 matrix = GLM_MAT4_IDENTITY_INIT;
     glm_translate(matrix, pos);
     glm_scale(matrix, size);
@@ -678,32 +680,31 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
 API bool32
 Render_LoadFontFromFile(String path, Asset_Font* out_font)
 {
-    Asset_Font result;
-    result.data = Platform_ReadEntireFile(path, &result.data_size);
+    Trace("Render_LoadFontFromFile");
     
-    if (result.data)
+    bool32 result = false;
+    out_font->data = Platform_ReadEntireFile(path, &out_font->data_size);
+    
+    if (out_font->data)
     {
-        if (stbtt_InitFont(&result.info, result.data, 0))
+        if (stbtt_InitFont(&out_font->info, out_font->data, 0))
         {
-            stbtt_GetFontVMetrics(&result.info, &result.ascent, &result.descent, &result.line_gap);
-            *out_font = result;
-            return true;
+            stbtt_GetFontVMetrics(&out_font->info, &out_font->ascent, &out_font->descent, &out_font->line_gap);
+            result = true;
         }
         else
         {
-            Platform_FreeFileMemory(result.data, result.data_size);
-            return false;
+            Platform_FreeFileMemory(out_font->data, out_font->data_size);
         }
     }
-    else
-    {
-        return false;
-    }
+    
+    return result;
 }
 
 API void
 Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color)
 {
+    Trace("Render_DrawText");
     float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
     
     int32 bitmap_width, bitmap_height;
@@ -776,6 +777,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 API bool32
 Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
+    Trace("Render_Load3DModelFromFile");
     uintsize size;
     uint8* data = Platform_ReadEntireFile(path, &size);
     if (!data)
@@ -784,7 +786,12 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
     void* state = Engine_PushMemoryState();
     
     Engine_GltfJson model;
-    bool32 result = Engine_ParseGltf(data, size, &model);
+    bool32 result;
+    
+    {
+        Trace("Engine_ParseGltf");
+        result = Engine_ParseGltf(data, size, &model);
+    }
     
     // TODO(ljre)
     if (result)
@@ -987,12 +994,14 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
     
     Engine_PopMemoryState(state);
     Platform_FreeFileMemory(data, size);
+    
     return result;
 }
 
 API Render_Entity*
 Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
 {
+    Trace("Render_AddToManager");
     Render_Entity* result;
     
     //- NOTE(ljre): Get Component Handle
@@ -1055,6 +1064,7 @@ Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
 API void
 Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
 {
+    Trace("Render_RemoveFromManager");
     Assert(handle);
     
     switch (handle->kind)
@@ -1085,33 +1095,9 @@ Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
 }
 
 API void
-Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
+Render_ProperlySetupManager(Render_Manager* mgr)
 {
-    mat4 view;
-    mat4 matrix;
-    
-    vec3 viewpos;
-    
-    //~ NOTE(ljre): Setup
-    {
-        mat4 proj;
-        glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
-        
-        glm_mat4_identity(view);
-        if (camera)
-        {
-            glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, view);
-        }
-        
-        glm_mat4_mul(proj, view, view);
-        glm_vec3_copy((float32*)camera->pos, viewpos);
-    }
-    
-    GL.glEnable(GL_DEPTH_TEST);
-    GL.glEnable(GL_CULL_FACE);
-    GL.glClear(GL_DEPTH_BUFFER_BIT);
-    
-    //~ NOTE(ljre): Draw to Shadow Map's Depth Buffer
+    Trace("Render_ProperlySetupManager");
     const uint32 depthmap_width = 2048, depthmap_height = 2048;
     
     if (!mgr->shadow_fbo)
@@ -1134,7 +1120,86 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glReadBuffer(GL_NONE);
     }
     
+    if (!mgr->gbuffer)
+    {
+        int32 width = (int32)global_width;
+        int32 height = (int32)global_height;
+        
+        GL.glGenFramebuffers(1, &mgr->gbuffer);
+        GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
+        
+        GL.glGenTextures(1, &mgr->gbuffer_pos);
+        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_pos);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mgr->gbuffer_pos, 0);
+        
+        GL.glGenTextures(1, &mgr->gbuffer_norm);
+        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mgr->gbuffer_norm, 0);
+        
+        GL.glGenTextures(1, &mgr->gbuffer_albedo);
+        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_albedo);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, mgr->gbuffer_albedo, 0);
+        
+        uint32 buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+        GL.glDrawBuffers(ArrayLength(buffers), buffers);
+        
+#if 0
+        GL.glGenRenderbuffers(1, &mgr->gbuffer_depth);
+        GL.glBindRenderbuffer(GL_RENDERBUFFER, mgr->gbuffer_depth);
+        GL.glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+        GL.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mgr->gbuffer_depth);
+#else
+        GL.glGenTextures(1, &mgr->gbuffer_depth);
+        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_depth);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mgr->gbuffer_depth, 0);
+#endif
+    }
+}
+
+API void
+Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
+{
+    Trace("Render_DrawManager");
+    const uint32 depthmap_width = 2048, depthmap_height = 2048;
+    mat4 view;
+    mat4 matrix;
     mat4 light_space_matrix;
+    
+    vec3 viewpos;
+    
+    //~ NOTE(ljre): Setup
+    {
+        mat4 proj;
+        glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
+        
+        glm_mat4_identity(view);
+        if (camera)
+        {
+            glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, view);
+        }
+        
+        glm_mat4_mul(proj, view, view);
+        glm_vec3_copy((float32*)camera->pos, viewpos);
+    }
+    
+    GL.glEnable(GL_DEPTH_TEST);
+    GL.glEnable(GL_CULL_FACE);
+    GL.glClear(GL_DEPTH_BUFFER_BIT);
+    
+    if (!mgr->shadow_fbo || !mgr->gbuffer)
+        Render_ProperlySetupManager(mgr);
     
     //- NOTE(ljre): Draw to Framebuffer
     {
@@ -1191,52 +1256,6 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     GL.glCullFace(GL_BACK);
     
     //~ NOTE(ljre): GBuffer
-    if (!mgr->gbuffer)
-    {
-        int32 width = (int32)global_width;
-        int32 height = (int32)global_height;
-        
-        GL.glGenFramebuffers(1, &mgr->gbuffer);
-        GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
-        
-        GL.glGenTextures(1, &mgr->gbuffer_pos);
-        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_pos);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mgr->gbuffer_pos, 0);
-        
-        GL.glGenTextures(1, &mgr->gbuffer_norm);
-        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mgr->gbuffer_norm, 0);
-        
-        GL.glGenTextures(1, &mgr->gbuffer_albedo);
-        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_albedo);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, mgr->gbuffer_albedo, 0);
-        
-        uint32 buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        GL.glDrawBuffers(ArrayLength(buffers), buffers);
-        
-#if 0
-        GL.glGenRenderbuffers(1, &mgr->gbuffer_depth);
-        GL.glBindRenderbuffer(GL_RENDERBUFFER, mgr->gbuffer_depth);
-        GL.glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-        GL.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mgr->gbuffer_depth);
-#else
-        GL.glGenTextures(1, &mgr->gbuffer_depth);
-        GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_depth);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mgr->gbuffer_depth, 0);
-#endif
-    }
     
     // NOTE(ljre): Render to GBuffer
     {

@@ -95,6 +95,8 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 API Scene
 Game_MainScene(void)
 {
+    Trace("Game_MainScene");
+    
     Asset_3DModel model;
     if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))
     {
@@ -253,9 +255,9 @@ Game_MainScene(void)
     light2->point_light->linear = 0.09f;
     light2->point_light->quadratic = 0.032f;
     
-    Trace("Game Loop");
     while (!Platform_WindowShouldClose())
     {
+        Trace("Game Loop");
         if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
             break;
         

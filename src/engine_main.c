@@ -21,6 +21,8 @@ internal float64 global_last_time;
 API void*
 Engine_PushMemory(uintsize size)
 {
+    Trace("Engine_PushMemory");
+    
     uint8* result = NULL;
     size = AlignUp(size, 15u) + sizeof(StackAllocatorHeader);
     
@@ -134,6 +136,8 @@ Engine_FinishFrame(void)
 API int32
 Engine_Main(int32 argc, char** argv)
 {
+    Trace("Engine_Main");
+    
     // NOTE(ljre): Init Global Stack Allocator
     global_stack_reserved_size = Gigabytes(1);
     global_stack_memory = Platform_VirtualReserve(global_stack_reserved_size);
@@ -168,6 +172,5 @@ Engine_Main(int32 argc, char** argv)
     // NOTE(ljre): Deinit
     Discord_Deinit();
     Engine_DeinitRender();
-    
     return 0;
 }

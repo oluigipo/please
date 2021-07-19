@@ -70,7 +70,8 @@ all: build engine.o platform.o game.o
 
 unity: CFLAGS += -DUNITY_BUILD
 unity: build
-	$(CC) "./src/unity_build.c" -o "./build/$(OUTPUT_NAME)" $(CFLAGS) $(LDFLAGS)
+	$(CC) "./src/unity_build.c" -c -o "./build/unity_build.o" $(CFLAGS)
+	$(LD) "./build/unity_build.o" -o "./build/$(OUTPUT_NAME)" $(LDFLAGS)
 
 build:
 	mkdir build

@@ -164,6 +164,7 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 internal LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
+    Trace("WindowProc");
     LRESULT result = 0;
     
     switch (message)
@@ -384,6 +385,8 @@ Platform_GetTime(void)
 API void
 Platform_PollEvents(void)
 {
+    Trace("Platform_PollEvents");
+    
     Win32_UpdateInputPre();
     ProcessDeferredEvents();
     
@@ -401,6 +404,8 @@ Platform_PollEvents(void)
 API void
 Platform_FinishFrame(void)
 {
+    Trace("Platform_FinishFrame");
+    
     Win32_FillAudioBuffer();
     
     switch (global_graphics_context.api)
@@ -416,7 +421,8 @@ Platform_HeapAlloc(uintsize size)
 {
     Trace("Platform_HeapAlloc");
     
-    return HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
+    void* result = HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
+    return result;
 }
 
 API void*
@@ -446,7 +452,9 @@ API void*
 Platform_VirtualReserve(uintsize size)
 {
     Trace("Platform_VirtualAlloc");
-    return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+    
+    void* result = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+    return result;
 }
 
 API void
@@ -466,6 +474,7 @@ Platform_VirtualFree(void* ptr, uintsize size)
 API void*
 Platform_ReadEntireFile(String path, uintsize* out_size)
 {
+    Trace("Platform_ReadEntireFile");
     wchar_t wpath[1024];
     Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
     
@@ -501,12 +510,15 @@ Platform_ReadEntireFile(String path, uintsize* out_size)
 		*out_size = (uintsize)bytes_read;
 	
 	CloseHandle(handle);
+    
 	return memory;
 }
 
 API bool32
 Platform_WriteEntireFile(String path, const void* data, uintsize size)
 {
+    Trace("Platform_WriteEntireFile");
+    
     wchar_t wpath[1024];
     Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
     
@@ -524,6 +536,7 @@ Platform_WriteEntireFile(String path, const void* data, uintsize size)
 	}
 	
 	CloseHandle(handle);
+    
 	return result;
 }
 

@@ -51,6 +51,8 @@ LoadComLibrary(void)
 internal void
 Win32_InitAudio(void)
 {
+    Trace("Win32_InitAudio");
+    
     if (!LoadComLibrary())
         return;
     
