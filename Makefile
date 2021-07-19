@@ -73,6 +73,6 @@ clean:
 
 build:
 	mkdir build
-build/%.o: src/%*.c src/internal*.h | build
+build/%.o: src/%.c src/%*.c src/internal*.h | build
 	$(CC) $< -c -o $@ $(CFLAGS)
 src/unity_build.c:
