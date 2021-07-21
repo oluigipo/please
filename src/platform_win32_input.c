@@ -247,6 +247,8 @@ internal void
 TranslateController(Input_Gamepad* out, const GamepadMappings* map,
                     const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
+    Trace("TranslateController");
+    
     //- Update Buttons
     for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
     {
@@ -423,6 +425,8 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 internal void
 UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
+    Trace("UpdateConnectedGamepad");
+    
     int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof *gamepad);
     
     switch (gamepad->api)
@@ -693,6 +697,8 @@ SortGamepadObjects(Win32_Gamepad* gamepad)
 internal BOOL CALLBACK
 DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata)
 {
+    Trace("DirectInputEnumDevicesCallback");
+    
     if (global_gamepad_free_count <= 0)
         return DIENUM_STOP;
     

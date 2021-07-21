@@ -258,6 +258,8 @@ Game_MainScene(void)
     while (!Platform_WindowShouldClose())
     {
         Trace("Game Loop");
+        void* memory_state = Engine_PushMemoryState();
+        
         if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
             break;
         
@@ -340,7 +342,7 @@ Game_MainScene(void)
         Render_DrawManager(&manager, &camera);
         
         //~ NOTE(ljre): 2D User Interface
-        Render_Begin2D(NULL);
+        Render_Begin2D();
         
         //- NOTE(ljre): Draw Controller Index
         if (font_loaded) {
@@ -359,6 +361,7 @@ Game_MainScene(void)
         }
         
         //~ NOTE(ljre): Finish Frame
+        Engine_PopMemoryState(memory_state);
         Engine_FinishFrame();
     }
     

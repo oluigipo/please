@@ -39,7 +39,8 @@ Engine_PushMemory(uintsize size)
     
     if (total_desired_size > global_stack_reserved_size)
     {
-        result = Platform_HeapAlloc(size);
+        // TODO(ljre): Fallback?
+        Assert(false);
     }
     else
     {
@@ -67,9 +68,13 @@ Engine_PopMemory(void* ptr)
 {
     Trace("Engine_PopMemory");
     
+    if (!ptr) // NOTE(ljre): similar behaviour from CRT 'free()'
+        return;
+    
     if (ptr < global_stack_memory || (uint8*)ptr >= (uint8*)global_stack_memory + global_stack_reserved_size)
     {
-        Platform_HeapFree(ptr);
+        // TODO(ljre): Fallback
+        Assert(false);
     }
     else
     {
@@ -119,15 +124,6 @@ Engine_FinishFrame(void)
     Engine_UpdateAudio();
     Discord_Update();
     
-#ifdef DEBUG
-    if (global_stack_header != NULL)
-    {
-        Platform_DebugMessageBox("Memory Leak!!!!\nFirst Header - Allocation Size: %zu", global_stack_header->size);
-    }
-#endif
-    // NOTE(ljre): Free all the memory
-    global_stack_header = NULL;
-    
     Platform_FinishFrame();
     Platform_PollEvents();
     
@@ -143,20 +139,19 @@ Engine_Main(int32 argc, char** argv)
     Trace("Engine_Main");
     
     // NOTE(ljre): Init Global Stack Allocator
-    global_stack_reserved_size = Gigabytes(1);
-    global_stack_memory = Platform_VirtualReserve(global_stack_reserved_size);
-    if (!global_stack_memory)
-        Platform_ExitWithErrorMessage(Str("Could not reserve enough memory."));
-    
-    global_stack_commited_size = global_stack_commiting_pages;
-    Platform_VirtualCommit(global_stack_memory, global_stack_commited_size);
-    global_stack_header = NULL;
+    {
+        global_stack_reserved_size = Gigabytes(2);
+        global_stack_memory = Platform_VirtualReserve(global_stack_reserved_size);
+        if (!global_stack_memory)
+            Platform_ExitWithErrorMessage(Str("Could not reserve enough memory. Please report this error."));
+        
+        global_stack_commited_size = global_stack_commiting_pages;
+        Platform_VirtualCommit(global_stack_memory, global_stack_commited_size);
+        global_stack_header = NULL;
+    }
     
     // NOTE(ljre): Window width & height
-    float32 width = 1280.0f;
-    float32 height = 720.0f;
-    
-    if (!Platform_CreateWindow((int32)width, (int32)height, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
+    if (!Platform_CreateWindow(1280, 720, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
         Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
     
     Engine_InitRandom();

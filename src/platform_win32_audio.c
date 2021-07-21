@@ -145,6 +145,8 @@ Win32_InitAudio(void)
 internal void
 Win32_UpdateAudio(void)
 {
+    Trace("Win32_UpdateAudio");
+    
     if (!global_audio_is_initialized)
         return;
     
@@ -168,6 +170,8 @@ Win32_UpdateAudio(void)
 internal void
 Win32_FillAudioBuffer(void)
 {
+    Trace("Win32_FillAudioBuffer");
+    
     if (!global_audio_is_initialized)
         return;
     
@@ -188,6 +192,8 @@ Win32_FillAudioBuffer(void)
 internal void
 Win32_DeinitAudio(void)
 {
+    Trace("Win32_DeinitAudio");
+    
     if (!global_audio_is_initialized)
         return;
     

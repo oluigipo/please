@@ -490,7 +490,7 @@ Win32_DestroyOpenGLWindow(void)
 internal void
 Win32_OpenGLSwapBuffers(void)
 {
-    global_opengl.vtable.glFlush();
+    //global_opengl.vtable.glFlush();
     global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
     //SwapBuffers(global_hdc);
     

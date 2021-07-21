@@ -16,7 +16,7 @@ else ifeq ($(MODE), safedebug)
 	CFLAGS += -g -DDEBUG -fsanitize=address
 	LDFLAGS += -g -fsanitize=address
 else
-	OPT = -O1 -ffast-math -flto
+	OPT ?= -O2 -ffast-math -flto
 	
 	CFLAGS += $(OPT)
 	LDFLAGS += $(OPT)
@@ -62,10 +62,10 @@ else
 endif
 
 all: default
-.PHONY: all default unity clean
+.PHONY: all default unity clean src/unity_build.c
 
-unity: build/unity_build.o src/*.c src/*.h
-	$(LD) $< -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
+unity: build/unity_build.o
+	$(LD) $^ -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
 default: build/engine.o build/platform_$(PLATFORM).o build/game.o
 	$(LD) $^ -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
 clean:
@@ -75,4 +75,3 @@ build:
 	mkdir build
 build/%.o: src/%.c src/%*.c src/internal*.h | build
 	$(CC) $< -c -o $@ $(CFLAGS)
-src/unity_build.c:

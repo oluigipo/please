@@ -19,33 +19,6 @@ struct Vertex
     vec2 texcoord;
 } typedef Vertex;
 
-enum RenderBufferMode
-{
-    RenderBufferMode_None = 0,
-    
-    RenderBufferMode_3DModel,
-    RenderBufferMode_Sprite,
-} typedef RenderBufferMode;
-
-struct RenderBuffer
-{
-    uint32 texture;
-    uint32 vao, ebo;
-    int32 ebo_size;
-    
-    RenderBufferMode mode;
-    int32 len;
-    int32 cap;
-    
-    void* elements;
-} typedef RenderBuffer;
-
-struct RenderBufferElement3DModel
-{
-    mat4 model;
-    mat4 inversed_model;
-} typedef RenderBufferElement3DModel;
-
 struct PointLightsUniformData
 {
     int32 constant;
@@ -57,6 +30,43 @@ struct PointLightsUniformData
     int32 diffuse;
     int32 specular;
 } typedef PointLightsUniformData;
+
+struct InternalShaderUniforms
+{
+    int32 color;
+    int32 view;
+    int32 model;
+    int32 texture;
+    int32 inversed_model;
+    int32 viewpos;
+    
+    int32 position;
+    int32 normal;
+    int32 albedo;
+    int32 depth;
+    
+    int32 material_ambient;
+    int32 material_diffuse;
+    int32 material_specular;
+    int32 material_normal;
+    int32 material_shininess;
+    
+    int32 dirlight_position;
+    int32 dirlight_ambient;
+    int32 dirlight_diffuse;
+    int32 dirlight_specular;
+    int32 dirlight_matrix;
+    int32 dirlight_shadowmap;
+    
+    int32 pointlights_count;
+    PointLightsUniformData pointlights[MAX_POINT_LIGHTS_COUNT];
+} typedef InternalShaderUniforms;
+
+struct InternalShader
+{
+    uint32 id;
+    InternalShaderUniforms uniform;
+} typedef InternalShader;
 
 //~ Globals
 internal const GraphicsContext* global_graphics;
@@ -73,49 +83,19 @@ internal const uint32 global_quad_indices[] = {
     2, 3, 0
 };
 
-internal float32 global_width;
-internal float32 global_height;
 internal mat4 global_view;
 internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
 internal uint32 global_default_diffuse_texture;
 internal uint32 global_default_normal_texture;
 internal uint32 global_default_specular_texture;
-internal vec3 global_viewpos;
 
-internal uint32 global_default_shader;
-internal uint32 global_default_3dshader;
-internal uint32 global_default_shadowshader;
-internal uint32 global_default_gbuffershader;
-internal uint32 global_default_finalpassshader;
-internal uint32 global_current_shader;
+internal InternalShader global_default_shader;
+internal InternalShader global_default_3dshader;
+internal InternalShader global_default_shadowshader;
+internal InternalShader global_default_gbuffershader;
+internal InternalShader global_default_finalpassshader;
 
-internal int32 global_uniform_color;
-internal int32 global_uniform_view;
-internal int32 global_uniform_model;
-internal int32 global_uniform_texture;
-internal int32 global_uniform_inversed_model;
-internal int32 global_uniform_viewpos;
-
-internal int32 global_uniform_position;
-internal int32 global_uniform_normal;
-internal int32 global_uniform_albedo;
-internal int32 global_uniform_depth;
-
-internal int32 global_uniform_material_ambient;
-internal int32 global_uniform_material_diffuse;
-internal int32 global_uniform_material_specular;
-internal int32 global_uniform_material_normal;
-internal int32 global_uniform_material_shininess;
-
-internal int32 global_uniform_dirlight_position;
-internal int32 global_uniform_dirlight_ambient;
-internal int32 global_uniform_dirlight_diffuse;
-internal int32 global_uniform_dirlight_specular;
-internal int32 global_uniform_dirlight_matrix;
-internal int32 global_uniform_dirlight_shadowmap;
-
-internal int32 global_uniform_pointlights_count;
-internal PointLightsUniformData global_uniform_pointlights[MAX_POINT_LIGHTS_COUNT];
+internal InternalShaderUniforms* global_uniform;
 
 internal const char* const global_vertex_shader =
 "#version 330 core\n"
@@ -482,55 +462,63 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 }
 
 internal void
-GetCurrentShaderUniforms(uint32 shader)
+GetShaderUniforms(InternalShader* shader)
 {
-    Trace("GetCurrentShaderUniforms");
+    Trace("GetShaderUniforms");
+    uint32 id = shader->id;
     
-    global_uniform_position = GL.glGetUniformLocation(shader, "uPosition");
-    global_uniform_normal = GL.glGetUniformLocation(shader, "uNormal");
-    global_uniform_albedo = GL.glGetUniformLocation(shader, "uAlbedo");
-    global_uniform_depth = GL.glGetUniformLocation(shader, "uDepth");
+    shader->uniform.position = GL.glGetUniformLocation(id, "uPosition");
+    shader->uniform.normal = GL.glGetUniformLocation(id, "uNormal");
+    shader->uniform.albedo = GL.glGetUniformLocation(id, "uAlbedo");
+    shader->uniform.depth = GL.glGetUniformLocation(id, "uDepth");
     
-    global_uniform_color = GL.glGetUniformLocation(shader, "uColor");
-    global_uniform_view = GL.glGetUniformLocation(shader, "uView");
-    global_uniform_texture = GL.glGetUniformLocation(shader, "uTexture");
-    global_uniform_model = GL.glGetUniformLocation(shader, "uModel");
-    global_uniform_viewpos = GL.glGetUniformLocation(shader, "uViewPos");
+    shader->uniform.color = GL.glGetUniformLocation(id, "uColor");
+    shader->uniform.view = GL.glGetUniformLocation(id, "uView");
+    shader->uniform.texture = GL.glGetUniformLocation(id, "uTexture");
+    shader->uniform.model = GL.glGetUniformLocation(id, "uModel");
+    shader->uniform.viewpos = GL.glGetUniformLocation(id, "uViewPos");
     
-    global_uniform_dirlight_shadowmap = GL.glGetUniformLocation(shader, "uDirLight.shadowmap");
-    global_uniform_dirlight_position = GL.glGetUniformLocation(shader, "uDirLight.position");
-    global_uniform_dirlight_ambient = GL.glGetUniformLocation(shader, "uDirLight.ambient");
-    global_uniform_dirlight_diffuse = GL.glGetUniformLocation(shader, "uDirLight.diffuse");
-    global_uniform_dirlight_specular = GL.glGetUniformLocation(shader, "uDirLight.specular");
-    global_uniform_dirlight_matrix = GL.glGetUniformLocation(shader, "uDirLightMatrix");
+    shader->uniform.dirlight_shadowmap = GL.glGetUniformLocation(id, "uDirLight.shadowmap");
+    shader->uniform.dirlight_position = GL.glGetUniformLocation(id, "uDirLight.position");
+    shader->uniform.dirlight_ambient = GL.glGetUniformLocation(id, "uDirLight.ambient");
+    shader->uniform.dirlight_diffuse = GL.glGetUniformLocation(id, "uDirLight.diffuse");
+    shader->uniform.dirlight_specular = GL.glGetUniformLocation(id, "uDirLight.specular");
+    shader->uniform.dirlight_matrix = GL.glGetUniformLocation(id, "uDirLightMatrix");
     
-    global_uniform_material_ambient = GL.glGetUniformLocation(shader, "uMaterial.ambient");
-    global_uniform_material_diffuse = GL.glGetUniformLocation(shader, "uMaterial.diffuse");
-    global_uniform_material_specular = GL.glGetUniformLocation(shader, "uMaterial.specular");
-    global_uniform_material_normal = GL.glGetUniformLocation(shader, "uMaterial.normal");
-    global_uniform_material_shininess = GL.glGetUniformLocation(shader, "uMaterial.shininess");
+    shader->uniform.material_ambient = GL.glGetUniformLocation(id, "uMaterial.ambient");
+    shader->uniform.material_diffuse = GL.glGetUniformLocation(id, "uMaterial.diffuse");
+    shader->uniform.material_specular = GL.glGetUniformLocation(id, "uMaterial.specular");
+    shader->uniform.material_normal = GL.glGetUniformLocation(id, "uMaterial.normal");
+    shader->uniform.material_shininess = GL.glGetUniformLocation(id, "uMaterial.shininess");
     
-    global_uniform_pointlights_count = GL.glGetUniformLocation(shader, "uPointLightsCount");
+    shader->uniform.pointlights_count = GL.glGetUniformLocation(id, "uPointLightsCount");
     for (int32 i = 0; i < MAX_POINT_LIGHTS_COUNT; ++i)
     {
         char buf[128];
         
         snprintf(buf, sizeof buf, "uPointLights[%i].constant", i);
-        global_uniform_pointlights[i].constant = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].constant = GL.glGetUniformLocation(id, buf);
         snprintf(buf, sizeof buf, "uPointLights[%i].linear", i);
-        global_uniform_pointlights[i].linear = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].linear = GL.glGetUniformLocation(id, buf);
         snprintf(buf, sizeof buf, "uPointLights[%i].quadratic", i);
-        global_uniform_pointlights[i].quadratic = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].quadratic = GL.glGetUniformLocation(id, buf);
         
         snprintf(buf, sizeof buf, "uPointLights[%i].position", i);
-        global_uniform_pointlights[i].position = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].position = GL.glGetUniformLocation(id, buf);
         snprintf(buf, sizeof buf, "uPointLights[%i].ambient", i);
-        global_uniform_pointlights[i].ambient = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].ambient = GL.glGetUniformLocation(id, buf);
         snprintf(buf, sizeof buf, "uPointLights[%i].diffuse", i);
-        global_uniform_pointlights[i].diffuse = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].diffuse = GL.glGetUniformLocation(id, buf);
         snprintf(buf, sizeof buf, "uPointLights[%i].specular", i);
-        global_uniform_pointlights[i].specular = GL.glGetUniformLocation(shader, buf);
+        shader->uniform.pointlights[i].specular = GL.glGetUniformLocation(id, buf);
     }
+}
+
+internal void
+BindShader(InternalShader* shader)
+{
+    GL.glUseProgram(shader->id);
+    global_uniform = &shader->uniform;
 }
 
 //~ Temporary Internal API
@@ -539,8 +527,8 @@ Engine_InitRender(void)
 {
     Trace("Render_Init");
     
-    global_width = (float32)Platform_WindowWidth();
-    global_height = (float32)Platform_WindowHeight();
+    int32 width = Platform_WindowWidth();
+    int32 height = Platform_WindowHeight();
     
 #ifdef DEBUG
     GL.glEnable(GL_DEBUG_OUTPUT);
@@ -552,7 +540,7 @@ Engine_InitRender(void)
     GL.glEnable(GL_BLEND);
     GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    GL.glViewport(0, 0, (int32)global_width, (int32)global_height);
+    GL.glViewport(0, 0, width, height);
     
     uint32 vbo, vao, ebo;
     GL.glGenBuffers(1, &vbo);
@@ -577,10 +565,15 @@ Engine_InitRender(void)
     global_quad_vao = vao;
     global_quad_ebo = ebo;
     
-    global_default_shader = CompileShader(global_vertex_shader, global_fragment_shader);
-    global_default_shadowshader = CompileShader(global_vertex_shadowshader, global_fragment_shadowshader);
-    global_default_gbuffershader = CompileShader(global_vertex_gbuffershader, global_fragment_gbuffershader);
-    global_default_finalpassshader = CompileShader(global_vertex_finalpassshader, global_fragment_finalpassshader);
+    global_default_shader.id = CompileShader(global_vertex_shader, global_fragment_shader);
+    global_default_shadowshader.id = CompileShader(global_vertex_shadowshader, global_fragment_shadowshader);
+    global_default_gbuffershader.id = CompileShader(global_vertex_gbuffershader, global_fragment_gbuffershader);
+    global_default_finalpassshader.id = CompileShader(global_vertex_finalpassshader, global_fragment_finalpassshader);
+    
+    GetShaderUniforms(&global_default_shader);
+    GetShaderUniforms(&global_default_shadowshader);
+    GetShaderUniforms(&global_default_gbuffershader);
+    GetShaderUniforms(&global_default_finalpassshader);
     
     uint32 white_texture[] = {
         0xFFFFFFFF, 0xFFFFFFFF,
@@ -635,26 +628,19 @@ Render_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 }
 
 API void
-Render_Begin2D(const Render_Camera* camera)
+Render_Begin2D(void)
 {
+    int32 width = Platform_WindowWidth();
+    int32 height = Platform_WindowHeight();
+    
     mat4 proj;
-    glm_ortho(0.0f, global_width, global_height, 0.0f, -1.0f, 1.0f, proj);
+    glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
     
     glm_mat4_identity(global_view);
-    if (camera)
-    {
-        glm_translate(global_view, (vec3) { camera->pos[0], camera->pos[1], 0.0f });
-        glm_rotate(global_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-        glm_scale(global_view, (vec3) { camera->scale[0], camera->scale[1], 0.0f });
-    }
-    
     glm_mat4_mul(proj, global_view, global_view);
     
     GL.glDisable(GL_DEPTH_TEST);
     GL.glDisable(GL_CULL_FACE);
-    
-    global_current_shader = global_default_shader;
-    GetCurrentShaderUniforms(global_current_shader);
 }
 
 API void
@@ -667,11 +653,11 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
     glm_scale(matrix, size);
     glm_translate(matrix, (vec3) { -0.5f, -0.5f }); // NOTE(ljre): Center
     
-    GL.glUseProgram(global_current_shader);
-    GL.glUniform4fv(global_uniform_color, 1, color);
-    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)global_view);
-    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
-    GL.glUniform1i(global_uniform_texture, 0);
+    BindShader(&global_default_shader);
+    GL.glUniform4fv(global_uniform->color, 1, color);
+    GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)global_view);
+    GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+    GL.glUniform1i(global_uniform->texture, 0);
     
     GL.glActiveTexture(GL_TEXTURE0);
     GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
@@ -764,11 +750,11 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
     GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
     
-    GL.glUseProgram(global_current_shader);
-    GL.glUniform4fv(global_uniform_color, 1, color);
-    GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)global_view);
-    GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
-    GL.glUniform1i(global_uniform_texture, 0);
+    BindShader(&global_default_shader);
+    GL.glUniform4fv(global_uniform->color, 1, color);
+    GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)global_view);
+    GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+    GL.glUniform1i(global_uniform->texture, 0);
     
     GL.glBindVertexArray(global_quad_vao);
     GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
@@ -1128,22 +1114,22 @@ Render_ProperlySetupManager(Render_Manager* mgr)
     
     if (!mgr->gbuffer)
     {
-        int32 width = (int32)global_width;
-        int32 height = (int32)global_height;
+        int32 width = Platform_WindowWidth();
+        int32 height = Platform_WindowHeight();
         
         GL.glGenFramebuffers(1, &mgr->gbuffer);
         GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
         
         GL.glGenTextures(1, &mgr->gbuffer_pos);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_pos);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mgr->gbuffer_pos, 0);
         
         GL.glGenTextures(1, &mgr->gbuffer_norm);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
-        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mgr->gbuffer_norm, 0);
@@ -1178,17 +1164,19 @@ API void
 Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
 {
     Trace("Render_DrawManager");
+    
     const uint32 depthmap_width = 2048, depthmap_height = 2048;
+    vec3 viewpos;
     mat4 view;
     mat4 matrix;
     mat4 light_space_matrix;
-    
-    vec3 viewpos;
+    int32 width = Platform_WindowWidth();
+    int32 height = Platform_WindowHeight();
     
     //~ NOTE(ljre): Setup
     {
         mat4 proj;
-        glm_perspective(glm_rad(90.0f), global_width / global_height, 0.01f, 100.0f, proj);
+        glm_perspective(glm_rad(90.0f), (float32)width / (float32)height, 0.01f, 100.0f, proj);
         
         glm_mat4_identity(view);
         if (camera)
@@ -1226,12 +1214,10 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->shadow_fbo);
         GL.glViewport(0, 0, depthmap_width, depthmap_height);
         GL.glClear(GL_DEPTH_BUFFER_BIT);
-        GL.glUseProgram(global_default_shadowshader);
+        BindShader(&global_default_shadowshader);
         //GL.glCullFace(GL_FRONT);
         
-        GetCurrentShaderUniforms(global_default_shadowshader);
-        
-        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)light_space_matrix);
+        GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)light_space_matrix);
         
         for (int32 i = 0; i < mgr->model_count; ++i)
         {
@@ -1251,14 +1237,14 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
             GL.glBindVertexArray(asset->vao);
             GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
             
-            GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
+            GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
             
             GL.glDrawElements(asset->prim_mode, asset->index_count, asset->index_type, 0);
         }
     }
     
     GL.glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    GL.glViewport(0, 0, (int32)global_width, (int32)global_height);
+    GL.glViewport(0, 0, width, height);
     GL.glCullFace(GL_BACK);
     
     //~ NOTE(ljre): GBuffer
@@ -1269,14 +1255,13 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         GL.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        GL.glUseProgram(global_default_gbuffershader);
-        GetCurrentShaderUniforms(global_default_gbuffershader);
+        BindShader(&global_default_gbuffershader);
         
-        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
+        GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
         
-        GL.glUniform1i(global_uniform_material_diffuse, TEXTURE_SLOT_DIFFUSE);
-        GL.glUniform1i(global_uniform_material_specular, TEXTURE_SLOT_SPECULAR);
-        GL.glUniform1i(global_uniform_material_normal, TEXTURE_SLOT_NORMAL);
+        GL.glUniform1i(global_uniform->material_diffuse, TEXTURE_SLOT_DIFFUSE);
+        GL.glUniform1i(global_uniform->material_specular, TEXTURE_SLOT_SPECULAR);
+        GL.glUniform1i(global_uniform->material_normal, TEXTURE_SLOT_NORMAL);
         
         for (int32 i = 0; i < mgr->model_count; ++i)
         {
@@ -1296,10 +1281,10 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
             GL.glBindVertexArray(asset->vao);
             GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
             
-            GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
-            GL.glUniform4fv(global_uniform_color, 1, model->color);
-            GL.glUniform3fv(global_uniform_material_ambient, 1, asset->material.ambient);
-            GL.glUniform1f(global_uniform_material_shininess, asset->material.shininess);
+            GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+            GL.glUniform4fv(global_uniform->color, 1, model->color);
+            GL.glUniform3fv(global_uniform->material_ambient, 1, asset->material.ambient);
+            GL.glUniform1f(global_uniform->material_shininess, asset->material.shininess);
             
             GL.glActiveTexture(GL_TEXTURE0 + TEXTURE_SLOT_DIFFUSE);
             GL.glBindTexture(GL_TEXTURE_2D, asset->material.diffuse ? asset->material.diffuse : global_default_diffuse_texture);
@@ -1325,8 +1310,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     //- NOTE(ljre): Render GBuffer
     {
         //GL.glDepthFunc(GL_ALWAYS);
-        GL.glUseProgram(global_default_finalpassshader);
-        GetCurrentShaderUniforms(global_default_finalpassshader);
+        BindShader(&global_default_finalpassshader);
         
         mat4 model;
         glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, model);
@@ -1342,33 +1326,33 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glActiveTexture(GL_TEXTURE0 + 4);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_depth);
         
-        GL.glUniform1i(global_uniform_position, 0);
-        GL.glUniform1i(global_uniform_normal, 1);
-        GL.glUniform1i(global_uniform_albedo, 2);
-        GL.glUniform1i(global_uniform_dirlight_shadowmap, 3);
-        GL.glUniform1i(global_uniform_depth, 4);
+        GL.glUniform1i(global_uniform->position, 0);
+        GL.glUniform1i(global_uniform->normal, 1);
+        GL.glUniform1i(global_uniform->albedo, 2);
+        GL.glUniform1i(global_uniform->dirlight_shadowmap, 3);
+        GL.glUniform1i(global_uniform->depth, 4);
         
-        GL.glUniformMatrix4fv(global_uniform_dirlight_matrix, 1, false, (float32*)light_space_matrix);
-        GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)model);
-        GL.glUniform3fv(global_uniform_viewpos, 1, viewpos);
-        GL.glUniform3fv(global_uniform_dirlight_position, 1, mgr->dirlight);
-        GL.glUniform3f(global_uniform_dirlight_ambient, 0.2f, 0.2f, 0.2f);
-        GL.glUniform3f(global_uniform_dirlight_diffuse, 0.4f, 0.4f, 0.4f);
-        GL.glUniform3f(global_uniform_dirlight_specular, 0.0f, 0.0f, 0.0f);
+        GL.glUniformMatrix4fv(global_uniform->dirlight_matrix, 1, false, (float32*)light_space_matrix);
+        GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
+        GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
+        GL.glUniform3fv(global_uniform->dirlight_position, 1, mgr->dirlight);
+        GL.glUniform3f(global_uniform->dirlight_ambient, 0.2f, 0.2f, 0.2f);
+        GL.glUniform3f(global_uniform->dirlight_diffuse, 0.4f, 0.4f, 0.4f);
+        GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
         
-        GL.glUniform1i(global_uniform_pointlights_count, mgr->point_lights_count);
+        GL.glUniform1i(global_uniform->pointlights_count, mgr->point_lights_count);
         for (int32 i = 0; i < mgr->point_lights_count; ++i)
         {
             Render_PointLight* const l = &mgr->point_lights[i];
             Render_Entity* const e = l->entity;
             
-            GL.glUniform3fv(global_uniform_pointlights[i].position, 1, e->position);
-            GL.glUniform1f(global_uniform_pointlights[i].constant, l->constant);
-            GL.glUniform1f(global_uniform_pointlights[i].linear, l->linear);
-            GL.glUniform1f(global_uniform_pointlights[i].quadratic, l->quadratic);
-            GL.glUniform3fv(global_uniform_pointlights[i].ambient, 1, l->ambient);
-            GL.glUniform3fv(global_uniform_pointlights[i].diffuse, 1, l->diffuse);
-            GL.glUniform3fv(global_uniform_pointlights[i].specular, 1, l->specular);
+            GL.glUniform3fv(global_uniform->pointlights[i].position, 1, e->position);
+            GL.glUniform1f(global_uniform->pointlights[i].constant, l->constant);
+            GL.glUniform1f(global_uniform->pointlights[i].linear, l->linear);
+            GL.glUniform1f(global_uniform->pointlights[i].quadratic, l->quadratic);
+            GL.glUniform3fv(global_uniform->pointlights[i].ambient, 1, l->ambient);
+            GL.glUniform3fv(global_uniform->pointlights[i].diffuse, 1, l->diffuse);
+            GL.glUniform3fv(global_uniform->pointlights[i].specular, 1, l->specular);
         }
         
         GL.glBindVertexArray(global_quad_vao);
@@ -1379,12 +1363,10 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     
     //~ NOTE(ljre): Point Lights
     {
-        global_current_shader = global_default_shader;
-        GL.glUseProgram(global_current_shader);
-        GetCurrentShaderUniforms(global_current_shader);
+        BindShader(&global_default_shader);
         
-        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
-        GL.glUniform1i(global_uniform_texture, 0);
+        GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+        GL.glUniform1i(global_uniform->texture, 0);
         
         for (int32 i = 0; i < mgr->point_lights_count; ++i)
         {
@@ -1399,8 +1381,8 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
             glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
             glm_scale(matrix, entity->scale);
             
-            GL.glUniform4f(global_uniform_color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
-            GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
+            GL.glUniform4f(global_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
+            GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
             
             GL.glActiveTexture(GL_TEXTURE0);
             GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
@@ -1421,13 +1403,12 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         glm_mat4_identity(matrix);
         
         GL.glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        GL.glUseProgram(global_default_shader);
-        GetCurrentShaderUniforms(global_default_shader);
+        BindShader(&global_default_shader);
         
-        GL.glUniform4fv(global_uniform_color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
-        GL.glUniformMatrix4fv(global_uniform_view, 1, false, (float32*)view);
-        GL.glUniformMatrix4fv(global_uniform_model, 1, false, (float32*)matrix);
-        GL.glUniform1i(global_uniform_texture, 0);
+        GL.glUniform4fv(global_uniform->color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
+        GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+        GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+        GL.glUniform1i(global_uniform->texture, 0);
         
         GL.glActiveTexture(GL_TEXTURE0);
         GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);

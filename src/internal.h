@@ -1,33 +1,28 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-    
 #ifdef __GNUC__
 #   define alignas(_) __attribute__((aligned(_)))
 #else
 #   define alignas(_) __declspec(align(_))
 #endif
-    
+
+#if 0 // NOTE(ljre): Ignore this.
+;
+#define restrict
+#define NULL
+#endif
+
 #define internal static
 #define true 1
 #define false 0
-    
+
 #if defined(UNITY_BUILD)
 #   define API static
 #elif defined(__cplusplus)
 #   define API extern "C"
 #else
 #   define API
-#endif
-    
-    
-#if 0 // NOTE(ljre): Ignore this.
-}
-#define restrict
-#define NULL
 #endif
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
@@ -98,9 +93,9 @@ typedef double float64;
 #   define Assert assert
 #endif
 
-#if defined(TRACY_ENABLE) // NOTE(ljre):     :)
+#if defined(TRACY_ENABLE) // NOTE(ljre): this won't work with MSVC...
 #    include "../../tracy/TracyC.h"
-internal void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
+internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
 #    define Trace(x) TracyCZoneN(_ctx __attribute((cleanup(___my_tracy_zone_end))),x,true)
 #else
 #    define Trace(x) ((void)0)
@@ -235,7 +230,7 @@ API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
 API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
 
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
-API void Render_Begin2D(const Render_Camera* camera);
+API void Render_Begin2D(void);
 API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size);
 API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color);
 
@@ -435,9 +430,5 @@ API int32 Input_ConnectedGamepadsIndices(int32* out_indices, int32 max_count);
 #define Input_IsDown(state, btn) (((state).buttons[btn] & 1) != 0)
 #define Input_IsReleased(state, btn) (((state).buttons[btn] & 2) && !((state).buttons[btn] & 1))
 #define Input_IsUp(state, btn) (!((state).buttons[btn] & 1))
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif //INTERNAL_H
