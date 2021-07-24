@@ -547,7 +547,6 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
                                   visual_info->depth, InputOutput, visual_info->visual,
                                   CWColormap | CWEventMask, &window_attributes);
     
-    // TODO(ljre): is this necessary?
     XMapWindow(global_display, global_window);
     Xutf8SetWMProperties(global_display, global_window, title, NULL, NULL, 0, NULL, NULL, NULL);
     

@@ -93,10 +93,7 @@ String_Compare(String a, String b)
     int32 alen = (int32)(ap_end - ap);
     int32 blen = (int32)(bp_end - bp);
     
-    if (alen != blen)
-        return alen - blen;
-    
-    return 0;
+    return alen - blen;
 }
 
 internal inline bool32
@@ -110,7 +107,7 @@ String_EndsWith(String check, String s)
         .len = s.len,
     };
     
-    return strncmp(substr.data, s.data, substr.len);
+    return strncmp(substr.data, s.data, substr.len) == 0;
 }
 
 #endif //INTERNAL_STRING_H

@@ -98,7 +98,10 @@ CheckForNewGamepads(void)
 {
     DIR* directory = opendir("/dev/input/by-id");
     if (!directory)
+    {
+        Platform_DebugLog("Could not open /dev/input/by-id/\n");
         return;
+    }
     
     struct dirent* entry;
     while (entry = readdir(directory), entry)
@@ -183,15 +186,16 @@ Linux_ProcessMouseEvent(uint32 button, bool32 pressed)
     
     if (button == 4)
     {
-        global_mouse.scroll = -1;
+        global_mouse.scroll -= 1;
     }
     else if (button == 5)
     {
-        global_mouse.scroll = 1;
+        global_mouse.scroll += 1;
     }
     else if (button > 0 && button < ArrayLength(button_table))
     {
-        global_mouse.buttons[button_table[button]] = (bool8)pressed;
+        global_mouse.buttons[button_table[button]] &=~ 1;
+        global_mouse.buttons[button_table[button]] |= (bool8)pressed;
     }
 }
 
@@ -212,6 +216,13 @@ Linux_UpdateInputPre(void)
     // NOTE(ljre): Update Mouse Input
     glm_vec2_copy(global_mouse.pos, global_mouse.old_pos);
     global_mouse.scroll = 0;
+    
+    for (int32 i = 0; i < ArrayLength(global_mouse.buttons); ++i)
+    {
+        bool8 btn = global_mouse.buttons[i];
+        btn = (bool8)((btn << 1) | (btn & 1));
+        global_mouse.buttons[i] = btn;
+    }
 }
 
 internal void

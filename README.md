@@ -1,30 +1,29 @@
 # please
-no description yet
+made to be simple, easy to build, and mainly to learn.
 
 ## License
 Everyone is free to use my code to do whatever they want.
-The license note in the file LICENSE is valid just for some of the stuff in the `src` folder.
+The license note in the file LICENSE is valid just for the stuff in the `src` folder.
+Everything in the `src` folder is either mine, or is available in the public domain.
 
-Exclusions:
-- Pieces of code I've directly borrowed from GLFW's source code in the file `src/platform_win32_input.c`. All of them have a comment specifying where and which license that code is under.
-
-Everything else in the `src` folder is either mine, or is available in the public domain.
-
-#### Little Note
-If you have any problems about this license, or if I am redistributing your code without permission, please make an issue or contact me directly!
+The code inside the `include` folder may be redistributed under it's own license (generally found at the top of the file or in a `LICENSE` file).
 
 ## Build
-Clang is required, but you can use GCC if you want to. Just run `make` and you should be good to go.
-If you need to, here are some variables you can set:
-* `MODE=debug`: will define the macro `DEBUG` and generate debugging symbols;
-* `ARCH=`: can be `x86` or `x64`, though the default is `x64`;
+If you are on Windows, simply run `build-debug-cl.bat` and it should compile normally. If you are on Linux, then run `build-debug-gcc.sh` instead.
+Both of those scripts have only 1 command. You can read it to understand what is needed to compile.
 
-Example: `make MODE=debug ARCH=x86 -j`
+You may also have noticed the `Makefile` file. If you want to use it, make sure you have Clang installed on your machine.
+Here are some variables you can set (all of them are optional):
+* `CUSTOMC` and `CUSTOMLD`: Custom flags for the compiler and the linker respectivelly;
+* `OPT`: Optimization flags. You can also set it to `-g -DDEBUG` to generate debugging symbols for example;
+* `BUILDDIR`: The build directory where the object files and executable are going to be placed at. Defaults to `build`;
+* `PLATFORM`: The platform you want to build to. It's worth noting that you should setup your own environment for cross-compilation;
+* `CC` and `LD`: C99 Compiler and linker respectivelly.
 
 ## APIs
-* Graphics: OpenGL, Direct3D 11 (very barely, and not working);
+* Graphics: OpenGL 3.3;
 * Gamepad Input: DirectInput, XInput;
-* Audio: WASAPI;
+* Audio: WASAPI, ALSA;
 * Platforms: Win32, X11;
 
 ## External

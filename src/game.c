@@ -1,369 +1,145 @@
 #include "internal.h"
 
-internal void
-ColorToVec4(uint32 color, vec4 out)
+struct Game_GlobalData
 {
-    out[0] = (float32)(color>>16 & 0xFF) / 255.0f;
-    out[1] = (float32)(color>>8 & 0xFF) / 255.0f;
-    out[2] = (float32)(color & 0xFF) / 255.0f;
-    out[3] = (float32)(color>>24 & 0xFF) / 255.0f;
+    Asset_Font font;
+} typedef Game_GlobalData;
+
+#include "game_3ddemo.c"
+#include "game_2ddemo.c"
+
+struct Game_MenuButton
+{
+    vec3 position;
+    vec3 size;
+    String text;
+} typedef Game_MenuButton;
+
+internal bool32
+IsMouseOverButton(Input_Mouse* mouse, Game_MenuButton* button)
+{
+    return ((mouse->pos[0] >= button->position[0] && mouse->pos[0] <= button->position[0] + button->size[0]) &&
+            (mouse->pos[1] >= button->position[1] && mouse->pos[1] <= button->position[1] + button->size[1]));
 }
 
 internal void
-DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 width, float32 height)
+DrawMenuButton(Game_GlobalData* global, Game_MenuButton* button, Input_Mouse* mouse)
 {
-    vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
-    vec4 colors[2] = {
-        { 0.5f, 0.5f, 0.5f, 1.0f }, // Enabled
-        { 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
-    };
+    vec4 highlight_none = { 0.1f, 0.1f, 0.1f, 1.0f };
+    vec4 highlight_over = { 0.2f, 0.2f, 0.2f, 1.0f };
+    vec4 highlight_pressed = { 0.4f, 0.4f, 0.4f, 1.0f };
     
-    float32 xscale = width / 600.0f;
-    float32 yscale = height / 600.0f;
-    
-    // NOTE(ljre): Draw Axes
+    float32* color = highlight_none;
+    if (IsMouseOverButton(mouse, button))
     {
-        Render_DrawRectangle(black,
-                             (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-                             (vec3) { 50.0f * xscale, 50.0f * yscale });
+        color = highlight_over;
         
-        Render_DrawRectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_LS)],
-                             (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
-                                 y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
-                             (vec3) { 20.0f * xscale, 20.0f * yscale });
-        
-        Render_DrawRectangle(black,
-                             (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-                             (vec3) { 50.0f * xscale, 50.0f * yscale });
-        
-        Render_DrawRectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_RS)],
-                             (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
-                             (vec3) { 20.0f * xscale, 20.0f * yscale });
-    }
-    
-    // NOTE(ljre): Draw Buttons
-    {
-        struct Pair
+        if (Input_IsDown(*mouse, Input_MouseButton_Left))
         {
-            vec3 pos;
-            vec3 size;
-        } buttons[] = {
-            [Input_GamepadButton_Y] = { { width * 0.84f, height * 0.44f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_B] = { { width * 0.90f, height * 0.50f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_A] = { { width * 0.84f, height * 0.56f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_X] = { { width * 0.78f, height * 0.50f }, { 30.0f, 30.0f } },
-            
-            [Input_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
-            [Input_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
-            
-            [Input_GamepadButton_Up]    = { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_Down]  = { { width * 0.16f, height * 0.56f }, { 30.0f, 30.0f } },
-            [Input_GamepadButton_Left]  = { { width * 0.10f, height * 0.50f }, { 30.0f, 30.0f } },
-            
-            [Input_GamepadButton_Back]  = { { width * 0.45f, height * 0.48f }, { 25.0f, 15.0f } },
-            [Input_GamepadButton_Start] = { { width * 0.55f, height * 0.48f }, { 25.0f, 15.0f } },
-        };
-        
-        for (int32 i = 0; i < ArrayLength(buttons); ++i)
-        {
-            buttons[i].pos[0] += x;
-            buttons[i].pos[1] += y;
-            buttons[i].size[0] *= xscale;
-            buttons[i].size[1] *= yscale;
-            
-            Render_DrawRectangle(colors[Input_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size);
+            color = highlight_pressed;
         }
     }
     
-    // NOTE(ljre): Draw Triggers
-    {
-        vec4 color;
-        
-        glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
-        Render_DrawRectangle(color,
-                             (vec3) { x + width * 0.20f, y + height * 0.23f },
-                             (vec3) { 60.0f * xscale, 30.0f * yscale });
-        
-        glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
-        Render_DrawRectangle(color,
-                             (vec3) { x + width * 0.80f, y + height * 0.23f },
-                             (vec3) { 60.0f * xscale, 30.0f * yscale });
-    }
-}
-
-API Scene
-Game_MainScene(void)
-{
-    Trace("Game_MainScene");
+    Render_DrawRectangle(color, button->position, button->size, (vec3) { 0 });
     
-    Asset_3DModel model;
-    if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))
-    {
-        Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
-    }
-    
-    Asset_3DModel tree_model;
-    if (!Render_Load3DModelFromFile(Str("./assets/first_tree.glb"), &tree_model))
-    {
-        Platform_ExitWithErrorMessage(Str("Could not load tree model :("));
-    }
-    
-    Asset_3DModel corset_model;
-    if (!Render_Load3DModelFromFile(Str("./assets/corset.glb"), &corset_model))
-    {
-        Platform_ExitWithErrorMessage(Str("Could not load corset model :("));
-    }
-    
-    // NOTE(ljre): Load Audio
-    Asset_SoundBuffer sound_music;
-    
-    if (!Audio_LoadFile(Str("music.ogg"), &sound_music))
-    {
-        Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
-    }
-    else
-    {
-        Audio_Play(&sound_music, true, 0.4, 1.0);
-    }
-    
-    Asset_SoundBuffer sound_music3 = { 0 };
-    Audio_LoadFile(Str("music3.ogg"), &sound_music3);
-    
-    // NOTE(ljre): Load Font
-    Asset_Font font;
-    bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &font);
-    
-    int32 controller_index = 0;
-    
-    float32 camera_yaw = PI32;
-    float32 camera_pitch = 0.0f;
-    float32 sensitivity = 0.05f;
-    float32 camera_total_speed = 0.075f;
-    float32 camera_height = 1.9f;
-    float32 moving_time = 0.0f;
-    vec2 camera_speed = { 0 };
-    
-    Render_Camera camera = {
-        .pos = { 0.0f, camera_height, 0.0f },
-        .dir = { 0.0f, 0.0f, -1.0f },
-        .up = { 0.0f, 1.0f, 0.0f },
+    vec3 pos = {
+        button->position[0] + button->size[0] / 2.0f,
+        button->position[1] + button->size[1] / 2.0f,
     };
     
-    //~ NOTE(ljre): Entities
-    Render_Manager manager = { 0 };
-    manager.dirlight[0] = 1.0f;
-    manager.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
-    manager.dirlight[2] = 0.5f;
-    glm_vec3_normalize(manager.dirlight);
+    vec3 alignment = { -0.5f, -0.5f, 0.0f };
     
-    manager.cube_model = &model;
+    Render_DrawText(&global->font, button->text, pos, 24.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, alignment);
+}
+
+API void*
+Game_MainScene(void** shared_data)
+{
+    Scene next_scene = NULL;
     
-    //- Ground
-    Render_Entity* ground = Render_AddToManager(&manager, Render_EntityKind_3DModel);
+    *shared_data = Engine_PushMemory(sizeof(Game_GlobalData));
+    Game_GlobalData* global = *shared_data;
     
-    ground->scale[0] = 20.0f;
-    ground->scale[1] = 2.0f;
-    ground->scale[2] = 20.0f;
-    ground->position[0] = 0.0f;
-    ground->position[1] = -2.0f;
-    ground->position[2] = 0.0f;
-    ground->model->color[0] = 1.0f;
-    ground->model->color[1] = 1.0f;
-    ground->model->color[2] = 1.0f;
-    ground->model->color[3] = 1.0f;
-    ground->model->asset = &model;
-    
-    //- Tree
-    Render_Entity* tree = Render_AddToManager(&manager, Render_EntityKind_3DModel);
-    
-    ColorToVec4(0xFFFFFFFF, tree->model->color);
-    tree->position[1] += 0.1f;
-    tree->model->asset = &tree_model;
-    
-    //- Corset
-    for (int32 i = 0; i < 70; ++i) {
-        Render_Entity* corset = Render_AddToManager(&manager, Render_EntityKind_3DModel);
-        
-        ColorToVec4(0xFFFFFFFF, corset->model->color);
-        corset->position[0] = Engine_RandomF32Range(-5.0f, 5.0f);
-        corset->position[1] = 0.1f;
-        corset->position[2] = Engine_RandomF32Range(-5.0f, 5.0f);
-        corset->model->asset = &corset_model;
-    }
-    
-    //- Rotating Cubes
-    Render_Entity* rotating_cubes[30];
-    for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
+    // NOTE(ljre): Load font
+    bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &global->font);
+    if (!font_loaded)
     {
-        rotating_cubes[i] = Render_AddToManager(&manager, Render_EntityKind_3DModel);
-        
-        rotating_cubes[i]->position[0] = Engine_RandomF32Range(-20.0f, 20.0f);
-        rotating_cubes[i]->position[1] = Engine_RandomF32Range(3.0f, 10.0f);
-        rotating_cubes[i]->position[2] = Engine_RandomF32Range(-20.0f, 20.0f);
-        rotating_cubes[i]->model->asset = &model;
-        
-        static const uint32 colors[] = {
-            0xFFFF0000, 0xFFFF3E00, 0xFFFF8100, 0xFFFFC100, 0xFFFFFF00, 0xFFC1FF00,
-            0xFF81FF00, 0xFF3EFF00, 0xFF00FF00, 0xFF00FF3E, 0xFF00FF81, 0xFF00FFC1,
-            0xFF00FFFF, 0xFF00C1FF, 0xFF0081FF, 0xFF003EFF, 0xFF0000FF, 0xFF3E00FF,
-            0xFF8100FF, 0xFFC100FF, 0xFFFF00FF, 0xFFFF00C1, 0xFFFF0081, 0xFFFF003E,
-        };
-        
-        ColorToVec4(colors[Engine_RandomU64() % ArrayLength(colors)], rotating_cubes[i]->model->color);
+        Platform_ExitWithErrorMessage(Str("Could not load the default font :("));
     }
     
-    //- Lights
-    Render_Entity* light1 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
-    Render_Entity* light2 = Render_AddToManager(&manager, Render_EntityKind_PointLight);
+    // NOTE(ljre): Menu Buttons
+    Game_MenuButton button_3dscene = {
+        .position = { 100.0f, 200.0f },
+        .size = { 200.0f, 50.0f },
+        .text = StrI("Run 3D Scene"),
+    };
     
-    light1->position[0] = 1.0f;
-    light1->position[1] = 2.0f;
-    light1->position[2] = 5.0f;
-    light1->scale[0] = 0.25f;
-    light1->scale[1] = 0.25f;
-    light1->scale[2] = 0.25f;
-    light1->point_light->ambient[0] = 0.2f;
-    light1->point_light->ambient[1] = 0.0f;
-    light1->point_light->ambient[2] = 0.0f;
-    light1->point_light->diffuse[0] = 0.8f;
-    light1->point_light->diffuse[1] = 0.0f;
-    light1->point_light->diffuse[2] = 0.0f;
-    light1->point_light->specular[0] = 1.0f;
-    light1->point_light->specular[1] = 0.0f;
-    light1->point_light->specular[2] = 0.0f;
-    light1->point_light->constant = 1.0f;
-    light1->point_light->linear = 0.09f;
-    light1->point_light->quadratic = 0.032f;
+    Game_MenuButton button_2dscene = {
+        .position = { 100.0f, 300.0f },
+        .size = { 200.0f, 50.0f },
+        .text = StrI("Run 2D Scene"),
+    };
     
-    light2->position[0] = 1.0f;
-    light2->position[1] = 2.0f;
-    light2->position[2] = -5.0f;
-    light2->scale[0] = 0.25f;
-    light2->scale[1] = 0.25f;
-    light2->scale[2] = 0.25f;
-    light2->point_light->ambient[0] = 0.0f;
-    light2->point_light->ambient[1] = 0.0f;
-    light2->point_light->ambient[2] = 1.0f;
-    light2->point_light->diffuse[0] = 0.0f;
-    light2->point_light->diffuse[1] = 0.0f;
-    light2->point_light->diffuse[2] = 1.0f;
-    light2->point_light->specular[0] = 0.0f;
-    light2->point_light->specular[1] = 0.0f;
-    light2->point_light->specular[2] = 0.8f;
-    light2->point_light->constant = 1.0f;
-    light2->point_light->linear = 0.09f;
-    light2->point_light->quadratic = 0.032f;
+    Game_MenuButton button_quit = {
+        .position = { 100.0f, 400.0f },
+        .size = { 200.0f, 50.0f },
+        .text = StrI("Quit"),
+    };
     
+    // NOTE(ljre): Game Loop
     while (!Platform_WindowShouldClose())
     {
         Trace("Game Loop");
         void* memory_state = Engine_PushMemoryState();
         
-        if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
-            break;
+        Input_Mouse mouse;
+        Input_GetMouse(&mouse);
         
-        if (Input_KeyboardIsPressed(Input_KeyboardKey_Left))
-            controller_index = (controller_index - 1) & 15;
-        else if (Input_KeyboardIsPressed(Input_KeyboardKey_Right))
-            controller_index = (controller_index + 1) & 15;
-        
-        Input_Gamepad gamepad;
-        bool32 is_connected = Input_GetGamepad(controller_index, &gamepad);
-        
-        if (is_connected)
+        //~ NOTE(ljre): Update
         {
-            //~ NOTE(ljre): Camera Direction
-            if (gamepad.right[0] != 0.0f)
+            if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
             {
-                camera_yaw += gamepad.right[0] * sensitivity;
-                camera_yaw = fmodf(camera_yaw, PI32 * 2.0f);
+                next_scene = NULL;
+                break;
             }
             
-            if (gamepad.right[1] != 0.0f)
+            if (Input_IsReleased(mouse, Input_MouseButton_Left))
             {
-                camera_pitch += -gamepad.right[1] * sensitivity;
-                camera_pitch = glm_clamp(camera_pitch, -PI32 * 0.49f, PI32 * 0.49f);
+                if (IsMouseOverButton(&mouse, &button_3dscene))
+                {
+                    next_scene = Game_3DDemoScene;
+                }
+                //else if (IsMouseOverButton(&mouse, &button_2dscene))
+                //{
+                //next_scene = Game_2DDemoScene;
+                //}
+                else if (IsMouseOverButton(&mouse, &button_quit))
+                {
+                    next_scene = NULL;
+                    break;
+                }
             }
-            
-            float32 pitched = cosf(camera_pitch);
-            
-            camera.dir[0] = cosf(camera_yaw) * pitched;
-            camera.dir[1] = sinf(camera_pitch);
-            camera.dir[2] = sinf(camera_yaw) * pitched;
-            glm_vec3_normalize(camera.dir);
-            
-            vec3 right;
-            glm_vec3_cross((vec3) { 0.0f, 1.0f, 0.0f }, camera.dir, right);
-            
-            glm_vec3_cross(camera.dir, right, camera.up);
-            
-            //~ Movement
-            vec2 speed;
-            
-            speed[0] = -gamepad.left[1];
-            speed[1] =  gamepad.left[0];
-            
-            glm_vec2_rotate(speed, camera_yaw, speed);
-            glm_vec2_scale(speed, camera_total_speed, speed);
-            glm_vec2_lerp(camera_speed, speed, 0.2f, camera_speed);
-            
-            camera.pos[0] += camera_speed[0];
-            camera.pos[2] += camera_speed[1];
-            
-            if (Input_IsDown(gamepad, Input_GamepadButton_A))
-                camera_height += 0.05f;
-            else if (Input_IsDown(gamepad, Input_GamepadButton_B))
-                camera_height -= 0.05f;
-            
-            //~ Bump
-            float32 d = glm_vec2_distance2(camera_speed, GLM_VEC2_ZERO);
-            if (d > 0.0001f)
-            {
-                moving_time += 0.3f;
-            }
-            
-            camera.pos[1] = camera_height + sinf(moving_time) * 0.04f;
         }
         
-        if (is_connected)
-            Render_ClearBackground(0.1f, 0.15f, 0.3f, 1.0f);
-        else
+        //~ NOTE(ljre): Render Menu
+        {
+            Render_Begin2D();
+            
             Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
-        
-        //~ NOTE(ljre): 3D World
-        float32 t = (float32)Platform_GetTime();
-        
-        for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
-        {
-            rotating_cubes[i]->rotation[1] = t + (float32)i;
-        }
-        
-        Render_DrawManager(&manager, &camera);
-        
-        //~ NOTE(ljre): 2D User Interface
-        Render_Begin2D();
-        
-        //- NOTE(ljre): Draw Controller Index
-        if (font_loaded) {
-            const vec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
+            Render_DrawText(&global->font, Str("Welcome!\nThose are buttons"), (vec3) { 10.0f, 10.0f }, 32.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, (vec3) { 0 });
             
-            char buf[128];
-            snprintf(buf, sizeof buf, "Controller Index: %i", controller_index);
-            Render_DrawText(&font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, white);
-            
-            Render_DrawText(&font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, white);
-        }
-        
-        if (is_connected)
-        {
-            DrawGamepadLayout(&gamepad, 0.0f, 0.0f, 300.0f, 300.0f);
+            DrawMenuButton(global, &button_3dscene, &mouse);
+            //DrawMenuButton(global, &button_2dscene, &mouse);
+            DrawMenuButton(global, &button_quit, &mouse);
         }
         
         //~ NOTE(ljre): Finish Frame
         Engine_PopMemoryState(memory_state);
         Engine_FinishFrame();
+        
+        if (next_scene != NULL)
+            break;
     }
     
-    return NULL;
+    return next_scene;
 }

@@ -161,11 +161,12 @@ Engine_Main(int32 argc, char** argv)
     global_last_time = Platform_GetTime();
     
     // NOTE(ljre): Run
-    Scene (*current_scene)(void) = Game_MainScene;
+    Scene current_scene = Game_MainScene;
+    void* shared_data;
     
     while (current_scene)
     {
-        current_scene = current_scene();
+        current_scene = current_scene(&shared_data);
     }
     
     // NOTE(ljre): Deinit

@@ -102,6 +102,7 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #endif
 
 //~ Others
+#include "internal_math.h"
 #include "internal_string.h"
 #include "internal_opengl.h"
 #include "internal_direct3d.h"
@@ -111,7 +112,8 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 
 // A scene is a function pointer that should return the next scene to
 // run, or NULL if the game should close.
-typedef void* Scene;
+typedef void* SceneProc(void** shared_data);
+typedef SceneProc* Scene;
 
 API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
@@ -126,7 +128,7 @@ API float64 Engine_RandomF64(void);
 API float32 Engine_RandomF32Range(float32 start, float32 end);
 API float32 Engine_DeltaTime(void);
 
-API Scene Game_MainScene(void);
+API void* Game_MainScene(void** shared_data);
 
 //- Discord Game SDK
 #ifdef USE_DISCORD_GAME_SDK
@@ -158,86 +160,33 @@ struct Render_Camera
     union
     {
         // NOTE(ljre): 2D Stuff
-        struct { vec2 scale; float32 angle; };
+        struct { vec2 size; float32 zoom; float32 angle; };
         
         // NOTE(ljre): 3D Stuff
         struct { vec3 dir; vec3 up; };
     };
 } typedef Render_Camera;
 
-typedef struct Render_Entity Render_Entity;
-enum Render_EntityKind
-{
-    Render_EntityKind_PointLight,
-    Render_EntityKind_3DModel,
-} typedef Render_EntityKind;
-
-struct Render_3DModel
-{
-    Render_Entity* entity;
-    Asset_3DModel* asset;
-    vec4 color;
-} typedef Render_3DModel;
-
-struct Render_PointLight
-{
-    Render_Entity* entity;
-    
-    float32 constant, linear, quadratic;
-    
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-} typedef Render_PointLight;
-
-struct Render_Entity
-{
-    vec3 position;
-    vec3 scale;
-    vec3 rotation;
-    Render_EntityKind kind;
-    
-    union {
-        void* handle;
-        Render_PointLight* point_light;
-        Render_3DModel* model;
-    };
-};
-
-#define MANAGER_MAX_ENTITIES 256
-#define MAX_POINT_LIGHTS_COUNT 8
-
-struct Render_Manager
-{
-    vec3 dirlight;
-    Asset_3DModel* cube_model;
-    uint32 shadow_fbo, shadow_depthmap;
-    uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
-    
-    Render_Entity entities[MANAGER_MAX_ENTITIES];
-    Render_Entity* free_spaces[MANAGER_MAX_ENTITIES];
-    
-    Render_PointLight point_lights[MAX_POINT_LIGHTS_COUNT];
-    Render_3DModel models[MANAGER_MAX_ENTITIES];
-    
-    int32 entity_count;
-    int32 free_space_count;
-    int32 point_lights_count;
-    int32 model_count;
-} typedef Render_Manager;
+#include "internal_3dmanager.h"
+#include "internal_2dscene.h"
 
 API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
 API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
+API bool32 Render_LoadTextureFromFile(String path, Asset_Texture* out_texture);
+API bool32 Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height);
 
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
 API void Render_Begin2D(void);
-API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size);
-API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color);
+API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment);
+API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment);
 
-API Render_Entity* Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind);
-API void Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle);
-API void Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera);
-API void Render_ProperlySetupManager(Render_Manager* mgr);
+API Render_3DEntity* Render_AddTo3DManager(Render_3DManager* mgr, Render_3DEntityKind kind);
+API void Render_RemoveFrom3DManager(Render_3DManager* mgr, Render_3DEntity* handle);
+API void Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera);
+API void Render_ProperlySetup3DManager(Render_3DManager* mgr);
+
+API void Render_ProperlySetup2DScene(Render_2DScene* scene);
+API void Render_Draw2DScene(Render_2DScene* scene);
 
 //~ Platform
 enum GraphicsAPI

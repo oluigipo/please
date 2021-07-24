@@ -177,10 +177,10 @@ Audio_LoadFile(String path, Asset_SoundBuffer* out_sound)
     
     out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels,
                                                        &out_sound->sample_rate, &out_sound->samples);
+    Platform_FreeFileMemory(memory, size);
     
     if (out_sound->sample_count == -1)
     {
-        Platform_FreeFileMemory(memory, size);
         return false;
     }
     

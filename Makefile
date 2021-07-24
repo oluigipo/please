@@ -1,77 +1,60 @@
-CFLAGS =
-LDFLAGS =
+ifndef $(PLATFORM)
+	ifeq ($(OS), Windows_NT)
+		PLATFORM = win32
+	else
+		UNAME := $(shell uname -s)
+		
+		ifeq ($(UNAME), Linux)
+			PLATFORM = linux
+		else ifeq ($(UNAME), Darwin)
+			PLATFORM = mac
+		endif
+	endif
+endif
 
 CUSTOMC ?=
 CUSTOMLD ?=
+OPT ?= -O2 -ffast-math -flto
+BUILDDIR ?= build
 
-CFLAGS += -Iinclude -Isrc
+CFLAGS += -Iinclude
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
-CFLAGS += -Wno-missing-braces $(CUSTOMC)
-LDFLAGS += -Llib $(CUSTOMLD)
+CFLAGS += -Wno-missing-braces $(CUSTOMC) $(OPT)
+LDFLAGS += -Llib $(CUSTOMLD) $(OPT)
 
-ifeq ($(MODE), debug)
-	CFLAGS += -g -DDEBUG
-	LDFLAGS += -g
-else ifeq ($(MODE), safedebug)
-	CFLAGS += -g -DDEBUG -fsanitize=address
-	LDFLAGS += -g -fsanitize=address
-else
-	OPT ?= -O2 -ffast-math -flto
-	
-	CFLAGS += $(OPT)
-	LDFLAGS += $(OPT)
-endif
-
-ifeq ($(OS), Windows_NT)
-	PLATFORM = win32
+ifeq ($(PLATFORM), win32)
 	OUTPUT_NAME = game.exe
+	CLEAN = del "build\*.o" "build\*.pdb" "build\*.exp" "build\*.lib" "build\*.ilk"
 	
 	CC = clang -std=c99
 	LD = clang -fuse-ld=lld-link
-	CLEAN = del "build\*.o" "build\*.pdb" "build\*.exp" "build\*.lib" "build\*.ilk"
 	
-	LDFLAGS += -luser32 -lgdi32 -lhid -static
+	LDFLAGS += -luser32 -lgdi32 -lhid -static -Xlinker /subsystem:windows
 	
 	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
 	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
 	CFLAGS += -D_CRT_SECURE_NO_WARNINGS
-	
-	ifeq ($(ARCH), x86)
-		CFLAGS += -m32 -DX86
-		LDFLAGS += -m32 -Xlinker /subsystem:windows,5.01
-	else
-		CFLAGS += -m64 -DX64
-		LDFLAGS += -m64 -Xlinker /subsystem:windows
-	endif
-else
-	UNAME := $(shell uname -s)
+else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game
+	CLEAN = rm ./build/*.o
 	
-	CC = clang -std=c99
-	LD = clang
-	CLEAN = rm "build/*.o"
+	CC = cc
+	LD = cc
 	
-	ifeq ($(UNAME), Linux)
-		PLATFORM = linux
-		LDFLAGS += -lm -lX11 -ldl -lasound
-	endif
-	
-	ifeq ($(UNAME), Darwin)
-		PLATFORM = mac
-	endif
+	LDFLAGS += -lm -lX11 -ldl -lasound
 endif
 
 all: default
 .PHONY: all default unity clean src/unity_build.c
 
-unity: build/unity_build.o
-	$(LD) $^ -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
-default: build/engine.o build/platform_$(PLATFORM).o build/game.o
-	$(LD) $^ -o "build/$(OUTPUT_NAME)" $(LDFLAGS)
+unity: $(BUILDDIR)/unity_build.o
+	$(LD) $^ -o "$(BUILDDIR)/$(OUTPUT_NAME)" $(LDFLAGS)
+default: $(BUILDDIR)/engine.o $(BUILDDIR)/platform_$(PLATFORM).o $(BUILDDIR)/game.o
+	$(LD) $^ -o "$(BUILDDIR)/$(OUTPUT_NAME)" $(LDFLAGS)
 clean:
 	$(CLEAN)
 
-build:
-	mkdir build
-build/%.o: src/%.c src/%*.c src/internal*.h | build
+$(BUILDDIR):
+	mkdir $(BUILDDIR)
+$(BUILDDIR)/%.o: src/%.c src/%*.c src/internal*.h | $(BUILDDIR)
 	$(CC) $< -c -o $@ $(CFLAGS)

@@ -39,4 +39,11 @@ struct Asset_3DModel
     int32 index_count;
 } typedef Asset_3DModel;
 
+struct Asset_Texture
+{
+    uint32 id;
+    int32 width, height;
+    int32 depth; // >0 for texture arrays
+} typedef Asset_Texture;
+
 #endif //INTERNAL_ASSETS_H

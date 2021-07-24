@@ -19,6 +19,13 @@ struct Vertex
     vec2 texcoord;
 } typedef Vertex;
 
+struct SpriteElementData
+{
+    mat3 transform;
+    vec4 texcoords;
+    vec4 color;
+} typedef SpriteElementData;
+
 struct PointLightsUniformData
 {
     int32 constant;
@@ -59,7 +66,7 @@ struct InternalShaderUniforms
     int32 dirlight_shadowmap;
     
     int32 pointlights_count;
-    PointLightsUniformData pointlights[MAX_POINT_LIGHTS_COUNT];
+    PointLightsUniformData pointlights[MAX_3DMANAGER_POINT_LIGHTS];
 } typedef InternalShaderUniforms;
 
 struct InternalShader
@@ -94,6 +101,7 @@ internal InternalShader global_default_3dshader;
 internal InternalShader global_default_shadowshader;
 internal InternalShader global_default_gbuffershader;
 internal InternalShader global_default_finalpassshader;
+internal InternalShader global_default_spriteshader;
 
 internal InternalShaderUniforms* global_uniform;
 
@@ -250,7 +258,7 @@ internal const char* const global_fragment_finalpassshader =
 "};"
 
 "uniform DirLight uDirLight;"
-"uniform PointLight uPointLights[" StrMacro(MAX_POINT_LIGHTS_COUNT) "];"
+"uniform PointLight uPointLights[" StrMacro(MAX_3DMANAGER_POINT_LIGHTS) "];"
 "uniform int uPointLightsCount;"
 "uniform vec3 uViewPos;"
 "uniform mat4 uDirLightMatrix;\n"
@@ -293,7 +301,7 @@ internal const char* const global_fragment_finalpassshader =
 "    vec3 halfwayDir = normalize(uDirLight.position + viewDir);"
 
 "    vec3 ambient = diffuseSample * 0.1;"
-"    vec3 diffuse = diffuseSample * max(0.0, dot(normal, halfwayDir));"
+"    vec3 diffuse = diffuseSample * max(0.0, dot(normal, viewDir));"
 "    vec3 specular = specularSample * pow(max(0.0, dot(normal, halfwayDir)), shininess);"
 
 "    ambient *= uDirLight.ambient;"
@@ -308,7 +316,7 @@ internal const char* const global_fragment_finalpassshader =
 "    vec3 lightDir = normalize(uPointLights[i].position - fragPos);"
 "    vec3 halfwayDir = normalize(lightDir + viewDir);"
 
-"    float diff = max(dot(normal, halfwayDir), 0.0);"
+"    float diff = max(dot(normal, viewDir), 0.0);"
 "    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);"
 
 "    float distance = length(uPointLights[i].position - fragPos);"
@@ -349,6 +357,51 @@ internal const char* const global_fragment_finalpassshader =
 "}\n"
 ;
 
+internal const char* const global_vertex_spriteshader =
+"#version 330 core\n"
+"layout (location = 0) in vec3 aPosition;\n"
+"layout (location = 1) in vec3 aNormal;\n"
+"layout (location = 2) in vec2 aTexCoord;\n"
+
+"out vec2 vTexCoord;"
+"out vec4 vColor;"
+
+"struct SpriteElement {"
+"    mat3 transform;"
+"    vec4 texCoords;"
+"    vec4 color;"
+"};"
+
+"layout (std140, binding = 0) uniform SpriteElementsBlock {"
+"    SpriteElement uElements[" StrMacro(MAX_2DSCENE_SPRITES) "];"
+"};"
+
+"uniform mat4 uView;\n"
+
+"void main() {"
+"    SpriteElement element = uElements[gl_InstanceID];"
+
+"    gl_Position = uView * element.transform * vec4(aPosition, 1.0);"
+"    vTexCoord = element.texCoords.xy + element.texCoords.zw * aTexCoord;"
+"    vColor = element.color;"
+"}"
+;
+
+internal const char* const global_fragment_spriteshader =
+"#version 330 core\n"
+
+"in vec2 vTexCoord;"
+"in vec4 vColor;"
+
+"out vec4 oFragColor;"
+
+"uniform sampler2D uTexture;"
+
+"void main() {"
+"    oFragColor = vColor * texture(uTexture, vTexCoord);"
+"}"
+;
+
 //~ Functions
 #ifdef DEBUG
 internal void APIENTRY
@@ -357,7 +410,7 @@ OpenGLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severit
 {
     if (type == GL_DEBUG_TYPE_ERROR)
     {
-        Platform_DebugMessageBox("OpenGL Error:\n\nType = 0x%x\nID = %u\nSeverity = 0x%x\nMessage= %s",
+        Platform_DebugMessageBox("OpenGL Error:\nType = 0x%x\nID = %u\nSeverity = 0x%x\nMessage= %s",
                                  type, id, severity, message);
     }
     else
@@ -467,6 +520,9 @@ GetShaderUniforms(InternalShader* shader)
     Trace("GetShaderUniforms");
     uint32 id = shader->id;
     
+    if (!id)
+        return;
+    
     shader->uniform.position = GL.glGetUniformLocation(id, "uPosition");
     shader->uniform.normal = GL.glGetUniformLocation(id, "uNormal");
     shader->uniform.albedo = GL.glGetUniformLocation(id, "uAlbedo");
@@ -492,7 +548,7 @@ GetShaderUniforms(InternalShader* shader)
     shader->uniform.material_shininess = GL.glGetUniformLocation(id, "uMaterial.shininess");
     
     shader->uniform.pointlights_count = GL.glGetUniformLocation(id, "uPointLightsCount");
-    for (int32 i = 0; i < MAX_POINT_LIGHTS_COUNT; ++i)
+    for (int32 i = 0; i < MAX_3DMANAGER_POINT_LIGHTS; ++i)
     {
         char buf[128];
         
@@ -566,11 +622,13 @@ Engine_InitRender(void)
     global_quad_ebo = ebo;
     
     global_default_shader.id = CompileShader(global_vertex_shader, global_fragment_shader);
+    //global_default_spriteshader.id = CompileShader(global_vertex_spriteshader, global_fragment_spriteshader);
     global_default_shadowshader.id = CompileShader(global_vertex_shadowshader, global_fragment_shadowshader);
     global_default_gbuffershader.id = CompileShader(global_vertex_gbuffershader, global_fragment_gbuffershader);
     global_default_finalpassshader.id = CompileShader(global_vertex_finalpassshader, global_fragment_finalpassshader);
     
     GetShaderUniforms(&global_default_shader);
+    GetShaderUniforms(&global_default_spriteshader);
     GetShaderUniforms(&global_default_shadowshader);
     GetShaderUniforms(&global_default_gbuffershader);
     GetShaderUniforms(&global_default_finalpassshader);
@@ -644,14 +702,14 @@ Render_Begin2D(void)
 }
 
 API void
-Render_DrawRectangle(vec4 color, vec3 pos, vec3 size)
+Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 {
     Trace("Render_DrawRectangle");
     
     mat4 matrix = GLM_MAT4_IDENTITY_INIT;
     glm_translate(matrix, pos);
     glm_scale(matrix, size);
-    glm_translate(matrix, (vec3) { -0.5f, -0.5f }); // NOTE(ljre): Center
+    glm_translate(matrix, alignment);
     
     BindShader(&global_default_shader);
     GL.glUniform4fv(global_uniform->color, 1, color);
@@ -693,8 +751,97 @@ Render_LoadFontFromFile(String path, Asset_Font* out_font)
     return result;
 }
 
+API bool32
+Render_LoadTextureFromFile(String path, Asset_Texture* out_texture)
+{
+    Trace("Render_LoadTextureFromFile");
+    
+    uintsize size;
+    void* data = Platform_ReadEntireFile(path, &size);
+    if (!data)
+        return false;
+    
+    int32 width, height, channels;
+    void* texture_data = stbi_load_from_memory(data, (int32)size, &width, &height, &channels, 4);
+    
+    Platform_FreeFileMemory(data, size);
+    if (!texture_data)
+        return false;
+    
+    out_texture->width = width;
+    out_texture->height = height;
+    out_texture->depth = 0;
+    
+    GL.glGenTextures(1, &out_texture->id);
+    GL.glBindTexture(GL_TEXTURE_2D, out_texture->id);
+    
+    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
+    
+    stbi_image_free(texture_data);
+    
+    return true;
+}
+
+API bool32
+Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height)
+{
+    Trace("Render_LoadTextureArrayFromFile");
+    
+    uintsize file_size;
+    void* file_data = Platform_ReadEntireFile(path, &file_size);
+    if (!file_data)
+        return false;
+    
+    int32 width, height, channels;
+    void* texture_data = stbi_load_from_memory(file_data, (int32)file_size, &width, &height, &channels, 4);
+    
+    Platform_FreeFileMemory(file_data, file_size);
+    if (!texture_data)
+        return false;
+    
+    int32 row_count = width / cell_width;
+    int32 column_count = height / cell_height;
+    int32 cell_count = row_count * column_count;
+    
+    out_texture->width = cell_width;
+    out_texture->height = cell_height;
+    out_texture->depth = cell_count;
+    
+    GL.glGenTextures(1, &out_texture->id);
+    GL.glBindTexture(GL_TEXTURE_2D_ARRAY, out_texture->id);
+    
+    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    GL.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+    
+    for (int32 row = 0; row < row_count; ++row)
+    {
+        for (int32 column = 0; column < column_count; ++column)
+        {
+            int32 depth = column + row * column_count;
+            void* data = (uint32*)texture_data + row * column_count + column;
+            
+            GL.glTexImage2D(GL_TEXTURE_2D_ARRAY, depth, GL_RGBA, cell_width, cell_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        }
+    }
+    
+    GL.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    
+    stbi_image_free(texture_data);
+    
+    return true;
+}
+
 API void
-Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color)
+Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment)
 {
     Trace("Render_DrawText");
     float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
@@ -740,6 +887,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
     mat4 matrix = GLM_MAT4_IDENTITY_INIT;
     glm_translate(matrix, (vec3) { pos[0], pos[1], pos[2] });
     glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
+    glm_translate(matrix, (float32*)alignment);
     
     GL.glActiveTexture(GL_TEXTURE0);
     
@@ -764,6 +912,115 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
     GL.glDeleteTextures(1, &texture);
     
     Engine_PopMemory(bitmap);
+}
+
+API void
+Render_ProperlySetup2DScene(Render_2DScene* scene)
+{
+    if (!scene->sprite_ubo)
+    {
+        GL.glGenBuffers(1, &scene->sprite_ubo);
+        GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
+        GL.glBufferData(GL_UNIFORM_BUFFER, sizeof(SpriteElementData) * MAX_2DSCENE_SPRITES, NULL, GL_DYNAMIC_DRAW);
+        GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+}
+
+API void
+Render_Draw2DScene(Render_2DScene* scene)
+{
+    Assert(false); // TODO(ljre): Finish this function
+    
+    void* memory_state = Engine_PushMemoryState();
+    mat4 view;
+    
+    // NOTE(ljre): Calculate view matrix
+    {
+        float32 width = (float32)Platform_WindowWidth();
+        float32 height = (float32)Platform_WindowHeight();
+        
+        mat4 proj;
+        glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
+        
+        glm_mat4_identity(view);
+        glm_translate(view, scene->camera.pos);
+        glm_rotate(view, scene->camera.angle, (vec3) { 0.0f, 0.0f, 1.0f });
+        glm_scale(view, (vec3) { scene->camera.size[0], scene->camera.size[1], 1.0f });
+        glm_translate(view, (vec3) { -0.5f, -0.5f });
+        
+        glm_mat4_mul(proj, view, view);
+    }
+    
+    if (!scene->sprite_ubo)
+        Render_ProperlySetup2DScene(scene);
+    
+    // NOTE(ljre): Render layers
+    Assert(scene->layer_count <= ArrayLength(scene->layers));
+    for (int32 i = 0; i < scene->layer_count; ++i)
+    {
+        Render_2DLayer* const layer = &scene->layers[i];
+        Asset_Texture* const texture = layer->texture;
+        
+        vec2 texel = {
+            1.0f / (float32)texture->width,
+            1.0f / (float32)texture->height,
+        };
+        
+        switch (layer->kind)
+        {
+            case Render_2DLayerKind_Tilemap:
+            {
+                
+            } break;
+            
+            case Render_2DLayerKind_Sprites:
+            {
+                int32 count = layer->sprite_count;
+                int32 size = (int32)sizeof(SpriteElementData) * count;
+                SpriteElementData* elements = Engine_PushMemory((uintsize)size);
+                
+                for (int32 i = 0; i < count; ++i)
+                {
+                    Render_2DLayer_Sprite* const sprite = &layer->sprites[i];
+                    SpriteElementData* const el = &elements[i];
+                    
+                    glm_mat3_identity(el->transform);
+                    glm_translate2d(el->transform, sprite->pos);
+                    glm_rotate2d(el->transform, sprite->angle);
+                    glm_scale2d(el->transform, sprite->scale);
+                    glm_translate2d(el->transform, (vec2) { -sprite->pivot[0], -sprite->pivot[1] });
+                    
+                    el->texcoords[0] = texel[0] * (float32)sprite->texture_quad.x;
+                    el->texcoords[1] = texel[1] * (float32)sprite->texture_quad.y;
+                    el->texcoords[2] = texel[0] * (float32)sprite->texture_quad.width;
+                    el->texcoords[3] = texel[1] * (float32)sprite->texture_quad.height;
+                    
+                    el->color[0] = sprite->color[0];
+                    el->color[1] = sprite->color[1];
+                    el->color[2] = sprite->color[2];
+                    el->color[3] = sprite->color[3];
+                }
+                
+                BindShader(&global_default_spriteshader);
+                GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
+                GL.glBufferSubData(GL_UNIFORM_BUFFER, 0, size, elements);
+                GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, scene->sprite_ubo);
+                
+                GL.glUniform1i(global_uniform->texture, 0);
+                GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+                
+                GL.glActiveTexture(GL_TEXTURE0);
+                GL.glBindTexture(GL_TEXTURE_2D, texture->id);
+                
+                GL.glBindVertexArray(global_quad_vao);
+                GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+                
+                GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
+            } break;
+        }
+    }
+    
+    Engine_PopMemoryState(memory_state);
 }
 
 API bool32
@@ -990,19 +1247,19 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
     return result;
 }
 
-API Render_Entity*
-Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
+API Render_3DEntity*
+Render_AddTo3DManager(Render_3DManager* mgr, Render_3DEntityKind kind)
 {
     Trace("Render_AddToManager");
-    Render_Entity* result;
+    Render_3DEntity* result;
     
     //- NOTE(ljre): Get Component Handle
     int32* comp_count;
     void* comp_ptr;
     uintsize comp_size;
-    Render_Entity** comp_handle_ptr;
+    Render_3DEntity** comp_handle_ptr;
     
-    if (kind == Render_EntityKind_PointLight &&
+    if (kind == Render_3DEntityKind_PointLight &&
         mgr->point_lights_count < ArrayLength(mgr->point_lights))
     {
         comp_count = &mgr->point_lights_count;
@@ -1010,7 +1267,7 @@ Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
         comp_handle_ptr = &mgr->point_lights[mgr->point_lights_count].entity;
         comp_size = sizeof(*mgr->point_lights);
     }
-    else if (kind == Render_EntityKind_3DModel &&
+    else if (kind == Render_3DEntityKind_Model &&
              mgr->model_count < ArrayLength(mgr->models))
     {
         comp_count = &mgr->model_count;
@@ -1054,14 +1311,14 @@ Render_AddToManager(Render_Manager* mgr, Render_EntityKind kind)
 }
 
 API void
-Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
+Render_RemoveFrom3DManager(Render_3DManager* mgr, Render_3DEntity* handle)
 {
     Trace("Render_RemoveFromManager");
     Assert(handle);
     
     switch (handle->kind)
     {
-        case Render_EntityKind_PointLight:
+        case Render_3DEntityKind_PointLight:
         {
             if (mgr->point_lights_count > 1)
             {
@@ -1072,7 +1329,7 @@ Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
             --mgr->point_lights_count;
         } break;
         
-        case Render_EntityKind_3DModel:
+        case Render_3DEntityKind_Model:
         {
             if (mgr->model_count > 1)
             {
@@ -1087,7 +1344,7 @@ Render_RemoveFromManager(Render_Manager* mgr, Render_Entity* handle)
 }
 
 API void
-Render_ProperlySetupManager(Render_Manager* mgr)
+Render_ProperlySetup3DManager(Render_3DManager* mgr)
 {
     Trace("Render_ProperlySetupManager");
     const uint32 depthmap_width = 2048, depthmap_height = 2048;
@@ -1161,7 +1418,7 @@ Render_ProperlySetupManager(Render_Manager* mgr)
 }
 
 API void
-Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
+Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 {
     Trace("Render_DrawManager");
     
@@ -1193,7 +1450,7 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
     GL.glClear(GL_DEPTH_BUFFER_BIT);
     
     if (!mgr->shadow_fbo || !mgr->gbuffer)
-        Render_ProperlySetupManager(mgr);
+        Render_ProperlySetup3DManager(mgr);
     
     //~ NOTE(ljre): Draw to Framebuffer
     {
@@ -1221,9 +1478,9 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         
         for (int32 i = 0; i < mgr->model_count; ++i)
         {
-            Render_3DModel* const model = &mgr->models[i];
+            Render_3DEntity_Model* const model = &mgr->models[i];
             Asset_3DModel* const asset = model->asset;
-            Render_Entity* const entity = model->entity;
+            Render_3DEntity* const entity = model->entity;
             
             glm_mat4_identity(matrix);
             glm_translate(matrix, entity->position);
@@ -1265,9 +1522,9 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         
         for (int32 i = 0; i < mgr->model_count; ++i)
         {
-            Render_3DModel* const model = &mgr->models[i];
+            Render_3DEntity_Model* const model = &mgr->models[i];
             Asset_3DModel* const asset = model->asset;
-            Render_Entity* const entity = model->entity;
+            Render_3DEntity* const entity = model->entity;
             
             glm_mat4_identity(matrix);
             glm_translate(matrix, entity->position);
@@ -1343,8 +1600,8 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         GL.glUniform1i(global_uniform->pointlights_count, mgr->point_lights_count);
         for (int32 i = 0; i < mgr->point_lights_count; ++i)
         {
-            Render_PointLight* const l = &mgr->point_lights[i];
-            Render_Entity* const e = l->entity;
+            Render_3DEntity_PointLight* const l = &mgr->point_lights[i];
+            Render_3DEntity* const e = l->entity;
             
             GL.glUniform3fv(global_uniform->pointlights[i].position, 1, e->position);
             GL.glUniform1f(global_uniform->pointlights[i].constant, l->constant);
@@ -1370,8 +1627,8 @@ Render_DrawManager(Render_Manager* mgr, const Render_Camera* camera)
         
         for (int32 i = 0; i < mgr->point_lights_count; ++i)
         {
-            Render_PointLight* const light = &mgr->point_lights[i];
-            Render_Entity* const entity = light->entity;
+            Render_3DEntity_PointLight* const light = &mgr->point_lights[i];
+            Render_3DEntity* const entity = light->entity;
             Asset_3DModel* const asset = mgr->cube_model;
             
             glm_mat4_identity(matrix);

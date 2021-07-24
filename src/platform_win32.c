@@ -203,6 +203,13 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
             }
         } break;
         
+        case WM_LBUTTONUP: global_mouse.buttons[Input_MouseButton_Left] &=~ 1; break;
+        case WM_LBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Left] |= 1; break;
+        case WM_MBUTTONUP: global_mouse.buttons[Input_MouseButton_Middle] &=~ 1; break;
+        case WM_MBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Middle] |= 1; break;
+        case WM_RBUTTONUP: global_mouse.buttons[Input_MouseButton_Right] &=~ 1; break;
+        case WM_RBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Right] |= 1; break;
+        
         case WM_DEVICECHANGE:
         {
             Win32_CheckForGamepads();
