@@ -109,10 +109,10 @@ Game_MainScene(void** shared_data)
                 {
                     next_scene = Game_3DDemoScene;
                 }
-                //else if (IsMouseOverButton(&mouse, &button_2dscene))
-                //{
-                //next_scene = Game_2DDemoScene;
-                //}
+                else if (IsMouseOverButton(&mouse, &button_2dscene))
+                {
+                    next_scene = Game_2DDemoScene;
+                }
                 else if (IsMouseOverButton(&mouse, &button_quit))
                 {
                     next_scene = NULL;
@@ -129,7 +129,7 @@ Game_MainScene(void** shared_data)
             Render_DrawText(&global->font, Str("Welcome!\nThose are buttons"), (vec3) { 10.0f, 10.0f }, 32.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, (vec3) { 0 });
             
             DrawMenuButton(global, &button_3dscene, &mouse);
-            //DrawMenuButton(global, &button_2dscene, &mouse);
+            DrawMenuButton(global, &button_2dscene, &mouse);
             DrawMenuButton(global, &button_quit, &mouse);
         }
         

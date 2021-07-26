@@ -21,7 +21,7 @@ struct Vertex
 
 struct SpriteElementData
 {
-    mat3 transform;
+    mat4 transform;
     vec4 texcoords;
     vec4 color;
 } typedef SpriteElementData;
@@ -367,12 +367,12 @@ internal const char* const global_vertex_spriteshader =
 "out vec4 vColor;"
 
 "struct SpriteElement {"
-"    mat3 transform;"
+"    mat4 transform;"
 "    vec4 texCoords;"
 "    vec4 color;"
 "};"
 
-"layout (std140, binding = 0) uniform SpriteElementsBlock {"
+"layout (std140) uniform SpriteElementsBlock {"
 "    SpriteElement uElements[" StrMacro(MAX_2DSCENE_SPRITES) "];"
 "};"
 
@@ -382,8 +382,11 @@ internal const char* const global_vertex_spriteshader =
 "    SpriteElement element = uElements[gl_InstanceID];"
 
 "    gl_Position = uView * element.transform * vec4(aPosition, 1.0);"
-"    vTexCoord = element.texCoords.xy + element.texCoords.zw * aTexCoord;"
+"    vTexCoord = element.texCoords.xy + element.texCoords.zw * vec2(aTexCoord.x, 1.0 - aTexCoord.y);"
 "    vColor = element.color;"
+//"    gl_Position = uView * vec4(element.transform * aPosition, 1.0);"
+//"    vTexCoord = element.texCoords.xy + element.texCoords.zw * aTexCoord;"
+//"    vColor = element.color;"
 "}"
 ;
 
@@ -622,7 +625,7 @@ Engine_InitRender(void)
     global_quad_ebo = ebo;
     
     global_default_shader.id = CompileShader(global_vertex_shader, global_fragment_shader);
-    //global_default_spriteshader.id = CompileShader(global_vertex_spriteshader, global_fragment_spriteshader);
+    global_default_spriteshader.id = CompileShader(global_vertex_spriteshader, global_fragment_spriteshader);
     global_default_shadowshader.id = CompileShader(global_vertex_shadowshader, global_fragment_shadowshader);
     global_default_gbuffershader.id = CompileShader(global_vertex_gbuffershader, global_fragment_gbuffershader);
     global_default_finalpassshader.id = CompileShader(global_vertex_finalpassshader, global_fragment_finalpassshader);
@@ -817,19 +820,22 @@ Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 c
     
     GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
     GL.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
     
+    GL.glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, cell_width, cell_height, cell_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    
+    int32 depth = 0;
     for (int32 row = 0; row < row_count; ++row)
     {
         for (int32 column = 0; column < column_count; ++column)
         {
-            int32 depth = column + row * column_count;
-            void* data = (uint32*)texture_data + row * column_count + column;
+            void* data = (uint32*)texture_data + (row * cell_height) * width + column * cell_width;
             
-            GL.glTexImage2D(GL_TEXTURE_2D_ARRAY, depth, GL_RGBA, cell_width, cell_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            GL.glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, depth, cell_width, cell_height, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            ++depth;
         }
     }
     
@@ -923,32 +929,32 @@ Render_ProperlySetup2DScene(Render_2DScene* scene)
         GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
         GL.glBufferData(GL_UNIFORM_BUFFER, sizeof(SpriteElementData) * MAX_2DSCENE_SPRITES, NULL, GL_DYNAMIC_DRAW);
         GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        
+        scene->sprite_ubo_block_index = GL.glGetUniformBlockIndex(global_default_spriteshader.id, "SpriteElementsBlock");
     }
 }
 
 API void
 Render_Draw2DScene(Render_2DScene* scene)
 {
-    Assert(false); // TODO(ljre): Finish this function
-    
     void* memory_state = Engine_PushMemoryState();
     mat4 view;
     
     // NOTE(ljre): Calculate view matrix
     {
-        float32 width = (float32)Platform_WindowWidth();
-        float32 height = (float32)Platform_WindowHeight();
+        //float32 width = (float32)Platform_WindowWidth();
+        //float32 height = (float32)Platform_WindowHeight();
         
-        mat4 proj;
-        glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
+        //mat4 proj;
+        //glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
         
         glm_mat4_identity(view);
         glm_translate(view, scene->camera.pos);
         glm_rotate(view, scene->camera.angle, (vec3) { 0.0f, 0.0f, 1.0f });
-        glm_scale(view, (vec3) { scene->camera.size[0], scene->camera.size[1], 1.0f });
+        glm_scale(view, (vec3) { 1.0f / scene->camera.size[0], 1.0f / scene->camera.size[1], 1.0f });
         glm_translate(view, (vec3) { -0.5f, -0.5f });
         
-        glm_mat4_mul(proj, view, view);
+        //glm_mat4_mul(proj, view, view);
     }
     
     if (!scene->sprite_ubo)
@@ -984,11 +990,14 @@ Render_Draw2DScene(Render_2DScene* scene)
                     Render_2DLayer_Sprite* const sprite = &layer->sprites[i];
                     SpriteElementData* const el = &elements[i];
                     
-                    glm_mat3_identity(el->transform);
-                    glm_translate2d(el->transform, sprite->pos);
-                    glm_rotate2d(el->transform, sprite->angle);
-                    glm_scale2d(el->transform, sprite->scale);
-                    glm_translate2d(el->transform, (vec2) { -sprite->pivot[0], -sprite->pivot[1] });
+                    glm_mat4_identity(el->transform);
+                    glm_translate(el->transform, (vec3) { sprite->pos[0], sprite->pos[1], 0.0f });
+                    glm_rotate(el->transform, sprite->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+                    glm_scale(el->transform, (vec3) {
+                                  sprite->scale[0] * (float32)sprite->texture_quad.width,
+                                  sprite->scale[1] * (float32)sprite->texture_quad.height,
+                                  1.0f });
+                    glm_translate(el->transform, (vec3) { -sprite->pivot[0], -sprite->pivot[1] });
                     
                     el->texcoords[0] = texel[0] * (float32)sprite->texture_quad.x;
                     el->texcoords[1] = texel[1] * (float32)sprite->texture_quad.y;
@@ -1004,7 +1013,7 @@ Render_Draw2DScene(Render_2DScene* scene)
                 BindShader(&global_default_spriteshader);
                 GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
                 GL.glBufferSubData(GL_UNIFORM_BUFFER, 0, size, elements);
-                GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, scene->sprite_ubo);
+                GL.glBindBufferBase(GL_UNIFORM_BUFFER, scene->sprite_ubo_block_index, scene->sprite_ubo);
                 
                 GL.glUniform1i(global_uniform->texture, 0);
                 GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);

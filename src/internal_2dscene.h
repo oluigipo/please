@@ -51,6 +51,7 @@ struct Render_2DScene
     Render_2DLayer layers[MAX_2DSCENE_LAYERS];
     
     uint32 sprite_ubo;
+    uint32 sprite_ubo_block_index;
 } typedef Render_2DScene;
 
 #endif //INTERNAL_2DSCENE_H

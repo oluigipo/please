@@ -119,11 +119,7 @@ Game_3DDemoScene(void** shared_data)
     // NOTE(ljre): Load Audio
     Asset_SoundBuffer sound_music;
     
-    if (!Audio_LoadFile(Str("music.ogg"), &sound_music))
-    {
-        Platform_MessageBox(Str("Warning!"), Str("Could not load 'music.ogg' file. You can replace it and restart the application."));
-    }
-    else
+    if (Audio_LoadFile(Str("music.ogg"), &sound_music))
     {
         Audio_Play(&sound_music, true, 0.4, 1.0);
     }

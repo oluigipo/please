@@ -39,8 +39,8 @@ Linux_InitAudio(void)
     snd_pcm_hw_params_free(params);
     
     //- Audio Buffer
-    global_latency_frame_count = global_samples_per_second / global_channels * SOUND_LATENCY_FPS;
-    global_audio_buffer_sample_count = global_samples_per_second * SOUND_LATENCY_FPS;
+    global_latency_frame_count = global_samples_per_second / global_channels / SOUND_LATENCY_FPS;
+    global_audio_buffer_sample_count = global_samples_per_second / SOUND_LATENCY_FPS;
     global_audio_buffer = Platform_HeapAlloc((uintsize)global_audio_buffer_sample_count * sizeof(int16));
     
     global_audio_is_initialized = true;
@@ -52,19 +52,17 @@ Linux_UpdateAudio(void)
     if (!global_audio_is_initialized)
         return;
     
-    snd_pcm_sframes_t avail, delay;
-    snd_pcm_avail_delay(global_playback_handle, &avail, &delay);
-    snd_pcm_avail_update(global_playback_handle);
+    //snd_pcm_sframes_t avail, delay;
+    //snd_pcm_avail_delay(global_playback_handle, &avail, &delay);
+    //snd_pcm_avail_update(global_playback_handle);
     
-    global_frame_count_to_output = avail;
+    global_frame_count_to_output = global_latency_frame_count;
     
     if (global_frame_count_to_output > global_latency_frame_count)
         global_frame_count_to_output = global_latency_frame_count;
     
     if (global_frame_count_to_output > global_audio_buffer_sample_count / global_channels)
         global_frame_count_to_output = global_audio_buffer_sample_count / global_channels;
-    
-    Platform_DebugLog("Avail: %li, Delay: %li, To Output: %i\n", avail, delay, global_frame_count_to_output);
 }
 
 internal void

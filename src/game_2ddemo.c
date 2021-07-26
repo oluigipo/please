@@ -71,6 +71,10 @@ Game_2DDemoScene(void** shared_data)
             sprite->scale[1] = 1.0f;
             sprite->angle = Engine_RandomF32Range(0.0f, PI32 * 2.0f);
             sprite->frame = 0;
+            sprite->color[0] = 1.0f;
+            sprite->color[1] = 1.0f;
+            sprite->color[2] = 1.0f;
+            sprite->color[3] = 1.0f;
             sprite->texture_quad.x = 0;
             sprite->texture_quad.y = 0;
             sprite->texture_quad.width = 32;
