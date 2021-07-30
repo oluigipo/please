@@ -281,7 +281,7 @@ Platform_MessageBox(String title, String message)
     wchar_t* wtitle = Win32_ConvertStringToWSTR(title, NULL, 0);
     wchar_t* wmessage = Win32_ConvertStringToWSTR(message, NULL, 0);
     
-    MessageBoxW(NULL, wmessage, wtitle, MB_OK | MB_TOPMOST);
+    MessageBoxW(NULL, wmessage, wtitle, MB_OK);
     
     Platform_HeapFree(wtitle);
     Platform_HeapFree(wmessage);
@@ -336,6 +336,7 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
         
         *out_graphics = &global_graphics_context;
         ShowWindow(global_window, SW_SHOWDEFAULT);
+        SetCursor(LoadCursorA(NULL, IDC_ARROW));
     }
     
     return ok;

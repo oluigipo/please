@@ -129,7 +129,7 @@ Game_3DDemoScene(void** shared_data)
     
     int32 controller_index = 0;
     
-    float32 camera_yaw = PI32;
+    float32 camera_yaw = 0.0f;
     float32 camera_pitch = 0.0f;
     float32 sensitivity = 0.05f;
     float32 camera_total_speed = 0.075f;

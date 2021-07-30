@@ -13,7 +13,7 @@ Game_2DDemoScene(void** shared_data)
     }
     
     Asset_Texture tileset_texture;
-    if (!Render_LoadTextureArrayFromFile(Str("./assets/tileset.png"), &tileset_texture, 32, 32))
+    if (!Render_LoadTextureFromFile(Str("./assets/tileset.png"), &tileset_texture))
     {
         Platform_ExitWithErrorMessage(Str("Could not load tileset image :("));
     }
@@ -26,44 +26,51 @@ Game_2DDemoScene(void** shared_data)
     scene.camera.pos[2] = 0.0f;
     scene.camera.size[0] = (float32)Platform_WindowWidth();
     scene.camera.size[1] = (float32)Platform_WindowHeight();
-    scene.camera.zoom = 1.0f;
+    scene.camera.zoom = 2.0f;
     scene.camera.angle = 0.0f;
     
     //- NOTE(ljre): Tilemap
+    uint16 map[8*8] = {
+        0, 1, 1, 1, 1, 1, 1, 0,
+        1, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 1, 0, 0, 1, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 1,
+        1, 0, 1, 1, 1, 1, 0, 1,
+        1, 0, 0, 1, 1, 0, 0, 1,
+        1, 0, 0, 0, 0, 0, 0, 1,
+        0, 1, 1, 1, 1, 1, 1, 0,
+    };
+    
     {
         Render_2DLayer* layer = &scene.layers[scene.layer_count++];
         
-        uint16 map[8*8] = {
-            0, 1, 1, 1, 1, 1, 1, 0,
-            1, 0, 0, 0, 0, 0, 0, 1,
-            1, 0, 1, 0, 0, 1, 0, 1,
-            1, 0, 0, 0, 0, 0, 0, 1,
-            1, 0, 1, 1, 1, 1, 0, 1,
-            1, 0, 0, 1, 1, 0, 0, 1,
-            1, 0, 0, 0, 0, 0, 0, 1,
-            0, 1, 1, 1, 1, 1, 1, 0,
-        };
-        
-        layer->kind = Render_2DLayerKind_Tilemap;
+        layer->flags = Render_2DLayerFlags_Tilemap;
         layer->texture = &tileset_texture;
         layer->tilemap.pos[0] = 0.0f;
-        layer->tilemap.pos[1] = 0.0f;
+        layer->tilemap.pos[1] = -50.0f;
+        layer->tilemap.scale[0] = 1.0f;
+        layer->tilemap.scale[1] = 1.0f;
         layer->tilemap.width = 8;
         layer->tilemap.height = 8;
+        layer->tilemap.cell_width = 32.0f;
+        layer->tilemap.cell_height = 32.0f;
         layer->tilemap.data = map;
     }
     
     //- NOTE(ljre): Sprites
+    Render_2DLayer_Sprite sprites[30];
+    
     {
         Render_2DLayer* layer = &scene.layers[scene.layer_count++];
         
-        layer->kind = Render_2DLayerKind_Sprites;
+        layer->flags = Render_2DLayerFlags_Sprites;
         layer->texture = &sprites_texture;
-        layer->sprite_count = 30;
+        layer->sprite.count = ArrayLength(sprites);
+        layer->sprite.data = sprites;
         
-        for (int32 i = 0; i < layer->sprite_count; ++i)
+        for (int32 i = 0; i < layer->sprite.count; ++i)
         {
-            Render_2DLayer_Sprite* sprite = &layer->sprites[i];
+            Render_2DLayer_Sprite* sprite = &layer->sprite.data[i];
             
             sprite->pos[0] = Engine_RandomF32Range(-500.0f, 500.0f);
             sprite->pos[1] = Engine_RandomF32Range(-500.0f, 500.0f);

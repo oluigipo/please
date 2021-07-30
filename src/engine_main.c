@@ -63,6 +63,37 @@ Engine_PushMemory(uintsize size)
     return result;
 }
 
+API void*
+Engine_RePushMemory(void* ptr, uintsize size)
+{
+    Trace("Engine_RePushMemory");
+    void* result;
+    
+    if (!ptr)
+    {
+        result = Engine_PushMemory(size);
+    }
+    else
+    {
+        StackAllocatorHeader* header = ptr;
+        header -= 1;
+        
+        uintsize this_size = header->size - sizeof(StackAllocatorHeader);
+        if (this_size <= size)
+        {
+            result = ptr;
+        }
+        else
+        {
+            result = Engine_PushMemory(size);
+            memcpy(result, ptr, this_size);
+            Engine_PopMemory(ptr);
+        }
+    }
+    
+    return result;
+}
+
 API void
 Engine_PopMemory(void* ptr)
 {

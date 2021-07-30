@@ -56,6 +56,9 @@
 #define STBI_MALLOC(sz) Platform_HeapAlloc(sz)
 #define STBI_REALLOC(p,newsz) Platform_HeapRealloc(p,newsz)
 #define STBI_FREE(p) Platform_HeapFree(p)
+//#define STBI_MALLOC(sz) Engine_PushMemory(sz)
+//#define STBI_REALLOC(p,newsz) Engine_RePushMemory(p,newsz)
+//#define STBI_FREE(p) Engine_PopMemory(p)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "ext/stb_image.h"

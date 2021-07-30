@@ -119,6 +119,7 @@ API void* Engine_PushMemory(uintsize size);
 API void Engine_PopMemory(void* ptr);
 API void* Engine_PushMemoryState(void);
 API void Engine_PopMemoryState(void* state);
+API void* Engine_RePushMemory(void* ptr, uintsize size);
 
 API int32 Engine_Main(int32 argc, char** argv);
 API void Engine_FinishFrame(void);

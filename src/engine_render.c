@@ -58,7 +58,7 @@ struct InternalShaderUniforms
     int32 material_normal;
     int32 material_shininess;
     
-    int32 dirlight_position;
+    int32 dirlight_direction;
     int32 dirlight_ambient;
     int32 dirlight_diffuse;
     int32 dirlight_specular;
@@ -169,19 +169,19 @@ internal const char* const global_vertex_gbuffershader =
 
 "uniform mat4 uView;\n"
 "uniform mat4 uModel;\n"
+"uniform mat4 uInversedModel;\n"
 
 "void main() {"
 "    vec4 fragPos = uModel * vec4(aPosition, 1.0);"
+"    vFragPos = vec3(fragPos);"
 "    gl_Position = uView * fragPos;"
 "    vTexCoord = aTexCoord;"
 
-"    vec3 t = normalize(mat3(uModel) * aTangent.xyz);"
-"    vec3 n = normalize(mat3(uModel) * aNormal);"
+"    vec3 t = normalize(mat3(uInversedModel) * aTangent.xyz);"
+"    vec3 n = normalize(mat3(uInversedModel) * aNormal);"
 "    vec3 b = cross(n, t) * aTangent.w;"
 
 "    vTbn = mat3(t, b, n);"
-
-"    vFragPos = vec3(fragPos);"
 "}"
 ;
 
@@ -240,7 +240,7 @@ internal const char* const global_fragment_finalpassshader =
 
 "struct DirLight {"
 "    sampler2D shadowmap;"
-"    vec3 position;"
+"    vec3 direction;"
 "    vec3 ambient;"
 "    vec3 diffuse;"
 "    vec3 specular;"
@@ -298,10 +298,10 @@ internal const char* const global_fragment_finalpassshader =
 "}"
 
 "vec3 CalculateDirLight(vec3 normal, vec3 viewDir, vec3 diffuseSample, vec3 specularSample, float shininess, vec3 fragPos) {"
-"    vec3 halfwayDir = normalize(uDirLight.position + viewDir);"
+"    vec3 halfwayDir = normalize(uDirLight.direction + viewDir);"
 
 "    vec3 ambient = diffuseSample * 0.1;"
-"    vec3 diffuse = diffuseSample * max(0.0, dot(normal, viewDir));"
+"    vec3 diffuse = diffuseSample * max(0.0, dot(normal, uDirLight.direction));"
 "    vec3 specular = specularSample * pow(max(0.0, dot(normal, halfwayDir)), shininess);"
 
 "    ambient *= uDirLight.ambient;"
@@ -309,6 +309,7 @@ internal const char* const global_fragment_finalpassshader =
 "    specular *= uDirLight.specular;"
 
 "    float shadow = CalculateShadow(fragPos);"
+//"    float shadow = 0.0;"
 "    return ambient + (1.0 - shadow) * (diffuse + specular);"
 "}"
 
@@ -316,7 +317,7 @@ internal const char* const global_fragment_finalpassshader =
 "    vec3 lightDir = normalize(uPointLights[i].position - fragPos);"
 "    vec3 halfwayDir = normalize(lightDir + viewDir);"
 
-"    float diff = max(dot(normal, viewDir), 0.0);"
+"    float diff = max(dot(normal, lightDir), 0.0);"
 "    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);"
 
 "    float distance = length(uPointLights[i].position - fragPos);"
@@ -363,30 +364,20 @@ internal const char* const global_vertex_spriteshader =
 "layout (location = 1) in vec3 aNormal;\n"
 "layout (location = 2) in vec2 aTexCoord;\n"
 
+"layout (location = 4) in vec4 aColor;\n"
+"layout (location = 5) in vec4 aTexCoords;\n"
+"layout (location = 6) in mat4 aTransform;\n"
+
 "out vec2 vTexCoord;"
 "out vec4 vColor;"
-
-"struct SpriteElement {"
-"    mat4 transform;"
-"    vec4 texCoords;"
-"    vec4 color;"
-"};"
-
-"layout (std140) uniform SpriteElementsBlock {"
-"    SpriteElement uElements[" StrMacro(MAX_2DSCENE_SPRITES) "];"
-"};"
 
 "uniform mat4 uView;\n"
 
 "void main() {"
-"    SpriteElement element = uElements[gl_InstanceID];"
-
-"    gl_Position = uView * element.transform * vec4(aPosition, 1.0);"
-"    vTexCoord = element.texCoords.xy + element.texCoords.zw * vec2(aTexCoord.x, 1.0 - aTexCoord.y);"
-"    vColor = element.color;"
-//"    gl_Position = uView * vec4(element.transform * aPosition, 1.0);"
-//"    vTexCoord = element.texCoords.xy + element.texCoords.zw * aTexCoord;"
-//"    vColor = element.color;"
+"    gl_Position = uView * aTransform * vec4(aPosition, 1.0);"
+//"    gl_Position = vec4(aPosition, 1.0);"
+"    vTexCoord = aTexCoords.xy + aTexCoords.zw * vec2(aTexCoord.x, 1.0 - aTexCoord.y);"
+"    vColor = aColor;"
 "}"
 ;
 
@@ -535,10 +526,11 @@ GetShaderUniforms(InternalShader* shader)
     shader->uniform.view = GL.glGetUniformLocation(id, "uView");
     shader->uniform.texture = GL.glGetUniformLocation(id, "uTexture");
     shader->uniform.model = GL.glGetUniformLocation(id, "uModel");
+    shader->uniform.inversed_model = GL.glGetUniformLocation(id, "uInversedModel");
     shader->uniform.viewpos = GL.glGetUniformLocation(id, "uViewPos");
     
     shader->uniform.dirlight_shadowmap = GL.glGetUniformLocation(id, "uDirLight.shadowmap");
-    shader->uniform.dirlight_position = GL.glGetUniformLocation(id, "uDirLight.position");
+    shader->uniform.dirlight_direction = GL.glGetUniformLocation(id, "uDirLight.direction");
     shader->uniform.dirlight_ambient = GL.glGetUniformLocation(id, "uDirLight.ambient");
     shader->uniform.dirlight_diffuse = GL.glGetUniformLocation(id, "uDirLight.diffuse");
     shader->uniform.dirlight_specular = GL.glGetUniformLocation(id, "uDirLight.specular");
@@ -578,6 +570,154 @@ BindShader(InternalShader* shader)
 {
     GL.glUseProgram(shader->id);
     global_uniform = &shader->uniform;
+}
+
+internal void
+Reserve2DSceneBufferSize(Render_2DScene* scene, int32 desired_size)
+{
+    if (!scene->data_vbo)
+    {
+        scene->data_vbo_size = 0;
+        
+        GL.glGenVertexArrays(1, &scene->data_vao);
+        GL.glBindVertexArray(scene->data_vao);
+        
+        GL.glBindBuffer(GL_ARRAY_BUFFER, global_quad_vbo);
+        GL.glEnableVertexAttribArray(0);
+        GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
+        GL.glEnableVertexAttribArray(1);
+        GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        GL.glEnableVertexAttribArray(2);
+        GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
+        
+        GL.glGenBuffers(1, &scene->data_vbo);
+        
+        GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
+        GL.glEnableVertexAttribArray(4);
+        GL.glVertexAttribDivisor(4, 1);
+        GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, color));
+        GL.glEnableVertexAttribArray(5);
+        GL.glVertexAttribDivisor(5, 1);
+        GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, texcoords));
+        GL.glEnableVertexAttribArray(6);
+        GL.glVertexAttribDivisor(6, 1);
+        GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[0]));
+        GL.glEnableVertexAttribArray(7);
+        GL.glVertexAttribDivisor(7, 1);
+        GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[1]));
+        GL.glEnableVertexAttribArray(8);
+        GL.glVertexAttribDivisor(8, 1);
+        GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[2]));
+        GL.glEnableVertexAttribArray(9);
+        GL.glVertexAttribDivisor(9, 1);
+        GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[3]));
+    }
+    
+    if (scene->data_vbo_size < desired_size)
+    {
+        GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
+        GL.glBufferData(GL_ARRAY_BUFFER, (int32)sizeof(SpriteElementData) * desired_size, NULL, GL_DYNAMIC_DRAW);
+        scene->data_vbo_size = desired_size;
+    }
+}
+
+internal int32
+Calc2DLayerBatchCount(Render_2DLayer* layer)
+{
+    int32 result = 0;
+    
+    if (layer->flags & Render_2DLayerFlags_Tilemap)
+        result += layer->tilemap.width * layer->tilemap.height;
+    if (layer->flags & Render_2DLayerFlags_Sprites)
+        result += layer->sprite.count;
+    
+    return result;
+}
+
+internal void
+Build2DLayerBatch(Render_2DLayer* layer, SpriteElementData* elements)
+{
+    Trace("Build2DLayerBatch");
+    
+    Asset_Texture* const texture = layer->texture;
+    
+    vec2 texel = {
+        1.0f / (float32)texture->width,
+        1.0f / (float32)texture->height,
+    };
+    
+    if (layer->flags & Render_2DLayerFlags_Tilemap)
+    {
+        int32 count = layer->tilemap.width * layer->tilemap.height;
+        int32 texture_cell_hcount = (texture->width / (int32)layer->tilemap.cell_width);
+        vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        vec3 scale = {
+            layer->tilemap.scale[0] * layer->tilemap.cell_width,
+            layer->tilemap.scale[1] * layer->tilemap.cell_height,
+            1.0f,
+        };
+        
+        for (int32 y = 0; y < layer->tilemap.height; ++y) {
+            for (int32 x = 0; x < layer->tilemap.width; ++x) {
+                SpriteElementData* const el = &elements[x + y * layer->tilemap.width];
+                
+                vec3 pos = {
+                    layer->tilemap.pos[0] + scale[0] * (float32)x,
+                    layer->tilemap.pos[1] + scale[1] * (float32)y,
+                    0.0f,
+                };
+                
+                glm_mat4_identity(el->transform);
+                glm_translate(el->transform, pos);
+                glm_scale(el->transform, scale);
+                
+                int32 index = layer->tilemap.data[x + y * layer->tilemap.width];
+                el->texcoords[0] = texel[0] * (float32)(index % texture_cell_hcount) * layer->tilemap.cell_width;
+                el->texcoords[1] = texel[1] * (float32)(index / texture_cell_hcount) * layer->tilemap.cell_height;
+                el->texcoords[2] = texel[0] * layer->tilemap.cell_width;
+                el->texcoords[3] = texel[1] * layer->tilemap.cell_height;
+                
+                el->color[0] = color[0];
+                el->color[1] = color[1];
+                el->color[2] = color[2];
+                el->color[3] = color[3];
+            }
+        }
+        
+        elements += count;
+    }
+    
+    if (layer->flags & Render_2DLayerFlags_Sprites)
+    {
+        int32 count = layer->sprite.count;
+        
+        for (int32 i = 0; i < count; ++i)
+        {
+            Render_2DLayer_Sprite* const sprite = &layer->sprite.data[i];
+            SpriteElementData* const el = &elements[i];
+            
+            glm_mat4_identity(el->transform);
+            glm_translate(el->transform, (vec3) { sprite->pos[0], sprite->pos[1], 0.0f });
+            glm_rotate(el->transform, sprite->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+            glm_scale(el->transform, (vec3) {
+                          sprite->scale[0] * (float32)sprite->texture_quad.width,
+                          sprite->scale[1] * (float32)sprite->texture_quad.height,
+                          1.0f });
+            glm_translate(el->transform, (vec3) { -sprite->pivot[0], -sprite->pivot[1] });
+            
+            el->texcoords[0] = texel[0] * (float32)sprite->texture_quad.x;
+            el->texcoords[1] = texel[1] * (float32)sprite->texture_quad.y;
+            el->texcoords[2] = texel[0] * (float32)sprite->texture_quad.width;
+            el->texcoords[3] = texel[1] * (float32)sprite->texture_quad.height;
+            
+            el->color[0] = sprite->color[0];
+            el->color[1] = sprite->color[1];
+            el->color[2] = sprite->color[2];
+            el->color[3] = sprite->color[3];
+        }
+        
+        elements += count;
+    }
 }
 
 //~ Temporary Internal API
@@ -921,20 +1061,6 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 }
 
 API void
-Render_ProperlySetup2DScene(Render_2DScene* scene)
-{
-    if (!scene->sprite_ubo)
-    {
-        GL.glGenBuffers(1, &scene->sprite_ubo);
-        GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
-        GL.glBufferData(GL_UNIFORM_BUFFER, sizeof(SpriteElementData) * MAX_2DSCENE_SPRITES, NULL, GL_DYNAMIC_DRAW);
-        GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
-        
-        scene->sprite_ubo_block_index = GL.glGetUniformBlockIndex(global_default_spriteshader.id, "SpriteElementsBlock");
-    }
-}
-
-API void
 Render_Draw2DScene(Render_2DScene* scene)
 {
     void* memory_state = Engine_PushMemoryState();
@@ -951,81 +1077,50 @@ Render_Draw2DScene(Render_2DScene* scene)
         glm_mat4_identity(view);
         glm_translate(view, scene->camera.pos);
         glm_rotate(view, scene->camera.angle, (vec3) { 0.0f, 0.0f, 1.0f });
-        glm_scale(view, (vec3) { 1.0f / scene->camera.size[0], 1.0f / scene->camera.size[1], 1.0f });
+        glm_scale(view, (vec3) { scene->camera.zoom / scene->camera.size[0], -scene->camera.zoom / scene->camera.size[1], 1.0f });
         glm_translate(view, (vec3) { -0.5f, -0.5f });
         
         //glm_mat4_mul(proj, view, view);
     }
     
-    if (!scene->sprite_ubo)
-        Render_ProperlySetup2DScene(scene);
-    
     // NOTE(ljre): Render layers
+    BindShader(&global_default_spriteshader);
+    GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+    
     Assert(scene->layer_count <= ArrayLength(scene->layers));
     for (int32 i = 0; i < scene->layer_count; ++i)
     {
         Render_2DLayer* const layer = &scene->layers[i];
-        Asset_Texture* const texture = layer->texture;
+        SpriteElementData* elements;
+        int32 count;
         
-        vec2 texel = {
-            1.0f / (float32)texture->width,
-            1.0f / (float32)texture->height,
-        };
-        
-        switch (layer->kind)
+        //- NOTE(ljre): Build Batch
         {
-            case Render_2DLayerKind_Tilemap:
-            {
-                
-            } break;
+            count = Calc2DLayerBatchCount(layer);
+            if (count <= 0)
+                continue;
             
-            case Render_2DLayerKind_Sprites:
+            int32 size = count * (int32)sizeof(SpriteElementData);
+            Reserve2DSceneBufferSize(scene, size);
+            
+            GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
             {
-                int32 count = layer->sprite_count;
-                int32 size = (int32)sizeof(SpriteElementData) * count;
-                SpriteElementData* elements = Engine_PushMemory((uintsize)size);
-                
-                for (int32 i = 0; i < count; ++i)
-                {
-                    Render_2DLayer_Sprite* const sprite = &layer->sprites[i];
-                    SpriteElementData* const el = &elements[i];
-                    
-                    glm_mat4_identity(el->transform);
-                    glm_translate(el->transform, (vec3) { sprite->pos[0], sprite->pos[1], 0.0f });
-                    glm_rotate(el->transform, sprite->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-                    glm_scale(el->transform, (vec3) {
-                                  sprite->scale[0] * (float32)sprite->texture_quad.width,
-                                  sprite->scale[1] * (float32)sprite->texture_quad.height,
-                                  1.0f });
-                    glm_translate(el->transform, (vec3) { -sprite->pivot[0], -sprite->pivot[1] });
-                    
-                    el->texcoords[0] = texel[0] * (float32)sprite->texture_quad.x;
-                    el->texcoords[1] = texel[1] * (float32)sprite->texture_quad.y;
-                    el->texcoords[2] = texel[0] * (float32)sprite->texture_quad.width;
-                    el->texcoords[3] = texel[1] * (float32)sprite->texture_quad.height;
-                    
-                    el->color[0] = sprite->color[0];
-                    el->color[1] = sprite->color[1];
-                    el->color[2] = sprite->color[2];
-                    el->color[3] = sprite->color[3];
-                }
-                
-                BindShader(&global_default_spriteshader);
-                GL.glBindBuffer(GL_UNIFORM_BUFFER, scene->sprite_ubo);
-                GL.glBufferSubData(GL_UNIFORM_BUFFER, 0, size, elements);
-                GL.glBindBufferBase(GL_UNIFORM_BUFFER, scene->sprite_ubo_block_index, scene->sprite_ubo);
-                
-                GL.glUniform1i(global_uniform->texture, 0);
-                GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-                
-                GL.glActiveTexture(GL_TEXTURE0);
-                GL.glBindTexture(GL_TEXTURE_2D, texture->id);
-                
-                GL.glBindVertexArray(global_quad_vao);
-                GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
-                
-                GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
-            } break;
+                elements = GL.glMapBufferRange(GL_ARRAY_BUFFER, 0, size, GL_MAP_WRITE_BIT);
+                Build2DLayerBatch(layer, elements);
+            }
+            GL.glUnmapBuffer(GL_ARRAY_BUFFER);
+        }
+        
+        //- NOTE(ljre): Render Batch
+        {
+            GL.glUniform1i(global_uniform->texture, 0);
+            GL.glActiveTexture(GL_TEXTURE0);
+            GL.glBindTexture(GL_TEXTURE_2D, layer->texture->id);
+            
+            GL.glBindVertexArray(scene->data_vao);
+            GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+            
+            GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
         }
     }
     
@@ -1435,6 +1530,7 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
     vec3 viewpos;
     mat4 view;
     mat4 matrix;
+    mat4 inversed;
     mat4 light_space_matrix;
     int32 width = Platform_WindowWidth();
     int32 height = Platform_WindowHeight();
@@ -1544,10 +1640,14 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
             
             glm_mat4_mul(matrix, asset->transform, matrix);
             
+            glm_mat4_inv(matrix, inversed);
+            glm_mat4_transpose(inversed);
+            
             GL.glBindVertexArray(asset->vao);
             GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
             
             GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+            GL.glUniformMatrix4fv(global_uniform->inversed_model, 1, false, (float32*)inversed);
             GL.glUniform4fv(global_uniform->color, 1, model->color);
             GL.glUniform3fv(global_uniform->material_ambient, 1, asset->material.ambient);
             GL.glUniform1f(global_uniform->material_shininess, asset->material.shininess);
@@ -1601,7 +1701,7 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
         GL.glUniformMatrix4fv(global_uniform->dirlight_matrix, 1, false, (float32*)light_space_matrix);
         GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
         GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
-        GL.glUniform3fv(global_uniform->dirlight_position, 1, mgr->dirlight);
+        GL.glUniform3fv(global_uniform->dirlight_direction, 1, mgr->dirlight);
         GL.glUniform3f(global_uniform->dirlight_ambient, 0.2f, 0.2f, 0.2f);
         GL.glUniform3f(global_uniform->dirlight_diffuse, 0.4f, 0.4f, 0.4f);
         GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
