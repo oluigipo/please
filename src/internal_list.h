@@ -3,8 +3,8 @@
 
 struct alignas(16) List_Header
 {
-    uintsize len;
-    uintsize cap;
+	uintsize len;
+	uintsize cap;
 } typedef List_Header;
 
 #define List__Header(x) ((x) ? (List_Header*)(x)-1 : NULL)
@@ -43,10 +43,10 @@ List__Reserve(void** list, uintsize objsize, uintsize desired_cap)
 		header->cap = desired_cap;
 		
 		List_Header* new_header = Engine_PushMemory(objsize * desired_cap + sizeof(*header));
-        memcpy(new_header, header, header->len * objsize + sizeof(*header));
-        Engine_PopMemory(header);
-        header = new_header;
-        
+		memcpy(new_header, header, header->len * objsize + sizeof(*header));
+		Engine_PopMemory(header);
+		header = new_header;
+		
 		*list = (void*)(header + 1);
 	}
 	

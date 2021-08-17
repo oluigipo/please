@@ -3,14 +3,14 @@
 
 struct QuadI32
 {
-    int32 x, y;
-    int32 width, height;
+	int32 x, y;
+	int32 width, height;
 } typedef QuadI32;
 
 struct QuadF32
 {
-    float32 x, y;
-    float32 width, height;
+	float32 x, y;
+	float32 width, height;
 } typedef QuadF32;
 
 // NOTE(ljre): Example API

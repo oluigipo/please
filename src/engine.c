@@ -76,6 +76,10 @@
 #define STB_VORBIS_MAX_CHANNELS 2
 #include "ext/stb_vorbis.h"
 
+#undef R
+#undef L
+#undef C
+
 //- Enable warnings
 #if defined(__clang__)
 #   pragma clang diagnostic pop

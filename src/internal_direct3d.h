@@ -30,9 +30,9 @@ typedef struct GraphicsContext_Direct3D GraphicsContext_Direct3D;
 #endif
 
 typedef HRESULT WINAPI ProcD3DCompile(LPCVOID pSrcData, SIZE_T SrcDataSize, LPCSTR pSourceName,
-                                      const D3D_SHADER_MACRO* pDefines, ID3DInclude* pInclude,
-                                      LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1,
-                                      UINT Flags2, ID3DBlob** ppCode, ID3DBlob** ppErrorMsgs);
+									  const D3D_SHADER_MACRO* pDefines, ID3DInclude* pInclude,
+									  LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1,
+									  UINT Flags2, ID3DBlob** ppCode, ID3DBlob** ppErrorMsgs);
 
 struct GraphicsContext_Direct3D
 {
