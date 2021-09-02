@@ -176,6 +176,11 @@ API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
 API bool32 Render_LoadTextureFromFile(String path, Asset_Texture* out_texture);
 API bool32 Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height);
 
+API void Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view);
+API void Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov, float32 aspect);
+API void Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view);
+API void Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view);
+
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
 API void Render_Begin2D(void);
 API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment);
@@ -186,8 +191,7 @@ API void Render_RemoveFrom3DManager(Render_3DManager* mgr, Render_3DEntity* hand
 API void Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera);
 API void Render_ProperlySetup3DManager(Render_3DManager* mgr);
 
-API void Render_ProperlySetup2DScene(Render_2DScene* scene);
-API void Render_Draw2DScene(Render_2DScene* scene);
+API void Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view);
 
 //~ Platform
 enum GraphicsAPI

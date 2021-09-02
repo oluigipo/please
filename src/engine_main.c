@@ -9,11 +9,11 @@ struct StackAllocatorHeader
 };
 
 //~ Globals
-internal void* global_stack_memory;
-internal uintsize global_stack_commited_size;
-internal uintsize global_stack_reserved_size;
+internal uint8* global_stack_memory; // NOTE(ljre): not 'void*' so we can do arithmetic
+internal uintsize global_stack_commited;
+internal uintsize global_stack_reserved;
 internal StackAllocatorHeader* global_stack_header;
-internal const uintsize global_stack_commiting_pages = Megabytes(16);
+internal const uintsize global_stack_page_size = Megabytes(16);
 internal float32 global_delta_time = 1.0f;
 internal float64 global_last_time;
 
@@ -37,17 +37,17 @@ Engine_PushMemory(uintsize size)
 	
 	uintsize total_desired_size = (uintsize)(result - (uintsize)global_stack_memory + size);
 	
-	if (total_desired_size > global_stack_reserved_size)
+	if (total_desired_size > global_stack_reserved)
 	{
 		// TODO(ljre): Fallback?
 		Assert(false);
 	}
 	else
 	{
-		while (total_desired_size > global_stack_commited_size)
+		while (total_desired_size > global_stack_commited)
 		{
-			Platform_VirtualCommit((uint8*)global_stack_memory + global_stack_commited_size, global_stack_commiting_pages);
-			global_stack_commited_size += global_stack_commiting_pages;
+			Platform_VirtualCommit(global_stack_memory + global_stack_commited, global_stack_page_size);
+			global_stack_commited += global_stack_page_size;
 		}
 		
 		memset(result, 0, size);
@@ -102,7 +102,7 @@ Engine_PopMemory(void* ptr)
 	if (!ptr) // NOTE(ljre): similar behaviour from CRT 'free()'
 		return;
 	
-	if (ptr < global_stack_memory || (uint8*)ptr >= (uint8*)global_stack_memory + global_stack_reserved_size)
+	if ((uint8*)ptr < global_stack_memory || (uint8*)ptr >= global_stack_memory + global_stack_reserved)
 	{
 		// TODO(ljre): Fallback
 		Assert(false);
@@ -171,13 +171,13 @@ Engine_Main(int32 argc, char** argv)
 	
 	// NOTE(ljre): Init Global Stack Allocator
 	{
-		global_stack_reserved_size = Gigabytes(2);
-		global_stack_memory = Platform_VirtualReserve(global_stack_reserved_size);
+		global_stack_reserved = Gigabytes(2);
+		global_stack_memory = Platform_VirtualReserve(global_stack_reserved);
 		if (!global_stack_memory)
 			Platform_ExitWithErrorMessage(Str("Could not reserve enough memory. Please report this error."));
 		
-		global_stack_commited_size = global_stack_commiting_pages;
-		Platform_VirtualCommit(global_stack_memory, global_stack_commited_size);
+		global_stack_commited = global_stack_page_size;
+		Platform_VirtualCommit(global_stack_memory, global_stack_commited);
 		global_stack_header = NULL;
 	}
 	

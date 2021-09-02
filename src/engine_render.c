@@ -19,13 +19,6 @@ struct Vertex
 	vec2 texcoord;
 } typedef Vertex;
 
-struct SpriteElementData
-{
-	mat4 transform;
-	vec4 texcoords;
-	vec4 color;
-} typedef SpriteElementData;
-
 struct PointLightsUniformData
 {
 	int32 constant;
@@ -572,154 +565,6 @@ BindShader(InternalShader* shader)
 	global_uniform = &shader->uniform;
 }
 
-internal void
-Reserve2DSceneBufferSize(Render_2DScene* scene, int32 desired_size)
-{
-	if (!scene->data_vbo)
-	{
-		scene->data_vbo_size = 0;
-		
-		GL.glGenVertexArrays(1, &scene->data_vao);
-		GL.glBindVertexArray(scene->data_vao);
-		
-		GL.glBindBuffer(GL_ARRAY_BUFFER, global_quad_vbo);
-		GL.glEnableVertexAttribArray(0);
-		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
-		GL.glEnableVertexAttribArray(1);
-		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-		GL.glEnableVertexAttribArray(2);
-		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
-		
-		GL.glGenBuffers(1, &scene->data_vbo);
-		
-		GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
-		GL.glEnableVertexAttribArray(4);
-		GL.glVertexAttribDivisor(4, 1);
-		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, color));
-		GL.glEnableVertexAttribArray(5);
-		GL.glVertexAttribDivisor(5, 1);
-		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, texcoords));
-		GL.glEnableVertexAttribArray(6);
-		GL.glVertexAttribDivisor(6, 1);
-		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[0]));
-		GL.glEnableVertexAttribArray(7);
-		GL.glVertexAttribDivisor(7, 1);
-		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[1]));
-		GL.glEnableVertexAttribArray(8);
-		GL.glVertexAttribDivisor(8, 1);
-		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[2]));
-		GL.glEnableVertexAttribArray(9);
-		GL.glVertexAttribDivisor(9, 1);
-		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(SpriteElementData), (void*)offsetof(SpriteElementData, transform[3]));
-	}
-	
-	if (scene->data_vbo_size < desired_size)
-	{
-		GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
-		GL.glBufferData(GL_ARRAY_BUFFER, (int32)sizeof(SpriteElementData) * desired_size, NULL, GL_DYNAMIC_DRAW);
-		scene->data_vbo_size = desired_size;
-	}
-}
-
-internal int32
-Calc2DLayerBatchCount(Render_2DLayer* layer)
-{
-	int32 result = 0;
-	
-	if (layer->flags & Render_2DLayerFlags_Tilemap)
-		result += layer->tilemap.width * layer->tilemap.height;
-	if (layer->flags & Render_2DLayerFlags_Sprites)
-		result += layer->sprite.count;
-	
-	return result;
-}
-
-internal void
-Build2DLayerBatch(Render_2DLayer* layer, SpriteElementData* elements)
-{
-	Trace("Build2DLayerBatch");
-	
-	Asset_Texture* const texture = layer->texture;
-	
-	vec2 texel = {
-		1.0f / (float32)texture->width,
-		1.0f / (float32)texture->height,
-	};
-	
-	if (layer->flags & Render_2DLayerFlags_Tilemap)
-	{
-		int32 count = layer->tilemap.width * layer->tilemap.height;
-		int32 texture_cell_hcount = (texture->width / (int32)layer->tilemap.cell_width);
-		vec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		vec3 scale = {
-			layer->tilemap.scale[0] * layer->tilemap.cell_width,
-			layer->tilemap.scale[1] * layer->tilemap.cell_height,
-			1.0f,
-		};
-		
-		for (int32 y = 0; y < layer->tilemap.height; ++y) {
-			for (int32 x = 0; x < layer->tilemap.width; ++x) {
-				SpriteElementData* const el = &elements[x + y * layer->tilemap.width];
-				
-				vec3 pos = {
-					layer->tilemap.pos[0] + scale[0] * (float32)x,
-					layer->tilemap.pos[1] + scale[1] * (float32)y,
-					0.0f,
-				};
-				
-				glm_mat4_identity(el->transform);
-				glm_translate(el->transform, pos);
-				glm_scale(el->transform, scale);
-				
-				int32 index = layer->tilemap.data[x + y * layer->tilemap.width];
-				el->texcoords[0] = texel[0] * (float32)(index % texture_cell_hcount) * layer->tilemap.cell_width;
-				el->texcoords[1] = texel[1] * (float32)(index / texture_cell_hcount) * layer->tilemap.cell_height;
-				el->texcoords[2] = texel[0] * layer->tilemap.cell_width;
-				el->texcoords[3] = texel[1] * layer->tilemap.cell_height;
-				
-				el->color[0] = color[0];
-				el->color[1] = color[1];
-				el->color[2] = color[2];
-				el->color[3] = color[3];
-			}
-		}
-		
-		elements += count;
-	}
-	
-	if (layer->flags & Render_2DLayerFlags_Sprites)
-	{
-		int32 count = layer->sprite.count;
-		
-		for (int32 i = 0; i < count; ++i)
-		{
-			Render_2DLayer_Sprite* const sprite = &layer->sprite.data[i];
-			SpriteElementData* const el = &elements[i];
-			
-			glm_mat4_identity(el->transform);
-			glm_translate(el->transform, (vec3) { sprite->pos[0], sprite->pos[1], 0.0f });
-			glm_rotate(el->transform, sprite->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-			glm_scale(el->transform, (vec3) {
-						  sprite->scale[0] * (float32)sprite->texture_quad.width,
-						  sprite->scale[1] * (float32)sprite->texture_quad.height,
-						  1.0f });
-			glm_translate(el->transform, (vec3) { -sprite->pivot[0], -sprite->pivot[1] });
-			
-			el->texcoords[0] = texel[0] * (float32)sprite->texture_quad.x;
-			el->texcoords[1] = texel[1] * (float32)sprite->texture_quad.y;
-			el->texcoords[2] = texel[0] * (float32)sprite->texture_quad.width;
-			el->texcoords[3] = texel[1] * (float32)sprite->texture_quad.height;
-			
-			el->color[0] = sprite->color[0];
-			el->color[1] = sprite->color[1];
-			el->color[2] = sprite->color[2];
-			el->color[3] = sprite->color[3];
-		}
-		
-		elements += count;
-	}
-}
-
 //~ Temporary Internal API
 internal void
 Engine_InitRender(void)
@@ -1061,70 +906,123 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 }
 
 API void
-Render_Draw2DScene(Render_2DScene* scene)
+Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view)
 {
-	void* memory_state = Engine_PushMemoryState();
-	mat4 view;
+	Trace("Render_CalcViewMatrix2D");
 	
-	// NOTE(ljre): Calculate view matrix
-	{
-		//float32 width = (float32)Platform_WindowWidth();
-		//float32 height = (float32)Platform_WindowHeight();
-		
-		//mat4 proj;
-		//glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
-		
-		glm_mat4_identity(view);
-		glm_translate(view, scene->camera.pos);
-		glm_rotate(view, scene->camera.angle, (vec3) { 0.0f, 0.0f, 1.0f });
-		glm_scale(view, (vec3) { scene->camera.zoom / scene->camera.size[0], -scene->camera.zoom / scene->camera.size[1], 1.0f });
-		glm_translate(view, (vec3) { -0.5f, -0.5f });
-		
-		//glm_mat4_mul(proj, view, view);
-	}
+	glm_mat4_identity(out_view);
+	glm_translate(out_view, (float32*)camera->pos);
+	glm_rotate(out_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_scale(out_view, (vec3) { camera->zoom / camera->size[0], -camera->zoom / camera->size[1], 1.0f });
+	glm_translate(out_view, (vec3) { -0.5f, -0.5f });
+}
+
+API void
+Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov, float32 aspect)
+{
+	Trace("Render_CalcViewMatrix3D");
+	
+	glm_mat4_identity(out_view);
+	glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, out_view);
+	
+	mat4 proj;
+	glm_perspective(fov, aspect, 0.01f, 100.0f, proj);
+	glm_mat4_mul(proj, out_view, out_view);
+}
+
+API void
+Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view)
+{
+	Trace("Render_CalcModelMatrix2D");
+	
+	glm_mat4_identity(out_view);
+	glm_translate(out_view, (vec3) { pos[0], pos[1] });
+	glm_scale(out_view, (vec3) { scale[0], scale[1], 1.0f });
+	glm_rotate(out_view, angle, (vec3) { 0.0f, 0.0f, 1.0f });
+}
+
+API void
+Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view)
+{
+	Trace("Render_CalcModelMatrix3D");
+	
+	glm_mat4_identity(out_view);
+	glm_translate(out_view, (float32*)pos);
+	glm_scale(out_view, (float32*)scale);
+	glm_rotate(out_view, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
+	glm_rotate(out_view, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
+	glm_rotate(out_view, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+}
+
+API void
+Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
+{
+	Trace("Render_DrawLayer2D");
 	
 	// NOTE(ljre): Render layers
-	BindShader(&global_default_spriteshader);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+	uint32 vbo, vao;
+	int32 count = layer->sprite_count;
+	int32 size = count * (int32)sizeof(Render_Sprite2D);
 	
-	Assert(scene->layer_count <= ArrayLength(scene->layers));
-	for (int32 i = 0; i < scene->layer_count; ++i)
+	//- NOTE(ljre): Build Batch
 	{
-		Render_2DLayer* const layer = &scene->layers[i];
-		SpriteElementData* elements;
-		int32 count;
+		GL.glGenVertexArrays(1, &vao);
+		GL.glBindVertexArray(vao);
 		
-		//- NOTE(ljre): Build Batch
-		{
-			count = Calc2DLayerBatchCount(layer);
-			if (count <= 0)
-				continue;
-			
-			int32 size = count * (int32)sizeof(SpriteElementData);
-			Reserve2DSceneBufferSize(scene, size);
-			
-			GL.glBindBuffer(GL_ARRAY_BUFFER, scene->data_vbo);
-			{
-				elements = GL.glMapBufferRange(GL_ARRAY_BUFFER, 0, size, GL_MAP_WRITE_BIT);
-				Build2DLayerBatch(layer, elements);
-			}
-			GL.glUnmapBuffer(GL_ARRAY_BUFFER);
-		}
+		GL.glBindBuffer(GL_ARRAY_BUFFER, global_quad_vbo);
+		GL.glEnableVertexAttribArray(0);
+		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
+		GL.glEnableVertexAttribArray(1);
+		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+		GL.glEnableVertexAttribArray(2);
+		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
 		
-		//- NOTE(ljre): Render Batch
-		{
-			GL.glUniform1i(global_uniform->texture, 0);
-			GL.glActiveTexture(GL_TEXTURE0);
-			GL.glBindTexture(GL_TEXTURE_2D, layer->texture->id);
-			
-			GL.glBindVertexArray(scene->data_vao);
-			GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
-			
-			GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
-		}
+		GL.glGenBuffers(1, &vbo);
+		
+		GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		GL.glBufferData(GL_ARRAY_BUFFER, size, layer->sprites, GL_DYNAMIC_DRAW);
+		
+		GL.glEnableVertexAttribArray(4);
+		GL.glVertexAttribDivisor(4, 1);
+		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, color));
+		GL.glEnableVertexAttribArray(5);
+		GL.glVertexAttribDivisor(5, 1);
+		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, texcoords));
+		GL.glEnableVertexAttribArray(6);
+		GL.glVertexAttribDivisor(6, 1);
+		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[0]));
+		GL.glEnableVertexAttribArray(7);
+		GL.glVertexAttribDivisor(7, 1);
+		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[1]));
+		GL.glEnableVertexAttribArray(8);
+		GL.glVertexAttribDivisor(8, 1);
+		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[2]));
+		GL.glEnableVertexAttribArray(9);
+		GL.glVertexAttribDivisor(9, 1);
+		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[3]));
 	}
 	
-	Engine_PopMemoryState(memory_state);
+	//- NOTE(ljre): Render Batch
+	{
+		BindShader(&global_default_spriteshader);
+		
+		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+		GL.glUniform1i(global_uniform->texture, 0);
+		
+		GL.glActiveTexture(GL_TEXTURE0);
+		GL.glBindTexture(GL_TEXTURE_2D, layer->texture->id);
+		
+		GL.glBindVertexArray(vao);
+		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+		
+		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
+	}
+	
+	//- NOTE(ljre): Free Batch
+	{
+		GL.glDeleteBuffers(1, &vbo);
+		GL.glDeleteVertexArrays(1, &vao);
+	}
 }
 
 API bool32

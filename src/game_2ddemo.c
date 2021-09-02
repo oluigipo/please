@@ -19,15 +19,15 @@ Game_2DDemoScene(void** shared_data)
 	}
 	
 	//~ NOTE(ljre): Scene Setup
-	Render_2DScene scene = { 0 };
-	
-	scene.camera.pos[0] = 0.0f;
-	scene.camera.pos[1] = 0.0f;
-	scene.camera.pos[2] = 0.0f;
-	scene.camera.size[0] = (float32)Platform_WindowWidth();
-	scene.camera.size[1] = (float32)Platform_WindowHeight();
-	scene.camera.zoom = 2.0f;
-	scene.camera.angle = 0.0f;
+	Render_Camera camera = {
+		.pos = { 0.0f, 0.0f, 0.0f, },
+		.size = {
+			(float32)Platform_WindowWidth(),
+			(float32)Platform_WindowHeight(),
+		},
+		.zoom = 2.0f,
+		.angle = 0.0f,
+	};
 	
 	//- NOTE(ljre): Tilemap
 	uint16 map[8*8] = {
@@ -41,52 +41,57 @@ Game_2DDemoScene(void** shared_data)
 		0, 1, 1, 1, 1, 1, 1, 0,
 	};
 	
-	{
-		Render_2DLayer* layer = &scene.layers[scene.layer_count++];
-		
-		layer->flags = Render_2DLayerFlags_Tilemap;
-		layer->texture = &tileset_texture;
-		layer->tilemap.pos[0] = 0.0f;
-		layer->tilemap.pos[1] = -50.0f;
-		layer->tilemap.scale[0] = 1.0f;
-		layer->tilemap.scale[1] = 1.0f;
-		layer->tilemap.width = 8;
-		layer->tilemap.height = 8;
-		layer->tilemap.cell_width = 32.0f;
-		layer->tilemap.cell_height = 32.0f;
-		layer->tilemap.data = map;
-	}
+	Render_Tilemap2D tilemap = {
+		.transform = GLM_MAT4_IDENTITY_INIT,
+		.color = { 1.0f, 1.0f, 1.0f, 1.0f },
+		.cell_uv_size = {
+			1.0f / ((float32)tileset_texture.width / 32.0f),
+			1.0f / ((float32)tileset_texture.height / 32.0f),
+		},
+		.width = 8,
+		.height = 8,
+		.indices = map,
+	};
+	
+	glm_scale(tilemap.transform, (vec3) { 32.0f, 32.0f });
+	
+	Render_Layer2D tilemap_layer = {
+		.texture = &tileset_texture,
+		.tilemaps = &tilemap,
+		.tilemap_count = 1,
+	};
 	
 	//- NOTE(ljre): Sprites
-	Render_2DLayer_Sprite sprites[30];
+	Render_Sprite2D sprites[30];
+	Render_Layer2D sprite_layer = {
+		.texture = &sprites_texture,
+		.sprite_count = ArrayLength(sprites),
+		.sprites = sprites,
+	};
 	
+	for (int32 i = 0; i < ArrayLength(sprites); ++i)
 	{
-		Render_2DLayer* layer = &scene.layers[scene.layer_count++];
+		Render_Sprite2D* sprite = &sprites[i];
 		
-		layer->flags = Render_2DLayerFlags_Sprites;
-		layer->texture = &sprites_texture;
-		layer->sprite.count = ArrayLength(sprites);
-		layer->sprite.data = sprites;
+		sprite->texcoords[0] = 0.0f;
+		sprite->texcoords[1] = 0.0f;
+		sprite->texcoords[2] = 1.0f / ((float32)sprites_texture.width / 32.0f);
+		sprite->texcoords[3] = 1.0f / ((float32)sprites_texture.height / 32.0f);
 		
-		for (int32 i = 0; i < layer->sprite.count; ++i)
-		{
-			Render_2DLayer_Sprite* sprite = &layer->sprite.data[i];
-			
-			sprite->pos[0] = Engine_RandomF32Range(-500.0f, 500.0f);
-			sprite->pos[1] = Engine_RandomF32Range(-500.0f, 500.0f);
-			sprite->scale[0] = 1.0f;
-			sprite->scale[1] = 1.0f;
-			sprite->angle = Engine_RandomF32Range(0.0f, PI32 * 2.0f);
-			sprite->frame = 0;
-			sprite->color[0] = 1.0f;
-			sprite->color[1] = 1.0f;
-			sprite->color[2] = 1.0f;
-			sprite->color[3] = 1.0f;
-			sprite->texture_quad.x = 0;
-			sprite->texture_quad.y = 0;
-			sprite->texture_quad.width = 32;
-			sprite->texture_quad.height = 32;
-		}
+		sprite->color[0] = 1.0f;
+		sprite->color[1] = 1.0f;
+		sprite->color[2] = 1.0f;
+		sprite->color[3] = 1.0f;
+		
+		vec2 pos = {
+			Engine_RandomF32Range(-500.0f, 500.0f),
+			Engine_RandomF32Range(-500.0f, 500.0f),
+		};
+		
+		vec2 scale = { 32.0f, 32.0f };
+		float32 angle = Engine_RandomF32Range(0.0f, PI32 * 2.0f);
+		
+		Render_CalcModelMatrix2D(pos, scale, angle, sprite->transform);
 	}
 	
 	// NOTE(ljre): Game Loop
@@ -104,7 +109,12 @@ Game_2DDemoScene(void** shared_data)
 		//~ NOTE(ljre): Render
 		{
 			Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
-			Render_Draw2DScene(&scene);
+			
+			mat4 view;
+			Render_CalcViewMatrix2D(&camera, view);
+			
+			Render_DrawLayer2D(&tilemap_layer, view);
+			Render_DrawLayer2D(&sprite_layer, view);
 		}
 		
 		//~ NOTE(ljre): Finish Frame
@@ -114,3 +124,4 @@ Game_2DDemoScene(void** shared_data)
 	
 	return NULL;
 }
+
