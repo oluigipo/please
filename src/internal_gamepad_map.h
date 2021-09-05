@@ -32,7 +32,7 @@ enum GamepadObject
 	// The lower bits of this enum is one of those entries specified above.
 	// The higher bits are used to store extra information about the object.
 	//
-	// Higher Bits: 7654_3210
+	// Higher Bits: 0b7654_3210
 	// 7 = If the axis should be inverted
 	// 6 = If the input axis should be limited to 0..MAX
 	// 5 = If the input axis should be limited to MIN..0
@@ -52,7 +52,8 @@ struct GamepadMappings
 	GamepadObject buttons[32];
 	GamepadObject axes[16];
 	GamepadObject povs[8][4];
-} typedef GamepadMappings;
+}
+typedef GamepadMappings;
 
 internal GamepadMappings global_gamepadmap_default = {
 	.buttons = {

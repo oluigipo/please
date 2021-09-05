@@ -22,7 +22,8 @@ struct Discord_Client
 	struct IDiscordRelationshipManager* relationships;
 	struct IDiscordApplicationManager* application;
 	struct IDiscordLobbyManager* lobbies;
-} typedef Discord_Client;
+}
+typedef Discord_Client;
 
 #define AssertResult(x, ...) if ((x) != DiscordResult_Ok) { Assert(!(void*) #x ); return __VA_ARGS__; }
 

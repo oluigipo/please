@@ -13,7 +13,8 @@ struct Linux_Gamepad
 	
 	
 	
-} typedef Linux_Gamepad;
+}
+typedef Linux_Gamepad;
 
 //~ Globals
 internal Input_Mouse global_mouse;

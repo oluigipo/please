@@ -88,7 +88,7 @@
 #ifdef STB_VORBIS_STATIC
 #define STB_VORBIS_DECL static
 #else
-#define STB_VORBIS_DECL extern // NOTE(ljre): 'extern' keyword makes no difference in function declarations.
+#define STB_VORBIS_DECL extern // NOTE(ljre): 'extern' keyword alone makes no difference in function declarations.
 #endif
 #endif
 
@@ -596,10 +596,16 @@ extern "C" {
 #include <alloca.h>
 #endif
 #else // STB_VORBIS_NO_CRT
+
 #define NULL 0
+
+// NOTE(ljre): why there wasn't an ifdef here?
+#ifndef malloc
 #define malloc(s)   0
 #define free(s)     ((void) 0)
 #define realloc(s)  0
+#endif // malloc
+
 #endif // STB_VORBIS_NO_CRT
 
 #include <limits.h>

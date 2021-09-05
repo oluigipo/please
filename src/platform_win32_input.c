@@ -14,7 +14,8 @@ enum GamepadAPI
 	GamepadAPI_None = 0,
 	GamepadAPI_XInput = 1,
 	GamepadAPI_DirectInput = 2,
-} typedef GamepadAPI;
+}
+typedef GamepadAPI;
 
 struct Win32_Gamepad
 {
@@ -45,7 +46,8 @@ struct Win32_Gamepad
 			const GamepadMappings* map;
 		} dinput;
 	};
-} typedef Win32_Gamepad;
+}
+typedef Win32_Gamepad;
 
 #define XInputGetState global_proc_XInputGetState
 #define XInputSetState global_proc_XInputSetState

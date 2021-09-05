@@ -24,7 +24,8 @@ struct Linux_OpenGL
 	void (*glXSwapIntervalEXT)(Display* dpy, GLXDrawable drawable, int interval);
 	
 	GraphicsContext_OpenGL vtable;
-} typedef Linux_OpenGL;
+}
+typedef Linux_OpenGL;
 
 //~ Globals
 internal Linux_OpenGL global_opengl;

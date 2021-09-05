@@ -1638,6 +1638,7 @@ struct GraphicsContext_OpenGL
 	PFNGLCOLORP4UIVPROC glColorP4uiv;
 	PFNGLSECONDARYCOLORP3UIPROC glSecondaryColorP3ui;
 	PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
-} typedef GraphicsContext_OpenGL;
+}
+typedef GraphicsContext_OpenGL;
 
 #endif //INTERNAL_OPENGL_H

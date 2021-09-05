@@ -17,7 +17,7 @@ ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
 internal GraphicsContext_Direct3D global_direct3d;
 internal ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
-#if defined(DEBUG) && !defined(__GNUC__)
+#if defined(DEBUG)
 internal IDXGIInfoQueue* global_direct3d_info_queue;
 #endif
 
@@ -40,7 +40,7 @@ Win32_Direct3DSwapBuffers(void)
 {
 	IDXGISwapChain_Present(global_direct3d.swapchain, 1, 0);
 	
-#if defined(DEBUG) && !defined(__GNUC__)
+#if defined(DEBUG)
 	// NOTE(ljre): Check for debug messages
 	if (global_direct3d_info_queue)
 	{
@@ -123,7 +123,7 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 	
 	UINT flags = 0;
 	
-#if defined(DEBUG) && !defined(__GNUC__)
+#if defined(DEBUG)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	
@@ -157,7 +157,7 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 		}
 	}
 	
-#if defined(DEBUG) && !defined(__GNUC__)
+#if defined(DEBUG)
 	// NOTE(ljre): Load debugging thingy
 	{
 		HMODULE library = LoadLibrary("dxgidebug.dll");

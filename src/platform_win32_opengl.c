@@ -47,7 +47,8 @@ struct Win32_OpenGL
 	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 	
 	GraphicsContext_OpenGL vtable;
-} typedef Win32_OpenGL;
+}
+typedef Win32_OpenGL;
 
 //~ Globals
 internal Win32_OpenGL global_opengl;

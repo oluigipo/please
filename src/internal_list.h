@@ -5,7 +5,8 @@ struct alignas(16) List_Header
 {
 	uintsize len;
 	uintsize cap;
-} typedef List_Header;
+}
+typedef List_Header;
 
 #define List__Header(x) ((x) ? (List_Header*)(x)-1 : NULL)
 #define List__LengthL(x) List__Header(x)->len

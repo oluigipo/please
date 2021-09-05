@@ -5,7 +5,8 @@ struct String
 {
 	uintsize len; // NOTE(ljre): length IN BYTES and MAY include the null terminator!!!!!
 	const char* data;
-} typedef String;
+}
+typedef String;
 
 #define Str(x) (String) StrI(x)
 #define StrI(x) { sizeof(x), (x) }

@@ -4,10 +4,6 @@
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Weverything"
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wall"
-#   pragma GCC diagnostic ignored "-Wextra"
 #else
 #   pragma warning(push, 0)
 #endif
@@ -15,6 +11,7 @@
 //- Includes
 #define WIN32_LEAN_AND_MEAN
 #define COBJMACROS
+#define DIRECTINPUT_VERSION 0x0800
 
 // General
 #include <windows.h>
@@ -40,8 +37,7 @@
 #define INTERNAL_COMPLETE_D3D_CONTEXT
 #include "internal_direct3d.h"
 
-// NOTE(ljre): Last time I tried, MinGW didn't have 'dxgidebug.h' header.
-#if defined(DEBUG) && !defined(__GNUC__)
+#if defined(DEBUG)
 #   include <dxgidebug.h>
 #endif
 
@@ -50,17 +46,20 @@
 //- Enable Warnings
 #if defined(__clang__)
 #   pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
 #else
 #   pragma warning(pop, 0)
 #endif
+
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "hid.lib")
 
 struct Win32_DeferredEvents
 {
 	int32 window_x, window_y;
 	int32 window_width, window_height;
-} typedef Win32_DeferredEvents;
+}
+typedef Win32_DeferredEvents;
 
 //~ Globals
 internal HANDLE global_heap;

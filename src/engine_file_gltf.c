@@ -3,7 +3,8 @@ struct GltfJson_Scene
 	String name;
 	int32* nodes;
 	uintsize node_count;
-} typedef GltfJson_Scene;
+}
+typedef GltfJson_Scene;
 
 struct GltfJson_Node
 {
@@ -11,7 +12,8 @@ struct GltfJson_Node
 	int32 mesh;
 	
 	mat4 transform;
-} typedef GltfJson_Node;
+}
+typedef GltfJson_Node;
 
 struct GltfJson_TextureInfo
 {
@@ -19,7 +21,8 @@ struct GltfJson_TextureInfo
 	
 	int32 index;
 	int32 texcoord; // default: 0
-} typedef GltfJson_TextureInfo;
+}
+typedef GltfJson_TextureInfo;
 
 struct GltfJson_MetallicRoughness
 {
@@ -30,7 +33,8 @@ struct GltfJson_MetallicRoughness
 	
 	GltfJson_TextureInfo base_color_texture;
 	GltfJson_TextureInfo metallic_roughness_texture;
-} typedef GltfJson_MetallicRoughness;
+}
+typedef GltfJson_MetallicRoughness;
 
 struct GltfJson_NormalTextureInfo
 {
@@ -39,7 +43,8 @@ struct GltfJson_NormalTextureInfo
 	int32 index;
 	int32 texcoord; // default: 0
 	float32 scale; // default: 1
-} typedef GltfJson_NormalTextureInfo;
+}
+typedef GltfJson_NormalTextureInfo;
 
 struct GltfJson_OcclusionTextureInfo
 {
@@ -48,7 +53,8 @@ struct GltfJson_OcclusionTextureInfo
 	int32 index;
 	int32 texcoord; // default: 0
 	float32 strength; // default: 1
-} typedef GltfJson_OcclusionTextureInfo;
+}
+typedef GltfJson_OcclusionTextureInfo;
 
 struct GltfJson_Material
 {
@@ -62,7 +68,8 @@ struct GltfJson_Material
 	String alpha_mode; // default: "OPAQUE"
 	float32 alpha_cutoff; // default: 0.5
 	bool32 double_sided; // default: false
-} typedef GltfJson_Material;
+}
+typedef GltfJson_Material;
 
 struct GltfJson_Primitive
 {
@@ -78,14 +85,16 @@ struct GltfJson_Primitive
 		int32 texcoord_0;
 	} attributes;
 	
-} typedef GltfJson_Primitive;
+}
+typedef GltfJson_Primitive;
 
 struct GltfJson_Mesh
 {
 	String name;
 	GltfJson_Primitive* primitives;
 	uintsize primitive_count;
-} typedef GltfJson_Mesh;
+}
+typedef GltfJson_Mesh;
 
 struct GltfJson_Sampler
 {
@@ -95,7 +104,8 @@ struct GltfJson_Sampler
 	int32 min_filter;
 	int32 wrap_s; // default: 10497
 	int32 wrap_t; // default: 10497
-} typedef GltfJson_Sampler;
+}
+typedef GltfJson_Sampler;
 
 struct GltfJson_Image
 {
@@ -103,7 +113,8 @@ struct GltfJson_Image
 	
 	String mime_type;
 	int32 buffer_view;
-} typedef GltfJson_Image;
+}
+typedef GltfJson_Image;
 
 struct GltfJson_Texture
 {
@@ -111,7 +122,8 @@ struct GltfJson_Texture
 	
 	int32 sampler;
 	int32 source;
-} typedef GltfJson_Texture;
+}
+typedef GltfJson_Texture;
 
 struct GltfJson_Accessor
 {
@@ -123,30 +135,35 @@ struct GltfJson_Accessor
 	int16 max_count, min_count;
 	float32 max[4];
 	float32 min[4];
-} typedef GltfJson_Accessor;
+}
+typedef GltfJson_Accessor;
 
 struct GltfJson_BufferView
 {
 	int32 buffer;
 	int32 byte_offset;
 	int32 byte_length;
-} typedef GltfJson_BufferView;
+}
+typedef GltfJson_BufferView;
 
 struct GltfJson_Buffer
 {
 	const uint8* data;
 	int32 byte_length;
-} typedef GltfJson_Buffer;
+}
+typedef GltfJson_Buffer;
 
 struct Engine_GltfJson
 {
 	int32 scene;
 	
-	struct {
+	struct
+	{
 		String generator;
 		String version;
 		String copyright;
-	} asset;
+	}
+	asset;
 	
 	GltfJson_Scene* scenes;
 	uintsize scene_count;
@@ -177,7 +194,8 @@ struct Engine_GltfJson
 	
 	GltfJson_Buffer* buffers;
 	uintsize buffer_count;
-} typedef Engine_GltfJson;
+}
+typedef Engine_GltfJson;
 
 //~ Functions
 internal inline const uint8*

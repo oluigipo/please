@@ -5,7 +5,8 @@ struct Audio_PlayingBuffer
 	bool32 loop;
 	float64 volume;
 	float64 speed;
-} typedef Audio_PlayingBuffer;
+}
+typedef Audio_PlayingBuffer;
 
 //~ Globals
 internal Audio_PlayingBuffer global_playing_buffers[32]; // NOTE(ljre): maybe update to dynamic array

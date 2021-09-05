@@ -59,6 +59,7 @@
 //#define STBI_MALLOC(sz) Engine_PushMemory(sz)
 //#define STBI_REALLOC(p,newsz) Engine_RePushMemory(p,newsz)
 //#define STBI_FREE(p) Engine_PopMemory(p)
+#define STBI_ASSERT Assert
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "ext/stb_image.h"
@@ -67,6 +68,7 @@
 //#define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
 #define STBTT_malloc(x,u) ((void)(u),Engine_PushMemory(x))
 #define STBTT_free(x,u) ((void)(u),Engine_PopMemory(x))
+#define STBTT_assert Assert
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ext/stb_truetype.h"
@@ -74,11 +76,18 @@
 #undef STB_VORBIS_HEADER_ONLY
 #define STB_VORBIS_NO_PUSHDATA_API
 #define STB_VORBIS_MAX_CHANNELS 2
+#define malloc(sz) Platform_HeapAlloc(sz)
+#define realloc(p,sz) Platform_HeapRealloc(p,sz)
+#define free(p) Platform_HeapFree(p)
 #include "ext/stb_vorbis.h"
 
 #undef R
 #undef L
 #undef C
+
+#undef malloc
+#undef realloc
+#undef free
 
 //- Enable warnings
 #if defined(__clang__)

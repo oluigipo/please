@@ -13,6 +13,7 @@
 #define NULL
 #endif
 
+#define _CRT_SECURE_NO_WARNINGS
 #define internal static
 #define true 1
 #define false 0
@@ -50,7 +51,6 @@
 #include <string.h>
 #include <math.h>
 #include <cglm/cglm.h>
-#include "ext/stb_truetype.h"
 
 //- Enable Warnings
 #if defined(__clang__)
@@ -93,7 +93,7 @@ typedef double float64;
 #   define Assert assert
 #endif
 
-#if defined(TRACY_ENABLE) // NOTE(ljre): this won't work with MSVC...
+#if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
 #    include "../../tracy/TracyC.h"
 internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
 #    define Trace(x) TracyCZoneN(_ctx __attribute((cleanup(___my_tracy_zone_end))),x,true)
@@ -102,7 +102,6 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #endif
 
 //~ Others
-#include "internal_math.h"
 #include "internal_string.h"
 #include "internal_opengl.h"
 #include "internal_direct3d.h"
@@ -112,16 +111,24 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 
 // A scene is a function pointer that should return the next scene to
 // run, or NULL if the game should close.
+// The parameter 'shared_data' is a pointer to a variable which will have the same value when changing scenes.
+// Use it to store your global game data.
 typedef void* SceneProc(void** shared_data);
 typedef SceneProc* Scene;
 
-API void* Engine_PushMemory(uintsize size);
-API void Engine_PopMemory(void* ptr);
+API void* Engine_PushMemory(uintsize size); // kinda malloc
+API void* Engine_RePushMemory(void* ptr, uintsize size); // kinda realloc
+API void Engine_PopMemory(void* ptr); // kinda free
+
+// "pushing" the memory state will save the last allocation header and popping it will set it.
+// It will essentially encapsulate every allocation happening between the calls of Push and Pop, so you can free
+// all of them at once.
 API void* Engine_PushMemoryState(void);
 API void Engine_PopMemoryState(void* state);
-API void* Engine_RePushMemory(void* ptr, uintsize size);
 
+// Engine entry point. It shall be called by the platform layer.
 API int32 Engine_Main(int32 argc, char** argv);
+
 API void Engine_FinishFrame(void);
 API uint64 Engine_RandomU64(void);
 API uint32 Engine_RandomU32(void);
@@ -129,9 +136,10 @@ API float64 Engine_RandomF64(void);
 API float32 Engine_RandomF32Range(float32 start, float32 end);
 API float32 Engine_DeltaTime(void);
 
+// The first scene to run.
 API void* Game_MainScene(void** shared_data);
 
-//- Discord Game SDK
+//- Discord Game SDK (OPTIONAL)
 #ifdef USE_DISCORD_GAME_SDK
 API bool32 Discord_Init(int64 appid);
 API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
@@ -166,7 +174,8 @@ struct Render_Camera
 		// NOTE(ljre): 3D Stuff
 		struct { vec3 dir; vec3 up; };
 	};
-} typedef Render_Camera;
+}
+typedef Render_Camera;
 
 #include "internal_3dmanager.h"
 #include "internal_2dscene.h"
@@ -199,10 +208,11 @@ enum GraphicsAPI
 	GraphicsAPI_None = 0,
 	
 	GraphicsAPI_OpenGL = 1,
-	GraphicsAPI_Direct3D = 2,
+	GraphicsAPI_Direct3D = 2, // NOTE(ljre): not implemented yet :(
 	
 	GraphicsAPI_Any = GraphicsAPI_OpenGL | GraphicsAPI_Direct3D,
-} typedef GraphicsAPI;
+}
+typedef GraphicsAPI;
 
 struct GraphicsContext
 {
@@ -212,7 +222,8 @@ struct GraphicsContext
 		GraphicsContext_OpenGL* opengl;
 		GraphicsContext_Direct3D* d3d;
 	};
-} typedef GraphicsContext;
+}
+typedef GraphicsContext;
 
 // NOTE(ljre): This function also does general initialization
 API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
@@ -298,7 +309,8 @@ enum Input_KeyboardKey
 	Input_KeyboardKey_F14,
 	
 	Input_KeyboardKey_Count,
-} typedef Input_KeyboardKey;
+}
+typedef Input_KeyboardKey;
 
 API bool32 Input_KeyboardIsPressed(int32 key);
 API bool32 Input_KeyboardIsDown(int32 key);
@@ -316,7 +328,8 @@ enum Input_MouseButton
 	Input_MouseButton_Other2,
 	
 	Input_MouseButton_Count,
-} typedef Input_MouseButton;
+}
+typedef Input_MouseButton;
 
 struct Input_Mouse
 {
@@ -325,7 +338,8 @@ struct Input_Mouse
 	int32 scroll;
 	
 	bool8 buttons[Input_MouseButton_Count];
-} typedef Input_Mouse;
+}
+typedef Input_Mouse;
 
 API void Input_GetMouse(Input_Mouse* out_mouse);
 
@@ -346,7 +360,8 @@ enum Input_GamepadButton
 	Input_GamepadButton_Start,
 	Input_GamepadButton_Back,
 	Input_GamepadButton_Count,
-} typedef Input_GamepadButton;
+}
+typedef Input_GamepadButton;
 
 struct Input_Gamepad
 {
@@ -359,7 +374,8 @@ struct Input_Gamepad
 	float32 lt, rt;
 	
 	bool8 buttons[Input_GamepadButton_Count];
-} typedef Input_Gamepad;
+}
+typedef Input_Gamepad;
 
 // NOTE(ljre): Get the state of a gamepad. Returns true if gamepad is connected, false otherwise.
 API bool32 Input_GetGamepad(int32 index, Input_Gamepad* out_gamepad);

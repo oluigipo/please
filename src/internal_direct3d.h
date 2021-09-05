@@ -43,7 +43,8 @@ struct GraphicsContext_Direct3D
 	
 	// Optional
 	ProcD3DCompile* compile_shader;
-} typedef GraphicsContext_Direct3D;
+}
+typedef GraphicsContext_Direct3D;
 //-
 
 #pragma pop_macro("far")

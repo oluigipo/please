@@ -9,14 +9,16 @@ enum Render_3DEntityKind
 {
 	Render_3DEntityKind_PointLight,
 	Render_3DEntityKind_Model,
-} typedef Render_3DEntityKind;
+}
+typedef Render_3DEntityKind;
 
 struct Render_3DEntity_Model
 {
 	Render_3DEntity* entity;
 	Asset_3DModel* asset;
 	vec4 color;
-} typedef Render_3DEntity_Model;
+}
+typedef Render_3DEntity_Model;
 
 struct Render_3DEntity_PointLight
 {
@@ -27,7 +29,8 @@ struct Render_3DEntity_PointLight
 	vec3 ambient;
 	vec3 diffuse;
 	vec3 specular;
-} typedef Render_3DEntity_PointLight;
+}
+typedef Render_3DEntity_PointLight;
 
 struct Render_3DEntity
 {
@@ -60,6 +63,7 @@ struct Render_3DManager
 	int32 free_space_count;
 	int32 point_lights_count;
 	int32 model_count;
-} typedef Render_3DManager;
+}
+typedef Render_3DManager;
 
 #endif //INTERNAL_3DMANAGER_H

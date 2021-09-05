@@ -34,7 +34,8 @@ enum Json_ValueKind
 	Json_ValueKind_Number,
 	Json_ValueKind_String,
 	Json_ValueKind_Bool,
-} typedef Json_ValueKind;
+}
+typedef Json_ValueKind;
 
 struct Json_Value
 {
@@ -42,7 +43,8 @@ struct Json_Value
 	const uint8* end;
 	
 	Json_ValueKind kind;
-} typedef Json_Value;
+}
+typedef Json_Value;
 
 struct Json_Field
 {
@@ -53,7 +55,8 @@ struct Json_Field
 	
 	const uint8* name_end;
 	const uint8* value_begin;
-} typedef Json_Field;
+}
+typedef Json_Field;
 
 struct Json_ArrayIndex
 {
@@ -61,7 +64,8 @@ struct Json_ArrayIndex
 	
 	const uint8* begin;
 	const uint8* end;
-} typedef Json_ArrayIndex;
+}
+typedef Json_ArrayIndex;
 
 //~ Functions
 internal inline bool32

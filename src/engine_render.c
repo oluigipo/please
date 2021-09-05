@@ -17,7 +17,8 @@ struct Vertex
 	vec3 position;
 	vec3 normal;
 	vec2 texcoord;
-} typedef Vertex;
+}
+typedef Vertex;
 
 struct PointLightsUniformData
 {
@@ -29,7 +30,8 @@ struct PointLightsUniformData
 	int32 ambient;
 	int32 diffuse;
 	int32 specular;
-} typedef PointLightsUniformData;
+}
+typedef PointLightsUniformData;
 
 struct InternalShaderUniforms
 {
@@ -60,13 +62,15 @@ struct InternalShaderUniforms
 	
 	int32 pointlights_count;
 	PointLightsUniformData pointlights[MAX_3DMANAGER_POINT_LIGHTS];
-} typedef InternalShaderUniforms;
+}
+typedef InternalShaderUniforms;
 
 struct InternalShader
 {
 	uint32 id;
 	InternalShaderUniforms uniform;
-} typedef InternalShader;
+}
+typedef InternalShader;
 
 //~ Globals
 internal const GraphicsContext* global_graphics;
@@ -1106,11 +1110,11 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 		GL.glEnableVertexAttribArray(0);
 		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
 		GL.glEnableVertexAttribArray(1);
-		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(vec3), (void*)pos_size);
+		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(vec3), (void*)(uintsize)pos_size);
 		GL.glEnableVertexAttribArray(2);
-		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(vec2), (void*)(pos_size + norm_size));
+		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(vec2), (void*)(uintsize)(pos_size + norm_size));
 		GL.glEnableVertexAttribArray(3);
-		GL.glVertexAttribPointer(3, 4, GL_FLOAT, false, sizeof(vec4), (void*)(pos_size + norm_size + uv_size));
+		GL.glVertexAttribPointer(3, 4, GL_FLOAT, false, sizeof(vec4), (void*)(uintsize)(pos_size + norm_size + uv_size));
 		
 		// NOTE(ljre): Indices
 		view = &model.buffer_views[model.accessors[prim->indices].buffer_view];

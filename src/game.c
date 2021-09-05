@@ -3,7 +3,8 @@
 struct Game_GlobalData
 {
 	Asset_Font font;
-} typedef Game_GlobalData;
+}
+typedef Game_GlobalData;
 
 #include "game_3ddemo.c"
 #include "game_2ddemo.c"
@@ -13,7 +14,8 @@ struct Game_MenuButton
 	vec3 position;
 	vec3 size;
 	String text;
-} typedef Game_MenuButton;
+}
+typedef Game_MenuButton;
 
 internal bool32
 IsMouseOverButton(Input_Mouse* mouse, Game_MenuButton* button)
