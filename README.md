@@ -9,7 +9,7 @@ Everything in the `src` folder is either mine, or is available in the public dom
 The code inside the `include` folder may be redistributed under it's own license (generally found at the top of the file or in a `LICENSE` file).
 
 ## Build
-If you are on Windows, simply run `build-debug-cl.bat` and it should compile normally. If you are on Linux, then run `build-debug-gcc.sh` instead.
+If you are on Windows, simply run `build-debug-cl.bat` through VS's Developer Command Prompt and it should compile normally. If you are on Linux, then run `build-debug-gcc.sh` instead.
 Both of those scripts have only 1 command. You can read it to understand what is needed to compile.
 
 You may also have noticed the `Makefile` file. If you want to use it, make sure you have Clang installed on your machine.
@@ -28,11 +28,11 @@ Here are some variables you can set (all of them are optional):
 
 ## External
 Dependencies (my hope is that I replace them with my own implementation eventually... surely not in the near future):
-* [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h)
-* [stb_truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h)
-* [stb_vorbis](https://github.com/nothings/stb/blob/master/stb_vorbis.c)
-* [CGLM](https://github.com/recp/cglm)
+* [stb_image](https://github.com/nothings/stb/blob/master/stb_image.h) (src/ext/stb_image.h)
+* [stb_truetype](https://github.com/nothings/stb/blob/master/stb_truetype.h) (src/ext/stb_truetype.h)
+* [stb_vorbis](https://github.com/nothings/stb/blob/master/stb_vorbis.c) (src/ext/stb_vorbis.h)
+* [CGLM](https://github.com/recp/cglm) (include/cglm)
 
 Others:
-* [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW. Though GLFW in general is a really nice reference.
+* [GLFW](https://github.com/glfw/glfw): Some of the code in this repository was borrowed and modified from GLFW (see file `include/guid_utils.h`). Though GLFW in general is a really nice reference.
 * [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB): It was used to generate the `include/internal_gamepad_map_database.inc` file.
