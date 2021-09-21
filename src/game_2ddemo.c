@@ -12,12 +12,6 @@ Game_2DDemoScene(void** shared_data)
 		Platform_ExitWithErrorMessage(Str("Could not load sprites image :("));
 	}
 	
-	Asset_Texture tileset_texture;
-	if (!Render_LoadTextureFromFile(Str("./assets/tileset.png"), &tileset_texture))
-	{
-		Platform_ExitWithErrorMessage(Str("Could not load tileset image :("));
-	}
-	
 	//~ NOTE(ljre): Scene Setup
 	Render_Camera camera = {
 		.pos = { 0.0f, 0.0f, 0.0f, },
@@ -27,38 +21,6 @@ Game_2DDemoScene(void** shared_data)
 		},
 		.zoom = 2.0f,
 		.angle = 0.0f,
-	};
-	
-	//- NOTE(ljre): Tilemap
-	uint16 map[8*8] = {
-		0, 1, 1, 1, 1, 1, 1, 0,
-		1, 0, 0, 0, 0, 0, 0, 1,
-		1, 0, 1, 0, 0, 1, 0, 1,
-		1, 0, 0, 0, 0, 0, 0, 1,
-		1, 0, 1, 1, 1, 1, 0, 1,
-		1, 0, 0, 1, 1, 0, 0, 1,
-		1, 0, 0, 0, 0, 0, 0, 1,
-		0, 1, 1, 1, 1, 1, 1, 0,
-	};
-	
-	Render_Tilemap2D tilemap = {
-		.transform = GLM_MAT4_IDENTITY_INIT,
-		.color = { 1.0f, 1.0f, 1.0f, 1.0f },
-		.cell_uv_size = {
-			1.0f / ((float32)tileset_texture.width / 32.0f),
-			1.0f / ((float32)tileset_texture.height / 32.0f),
-		},
-		.width = 8,
-		.height = 8,
-		.indices = map,
-	};
-	
-	glm_scale(tilemap.transform, (vec3) { 32.0f, 32.0f });
-	
-	Render_Layer2D tilemap_layer = {
-		.texture = &tileset_texture,
-		.tilemaps = &tilemap,
-		.tilemap_count = 1,
 	};
 	
 	//- NOTE(ljre): Sprites
@@ -113,7 +75,6 @@ Game_2DDemoScene(void** shared_data)
 			mat4 view;
 			Render_CalcViewMatrix2D(&camera, view);
 			
-			Render_DrawLayer2D(&tilemap_layer, view);
 			Render_DrawLayer2D(&sprite_layer, view);
 		}
 		

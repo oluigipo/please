@@ -123,14 +123,14 @@ Discord_Init(int64 appid)
 API void
 Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text)
 {
-	snprintf(global_discord.activity.assets.large_image, sizeof global_discord.activity.assets.large_image,
-			 "%.*s", StrFmt(large_image));
-	snprintf(global_discord.activity.assets.large_text, sizeof global_discord.activity.assets.large_text,
-			 "%.*s", StrFmt(large_text));
-	snprintf(global_discord.activity.assets.small_image, sizeof global_discord.activity.assets.small_image,
-			 "%.*s", StrFmt(small_image));
-	snprintf(global_discord.activity.assets.small_text, sizeof global_discord.activity.assets.small_text,
-			 "%.*s", StrFmt(small_text));
+	if (large_image.len)
+		String_Copy(Str(global_discord.activity.assets.large_image), large_image);
+	if (large_text.len)
+		String_Copy(Str(global_discord.activity.assets.large_text), large_text);
+	if (small_image.len)
+		String_Copy(Str(global_discord.activity.assets.small_image), small_image);
+	if (small_text.len)
+		String_Copy(Str(global_discord.activity.assets.small_text), small_text);
 }
 
 API void
@@ -139,9 +139,9 @@ Discord_UpdateActivity(int32 type, String name, String state, String details)
 	global_discord.activity.type = type;
 	global_discord.activity.application_id = global_discord.appid;
 	
-	snprintf(global_discord.activity.name, sizeof global_discord.activity.name, "%.*s", StrFmt(name));
-	snprintf(global_discord.activity.state, sizeof global_discord.activity.state, "%.*s", StrFmt(state));
-	snprintf(global_discord.activity.details, sizeof global_discord.activity.details, "%.*s", StrFmt(details));
+	String_Copy(Str(global_discord.activity.name), name);
+	String_Copy(Str(global_discord.activity.state), state);
+	String_Copy(Str(global_discord.activity.details), details);
 	
 	global_discord.activities->update_activity(global_discord.activities, &global_discord.activity, NULL, DiscordCallbackUpdateActivity);
 }
@@ -161,7 +161,8 @@ Discord_Update(void)
 API void
 Discord_Deinit(void)
 {
-	if (global_discord.core) {
+	if (global_discord.core)
+	{
 		global_discord.core->destroy(global_discord.core);
 		global_discord.core = NULL;
 	}

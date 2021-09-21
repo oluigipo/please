@@ -111,4 +111,18 @@ String_EndsWith(String check, String s)
 	return strncmp(substr.data, s.data, substr.len) == 0;
 }
 
+internal inline char*
+String_Copy(String dst, String src)
+{
+	char* d = (char*)dst.data;
+	const char* s = src.data;
+	
+	uintsize len = Min(dst.len, src.len);
+	
+	while (len--)
+		*d++ = *s++;
+	
+	return d;
+}
+
 #endif //INTERNAL_STRING_H

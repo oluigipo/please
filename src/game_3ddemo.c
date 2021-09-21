@@ -13,8 +13,8 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 	vec3 alignment = { -0.5f, -0.5f };
 	vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
 	vec4 colors[2] = {
-		{ 0.5f, 0.5f, 0.5f, 1.0f }, // Enabled
-		{ 0.9f, 0.9f, 0.9f, 1.0f }, // Disabled
+		{ 0.5f, 0.5f, 0.5f, 1.0f }, // Disabled
+		{ 0.9f, 0.9f, 0.9f, 1.0f }, // Enabled
 	};
 	
 	float32 xscale = width / 600.0f;

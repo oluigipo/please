@@ -530,7 +530,8 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
 	XVisualInfo* visual_info = global_opengl.glXChooseVisual(global_display, 0, visual_attributes);
 	Window root_window = DefaultRootWindow(global_display);
 	
-	if(!visual_info) {
+	if(!visual_info)
+	{
 		dlclose(library);
 		global_opengl.library = NULL;
 		return false;

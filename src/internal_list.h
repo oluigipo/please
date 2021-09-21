@@ -20,6 +20,7 @@ typedef List_Header;
 #define List_Add(x) (List_Reserve(x, List_Length(x)+1), List__LengthL(*(x))++)
 #define List_Pop(x) ((*(x))[--List__LengthL(*(x))])
 #define List_Done(x) ((x) ? Engine_PopMemory(List__Header(x)) : 0, *(x) = NULL)
+#define List_End(x) (&(*(x))[List_Length(*(x))])
 
 internal uintsize
 List__Reserve(void** list, uintsize objsize, uintsize desired_cap)
@@ -43,10 +44,7 @@ List__Reserve(void** list, uintsize objsize, uintsize desired_cap)
 		header = List__Header(*list);
 		header->cap = desired_cap;
 		
-		List_Header* new_header = Engine_PushMemory(objsize * desired_cap + sizeof(*header));
-		memcpy(new_header, header, header->len * objsize + sizeof(*header));
-		Engine_PopMemory(header);
-		header = new_header;
+		header = Engine_RePushMemory(header, objsize * desired_cap + sizeof(*header));
 		
 		*list = (void*)(header + 1);
 	}

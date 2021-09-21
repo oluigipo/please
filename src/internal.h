@@ -33,6 +33,8 @@
 #define ArrayLength(x) (sizeof(x) / sizeof(*(x)))
 #define PI64 3.141592653589793238462643383279
 #define PI32 ((float32)PI64)
+#define Min(x,y) ((x) < (y) ? (x) : (y))
+#define Max(x,y) ((x) > (y) ? (x) : (y))
 
 //~ Standard headers & Libraries
 #if defined(__clang__)
@@ -279,7 +281,7 @@ enum Input_KeyboardKey
 	Input_KeyboardKey_LeftAlt, Input_KeyboardKey_RightAlt, Input_KeyboardKey_Alt,
 	Input_KeyboardKey_Tab, Input_KeyboardKey_Enter, Input_KeyboardKey_Backspace,
 	Input_KeyboardKey_PageUp, Input_KeyboardKey_PageDown, Input_KeyboardKey_End, Input_KeyboardKey_Home,
-	// NOTE(ljre): Try to not messup. Input_KeyboardKey_Space = 32, and any of those above can be (but shouldn't)
+	// NOTE(ljre): Try to not mess up. Input_KeyboardKey_Space = 32, and those above can be (but shouldn't)
 	
 	Input_KeyboardKey_Space = ' ',
 	
@@ -322,7 +324,6 @@ enum Input_MouseButton
 	Input_MouseButton_Left,
 	Input_MouseButton_Middle,
 	Input_MouseButton_Right,
-	
 	Input_MouseButton_Other0,
 	Input_MouseButton_Other1,
 	Input_MouseButton_Other2,
@@ -359,6 +360,7 @@ enum Input_GamepadButton
 	Input_GamepadButton_LS,
 	Input_GamepadButton_Start,
 	Input_GamepadButton_Back,
+	
 	Input_GamepadButton_Count,
 }
 typedef Input_GamepadButton;
@@ -387,7 +389,7 @@ API void Input_SetGamepad(int32 index, float32 vibration); // vibration = 0..1
 // NOTE(ljre): Fetch the currently connected gamepads and write them to 'out_gamepads' array and
 //             return how many were written, but never write more than 'max_count' gamepads.
 //
-//             If 'max_count' is not greater than 0, then just return the number of gamepads
+//             If 'max_count' is less than 1, then just return the number of gamepads
 //             currently connected.
 API int32 Input_ConnectedGamepads(Input_Gamepad* out_gamepads, int32 max_count);
 
