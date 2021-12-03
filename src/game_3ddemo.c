@@ -117,15 +117,26 @@ Game_3DDemoScene(void** shared_data)
 	}
 	
 	// NOTE(ljre): Load Audio
-	Asset_SoundBuffer sound_music;
-	
-	if (Audio_LoadFile(Str("music.ogg"), &sound_music))
-	{
-		Audio_Play(&sound_music, true, 0.4, 1.0);
-	}
-	
+	Asset_SoundBuffer sound_music = { 0 };
 	Asset_SoundBuffer sound_music3 = { 0 };
-	Audio_LoadFile(Str("music3.ogg"), &sound_music3);
+	Engine_LoadSoundBuffer(Str("music.ogg"), &sound_music);
+	Engine_LoadSoundBuffer(Str("music3.ogg"), &sound_music3);
+	
+	Engine_PlayingAudio playing_audios[16];
+	int32 playing_audio_count = 0;
+	
+	if (sound_music.samples)
+	{
+		playing_audios[0] = (Engine_PlayingAudio) {
+			.sound = &sound_music,
+			.frame_index = -1,
+			.loop = true,
+			.volume = 1.0f,
+			.speed = 1.0f,
+		};
+		
+		playing_audio_count = 1;
+	}
 	
 	int32 controller_index = 0;
 	
@@ -248,11 +259,10 @@ Game_3DDemoScene(void** shared_data)
 	light2->point_light->linear = 0.09f;
 	light2->point_light->quadratic = 0.032f;
 	
-	for (void* memory_state = Engine_PushMemoryState();
-		 !Platform_WindowShouldClose();
-		 Engine_PopMemoryState(memory_state))
+	while (!Platform_WindowShouldClose())
 	{
 		Trace("Game Loop");
+		void* memory_state = Engine_PushMemoryState();
 		
 		if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
 			break;
@@ -261,6 +271,19 @@ Game_3DDemoScene(void** shared_data)
 			controller_index = (controller_index - 1) & 15;
 		else if (Input_KeyboardIsPressed(Input_KeyboardKey_Right))
 			controller_index = (controller_index + 1) & 15;
+		
+		if (sound_music3.samples &&
+			playing_audio_count < ArrayLength(playing_audios) &&
+			Input_KeyboardIsPressed(Input_KeyboardKey_Space))
+		{
+			playing_audios[playing_audio_count++] = (Engine_PlayingAudio) {
+				.sound = &sound_music3,
+				.frame_index = -1,
+				.loop = false,
+				.volume = 1.0f,
+				.speed = 1.5f,
+			};
+		}
 		
 		Input_Gamepad gamepad;
 		bool32 is_connected = Input_GetGamepad(controller_index, &gamepad);
@@ -355,7 +378,10 @@ Game_3DDemoScene(void** shared_data)
 		}
 		
 		//~ NOTE(ljre): Finish Frame
+		Engine_PlayAudios(playing_audios, &playing_audio_count, 0.075f);
 		Engine_FinishFrame();
+		
+		Engine_PopMemoryState(memory_state);
 	}
 	
 	return NULL;

@@ -148,18 +148,26 @@ ReleaseGamepadIndex(int32 index)
 internal inline void
 NormalizeAxis(float32 axis[2])
 {
-	float32 dir = atan2f(axis[1], axis[0]);
-	float32 mag = sqrtf(axis[0]*axis[0] + axis[1]*axis[1]);
+	float32 len2 = axis[0]*axis[0] + axis[1]*axis[1];
 	
-	if (mag < GAMEPAD_DEADZONE)
+	if (len2 < GAMEPAD_DEADZONE*GAMEPAD_DEADZONE)
 	{
 		axis[0] = 0.0f;
 		axis[1] = 0.0f;
 	}
 	else
 	{
-		if (axis[0] < -0.05f || axis[0] > 0.05f) axis[0] = cosf(dir) * mag; else axis[0] = 0.0f;
-		if (axis[1] < -0.05f || axis[1] > 0.05f) axis[1] = sinf(dir) * mag; else axis[1] = 0.0f;
+		float32 invlen = 1.0f / sqrtf(len2);
+		
+		if (axis[0] < -0.05f || axis[0] > 0.05f)
+			axis[0] *= invlen;
+		else
+			axis[0] = 0.0f;
+		
+		if (axis[1] < -0.05f || axis[1] > 0.05f)
+			axis[1] *= invlen;
+		else
+			axis[1] = 0.0f;
 	}
 }
 

@@ -4,11 +4,14 @@
 #if 0
 EXAMPLE USAGE
 {
+	// NOTE(ljre): 'file' is expected to be an object
 	Json_Value file;
 	Json_InitFromBuffer(data, size, &file);
 	
+	// NOTE(ljre): iterate through every field of the object
 	for (Json_Field field = { &file }; Json_NextField(&field); )
 	{
+		// NOTE(ljre): "raw name" = without processing escape sequences, etc.
 		String name = Json_RawFieldName(&field);
 		
 		if (String_Compare(name, Str("to_print")))
@@ -467,7 +470,7 @@ Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
 	int32 current_i = 0;
 	while (Json_NextIndex(&index))
 	{
-		if (current_i == i)
+		if (current_i++ == i)
 		{
 			*out = index;
 			return true;

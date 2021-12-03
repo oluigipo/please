@@ -13,7 +13,10 @@
 #define NULL
 #endif
 
-#define _CRT_SECURE_NO_WARNINGS
+#ifndef _CRT_SECURE_NO_WARNINGS
+#   define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #define internal static
 #define true 1
 #define false 0
@@ -157,11 +160,19 @@ API void Discord_Deinit(void);
 #endif
 
 //- Audio
-API bool32 Audio_LoadFile(String path, Asset_SoundBuffer* out_sound);
-API void Audio_FreeSoundBuffer(Asset_SoundBuffer* sound);
-API void Audio_Play(const Asset_SoundBuffer* sound, bool32 loop, float64 volume, float64 speed);
-#define Audio_PlaySimple(sound, volume) Audio_Play(sound, false, volume, 1.0)
-API void Audio_StopByBuffer(const Asset_SoundBuffer* sound, int32 max);
+struct Engine_PlayingAudio
+{
+	const Asset_SoundBuffer* sound;
+	int32 frame_index; // if < 0, then it was added this frame
+	bool32 loop;
+	float32 volume;
+	float32 speed;
+}
+typedef Engine_PlayingAudio;
+
+API bool32 Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound);
+API void Engine_FreeSoundBuffer(Asset_SoundBuffer* sound);
+API void Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volume);
 
 //- Rendering
 struct Render_Camera
@@ -180,7 +191,23 @@ struct Render_Camera
 typedef Render_Camera;
 
 #include "internal_3dmanager.h"
-#include "internal_2dscene.h"
+
+struct Render_Sprite2D
+{
+	mat4 transform;
+	vec4 texcoords;
+	vec4 color;
+}
+typedef Render_Sprite2D;
+
+struct Render_Layer2D
+{
+	Asset_Texture* texture;
+	
+	int32 sprite_count;
+	Render_Sprite2D* sprites;
+}
+typedef Render_Layer2D;
 
 API bool32 Render_LoadFontFromFile(String path, Asset_Font* out_font);
 API bool32 Render_Load3DModelFromFile(String path, Asset_3DModel* out);
@@ -263,10 +290,12 @@ API void Platform_DebugDumpBitmap(const char* restrict path, const void* data, i
 #else // DEBUG
 #   define Platform_DebugMessageBox(...) ((void)0)
 #   define Platform_DebugLog(...) ((void)0)
+#   define Platform_DebugDumpBitmap(...) ((void)0)
 #endif // DEBUG
 
 //- Platform Audio
-API int16* Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate);
+API int16* Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames);
+API void Platform_CloseSoundBuffer(int16* sound_buffer);
 API bool32 Platform_IsAudioAvailable(void);
 
 //- Platform Input

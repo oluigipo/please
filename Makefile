@@ -14,7 +14,7 @@ endif
 
 CUSTOMC ?=
 CUSTOMLD ?=
-OPT ?= -O2 -ffast-math -flto
+OPT ?= -O2 -ffast-math
 BUILDDIR ?= build
 
 CFLAGS += -Iinclude
@@ -37,8 +37,8 @@ else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game
 	CLEAN = rm ./build/*.o
 	
-	CC = cc
-	LD = cc
+	CC = clang -std=c99
+	LD = clang
 	
 	LDFLAGS += -lm -lX11 -ldl -lasound
 endif

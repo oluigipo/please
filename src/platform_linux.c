@@ -21,6 +21,14 @@
 
 #define internal static
 
+//~ Types
+struct Linux_DeferredEvents
+{
+	int32 window_x, window_y;
+	int32 window_width, window_height;
+}
+typedef Linux_DeferredEvents;
+
 //~ Globals
 internal Display* global_display;
 internal Window global_window;
@@ -30,6 +38,7 @@ internal int32 global_window_width;
 internal int32 global_window_height;
 internal GraphicsContext global_graphics_context;
 internal struct timespec global_time_begin;
+internal Linux_DeferredEvents global_deferred_events;
 
 //~ Functions
 #include "platform_linux_input.c"
@@ -139,6 +148,25 @@ Platform_WindowHeight(void)
 	return global_window_height;
 }
 
+API void
+Platform_SetWindow(int32 x, int32 y, int32 width, int32 height)
+{
+	if (x != -1)
+		global_deferred_events.window_x = x;
+	if (y != -1)
+		global_deferred_events.window_y = y;
+	if (width != -1)
+		global_deferred_events.window_width = width;
+	if (height != -1)
+		global_deferred_events.window_height = height;
+}
+
+API void
+Platform_CenterWindow(void)
+{
+	// TODO
+}
+
 API float64
 Platform_GetTime(void)
 {
@@ -162,6 +190,7 @@ API void
 Platform_PollEvents(void)
 {
 	Linux_UpdateInputPre();
+	// TODO(ljre): Process 'global_deferred_events'.
 	
 	int64 mask = KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask;
 	

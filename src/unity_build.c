@@ -2,7 +2,9 @@
 #   define UNITY_BUILD
 #endif
 
-#define _CRT_SECURE_NO_WARNINGS
+#ifndef _CRT_SECURE_NO_WARNINGS
+#   define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include "game.c"
 #include "engine.c"

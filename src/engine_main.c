@@ -152,7 +152,11 @@ Engine_FinishFrame(void)
 {
 	Trace("Engine_FinishFrame");
 	
-	Engine_UpdateAudio();
+	if (!global_outputed_sound_this_frame)
+		Engine_PlayAudios(NULL, NULL, 1.0f);
+	
+	global_outputed_sound_this_frame = false;
+	
 	Discord_Update();
 	
 	Platform_FinishFrame();

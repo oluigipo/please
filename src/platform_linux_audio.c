@@ -95,7 +95,7 @@ Linux_DeinitAudio(void)
 
 //~ API
 API int16*
-Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate)
+Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames)
 {
 	if (global_audio_is_initialized)
 	{

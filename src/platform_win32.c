@@ -43,6 +43,10 @@
 
 #include "platform_win32_guid.c"
 
+#ifdef __SANITIZE_ADDRESS__
+#   include <sanitizer/asan_interface.h>
+#endif
+
 //- Enable Warnings
 #if defined(__clang__)
 #   pragma clang diagnostic pop
@@ -258,6 +262,8 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	//- Run
 	int32 result = Engine_Main(argc, argv);
 	
+	// NOTE(ljre): Free resources... or nah :P
+	
 	return result;
 }
 
@@ -405,15 +411,12 @@ Platform_PollEvents(void)
 	}
 	
 	Win32_UpdateInputPos();
-	Win32_UpdateAudio();
 }
 
 API void
 Platform_FinishFrame(void)
 {
 	Trace("Platform_FinishFrame");
-	
-	Win32_FillAudioBuffer();
 	
 	switch (global_graphics_context.api)
 	{
@@ -429,6 +432,7 @@ Platform_HeapAlloc(uintsize size)
 	Trace("Platform_HeapAlloc");
 	
 	void* result = HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
+	
 	return result;
 }
 
@@ -451,6 +455,8 @@ API void
 Platform_HeapFree(void* ptr)
 {
 	Trace("Platform_HeapFree");
+	if (!ptr)
+		return;
 	
 	HeapFree(global_heap, 0, ptr);
 }
@@ -476,6 +482,7 @@ Platform_VirtualFree(void* ptr, uintsize size)
 {
 	Trace("Platform_VirtualFree");
 	VirtualFree(ptr, 0, MEM_RELEASE);
+	(void)size;
 }
 
 API void*
@@ -551,6 +558,7 @@ API void
 Platform_FreeFileMemory(void* ptr, uintsize size)
 {
 	// NOTE(ljre): Ignore parameter 'size' for this platform.
+	(void)size;
 	
 	Platform_HeapFree(ptr);
 }
