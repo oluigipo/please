@@ -34,18 +34,15 @@
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
 
-#define INTERNAL_COMPLETE_D3D_CONTEXT
+#define INTERNAL_COMPLETE_GRAPHICS_CONTEXT
 #include "internal_direct3d.h"
+#include "internal_opengl.h"
 
 #if defined(DEBUG)
 #   include <dxgidebug.h>
 #endif
 
 #include "platform_win32_guid.c"
-
-#ifdef __SANITIZE_ADDRESS__
-#   include <sanitizer/asan_interface.h>
-#endif
 
 //- Enable Warnings
 #if defined(__clang__)
@@ -54,9 +51,11 @@
 #   pragma warning(pop, 0)
 #endif
 
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
-#pragma comment(lib, "hid.lib")
+#if defined(_MSC_VER)
+#   pragma comment(lib, "user32.lib")
+#   pragma comment(lib, "gdi32.lib")
+#   pragma comment(lib, "hid.lib")
+#endif
 
 struct Win32_DeferredEvents
 {

@@ -3,8 +3,8 @@
 //
 //
 
+#define INTERNAL_COMPLETE_GRAPHICS_CONTEXT
 #include "internal.h"
-#include "internal_list.h"
 
 //~ Libraries
 #define STB_IMAGE_STATIC

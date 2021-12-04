@@ -20,7 +20,7 @@ BUILDDIR ?= build
 CFLAGS += -Iinclude
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
 CFLAGS += -Wno-missing-braces $(CUSTOMC) $(OPT)
-LDFLAGS += -Llib $(CUSTOMLD) $(OPT)
+LDFLAGS += -Llib $(CUSTOMLD)
 
 ifeq ($(PLATFORM), win32)
 	OUTPUT_NAME = game.exe
@@ -31,7 +31,7 @@ ifeq ($(PLATFORM), win32)
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static -Xlinker /subsystem:windows
 	
-	CFLAGS += -Wsizeof-array-decay -Werror=int-conversion -Werror=implicit-int-float-conversion
+	CFLAGS += -Wsizeof-array-decay -Werror=implicit-int-float-conversion
 	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
 else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game

@@ -30,6 +30,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	if (!memory)
 		return false;
 	
+	// not inside 'if'
 	{
 		Trace("stb_vorbis_decode_memory");
 		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels,
@@ -39,9 +40,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	Platform_FreeFileMemory(memory, size);
 	
 	if (out_sound->sample_count == -1)
-	{
 		return false;
-	}
 	
 	return true;
 }
@@ -86,30 +85,32 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			int32 scaled_elapsed_frames = (int32)((float32)elapsed_frames * scale);
 			
 			if (playing->frame_index < 0)
-			{
 				playing->frame_index = 0;
+			else
+				playing->frame_index += scaled_elapsed_frames;
+			
+			int32 sam = playing->frame_index * channels;
+			if (!playing->loop)
+			{
+				if (sam >= playing->sound->sample_count)
+				{
+					end_it = it;
+					should_remove = true;
+				}
+				else if (sam + sample_count > playing->sound->sample_count)
+				{
+					end_it = it + (playing->sound->sample_count - sam);
+				}
 			}
 			else
 			{
-				playing->frame_index += scaled_elapsed_frames;
+				playing->frame_index %= playing->sound->sample_count / playing->sound->channels;
 			}
 			
-			if (!playing->loop &&
-				playing->frame_index * channels + sample_count > playing->sound->sample_count)
-			{
-				int32 remaining = playing->sound->sample_count - playing->frame_index * channels;
-				if (remaining < 0)
-					remaining = 0;
-				
-				end_it = it + remaining;
-				Platform_DebugLog("%i\t%i\n", remaining, sample_count);
-				should_remove = true;
-			}
-			
-			int32 index = playing->frame_index;
+			float32 index = (float32)playing->frame_index;
 			while (it < end_it)
 			{
-				float32 index_to_use = (float32)index * scale;
+				float32 index_to_use = index * scale;
 				float32 left, right;
 				
 				left = InterpolateSample(index_to_use, playing->sound->channels, 0,
@@ -140,17 +141,13 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 				{
 					int16 v = (int16)((left + right) / 2.0f);
 					for (int32 j = channels; j > 0; --j)
-					{
 						*it++ += v;
-					}
 				}
 				
 				index += 1;
 				
-				if ((float32)index * scale > (float32)playing->sound->sample_count)
-				{
+				if (index * scale > (float32)playing->sound->sample_count)
 					index = 0;
-				}
 			}
 			
 			if (!should_remove)

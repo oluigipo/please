@@ -6,10 +6,7 @@ typedef struct GraphicsContext_Direct3D GraphicsContext_Direct3D;
 #endif // INTERNAL_DIRECT3D_H
 
 //~ Windows Stuff
-#ifdef INTERNAL_COMPLETE_D3D_CONTEXT
-
-#ifndef INTERNAL_DIRECT3D_H_COMPLETE
-#define INTERNAL_DIRECT3D_H_COMPLETE
+#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #   define WIN32_LEAN_AND_MEAN
@@ -24,10 +21,6 @@ typedef struct GraphicsContext_Direct3D GraphicsContext_Direct3D;
 
 //-
 #include <d3d11.h>
-
-#ifdef INTERNAL_COMPLETE_D3D_SHADER
-#   include <d3d11shader.h>
-#endif
 
 typedef HRESULT WINAPI ProcD3DCompile(LPCVOID pSrcData, SIZE_T SrcDataSize, LPCSTR pSourceName,
 									  const D3D_SHADER_MACRO* pDefines, ID3DInclude* pInclude,
@@ -49,7 +42,5 @@ typedef GraphicsContext_Direct3D;
 
 #pragma pop_macro("far")
 #pragma pop_macro("near")
-
-#endif // INTERNAL_DIRECT3D_H_COMPLETE
 
 #endif // INTERNAL_COMPLETE_D3D_CONTEXT

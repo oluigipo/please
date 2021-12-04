@@ -1,6 +1,11 @@
 #ifndef INTERNAL_OPENGL_H
 #define INTERNAL_OPENGL_H
 
+struct GraphicsContext_OpenGL typedef GraphicsContext_OpenGL;
+
+#endif // INTERNAL_OPENGL_H
+
+#ifdef INTERNAL_COMPLETE_GRAPHICS_CONTEXT
 #define __gl_h
 
 #if defined(_WIN32) && !defined(APIENTRY) && !defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)
@@ -1641,4 +1646,4 @@ struct GraphicsContext_OpenGL
 }
 typedef GraphicsContext_OpenGL;
 
-#endif //INTERNAL_OPENGL_H
+#endif //INTERNAL_COMPLETE_GRAPHICS_CONTEXT
