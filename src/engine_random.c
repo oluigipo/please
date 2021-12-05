@@ -5,7 +5,7 @@ internal uint64 global_random_seed[2]; // uint128
 
 //~ Functions
 internal inline uint64
-__rotl(const uint64 x, int32 k) {
+BitRotateLeft(const uint64 x, int32 k) {
 	return (x << k) | (x >> (64 - k));
 }
 
@@ -39,11 +39,11 @@ API uint64
 Engine_RandomU64(void) {
 	const uint64 s0 = global_random_seed[0];
 	uint64 s1 = global_random_seed[1];
-	const uint64 result = __rotl(s0 + s1, 17) + s0;
+	const uint64 result = BitRotateLeft(s0 + s1, 17) + s0;
 	
 	s1 ^= s0;
-	global_random_seed[0] = __rotl(s0, 49) ^ s1 ^ (s1 << 21); // a, b
-	global_random_seed[1] = __rotl(s1, 28); // c
+	global_random_seed[0] = BitRotateLeft(s0, 49) ^ s1 ^ (s1 << 21); // a, b
+	global_random_seed[1] = BitRotateLeft(s1, 28); // c
 	
 	return result;
 }

@@ -354,7 +354,7 @@ ParseGltfDataNodes(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->nodes = Engine_PushMemory(sizeof(GltfJson_Node) * length);
+	out->nodes = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Node) * length);
 	out->node_count = length;
 	
 	int32 i = 0;
@@ -396,7 +396,7 @@ ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 				return false;
 			
 			uintsize length = Json_ArrayLength(&field_value);
-			out->nodes = Engine_PushMemory(sizeof(int32) * length);
+			out->nodes = Arena_Push(global_engine.temp_arena, sizeof(int32) * length);
 			out->node_count = length;
 			
 			int32 i = 0;
@@ -426,7 +426,7 @@ ParseGltfDataScenes(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->scenes = Engine_PushMemory(sizeof(GltfJson_Scene) * length);
+	out->scenes = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Scene) * length);
 	out->scene_count = length;
 	
 	int32 i = 0;
@@ -693,7 +693,7 @@ ParseGltfDataMaterials(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->materials = Engine_PushMemory(sizeof(GltfJson_Material) * length);
+	out->materials = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Material) * length);
 	out->material_count = length;
 	
 	int32 i = 0;
@@ -801,7 +801,7 @@ ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 				return false;
 			
 			uintsize length = Json_ArrayLength(&field_value);
-			out->primitives = Engine_PushMemory(sizeof(GltfJson_Primitive) * length);
+			out->primitives = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Primitive) * length);
 			out->primitive_count = length;
 			
 			int32 i = 0;
@@ -829,7 +829,7 @@ ParseGltfDataMeshes(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->meshes = Engine_PushMemory(sizeof(GltfJson_Mesh) * length);
+	out->meshes = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Mesh) * length);
 	out->mesh_count = length;
 	
 	int32 i = 0;
@@ -945,7 +945,7 @@ ParseGltfDataAccessors(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->accessors = Engine_PushMemory(sizeof(GltfJson_Accessor) * length);
+	out->accessors = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Accessor) * length);
 	out->accessor_count = length;
 	
 	int32 i = 0;
@@ -1019,7 +1019,7 @@ ParseGltfDataSamplers(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->samplers = Engine_PushMemory(sizeof(GltfJson_Sampler) * length);
+	out->samplers = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Sampler) * length);
 	out->sampler_count = length;
 	
 	int32 i = 0;
@@ -1081,7 +1081,7 @@ ParseGltfDataImages(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->images = Engine_PushMemory(sizeof(GltfJson_Image) * length);
+	out->images = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Image) * length);
 	out->image_count = length;
 	
 	int32 i = 0;
@@ -1143,7 +1143,7 @@ ParseGltfDataTextures(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->textures = Engine_PushMemory(sizeof(GltfJson_Texture) * length);
+	out->textures = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Texture) * length);
 	out->texture_count = length;
 	
 	int32 i = 0;
@@ -1205,7 +1205,7 @@ ParseGltfDataBufferViews(const Json_Value* value, Engine_GltfJson* out)
 	if (length == 0)
 		return false;
 	
-	out->buffer_views = Engine_PushMemory(sizeof(GltfJson_BufferView) * length);
+	out->buffer_views = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_BufferView) * length);
 	out->buffer_view_count = length;
 	
 	int32 i = 0;
@@ -1310,7 +1310,7 @@ ParseGltfData(const uint8* json_begin, const uint8* json_end,
 			if (length == 0)
 				return false;
 			
-			out->buffers = Engine_PushMemory(sizeof(GltfJson_Buffer) * length);
+			out->buffers = Arena_Push(global_engine.temp_arena, sizeof(GltfJson_Buffer) * length);
 			out->buffer_count = length;
 			
 			int32 i = 0;

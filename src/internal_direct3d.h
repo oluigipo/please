@@ -6,7 +6,8 @@ typedef struct GraphicsContext_Direct3D GraphicsContext_Direct3D;
 #endif // INTERNAL_DIRECT3D_H
 
 //~ Windows Stuff
-#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT)
+#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT) && !defined(INTERNAL_DIRECT3D_H_COMPLETE)
+#define INTERNAL_DIRECT3D_H_COMPLETE
 
 #ifndef WIN32_LEAN_AND_MEAN
 #   define WIN32_LEAN_AND_MEAN

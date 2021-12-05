@@ -13,6 +13,9 @@
 #define COBJMACROS
 #define DIRECTINPUT_VERSION 0x0800
 
+#define near
+#define far
+
 // General
 #include <windows.h>
 #include <dwmapi.h>
@@ -41,6 +44,9 @@
 #if defined(DEBUG)
 #   include <dxgidebug.h>
 #endif
+
+#undef near
+#undef far
 
 #include "platform_win32_guid.c"
 
@@ -485,7 +491,7 @@ Platform_VirtualFree(void* ptr, uintsize size)
 }
 
 API void*
-Platform_ReadEntireFile(String path, uintsize* out_size)
+Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 {
 	Trace("Platform_ReadEntireFile");
 	wchar_t wpath[1024];
@@ -502,8 +508,8 @@ Platform_ReadEntireFile(String path, uintsize* out_size)
 		return NULL;
 	}
 	
-	uintsize size = (uintsize)sizeStruct.QuadPart;
-	void* memory = Platform_HeapAlloc(size);
+	uintsize size = sizeStruct.QuadPart;
+	void* memory = opt_arena ? Arena_Push(opt_arena, size) : Platform_HeapAlloc(size);
 	if (!memory)
 	{
 		CloseHandle(handle);
@@ -511,16 +517,16 @@ Platform_ReadEntireFile(String path, uintsize* out_size)
 	}
 	
 	DWORD bytes_read;
-	if (!ReadFile(handle, memory, (DWORD)size, &bytes_read, NULL) ||
-		(uintsize)bytes_read != size)
+	if (!ReadFile(handle, memory, (DWORD)size, &bytes_read, NULL) || bytes_read != size)
 	{
-		Platform_HeapFree(memory);
+		if (!opt_arena)
+			Platform_HeapFree(memory);
 		memory = NULL;
 		out_size = NULL;
 	}
 	
 	if (out_size)
-		*out_size = (uintsize)bytes_read;
+		*out_size = bytes_read;
 	
 	CloseHandle(handle);
 	

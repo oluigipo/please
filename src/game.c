@@ -54,15 +54,15 @@ DrawMenuButton(Game_GlobalData* global, Game_MenuButton* button, Input_Mouse* mo
 	Render_DrawText(&global->font, button->text, pos, 24.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, alignment);
 }
 
-API void*
-Game_MainScene(void** shared_data)
+API void
+Game_MainScene(Engine_Data* g)
 {
 	Trace("Game_MainScene");
 	
-	Scene next_scene = NULL;
+	g->user_data = Arena_Push(g->persistent_arena, sizeof(Game_GlobalData));
+	Game_GlobalData* global = g->user_data;
 	
-	*shared_data = Engine_PushMemory(sizeof(Game_GlobalData));
-	Game_GlobalData* global = *shared_data;
+	Scene next_scene = NULL;
 	
 	// NOTE(ljre): Load font
 	bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &global->font);
@@ -94,7 +94,7 @@ Game_MainScene(void** shared_data)
 	while (!Platform_WindowShouldClose())
 	{
 		Trace("Game Loop");
-		void* memory_state = Engine_PushMemoryState();
+		void* memory_state = Arena_End(g->temp_arena);
 		
 		Input_Mouse mouse;
 		Input_GetMouse(&mouse);
@@ -138,12 +138,12 @@ Game_MainScene(void** shared_data)
 		}
 		
 		//~ NOTE(ljre): Finish Frame
-		Engine_PopMemoryState(memory_state);
+		Arena_Pop(g->temp_arena, memory_state);
 		Engine_FinishFrame();
 		
 		if (next_scene != NULL)
 			break;
 	}
 	
-	return next_scene;
+	g->current_scene = next_scene;
 }

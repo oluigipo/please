@@ -25,7 +25,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	Trace("Audio_LoadFile");
 	
 	uintsize size;
-	void* memory = Platform_ReadEntireFile(path, &size);
+	void* memory = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
 	
 	if (!memory)
 		return false;
@@ -37,7 +37,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 														   &out_sound->sample_rate, &out_sound->samples);
 	}
 	
-	Platform_FreeFileMemory(memory, size);
+	Arena_Pop(global_engine.temp_arena, memory);
 	
 	if (out_sound->sample_count == -1)
 		return false;

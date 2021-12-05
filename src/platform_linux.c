@@ -264,7 +264,7 @@ Platform_VirtualReserve(uintsize size)
 {
 	Trace("Platform_VirtualReserve");
 	
-	void* memory = mmap(NULL, size, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	void* memory = mmap(NULL, size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	
 	return memory;
 }
@@ -274,7 +274,7 @@ Platform_VirtualCommit(void* ptr, uintsize size)
 {
 	Trace("Platform_VirtualCommit");
 	
-	// NOTE(ljre): No need to commit!
+	mprotect(ptr, size, PROT_WRITE | PROT_READ);
 }
 
 API void
@@ -286,7 +286,7 @@ Platform_VirtualFree(void* ptr, uintsize size)
 }
 
 API void*
-Platform_ReadEntireFile(String path, uintsize* out_size)
+Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 {
 	Trace("Platform_ReadEntireFile");
 	
@@ -310,7 +310,7 @@ Platform_ReadEntireFile(String path, uintsize* out_size)
 	uintsize size = (uintsize)ftell(file);
 	rewind(file);
 	
-	void* memory = Platform_HeapAlloc(size);
+	void* memory = opt_arena ? Arena_Push(opt_arena, size) : Platform_HeapAlloc(size);
 	if (!memory)
 	{
 		fclose(file);

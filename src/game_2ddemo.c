@@ -68,17 +68,17 @@ Game_Draw2DState(Game_GlobalState* global)
 	Render_DrawLayer2D(&layer_to_render, view_matrix);
 }
 
-internal void*
-Game_2DDemoScene(void** shared_data)
+internal void
+Game_2DDemoScene(Engine_Data* g)
 {
-	void* scene_mem_state = Engine_PushMemoryState();
+	void* mem_state = Arena_End(g->persistent_arena);
 	
 	Trace("Game_2DDemoScene");
 	Platform_SetWindow(-1, -1, 640, 480);
 	Platform_CenterWindow();
 	Platform_PollEvents(); // "force" window update
 	
-	Game_GlobalState* global = Engine_PushMemory(sizeof *global);
+	Game_GlobalState* global = Arena_Push(g->persistent_arena, sizeof *global);
 	
 	//~ NOTE(ljre): Assets
 	if (!Render_LoadTextureFromFile(Str("./assets/sprites.png"), &global->sprites_texture))
@@ -102,7 +102,7 @@ Game_2DDemoScene(void** shared_data)
 	while (!Platform_WindowShouldClose())
 	{
 		Trace("Game Loop");
-		void* memory_state = Engine_PushMemoryState();
+		void* temp_memory_state = Arena_End(g->temp_arena);
 		
 		//~ NOTE(ljre): Update
 		{
@@ -119,11 +119,11 @@ Game_2DDemoScene(void** shared_data)
 		}
 		
 		//~ NOTE(ljre): Finish Frame
-		Engine_PopMemoryState(memory_state);
+		Arena_Pop(g->temp_arena, temp_memory_state);
 		Engine_FinishFrame();
 	}
 	
-	Engine_PopMemoryState(scene_mem_state);
-	return NULL;
+	Arena_Pop(g->persistent_arena, mem_state);
+	g->current_scene = NULL;
 }
 

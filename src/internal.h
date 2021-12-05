@@ -30,6 +30,7 @@
 #endif
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
+#define IsPowerOf2(x) ( ((x) & (x)-1) == 0 )
 #define Kilobytes(n) ((uintsize)(n) * 1024)
 #define Megabytes(n) (1024*Kilobytes(n))
 #define Gigabytes(n) (1024*Megabytes(n))
@@ -107,29 +108,32 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #endif
 
 //~ Others
+#include "internal_arena.h"
 #include "internal_string.h"
 #include "internal_opengl.h"
 #include "internal_direct3d.h"
 #include "internal_assets.h"
 
 //~ Forward Declarations
+struct Engine_Data typedef Engine_Data;
 
 // A scene is a function pointer that should return the next scene to
 // run, or NULL if the game should close.
 // The parameter 'shared_data' is a pointer to a variable which will have the same value when changing scenes.
 // Use it to store your global game data.
-typedef void* SceneProc(void** shared_data);
+typedef void SceneProc(Engine_Data* data);
 typedef SceneProc* Scene;
 
-API void* Engine_PushMemory(uintsize size); // kinda malloc
-API void* Engine_RePushMemory(void* ptr, uintsize size); // kinda realloc
-API void Engine_PopMemory(void* ptr); // kinda free
-
-// "pushing" the memory state will save the last allocation header and popping it will set it.
-// It will essentially encapsulate every allocation happening between the calls of Push and Pop, so you can free
-// all of them at once.
-API void* Engine_PushMemoryState(void);
-API void Engine_PopMemoryState(void* state);
+struct Engine_Data
+{
+	Arena* persistent_arena;
+	Arena* temp_arena;
+	Scene current_scene;
+	void* user_data;
+	
+	float32 delta_time;
+	float64 last_frame_time;
+};
 
 // Engine entry point. It shall be called by the platform layer.
 API int32 Engine_Main(int32 argc, char** argv);
@@ -142,7 +146,7 @@ API float32 Engine_RandomF32Range(float32 start, float32 end);
 API float32 Engine_DeltaTime(void);
 
 // The first scene to run.
-API void* Game_MainScene(void** shared_data);
+API void Game_MainScene(Engine_Data* data);
 
 //- Discord Game SDK (OPTIONAL)
 #ifdef USE_DISCORD_GAME_SDK
@@ -279,7 +283,7 @@ API void Platform_HeapFree(void* ptr);
 API void* Platform_VirtualReserve(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
 API void Platform_VirtualFree(void* ptr, uintsize size);
-API void* Platform_ReadEntireFile(String path, uintsize* out_size);
+API void* Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena); // 'opt_arena' can be NULL
 API bool32 Platform_WriteEntireFile(String path, const void* data, uintsize size);
 API void Platform_FreeFileMemory(void* ptr, uintsize size);
 

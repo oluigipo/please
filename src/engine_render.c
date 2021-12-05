@@ -1,3 +1,5 @@
+
+
 #define GL (*global_graphics->opengl)
 #define D3D (*global_graphics->d3d)
 
@@ -725,7 +727,7 @@ Render_LoadFontFromFile(String path, Asset_Font* out_font)
 	Trace("Render_LoadFontFromFile");
 	
 	bool32 result = false;
-	out_font->data = Platform_ReadEntireFile(path, &out_font->data_size);
+	out_font->data = Platform_ReadEntireFile(path, &out_font->data_size, global_engine.persistent_arena);
 	
 	if (out_font->data)
 	{
@@ -736,7 +738,7 @@ Render_LoadFontFromFile(String path, Asset_Font* out_font)
 		}
 		else
 		{
-			Platform_FreeFileMemory(out_font->data, out_font->data_size);
+			Arena_Pop(global_engine.persistent_arena, out_font->data);
 		}
 	}
 	
@@ -749,14 +751,14 @@ Render_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	Trace("Render_LoadTextureFromFile");
 	
 	uintsize size;
-	void* data = Platform_ReadEntireFile(path, &size);
+	void* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
 	if (!data)
 		return false;
 	
 	int32 width, height, channels;
 	void* texture_data = stbi_load_from_memory(data, (int32)size, &width, &height, &channels, 4);
 	
-	Platform_FreeFileMemory(data, size);
+	Arena_Pop(global_engine.temp_arena, data);
 	if (!texture_data)
 		return false;
 	
@@ -785,14 +787,14 @@ Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 c
 	Trace("Render_LoadTextureArrayFromFile");
 	
 	uintsize file_size;
-	void* file_data = Platform_ReadEntireFile(path, &file_size);
+	void* file_data = Platform_ReadEntireFile(path, &file_size, global_engine.temp_arena);
 	if (!file_data)
 		return false;
 	
 	int32 width, height, channels;
 	void* texture_data = stbi_load_from_memory(file_data, (int32)file_size, &width, &height, &channels, 4);
 	
-	Platform_FreeFileMemory(file_data, file_size);
+	Arena_Pop(global_engine.temp_arena, file_data);
 	if (!texture_data)
 		return false;
 	
@@ -844,7 +846,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	int32 bitmap_width, bitmap_height;
 	CalcBitmapSizeForText(font, scale, text, &bitmap_width, &bitmap_height);
 	
-	uint8* bitmap = Engine_PushMemory((uintsize)(bitmap_width * bitmap_height));
+	uint8* bitmap = Arena_Push(global_engine.temp_arena, (uintsize)(bitmap_width * bitmap_height));
 	
 	float32 xx = 0, yy = 0;
 	int32 codepoint, it = 0;
@@ -906,7 +908,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
 	GL.glDeleteTextures(1, &texture);
 	
-	Engine_PopMemory(bitmap);
+	Arena_Pop(global_engine.temp_arena, bitmap);
 }
 
 API void
@@ -1034,11 +1036,11 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
 	Trace("Render_Load3DModelFromFile");
 	uintsize size;
-	uint8* data = Platform_ReadEntireFile(path, &size);
+	void* state = Arena_End(global_engine.temp_arena);
+	
+	uint8* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
 	if (!data)
 		return false;
-	
-	void* state = Engine_PushMemoryState();
 	
 	Engine_GltfJson model;
 	bool32 result;
@@ -1255,8 +1257,7 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 	
-	Engine_PopMemoryState(state);
-	Platform_FreeFileMemory(data, size);
+	Arena_Pop(global_engine.temp_arena, state);
 	
 	return result;
 }

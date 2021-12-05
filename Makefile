@@ -12,33 +12,33 @@ ifndef $(PLATFORM)
 	endif
 endif
 
-CUSTOMC ?=
+CUSTOMC ?= -O2 -ffast-math
 CUSTOMLD ?=
-OPT ?= -O2 -ffast-math
+DEBUG ?=
 BUILDDIR ?= build
 
-CFLAGS += -Iinclude
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
-CFLAGS += -Wno-missing-braces $(CUSTOMC) $(OPT)
-LDFLAGS += -Llib $(CUSTOMLD)
+CFLAGS += -Wno-missing-braces -Wno-sign-conversion
+CFLAGS += -Iinclude $(DEBUG) $(CUSTOMC)
+LDFLAGS += -Llib $(DEBUG) $(CUSTOMLD)
 
 ifeq ($(PLATFORM), win32)
 	OUTPUT_NAME = game.exe
 	CLEAN = del "build\*.o" "build\*.pdb" "build\*.exp" "build\*.lib" "build\*.ilk"
 	
 	CC = clang -std=c99
-	LD = clang -fuse-ld=lld-link
+	LD = clang -fuse-ld=lld
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static -Xlinker /subsystem:windows
 	
 	CFLAGS += -Wsizeof-array-decay -Werror=implicit-int-float-conversion
-	CFLAGS += -Werror=float-conversion -Werror=sign-conversion -Wno-int-to-void-pointer-cast
+	CFLAGS += -Werror=float-conversion -Wno-int-to-void-pointer-cast
 else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game
 	CLEAN = rm ./build/*.o
 	
 	CC = clang -std=c99
-	LD = clang
+	LD = clang -fuse-ld=lld
 	
 	LDFLAGS += -lm -lX11 -ldl -lasound
 endif

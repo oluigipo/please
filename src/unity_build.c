@@ -6,6 +6,9 @@
 #   define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#define INTERNAL_COMPLETE_GRAPHICS_CONTEXT
+#include "internal.h"
+
 #include "game.c"
 #include "engine.c"
 

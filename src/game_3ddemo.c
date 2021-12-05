@@ -91,12 +91,12 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 	}
 }
 
-internal void*
-Game_3DDemoScene(void** shared_data)
+internal void
+Game_3DDemoScene(Engine_Data* g)
 {
 	Trace("Game_3DDemoScene");
 	
-	Game_GlobalData* global = *shared_data;
+	Game_GlobalData* global = g->user_data;
 	
 	Asset_3DModel model;
 	if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))
@@ -262,7 +262,7 @@ Game_3DDemoScene(void** shared_data)
 	while (!Platform_WindowShouldClose())
 	{
 		Trace("Game Loop");
-		void* memory_state = Engine_PushMemoryState();
+		void* memory_state = Arena_End(g->temp_arena);
 		
 		if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
 			break;
@@ -381,9 +381,9 @@ Game_3DDemoScene(void** shared_data)
 		Engine_PlayAudios(playing_audios, &playing_audio_count, 0.075f);
 		Engine_FinishFrame();
 		
-		Engine_PopMemoryState(memory_state);
+		Arena_Pop(g->temp_arena, memory_state);
 	}
 	
-	return NULL;
+	g->current_scene = NULL;
 }
 

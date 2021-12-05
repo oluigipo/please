@@ -26,7 +26,9 @@
 #define STB_VORBIS_NO_STDIO
 #include "ext/stb_vorbis.h"
 
-//~ Files
+//~ Our Code
+internal Engine_Data global_engine;
+
 #ifdef USE_DISCORD_GAME_SDK
 #   include "engine_discord.c"
 #endif
@@ -64,10 +66,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "ext/stb_image.h"
 
-//#define STBTT_malloc(x,u) ((void)(u),Platform_HeapAlloc(x))
-//#define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
-#define STBTT_malloc(x,u) ((void)(u),Engine_PushMemory(x))
-#define STBTT_free(x,u) ((void)(u),Engine_PopMemory(x))
+#define STBTT_malloc(x,u) ((void)(u),Platform_HeapAlloc(x))
+#define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
+//#define STBTT_malloc(x,u) ((void)(u),Engine_PushMemory(x))
+//#define STBTT_free(x,u) ((void)(u),Engine_PopMemory(x))
 #define STBTT_assert Assert
 
 #define STB_TRUETYPE_IMPLEMENTATION

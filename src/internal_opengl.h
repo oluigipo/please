@@ -5,7 +5,7 @@ struct GraphicsContext_OpenGL typedef GraphicsContext_OpenGL;
 
 #endif // INTERNAL_OPENGL_H
 
-#ifdef INTERNAL_COMPLETE_GRAPHICS_CONTEXT
+#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT) && !defined(__gl_h)
 #define __gl_h
 
 #if defined(_WIN32) && !defined(APIENTRY) && !defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)
