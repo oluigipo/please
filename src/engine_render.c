@@ -1,5 +1,3 @@
-
-
 #define GL (*global_graphics->opengl)
 #define D3D (*global_graphics->d3d)
 
@@ -13,6 +11,8 @@
 #define TEXTURE_SLOT_NORMAL 1
 #define TEXTURE_SLOT_SPECULAR 2
 #define TEXTURE_SLOT_SHADOWMAP 3
+
+#define MAX_POINT_LIGHTS 16
 
 struct Vertex
 {
@@ -63,7 +63,7 @@ struct InternalShaderUniforms
 	int32 dirlight_shadowmap;
 	
 	int32 pointlights_count;
-	PointLightsUniformData pointlights[MAX_3DMANAGER_POINT_LIGHTS];
+	PointLightsUniformData pointlights[MAX_POINT_LIGHTS];
 }
 typedef InternalShaderUniforms;
 
@@ -257,7 +257,7 @@ internal const char* const global_fragment_finalpassshader =
 "};"
 
 "uniform DirLight uDirLight;"
-"uniform PointLight uPointLights[" StrMacro(MAX_3DMANAGER_POINT_LIGHTS) "];"
+"uniform PointLight uPointLights[" StrMacro(MAX_POINT_LIGHTS) "];"
 "uniform int uPointLightsCount;"
 "uniform vec3 uViewPos;"
 "uniform mat4 uDirLightMatrix;\n"
@@ -542,7 +542,7 @@ GetShaderUniforms(InternalShader* shader)
 	shader->uniform.material_shininess = GL.glGetUniformLocation(id, "uMaterial.shininess");
 	
 	shader->uniform.pointlights_count = GL.glGetUniformLocation(id, "uPointLightsCount");
-	for (int32 i = 0; i < MAX_3DMANAGER_POINT_LIGHTS; ++i)
+	for (int32 i = 0; i < MAX_POINT_LIGHTS; ++i)
 	{
 		char buf[128];
 		
@@ -1050,7 +1050,7 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 		result = Engine_ParseGltf(data, size, &model);
 	}
 	
-	// TODO(ljre)
+	// TODO(ljre): Checking
 	if (result)
 	{
 		GltfJson_Primitive* prim = &model.meshes[model.nodes[model.scenes[model.scene].nodes[0]].mesh].primitives[0];
@@ -1262,112 +1262,16 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 	return result;
 }
 
-API Render_3DEntity*
-Render_AddTo3DManager(Render_3DManager* mgr, Render_3DEntityKind kind)
-{
-	Trace("Render_AddToManager");
-	Render_3DEntity* result;
-	
-	//- NOTE(ljre): Get Component Handle
-	int32* comp_count;
-	void* comp_ptr;
-	uintsize comp_size;
-	Render_3DEntity** comp_handle_ptr;
-	
-	if (kind == Render_3DEntityKind_PointLight &&
-		mgr->point_lights_count < ArrayLength(mgr->point_lights))
-	{
-		comp_count = &mgr->point_lights_count;
-		comp_ptr = &mgr->point_lights[mgr->point_lights_count];
-		comp_handle_ptr = &mgr->point_lights[mgr->point_lights_count].entity;
-		comp_size = sizeof(*mgr->point_lights);
-	}
-	else if (kind == Render_3DEntityKind_Model &&
-			 mgr->model_count < ArrayLength(mgr->models))
-	{
-		comp_count = &mgr->model_count;
-		comp_ptr = &mgr->models[mgr->model_count];
-		comp_handle_ptr = &mgr->models[mgr->model_count].entity;
-		comp_size = sizeof(*mgr->models);
-	}
-	else
-	{
-		return NULL;
-	}
-	
-	//- NOTE(ljre): Get Entity Handle
-	if (mgr->free_space_count > 0)
-	{
-		result = mgr->free_spaces[--mgr->free_space_count];
-	}
-	else if (mgr->entity_count < ArrayLength(mgr->entities))
-	{
-		result = &mgr->entities[mgr->entity_count++];
-	}
-	else
-	{
-		return NULL;
-	}
-	
-	//- Done
-	memset(result, 0, sizeof *result);
-	memset(comp_ptr, 0, comp_size);
-	
-	result->handle = comp_ptr;
-	result->kind = kind;
-	++*comp_count;
-	*comp_handle_ptr = result;
-	
-	result->scale[0] = 1.0f;
-	result->scale[1] = 1.0f;
-	result->scale[2] = 1.0f;
-	
-	return result;
-}
-
 API void
-Render_RemoveFrom3DManager(Render_3DManager* mgr, Render_3DEntity* handle)
-{
-	Trace("Render_RemoveFromManager");
-	Assert(handle);
-	
-	switch (handle->kind)
-	{
-		case Render_3DEntityKind_PointLight:
-		{
-			if (mgr->point_lights_count > 1)
-			{
-				*handle->point_light = mgr->point_lights[mgr->point_lights_count-1];
-				
-				handle->point_light->entity->point_light = handle->point_light;
-			}
-			--mgr->point_lights_count;
-		} break;
-		
-		case Render_3DEntityKind_Model:
-		{
-			if (mgr->model_count > 1)
-			{
-				*handle->model = mgr->models[mgr->model_count-1];
-				handle->model->entity->model = handle->model;
-			}
-			--mgr->model_count;
-		} break;
-	}
-	
-	mgr->free_spaces[mgr->free_space_count++] = handle;
-}
-
-API void
-Render_ProperlySetup3DManager(Render_3DManager* mgr)
+Render_ProperlySetup3DScene(Render_3DScene* scene)
 {
 	Trace("Render_ProperlySetupManager");
 	const uint32 depthmap_width = 2048, depthmap_height = 2048;
 	
-	if (!mgr->shadow_fbo)
+	if (!scene->shadow_fbo)
 	{
-		GL.glGenTextures(1, &mgr->shadow_depthmap);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
+		GL.glGenTextures(1, &scene->shadow_depthmap);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->shadow_depthmap);
 		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, depthmap_width, depthmap_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1377,63 +1281,63 @@ Render_ProperlySetup3DManager(Render_3DManager* mgr)
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		GL.glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
 		
-		GL.glGenFramebuffers(1, &mgr->shadow_fbo);
-		GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->shadow_fbo);
-		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mgr->shadow_depthmap, 0);
+		GL.glGenFramebuffers(1, &scene->shadow_fbo);
+		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->shadow_fbo);
+		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, scene->shadow_depthmap, 0);
 		GL.glDrawBuffer(GL_NONE);
 		GL.glReadBuffer(GL_NONE);
 	}
 	
-	if (!mgr->gbuffer)
+	if (!scene->gbuffer)
 	{
 		int32 width = Platform_WindowWidth();
 		int32 height = Platform_WindowHeight();
 		
-		GL.glGenFramebuffers(1, &mgr->gbuffer);
-		GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
+		GL.glGenFramebuffers(1, &scene->gbuffer);
+		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->gbuffer);
 		
-		GL.glGenTextures(1, &mgr->gbuffer_pos);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_pos);
+		GL.glGenTextures(1, &scene->gbuffer_pos);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_pos);
 		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mgr->gbuffer_pos, 0);
+		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, scene->gbuffer_pos, 0);
 		
-		GL.glGenTextures(1, &mgr->gbuffer_norm);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
+		GL.glGenTextures(1, &scene->gbuffer_norm);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_norm);
 		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mgr->gbuffer_norm, 0);
+		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, scene->gbuffer_norm, 0);
 		
-		GL.glGenTextures(1, &mgr->gbuffer_albedo);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_albedo);
+		GL.glGenTextures(1, &scene->gbuffer_albedo);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_albedo);
 		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, mgr->gbuffer_albedo, 0);
+		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, scene->gbuffer_albedo, 0);
 		
 		uint32 buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
 		GL.glDrawBuffers(ArrayLength(buffers), buffers);
 		
 #if 0
-		GL.glGenRenderbuffers(1, &mgr->gbuffer_depth);
-		GL.glBindRenderbuffer(GL_RENDERBUFFER, mgr->gbuffer_depth);
+		GL.glGenRenderbuffers(1, &scene->gbuffer_depth);
+		GL.glBindRenderbuffer(GL_RENDERBUFFER, scene->gbuffer_depth);
 		GL.glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-		GL.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mgr->gbuffer_depth);
+		GL.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, scene->gbuffer_depth);
 #else
-		GL.glGenTextures(1, &mgr->gbuffer_depth);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_depth);
+		GL.glGenTextures(1, &scene->gbuffer_depth);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_depth);
 		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mgr->gbuffer_depth, 0);
+		GL.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, scene->gbuffer_depth, 0);
 #endif
 	}
 }
 
 API void
-Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
+Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 {
 	Trace("Render_DrawManager");
 	
@@ -1465,8 +1369,8 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 	GL.glEnable(GL_CULL_FACE);
 	GL.glClear(GL_DEPTH_BUFFER_BIT);
 	
-	if (!mgr->shadow_fbo || !mgr->gbuffer)
-		Render_ProperlySetup3DManager(mgr);
+	if (!scene->shadow_fbo || !scene->gbuffer)
+		Render_ProperlySetup3DScene(scene);
 	
 	//~ NOTE(ljre): Draw to Framebuffer
 	{
@@ -1476,15 +1380,15 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 			mat4 proj;
 			glm_ortho(-range, range, -range, range, 0.5f, 80.0f, proj);
 			
-			glm_lookat((vec3) { mgr->dirlight[0] * umbrella,
-						   mgr->dirlight[1] * umbrella,
-						   mgr->dirlight[2] * umbrella },
+			glm_lookat((vec3) { scene->dirlight[0] * umbrella,
+						   scene->dirlight[1] * umbrella,
+						   scene->dirlight[2] * umbrella },
 					   (vec3) { 0.0f, 0.0f, 0.0f },
 					   (vec3) { 0.0f, 1.0f, 0.0f }, light_space_matrix);
 			glm_mat4_mul(proj, light_space_matrix, light_space_matrix);
 		}
 		
-		GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->shadow_fbo);
+		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->shadow_fbo);
 		GL.glViewport(0, 0, depthmap_width, depthmap_height);
 		GL.glClear(GL_DEPTH_BUFFER_BIT);
 		BindShader(&global_default_shadowshader);
@@ -1492,19 +1396,13 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		
 		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)light_space_matrix);
 		
-		for (int32 i = 0; i < mgr->model_count; ++i)
+		for (int32 i = 0; i < scene->model_count; ++i)
 		{
-			Render_3DEntity_Model* const model = &mgr->models[i];
+			Render_3DModel* const model = &scene->models[i];
 			Asset_3DModel* const asset = model->asset;
-			Render_3DEntity* const entity = model->entity;
 			
 			glm_mat4_identity(matrix);
-			glm_translate(matrix, entity->position);
-			glm_rotate(matrix, entity->rotation[0], (vec3) { 1.0f, 0.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[1], (vec3) { 0.0f, 1.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
-			glm_scale(matrix, entity->scale);
-			
+			glm_mat4_mul(matrix, model->transform, matrix);
 			glm_mat4_mul(matrix, asset->transform, matrix);
 			
 			GL.glBindVertexArray(asset->vao);
@@ -1522,7 +1420,7 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 	
 	//~ NOTE(ljre): GBuffer
 	{
-		GL.glBindFramebuffer(GL_FRAMEBUFFER, mgr->gbuffer);
+		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->gbuffer);
 		GL.glDisable(GL_BLEND);
 		
 		GL.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1536,19 +1434,13 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		GL.glUniform1i(global_uniform->material_specular, TEXTURE_SLOT_SPECULAR);
 		GL.glUniform1i(global_uniform->material_normal, TEXTURE_SLOT_NORMAL);
 		
-		for (int32 i = 0; i < mgr->model_count; ++i)
+		for (int32 i = 0; i < scene->model_count; ++i)
 		{
-			Render_3DEntity_Model* const model = &mgr->models[i];
+			Render_3DModel* const model = &scene->models[i];
 			Asset_3DModel* const asset = model->asset;
-			Render_3DEntity* const entity = model->entity;
 			
 			glm_mat4_identity(matrix);
-			glm_translate(matrix, entity->position);
-			glm_rotate(matrix, entity->rotation[0], (vec3) { 1.0f, 0.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[1], (vec3) { 0.0f, 1.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
-			glm_scale(matrix, entity->scale);
-			
+			glm_mat4_mul(matrix, model->transform, matrix);
 			glm_mat4_mul(matrix, asset->transform, matrix);
 			
 			glm_mat4_inv(matrix, inversed);
@@ -1576,7 +1468,7 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		}
 		
 		// NOTE(ljre): Copy depth buffer
-		//GL.glBindFramebuffer(GL_READ_FRAMEBUFFER, mgr->gbuffer);
+		//GL.glBindFramebuffer(GL_READ_FRAMEBUFFER, scene->gbuffer);
 		//GL.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		//GL.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		GL.glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1593,15 +1485,15 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, model);
 		
 		GL.glActiveTexture(GL_TEXTURE0 + 0);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_pos);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_pos);
 		GL.glActiveTexture(GL_TEXTURE0 + 1);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_norm);
 		GL.glActiveTexture(GL_TEXTURE0 + 2);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_albedo);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_albedo);
 		GL.glActiveTexture(GL_TEXTURE0 + 3);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->shadow_depthmap);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->shadow_depthmap);
 		GL.glActiveTexture(GL_TEXTURE0 + 4);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_depth);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_depth);
 		
 		GL.glUniform1i(global_uniform->position, 0);
 		GL.glUniform1i(global_uniform->normal, 1);
@@ -1612,18 +1504,17 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		GL.glUniformMatrix4fv(global_uniform->dirlight_matrix, 1, false, (float32*)light_space_matrix);
 		GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
 		GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
-		GL.glUniform3fv(global_uniform->dirlight_direction, 1, mgr->dirlight);
+		GL.glUniform3fv(global_uniform->dirlight_direction, 1, scene->dirlight);
 		GL.glUniform3f(global_uniform->dirlight_ambient, 0.2f, 0.2f, 0.2f);
 		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.4f, 0.4f, 0.4f);
 		GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
 		
-		GL.glUniform1i(global_uniform->pointlights_count, mgr->point_lights_count);
-		for (int32 i = 0; i < mgr->point_lights_count; ++i)
+		GL.glUniform1i(global_uniform->pointlights_count, scene->point_light_count);
+		for (int32 i = 0; i < scene->point_light_count; ++i)
 		{
-			Render_3DEntity_PointLight* const l = &mgr->point_lights[i];
-			Render_3DEntity* const e = l->entity;
+			Render_3DPointLight* const l = &scene->point_lights[i];
 			
-			GL.glUniform3fv(global_uniform->pointlights[i].position, 1, e->position);
+			GL.glUniform3fv(global_uniform->pointlights[i].position, 1, l->position);
 			GL.glUniform1f(global_uniform->pointlights[i].constant, l->constant);
 			GL.glUniform1f(global_uniform->pointlights[i].linear, l->linear);
 			GL.glUniform1f(global_uniform->pointlights[i].quadratic, l->quadratic);
@@ -1645,18 +1536,14 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
 		GL.glUniform1i(global_uniform->texture, 0);
 		
-		for (int32 i = 0; i < mgr->point_lights_count; ++i)
+		for (int32 i = 0; i < scene->point_light_count; ++i)
 		{
-			Render_3DEntity_PointLight* const light = &mgr->point_lights[i];
-			Render_3DEntity* const entity = light->entity;
-			Asset_3DModel* const asset = mgr->cube_model;
+			Render_3DPointLight* const light = &scene->point_lights[i];
+			Asset_3DModel* const asset = scene->cube_model;
 			
 			glm_mat4_identity(matrix);
-			glm_translate(matrix, entity->position);
-			glm_rotate(matrix, entity->rotation[0], (vec3) { 1.0f, 0.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[1], (vec3) { 0.0f, 1.0f, 0.0f });
-			glm_rotate(matrix, entity->rotation[2], (vec3) { 0.0f, 0.0f, 1.0f });
-			glm_scale(matrix, entity->scale);
+			glm_translate(matrix, light->position);
+			glm_scale(matrix, (vec3) { 0.25f, 0.25f, 0.25f });
 			
 			GL.glUniform4f(global_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
 			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
@@ -1688,7 +1575,7 @@ Render_Draw3DManager(Render_3DManager* mgr, const Render_Camera* camera)
 		GL.glUniform1i(global_uniform->texture, 0);
 		
 		GL.glActiveTexture(GL_TEXTURE0);
-		GL.glBindTexture(GL_TEXTURE_2D, mgr->gbuffer_norm);
+		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_norm);
 		
 		GL.glBindVertexArray(global_quad_vao);
 		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);

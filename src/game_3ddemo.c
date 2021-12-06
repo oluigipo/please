@@ -154,58 +154,62 @@ Game_3DDemoScene(Engine_Data* g)
 		.up = { 0.0f, 1.0f, 0.0f },
 	};
 	
-	//~ NOTE(ljre): Entities
-	Render_3DManager manager = { 0 };
-	manager.dirlight[0] = 1.0f;
-	manager.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
-	manager.dirlight[2] = 0.5f;
-	glm_vec3_normalize(manager.dirlight);
-	
-	manager.cube_model = &model;
+	//~ NOTE(ljre): 3D Scene
+	Render_3DModel* scene_models = Arena_Push(g->persistent_arena, sizeof(*scene_models) * 42);
 	
 	//- Ground
-	Render_3DEntity* ground = Render_AddTo3DManager(&manager, Render_3DEntityKind_Model);
+	Render_3DModel* ground = &scene_models[0];
 	
-	ground->scale[0] = 20.0f;
-	ground->scale[1] = 2.0f;
-	ground->scale[2] = 20.0f;
-	ground->position[0] = 0.0f;
-	ground->position[1] = -2.0f;
-	ground->position[2] = 0.0f;
-	ground->model->color[0] = 1.0f;
-	ground->model->color[1] = 1.0f;
-	ground->model->color[2] = 1.0f;
-	ground->model->color[3] = 1.0f;
-	ground->model->asset = &model;
+	glm_mat4_identity(ground->transform);
+	glm_scale(ground->transform, (vec3) { 20.0f, 2.0f, 20.0f });
+	glm_translate(ground->transform, (vec3) { 0.0, -1.0f, 0.0f });
+	ground->color[0] = 1.0f;
+	ground->color[1] = 1.0f;
+	ground->color[2] = 1.0f;
+	ground->color[3] = 1.0f;
+	ground->asset = &model;
 	
 	//- Tree
-	Render_3DEntity* tree = Render_AddTo3DManager(&manager, Render_3DEntityKind_Model);
+	Render_3DModel* tree = &scene_models[1];
 	
-	ColorToVec4(0xFFFFFFFF, tree->model->color);
-	tree->position[1] += 0.1f;
-	tree->model->asset = &tree_model;
+	glm_mat4_identity(tree->transform);
+	glm_translate(tree->transform, (vec3) { -1.0f });
+	tree->asset = &tree_model;
+	ColorToVec4(0xFFFFFFFF, tree->color);
 	
 	//- Corset
 	for (int32 i = 0; i < 10; ++i) {
-		Render_3DEntity* corset = Render_AddTo3DManager(&manager, Render_3DEntityKind_Model);
+		Render_3DModel* corset = &scene_models[2 + i];
 		
-		ColorToVec4(0xFFFFFFFF, corset->model->color);
-		corset->position[0] = Engine_RandomF32Range(-5.0f, 5.0f);
-		corset->position[1] = 0.1f;
-		corset->position[2] = Engine_RandomF32Range(-5.0f, 5.0f);
-		corset->model->asset = &corset_model;
+		vec3 pos = {
+			Engine_RandomF32Range(-5.0f, 5.0f),
+			0.1f,
+			Engine_RandomF32Range(-5.0f, 5.0f),
+		};
+		
+		glm_mat4_identity(corset->transform);
+		glm_translate(corset->transform, pos);
+		
+		corset->asset = &corset_model;
+		ColorToVec4(0xFFFFFFFF, corset->color);
 	}
 	
 	//- Rotating Cubes
-	Render_3DEntity* rotating_cubes[30];
-	for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
+	Render_3DModel* rotating_cubes = &scene_models[12];
+	int32 rotating_cube_count = 30;
+	for (int32 i = 0; i < rotating_cube_count; ++i)
 	{
-		rotating_cubes[i] = Render_AddTo3DManager(&manager, Render_3DEntityKind_Model);
+		Render_3DModel* cube = &rotating_cubes[i];
 		
-		rotating_cubes[i]->position[0] = Engine_RandomF32Range(-20.0f, 20.0f);
-		rotating_cubes[i]->position[1] = Engine_RandomF32Range(3.0f, 10.0f);
-		rotating_cubes[i]->position[2] = Engine_RandomF32Range(-20.0f, 20.0f);
-		rotating_cubes[i]->model->asset = &model;
+		vec3 pos = {
+			Engine_RandomF32Range(-20.0f, 20.0f),
+			Engine_RandomF32Range(3.0f, 10.0f),
+			Engine_RandomF32Range(-20.0f, 20.0f),
+		};
+		
+		glm_mat4_identity(cube->transform);
+		glm_translate(cube->transform, pos);
+		cube->asset = &model;
 		
 		static const uint32 colors[] = {
 			0xFFFF0000, 0xFFFF3E00, 0xFFFF8100, 0xFFFFC100, 0xFFFFFF00, 0xFFC1FF00,
@@ -214,50 +218,56 @@ Game_3DDemoScene(Engine_Data* g)
 			0xFF8100FF, 0xFFC100FF, 0xFFFF00FF, 0xFFFF00C1, 0xFFFF0081, 0xFFFF003E,
 		};
 		
-		ColorToVec4(colors[Engine_RandomU64() % ArrayLength(colors)], rotating_cubes[i]->model->color);
+		ColorToVec4(colors[Engine_RandomU64() % ArrayLength(colors)], cube->color);
 	}
 	
 	//- Lights
-	Render_3DEntity* light1 = Render_AddTo3DManager(&manager, Render_3DEntityKind_PointLight);
-	Render_3DEntity* light2 = Render_AddTo3DManager(&manager, Render_3DEntityKind_PointLight);
+	Render_3DPointLight lights[2];
 	
-	light1->position[0] = 1.0f;
-	light1->position[1] = 2.0f;
-	light1->position[2] = 5.0f;
-	light1->scale[0] = 0.25f;
-	light1->scale[1] = 0.25f;
-	light1->scale[2] = 0.25f;
-	light1->point_light->ambient[0] = 0.2f;
-	light1->point_light->ambient[1] = 0.0f;
-	light1->point_light->ambient[2] = 0.0f;
-	light1->point_light->diffuse[0] = 0.8f;
-	light1->point_light->diffuse[1] = 0.0f;
-	light1->point_light->diffuse[2] = 0.0f;
-	light1->point_light->specular[0] = 1.0f;
-	light1->point_light->specular[1] = 0.0f;
-	light1->point_light->specular[2] = 0.0f;
-	light1->point_light->constant = 1.0f;
-	light1->point_light->linear = 0.09f;
-	light1->point_light->quadratic = 0.032f;
+	lights[0].position[0] = 1.0f;
+	lights[0].position[1] = 2.0f;
+	lights[0].position[2] = 5.0f;
+	lights[0].ambient[0] = 0.2f;
+	lights[0].ambient[1] = 0.0f;
+	lights[0].ambient[2] = 0.0f;
+	lights[0].diffuse[0] = 0.8f;
+	lights[0].diffuse[1] = 0.0f;
+	lights[0].diffuse[2] = 0.0f;
+	lights[0].specular[0] = 1.0f;
+	lights[0].specular[1] = 0.0f;
+	lights[0].specular[2] = 0.0f;
+	lights[0].constant = 1.0f;
+	lights[0].linear = 0.09f;
+	lights[0].quadratic = 0.032f;
 	
-	light2->position[0] = 1.0f;
-	light2->position[1] = 2.0f;
-	light2->position[2] = -5.0f;
-	light2->scale[0] = 0.25f;
-	light2->scale[1] = 0.25f;
-	light2->scale[2] = 0.25f;
-	light2->point_light->ambient[0] = 0.0f;
-	light2->point_light->ambient[1] = 0.0f;
-	light2->point_light->ambient[2] = 1.0f;
-	light2->point_light->diffuse[0] = 0.0f;
-	light2->point_light->diffuse[1] = 0.0f;
-	light2->point_light->diffuse[2] = 1.0f;
-	light2->point_light->specular[0] = 0.0f;
-	light2->point_light->specular[1] = 0.0f;
-	light2->point_light->specular[2] = 0.8f;
-	light2->point_light->constant = 1.0f;
-	light2->point_light->linear = 0.09f;
-	light2->point_light->quadratic = 0.032f;
+	lights[1].position[0] = 1.0f;
+	lights[1].position[1] = 2.0f;
+	lights[1].position[2] = -5.0f;
+	lights[1].ambient[0] = 0.0f;
+	lights[1].ambient[1] = 0.0f;
+	lights[1].ambient[2] = 1.0f;
+	lights[1].diffuse[0] = 0.0f;
+	lights[1].diffuse[1] = 0.0f;
+	lights[1].diffuse[2] = 1.0f;
+	lights[1].specular[0] = 0.0f;
+	lights[1].specular[1] = 0.0f;
+	lights[1].specular[2] = 0.8f;
+	lights[1].constant = 1.0f;
+	lights[1].linear = 0.09f;
+	lights[1].quadratic = 0.032f;
+	
+	// NOTE(ljre): Render Command
+	Render_3DScene scene3d = { 0 };
+	scene3d.dirlight[0] = 1.0f;
+	scene3d.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
+	scene3d.dirlight[2] = 0.5f;
+	glm_vec3_normalize(scene3d.dirlight);
+	
+	scene3d.cube_model = &model;
+	scene3d.point_lights = lights;
+	scene3d.models = scene_models;
+	scene3d.point_light_count = 2;
+	scene3d.model_count = 42;
 	
 	while (!Platform_WindowShouldClose())
 	{
@@ -353,12 +363,21 @@ Game_3DDemoScene(Engine_Data* g)
 		//~ NOTE(ljre): 3D World
 		float32 t = (float32)Platform_GetTime();
 		
-		for (int32 i = 0; i < ArrayLength(rotating_cubes); ++i)
+		for (int32 i = 0; i < rotating_cube_count; ++i)
 		{
-			rotating_cubes[i]->rotation[1] = t + (float32)i;
+			vec4 pos;
+			glm_vec4_copy(rotating_cubes[i].transform[3], pos);
+			//glm_vec4_copy((vec4) { [3] = 1.0f }, rotating_cubes[i].transform[3]);
+			
+			//glm_mat4_transpose(rotating_cubes[i].transform);
+			//glm_mat4_mulv(rotating_cubes[i].transform, pos, pos);
+			
+			glm_mat4_identity(rotating_cubes[i].transform);
+			glm_translate(rotating_cubes[i].transform, pos);
+			glm_rotate(rotating_cubes[i].transform, t + (float32)i, (vec3) { 0.0f, 1.0f, 0.0f });
 		}
 		
-		Render_Draw3DManager(&manager, &camera);
+		Render_Draw3DScene(&scene3d, &camera);
 		
 		//~ NOTE(ljre): 2D User Interface
 		Render_Begin2D();
