@@ -12,7 +12,11 @@ ifndef $(PLATFORM)
 	endif
 endif
 
-CUSTOMC ?= -O2 -ffast-math
+ifndef $(DEBUG)
+	CUSTOMC ?= -O2 -ffast-math
+else
+	CUSTOMC ?=
+endif
 CUSTOMLD ?=
 DEBUG ?=
 BUILDDIR ?= build
