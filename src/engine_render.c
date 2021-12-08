@@ -281,6 +281,7 @@ internal const char* const global_fragment_finalpassshader =
 
 "    float shadow = 0.0;"
 
+#if 0
 "    shadow += currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(-1.0, 1.0)*texel).r ? 1.0 : 0.0;"
 "    shadow += currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(0.0, 1.0)*texel).r ? 1.0 : 0.0;"
 "    shadow += currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(1.0, 1.0)*texel).r ? 1.0 : 0.0;"
@@ -292,6 +293,16 @@ internal const char* const global_fragment_finalpassshader =
 "    shadow += currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(1.0, -1.0)*texel).r ? 1.0 : 0.0;"
 
 "    shadow /= 9.0;"
+#else
+"    vec4 shadowVals;"
+
+"    shadowVals.r = currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(-0.5,-0.5)*texel).r ? 1.0 : 0.0;"
+"    shadowVals.g = currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2( 0.5,-0.5)*texel).r ? 1.0 : 0.0;"
+"    shadowVals.b = currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2(-0.5, 0.5)*texel).r ? 1.0 : 0.0;"
+"    shadowVals.a = currentDepth > texture(uDirLight.shadowmap, coords.xy+vec2( 0.5, 0.5)*texel).r ? 1.0 : 0.0;"
+
+"    shadow = dot(shadowVals, vec4(0.25));"
+#endif
 
 "    return shadow;"
 "}"

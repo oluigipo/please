@@ -35,7 +35,7 @@ Engine_Main(int32 argc, char** argv)
 	Trace("Engine_Main");
 	
 	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(16));
-	global_engine.temp_arena = Arena_Create(Megabytes(512), Megabytes(16));
+	global_engine.temp_arena = Arena_Create(Megabytes(32), Megabytes(8));
 	global_engine.delta_time = 1.0f;
 	
 	// NOTE(ljre): Window width & height
