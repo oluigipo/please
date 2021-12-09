@@ -46,6 +46,10 @@
 #   include <dxgidebug.h>
 #endif
 
+// NOTE(ljre): MinGW decls
+void WINAPI AcquireSRWLockExclusive(PSRWLOCK SRWLock);
+void WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
+
 #undef near
 #undef far
 

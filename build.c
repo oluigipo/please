@@ -106,5 +106,5 @@ int main(int argc, char** argv)
 	
 	CMD(CC, cstr_array_join(" ", objs), OUT_EXEC(PATH(BUILDDIR, "game")), LFLAGS, LIBRARIES);
 	
-	printf("Compilation done.");
+	printf("\nCompilation done.\n");
 }
