@@ -59,6 +59,14 @@ typedef DWORD WINAPI ProcXInputSetState(DWORD index, XINPUT_VIBRATION* vibration
 typedef DWORD WINAPI ProcXInputGetCapabilities(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities);
 typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter);
 
+#ifndef XINPUT_DEVSUBTYPE_UNKNOWN
+#   define XINPUT_DEVSUBTYPE_UNKNOWN 0x00
+#endif
+
+#ifndef XINPUT_DEVSUBTYPE_FLIGHT_STICK
+#   define XINPUT_DEVSUBTYPE_FLIGHT_STICK 0x04
+#endif
+
 //~ Globals
 internal bool8       global_keyboard_keys[Input_KeyboardKey_Count];
 internal Input_Mouse     global_mouse;

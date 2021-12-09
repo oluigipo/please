@@ -72,10 +72,10 @@ Linux_FillAudioBuffer(void)
 	{
 		int32 frame_count = global_frame_count_to_output;
 		
-		//snd_pcm_drop(global_playback_handle);
-		//snd_pcm_prepare(global_playback_handle);
+		snd_pcm_drop(global_playback_handle);
+		snd_pcm_prepare(global_playback_handle);
 		snd_pcm_sframes_t ret = snd_pcm_writei(global_playback_handle, global_audio_buffer, frame_count);
-		//snd_pcm_start(global_playback_handle);
+		snd_pcm_start(global_playback_handle);
 	}
 }
 

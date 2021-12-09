@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <synchapi.h>
 
 // Direct3D
 #include <d3d11.h>
