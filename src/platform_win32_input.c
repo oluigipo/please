@@ -67,6 +67,18 @@ typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, 
 #   define XINPUT_DEVSUBTYPE_FLIGHT_STICK 0x04
 #endif
 
+#ifndef XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE
+#   define XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE 0x07
+#endif
+
+#ifndef XINPUT_DEVSUBTYPE_GUITAR_BASS
+#   define XINPUT_DEVSUBTYPE_GUITAR_BASS 0x0B
+#endif
+
+#ifndef XINPUT_DEVSUBTYPE_ARCADE_PAD
+#   define XINPUT_DEVSUBTYPE_ARCADE_PAD 0x13
+#endif
+
 //~ Globals
 internal bool8       global_keyboard_keys[Input_KeyboardKey_Count];
 internal Input_Mouse     global_mouse;
