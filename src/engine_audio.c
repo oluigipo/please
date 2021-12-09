@@ -1,6 +1,3 @@
-//~ Globals
-internal bool32 global_outputed_sound_this_frame = false;
-
 //~ Functions
 // TODO(ljre): Better interpolation method!
 internal inline float32
@@ -56,8 +53,8 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 {
 	Trace("Engine_PlayAudios");
 	
-	Assert(!global_outputed_sound_this_frame);
-	global_outputed_sound_this_frame = true;
+	Assert(!global_engine.outputed_sound_this_frame);
+	global_engine.outputed_sound_this_frame = true;
 	
 	// TODO(ljre): Better audio mixing!!!!
 	int32 channels;

@@ -17,6 +17,8 @@ struct Engine_Data
 	Scene current_scene;
 	void* user_data;
 	
+	bool8 outputed_sound_this_frame;
+	
 	float32 delta_time;
 	float64 last_frame_time;
 };

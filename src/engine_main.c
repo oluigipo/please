@@ -1,6 +1,3 @@
-#define REFERENCE_FPS 60
-#define DISCORD_APP_ID 0 // NOTE(ljre): Optional. Only matters if you are going to use Discord Game SDK
-
 //~ API
 API float32
 Engine_DeltaTime(void)
@@ -13,10 +10,10 @@ Engine_FinishFrame(void)
 {
 	Trace("Engine_FinishFrame");
 	
-	if (!global_outputed_sound_this_frame)
+	if (!global_engine.outputed_sound_this_frame)
 		Engine_PlayAudios(NULL, NULL, 1.0f);
 	
-	global_outputed_sound_this_frame = false;
+	global_engine.outputed_sound_this_frame = false;
 	
 	Discord_Update();
 	
@@ -35,7 +32,7 @@ Engine_Main(int32 argc, char** argv)
 	Trace("Engine_Main");
 	
 	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(16));
-	global_engine.temp_arena = Arena_Create(Megabytes(32), Megabytes(8));
+	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));
 	global_engine.delta_time = 1.0f;
 	
 	// NOTE(ljre): Window width & height
