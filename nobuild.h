@@ -59,6 +59,9 @@ typedef HANDLE Fd;
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
 
+#undef OUT
+#undef IN
+
 struct dirent {
     char d_name[MAX_PATH+1];
 };
@@ -720,7 +723,7 @@ Pid cmd_run_async(Cmd cmd, Fd *fdin, Fd *fdout)
 					  NULL,
 					  // TODO(#33): cmd_run_async on Windows does not render command line properly
 					  // It may require wrapping some arguments with double-quotes if they contains spaces, etc.
-					  cstr_array_join(" ", cmd.line),
+					  (char*)cstr_array_join(" ", cmd.line),
 					  NULL,
 					  NULL,
 					  TRUE,
@@ -992,6 +995,9 @@ void path_rename(const char *old_path, const char *new_path)
     }
 #endif // _WIN32
 }
+
+int mkdir(const char *dirname, int);
+int rmdir(const char *dirname);
 
 void path_mkdirs(Cstr_Array path)
 {

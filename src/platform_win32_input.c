@@ -80,7 +80,7 @@ typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, 
 #endif
 
 //~ Globals
-internal bool8       global_keyboard_keys[Input_KeyboardKey_Count];
+internal bool8           global_keyboard_keys[Input_KeyboardKey_Count];
 internal Input_Mouse     global_mouse;
 internal Win32_Gamepad   global_gamepads[MAX_GAMEPAD_COUNT];
 internal int32           global_gamepad_free[MAX_GAMEPAD_COUNT];
