@@ -14,6 +14,8 @@
 
 #define MAX_POINT_LIGHTS 16
 
+//#define ENABLE_FOG
+
 struct Vertex
 {
 	vec3 position;
@@ -133,6 +135,23 @@ internal const char* const global_fragment_shader =
 
 "void main() {"
 "    oFragColor = uColor * texture(uTexture, vTexCoord);"
+
+#ifdef ENABLE_FOG
+"    {"
+"        const float intensity = 1.0;"
+"        const float zmin = 0.25;"
+"        const float zmax = 0.35;"
+"        const float near = 0.01, far = 100.0;"
+"        const vec3 fogColor = vec3(0.0);"
+
+"        float z = gl_FragCoord.z;"
+"        z = (2.0 * near) / (far + near - z * (far - near)) + 0.1*cos((gl_FragCoord.x+1.0) * 3.1415926535);"
+"        float i = clamp((z - zmin) / (zmax - zmin), 0.0, 1.0) * intensity;"
+
+"        oFragColor.rgb = mix(oFragColor.rgb, fogColor, i);"
+"    }"
+#endif
+
 "}"
 ;
 
@@ -232,6 +251,7 @@ internal const char* const global_vertex_finalpassshader =
 
 internal const char* const global_fragment_finalpassshader =
 "#version 330 core\n"
+"#define PI 3.141592653589793238462643383279\n"
 
 "in vec2 vTexCoord;"
 
@@ -363,6 +383,22 @@ internal const char* const global_fragment_finalpassshader =
 "    for(int i = 0; i < uPointLightsCount; ++i) {"
 "        color += CalculatePointLight(normal, viewDir, diffuseSample, specularSample, shininess, fragPos, i);"
 "    }"
+
+#ifdef ENABLE_FOG
+"    {"
+"        const float intensity = 1.0;"
+"        const float zmin = 0.2;"
+"        const float zmax = 0.3;"
+"        const float near = 0.01, far = 100.0;"
+"        const vec3 fogColor = vec3(0.0);"
+
+"        float z = gl_FragDepth;"
+"        z = (2.0 * near) / (far + near - z * (far - near)) + 0.1*cos(vTexCoord.x * PI * 2.0);"
+"        float i = clamp((z - zmin) / (zmax - zmin), 0.0, 1.0) * intensity;"
+
+"        color = mix(color, fogColor, i);"
+"    }"
+#endif
 
 "    oFragColor = vec4(color, 1.0);"
 "}\n"
@@ -1516,8 +1552,13 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
 		GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
 		GL.glUniform3fv(global_uniform->dirlight_direction, 1, scene->dirlight);
-		GL.glUniform3f(global_uniform->dirlight_ambient, 0.2f, 0.2f, 0.2f);
+#ifdef ENABLE_FOG
+		GL.glUniform3f(global_uniform->dirlight_ambient, 0.0f, 0.0f, 0.0f);
+		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.0f, 0.0f, 0.0f);
+#else
+		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.2f, 0.2f, 0.2f);
 		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.4f, 0.4f, 0.4f);
+#endif
 		GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
 		
 		GL.glUniform1i(global_uniform->pointlights_count, scene->point_light_count);
@@ -1541,6 +1582,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	}
 	
 	//~ NOTE(ljre): Point Lights
+	if (scene->light_model)
 	{
 		BindShader(&global_default_shader);
 		
@@ -1550,11 +1592,15 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		for (int32 i = 0; i < scene->point_light_count; ++i)
 		{
 			Render_3DPointLight* const light = &scene->point_lights[i];
-			Asset_3DModel* const asset = scene->cube_model;
+			Asset_3DModel* const asset = scene->light_model;
 			
 			glm_mat4_identity(matrix);
 			glm_translate(matrix, light->position);
+#ifdef ENABLE_FOG
+			glm_scale(matrix, (vec3) { 0.5f, 0.1f, 0.1f });
+#else
 			glm_scale(matrix, (vec3) { 0.25f, 0.25f, 0.25f });
+#endif
 			
 			GL.glUniform4f(global_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
 			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);

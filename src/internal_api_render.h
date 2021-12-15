@@ -38,7 +38,7 @@ typedef Render_3DModel;
 
 struct Render_3DScene
 {
-	Asset_3DModel* cube_model;
+	Asset_3DModel* light_model;
 	vec3 dirlight;
 	
 	uint32 shadow_fbo, shadow_depthmap;

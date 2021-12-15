@@ -91,6 +91,7 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 	}
 }
 
+#if 1
 internal void
 Game_3DDemoScene(Engine_Data* g)
 {
@@ -263,7 +264,7 @@ Game_3DDemoScene(Engine_Data* g)
 	scene3d.dirlight[2] = 0.5f;
 	glm_vec3_normalize(scene3d.dirlight);
 	
-	scene3d.cube_model = &model;
+	scene3d.light_model = &model;
 	scene3d.point_lights = lights;
 	scene3d.models = scene_models;
 	scene3d.point_light_count = 2;
@@ -406,3 +407,193 @@ Game_3DDemoScene(Engine_Data* g)
 	g->current_scene = NULL;
 }
 
+#else
+
+internal void
+Game_3DDemoScene(Engine_Data* g)
+{
+	Trace("Game_3DDemoScene");
+	
+	Game_GlobalData* global = g->user_data;
+	
+	Asset_3DModel cube;
+	if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &cube))
+	{
+		Platform_ExitWithErrorMessage(Str("não deu pra carregar o cubo"));
+	}
+	
+	const float32 width = 1.5f;
+	const float32 height = 2.5f;
+	const float32 deep = 50.0f;
+	const float32 thic = 0.1f;
+	
+	float32 camera_yaw = PI32 / 2.0f;
+	float32 camera_pitch = 0.0f;
+	float32 sensitivity = 0.01f;
+	float32 camera_total_speed = 0.025f;
+	float32 camera_height = 1.9f;
+	float32 moving_time = 0.0f;
+	vec2 camera_speed = { 0 };
+	
+	Render_Camera camera = {
+		.pos = { 0.0f, camera_height, -deep - 1.0f },
+		.dir = { 0.0f, 0.0f, -1.0f },
+		.up = { 0.0f, 1.0f, 0.0f },
+	};
+	
+	//~ NOTE(ljre): 3D Scene
+	Render_3DModel* scene_models = Arena_Push(g->persistent_arena, sizeof(*scene_models) * 4);
+	
+	{
+		Render_3DModel* top = &scene_models[0];
+		Render_3DModel* left = &scene_models[1];
+		Render_3DModel* right = &scene_models[2];
+		Render_3DModel* bottom = &scene_models[3];
+		
+		glm_mat4_identity(top->transform);
+		glm_translate(top->transform, (vec3) { 0.0f, height*2.0f, 0.0f });
+		glm_scale(top->transform, (vec3) { width, thic, deep });
+		
+		glm_mat4_identity(left->transform);
+		glm_translate(left->transform, (vec3) { -width, height, 0.0f });
+		glm_scale(left->transform, (vec3) { thic, height, deep });
+		
+		glm_mat4_identity(right->transform);
+		glm_translate(right->transform, (vec3) { width, height, 0.0f });
+		glm_scale(right->transform, (vec3) { thic, height, deep });
+		
+		glm_mat4_identity(bottom->transform);
+		glm_scale(bottom->transform, (vec3) { width, thic, deep });
+		glm_translate(bottom->transform, (vec3) { 0.0f, 0.0f, 0.0f });
+		
+		const float32 c = 0.15f;
+		glm_vec4_copy((vec4) { c, c, c, 1.0f }, top->color);
+		glm_vec4_copy((vec4) { c, c, c, 1.0f }, left->color);
+		glm_vec4_copy((vec4) { c, c, c, 1.0f }, right->color);
+		glm_vec4_copy((vec4) { c, c, c, 1.0f }, bottom->color);
+		
+		top->asset = left->asset = right->asset = bottom->asset = &cube;
+	}
+	
+	//- Lights
+	Render_3DPointLight lights[5];
+	
+	for (int32 i = 0; i < ArrayLength(lights); ++i)
+	{
+		lights[i].position[0] = 0.0f;
+		lights[i].position[1] = height*1.9f;
+		lights[i].position[2] = -deep + deep*2.0f / (float32)ArrayLength(lights) * (float32)i;
+		
+		lights[i].ambient[0] = 0.1f;
+		lights[i].ambient[1] = 0.1f;
+		lights[i].ambient[2] = 0.1f;
+		
+		lights[i].diffuse[0] = 1.0f;
+		lights[i].diffuse[1] = 1.0f;
+		lights[i].diffuse[2] = 1.0f;
+		
+		lights[i].specular[0] = 0.2f;
+		lights[i].specular[1] = 0.2f;
+		lights[i].specular[2] = 0.2f;
+		
+		lights[i].constant = 1.0f;
+		lights[i].linear = 0.09f;
+		lights[i].quadratic = 0.032f;
+	}
+	
+	// NOTE(ljre): Render Command
+	Render_3DScene scene3d = { 0 };
+	scene3d.dirlight[0] = 0.0f;
+	scene3d.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
+	scene3d.dirlight[2] = 0.0f;
+	glm_vec3_normalize(scene3d.dirlight);
+	
+	scene3d.light_model = &cube;
+	scene3d.point_lights = lights;
+	scene3d.models = scene_models;
+	scene3d.point_light_count = ArrayLength(lights);
+	scene3d.model_count = 4;
+	
+	while (!Platform_WindowShouldClose())
+	{
+		Trace("Game Loop");
+		void* memory_state = Arena_End(g->temp_arena);
+		
+		if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
+			break;
+		
+		Input_Gamepad gamepad;
+		bool32 is_connected = Input_GetGamepad(0, &gamepad);
+		
+		float32 dt = Engine_DeltaTime();
+		
+		if (is_connected)
+		{
+			//~ NOTE(ljre): Camera Direction
+			if (gamepad.right[0] != 0.0f)
+			{
+				camera_yaw += gamepad.right[0] * sensitivity * dt;
+				camera_yaw = fmodf(camera_yaw, PI32 * 2.0f);
+			}
+			
+			if (gamepad.right[1] != 0.0f)
+			{
+				camera_pitch += -gamepad.right[1] * sensitivity * dt;
+				camera_pitch = glm_clamp(camera_pitch, -PI32 * 0.49f, PI32 * 0.49f);
+			}
+			
+			float32 pitched = cosf(camera_pitch);
+			
+			camera.dir[0] = cosf(camera_yaw) * pitched;
+			camera.dir[1] = sinf(camera_pitch);
+			camera.dir[2] = sinf(camera_yaw) * pitched;
+			glm_vec3_normalize(camera.dir);
+			
+			vec3 right;
+			glm_vec3_cross((vec3) { 0.0f, 1.0f, 0.0f }, camera.dir, right);
+			
+			glm_vec3_cross(camera.dir, right, camera.up);
+			
+			//~ Movement
+			vec2 speed;
+			
+			speed[0] = -gamepad.left[1];
+			speed[1] =  gamepad.left[0];
+			
+			glm_vec2_rotate(speed, camera_yaw, speed);
+			glm_vec2_scale(speed, camera_total_speed, speed);
+			glm_vec2_lerp(camera_speed, speed, 0.15f * dt, camera_speed);
+			
+			camera.pos[0] += camera_speed[0] * dt;
+			camera.pos[2] += camera_speed[1] * dt;
+			
+			if (Input_IsDown(gamepad, Input_GamepadButton_A))
+				camera_height += 0.05f * dt;
+			else if (Input_IsDown(gamepad, Input_GamepadButton_B))
+				camera_height -= 0.05f * dt;
+			
+			//~ Bump
+			float32 d = glm_vec2_distance2(camera_speed, GLM_VEC2_ZERO);
+			if (d > 0.0001f)
+			{
+				moving_time += 0.1f * dt;
+			}
+			
+			camera.pos[1] = camera_height + sinf(moving_time) * 0.15f;
+		}
+		
+		Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
+		
+		//~ NOTE(ljre): 3D World
+		float32 t = (float32)Platform_GetTime();
+		
+		Render_Draw3DScene(&scene3d, &camera);
+		
+		Engine_FinishFrame();
+		Arena_Pop(g->temp_arena, memory_state);
+	}
+	
+	g->current_scene = NULL;
+}
+
+#endif
