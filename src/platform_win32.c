@@ -26,9 +26,6 @@
 #include <time.h>
 #include <synchapi.h>
 
-// Direct3D
-#include <d3d11.h>
-
 // Input
 #include <xinput.h>
 #include <dinput.h>
@@ -37,14 +34,6 @@
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
-
-#define INTERNAL_COMPLETE_GRAPHICS_CONTEXT
-#include "internal_direct3d.h"
-#include "internal_opengl.h"
-
-#if defined(DEBUG)
-#   include <dxgidebug.h>
-#endif
 
 // NOTE(ljre): MinGW decls
 void WINAPI AcquireSRWLockExclusive(PSRWLOCK SRWLock);

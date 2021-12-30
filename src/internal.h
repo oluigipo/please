@@ -1,33 +1,7 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#ifdef __GNUC__
-#   define alignas(_) __attribute__((aligned(_)))
-#else
-#   define alignas(_) __declspec(align(_))
-#endif
-
-#if 0 // NOTE(ljre): Ignore this.
-;
-#define restrict
-#define NULL
-#endif
-
-#ifndef _CRT_SECURE_NO_WARNINGS
-#   define _CRT_SECURE_NO_WARNINGS
-#endif
-
-#define internal static
-#define true 1
-#define false 0
-
-#if defined(UNITY_BUILD)
-#   define API static
-#elif defined(__cplusplus)
-#   define API extern "C"
-#else
-#   define API
-#endif
+#include "internal_config.h"
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
 #define IsPowerOf2(x) ( ((x) & (x)-1) == 0 )
@@ -109,8 +83,6 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 
 #include "internal_arena.h"
 #include "internal_string.h"
-#include "internal_opengl.h"
-#include "internal_direct3d.h"
 #include "internal_assets.h"
 
 #include "internal_api_engine.h"

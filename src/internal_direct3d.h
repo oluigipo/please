@@ -1,14 +1,7 @@
-#ifndef INTERNAL_DIRECT3D_H
+#if defined(INTERNAL_ENABLE_D3D11) && !defined(INTERNAL_DIRECT3D_H)
 #define INTERNAL_DIRECT3D_H
 
-typedef struct GraphicsContext_Direct3D GraphicsContext_Direct3D;
-
-#endif // INTERNAL_DIRECT3D_H
-
 //~ Windows Stuff
-#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT) && !defined(INTERNAL_DIRECT3D_H_COMPLETE)
-#define INTERNAL_DIRECT3D_H_COMPLETE
-
 #ifndef WIN32_LEAN_AND_MEAN
 #   define WIN32_LEAN_AND_MEAN
 #endif
@@ -44,4 +37,4 @@ typedef GraphicsContext_Direct3D;
 #pragma pop_macro("far")
 #pragma pop_macro("near")
 
-#endif // INTERNAL_COMPLETE_D3D_CONTEXT
+#endif // INTERNAL_ENABLE_D3D11

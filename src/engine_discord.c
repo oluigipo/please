@@ -106,10 +106,10 @@ Discord_Init(int64 appid)
 	
 	// get managers
 	global_discord.users = global_discord.core->get_user_manager(global_discord.core);
-	global_discord.achievements  = global_discord.core->get_achievement_manager(global_discord.core);
-	global_discord.activities= global_discord.core->get_activity_manager(global_discord.core);
-	global_discord.application   = global_discord.core->get_application_manager(global_discord.core);
-	global_discord.lobbies   = global_discord.core->get_lobby_manager(global_discord.core);
+	global_discord.achievements = global_discord.core->get_achievement_manager(global_discord.core);
+	global_discord.activities = global_discord.core->get_activity_manager(global_discord.core);
+	global_discord.application = global_discord.core->get_application_manager(global_discord.core);
+	global_discord.lobbies = global_discord.core->get_lobby_manager(global_discord.core);
 	global_discord.relationships = global_discord.core->get_relationship_manager(global_discord.core);
 	
 	global_discord.appid = appid;

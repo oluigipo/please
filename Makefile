@@ -57,9 +57,6 @@ else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game
 	CLEAN = rm ./build/*.o
 	
-	CC = clang
-	LD = clang -fuse-ld=lld
-	
 	LDFLAGS += -lm -lX11 -ldl -lasound
 endif
 

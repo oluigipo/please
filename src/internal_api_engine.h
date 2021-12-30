@@ -2,20 +2,20 @@
 #define INTERNAL_API_ENGINE_H
 
 struct Engine_Data typedef Engine_Data;
+struct Game_GlobalData typedef Game_GlobalData;
 
 // A scene is a function pointer that should return the next scene to
 // run, or NULL if the game should close.
 // The parameter 'shared_data' is a pointer to a variable which will have the same value when changing scenes.
 // Use it to store your global game data.
-typedef void SceneProc(Engine_Data* data);
-typedef SceneProc* Scene;
+typedef void Scene(Engine_Data* data);
 
 struct Engine_Data
 {
 	Arena* persistent_arena;
 	Arena* temp_arena;
-	Scene current_scene;
-	void* user_data;
+	Scene* current_scene;
+	Game_GlobalData* game;
 	
 	bool8 outputed_sound_this_frame;
 	

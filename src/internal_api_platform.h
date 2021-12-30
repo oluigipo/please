@@ -12,6 +12,9 @@ enum GraphicsAPI
 }
 typedef GraphicsAPI;
 
+struct GraphicsContext_OpenGL typedef GraphicsContext_OpenGL;
+struct GraphicsContext_Direct3D typedef GraphicsContext_Direct3D;
+
 struct GraphicsContext
 {
 	GraphicsAPI api;

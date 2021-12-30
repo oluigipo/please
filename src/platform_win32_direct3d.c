@@ -1,3 +1,15 @@
+#define near
+#define far
+
+#include "internal_direct3d.h"
+
+#if defined(DEBUG)
+#   include <dxgidebug.h>
+#endif
+
+#undef near
+#undef far
+
 #define D3D11CreateDeviceAndSwapChain global_proc_D3D11CreateDeviceAndSwapChain
 typedef HRESULT WINAPI
 ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,

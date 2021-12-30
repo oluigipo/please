@@ -1,7 +1,6 @@
 struct Game_PlayerState
 {
 	vec2 pos;
-	float32 aim_dir;
 }
 typedef Game_PlayerState;
 
@@ -22,51 +21,7 @@ struct Game_GlobalState
 }
 typedef Game_GlobalState;
 
-internal void
-Game_Draw2DState(Game_GlobalState* global)
-{
-	//- NOTE(ljre): Some UVs
-	const vec4 uv_player = {
-		0.0f,
-		0.0f,
-		
-		32.0f * global->sprites_texture_texel[0],
-		32.0f * global->sprites_texture_texel[1],
-	};
-	
-	//- NOTE(ljre): Process sprites to render
-	Render_Sprite2D sprites[256];
-	int32 sprite_count = 0;
-	
-	// NOTE(ljre): Player
-	{
-		Render_Sprite2D* spr = &sprites[sprite_count++];
-		Game_PlayerState* player = &global->player;
-		
-		glm_mat4_identity(spr->transform);
-		glm_translate(spr->transform, (vec3) { player->pos[0], player->pos[1] });
-		
-		spr->texcoords[0] = uv_player[0] + uv_player[2] * (float32)(int32)fmodf(roundf(player->aim_dir / 90.0f), 4.0f);
-		spr->texcoords[1] = uv_player[1];
-		spr->texcoords[2] = uv_player[2];
-		spr->texcoords[3] = uv_player[3];
-		
-		spr->color[0] = spr->color[1] = spr->color[2] = spr->color[3] = 1.0f;
-	}
-	
-	//- NOTE(ljre): Layer
-	Render_Layer2D layer_to_render = {
-		.texture = &global->sprites_texture,
-		.sprite_count = sprite_count,
-		.sprites = sprites,
-	};
-	
-	//- NOTE(ljre): View Matrix & Render
-	mat4 view_matrix;
-	Render_CalcViewMatrix2D(&global->camera, view_matrix);
-	
-	Render_DrawLayer2D(&layer_to_render, view_matrix);
-}
+internal Arena* global_scratch_arena;
 
 internal void
 Game_2DDemoScene(Engine_Data* g)
@@ -74,9 +29,9 @@ Game_2DDemoScene(Engine_Data* g)
 	void* mem_state = Arena_End(g->persistent_arena);
 	
 	Trace("Game_2DDemoScene");
-	Platform_SetWindow(-1, -1, 640, 480);
-	Platform_CenterWindow();
-	Platform_PollEvents(); // "force" window update
+	//Platform_SetWindow(-1, -1, 640, 480);
+	//Platform_CenterWindow();
+	//Platform_PollEvents(); // "force" window update
 	
 	Game_GlobalState* global = Arena_Push(g->persistent_arena, sizeof *global);
 	
@@ -94,7 +49,7 @@ Game_2DDemoScene(Engine_Data* g)
 			(float32)Platform_WindowWidth(),
 			(float32)Platform_WindowHeight(),
 		},
-		.zoom = 2.0f,
+		.zoom = 4.0f,
 		.angle = 0.0f,
 	};
 	
@@ -108,6 +63,18 @@ Game_2DDemoScene(Engine_Data* g)
 		{
 			if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
 				break;
+			
+			float32 move_x = (float32)(Input_KeyboardIsDown('D') - Input_KeyboardIsDown('A'));
+			float32 move_y = (float32)(Input_KeyboardIsDown('S') - Input_KeyboardIsDown('W'));
+			
+			if (move_x != 0.0f && move_y != 0.0f)
+			{
+				move_x *= 0.707f;
+				move_y *= 0.707f;
+			}
+			
+			global->player.pos[0] += move_x * 5.0f;
+			global->player.pos[1] += move_y * 5.0f;
 		}
 		
 		//~ NOTE(ljre): Render
@@ -115,7 +82,48 @@ Game_2DDemoScene(Engine_Data* g)
 			Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
 			Render_Begin2D();
 			
-			Game_Draw2DState(global);
+			//- NOTE(ljre): Some UVs
+			const vec4 uv_player = {
+				0.0f,
+				0.0f,
+				
+				32.0f * global->sprites_texture_texel[0],
+				32.0f * global->sprites_texture_texel[1],
+			};
+			
+			//- NOTE(ljre): Process sprites to render
+			Render_Sprite2D* sprites = Arena_PushAligned(g->temp_arena, sizeof(*sprites) * 32, 15);
+			int32 sprite_count = 0;
+			
+			// NOTE(ljre): Player
+			{
+				Render_Sprite2D* spr = &sprites[sprite_count++];
+				Game_PlayerState* player = &global->player;
+				
+				glm_mat4_identity(spr->transform);
+				glm_translate(spr->transform, (vec3) { player->pos[0], player->pos[1] });
+				glm_scale(spr->transform, (vec3) { 32.0f, 32.0f });
+				
+				spr->texcoords[0] = uv_player[0];
+				spr->texcoords[1] = uv_player[1];
+				spr->texcoords[2] = uv_player[2];
+				spr->texcoords[3] = uv_player[3];
+				
+				spr->color[0] = spr->color[1] = spr->color[2] = spr->color[3] = 1.0f;
+			}
+			
+			//- NOTE(ljre): Layer
+			Render_Layer2D layer_to_render = {
+				.texture = &global->sprites_texture,
+				.sprite_count = sprite_count,
+				.sprites = sprites,
+			};
+			
+			//- NOTE(ljre): View Matrix & Render
+			mat4 view_matrix;
+			Render_CalcViewMatrix2D(&global->camera, view_matrix);
+			
+			Render_DrawLayer2D(&layer_to_render, view_matrix);
 		}
 		
 		//~ NOTE(ljre): Finish Frame

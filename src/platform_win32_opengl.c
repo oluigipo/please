@@ -1,3 +1,5 @@
+#include "internal_opengl.h"
+
 //~ Types and Macros
 #define WGL_DRAW_TO_WINDOW_ARB                  0x2001
 #define WGL_SUPPORT_OPENGL_ARB                  0x2010

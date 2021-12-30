@@ -3,8 +3,13 @@
 //
 //
 
-#define INTERNAL_COMPLETE_GRAPHICS_CONTEXT
 #include "internal.h"
+#ifdef INTERNAL_ENABLE_OPENGL
+#   include "internal_opengl.h"
+#endif
+#ifdef INTERNAL_ENABLE_D3D11
+#   include "internal_direct3d.h"
+#endif
 
 //~ Libraries
 #define STB_IMAGE_STATIC

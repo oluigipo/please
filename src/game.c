@@ -3,8 +3,7 @@
 struct Game_GlobalData
 {
 	Asset_Font font;
-}
-typedef Game_GlobalData;
+};
 
 #include "game_3ddemo.c"
 #include "game_2ddemo.c"
@@ -59,10 +58,10 @@ Game_MainScene(Engine_Data* g)
 {
 	Trace("Game_MainScene");
 	
-	g->user_data = Arena_Push(g->persistent_arena, sizeof(Game_GlobalData));
-	Game_GlobalData* global = g->user_data;
+	g->game = Arena_Push(g->persistent_arena, sizeof(Game_GlobalData));
+	Game_GlobalData* global = g->game;
 	
-	Scene next_scene = NULL;
+	Scene* next_scene = NULL;
 	
 	// NOTE(ljre): Load font
 	bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &global->font);

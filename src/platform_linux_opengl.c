@@ -1,3 +1,6 @@
+#include "internal_opengl.h"
+#include <GL/glx.h>
+
 #define GLX_CONTEXT_MAJOR_VERSION_ARB           0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB           0x2092
 #define GLX_CONTEXT_FLAGS_ARB                   0x2094

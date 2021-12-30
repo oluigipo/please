@@ -12,12 +12,9 @@
 #include <X11/keysym.h>
 #include <X11/keysymdef.h>
 #include <X11/XKBlib.h>
-#include <GL/glx.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <fcntl.h>
-
-#include <alsa/asoundlib.h>
 
 #define internal static
 
@@ -43,7 +40,10 @@ internal Linux_DeferredEvents global_deferred_events;
 //~ Functions
 #include "platform_linux_input.c"
 #include "platform_linux_audio.c"
-#include "platform_linux_opengl.c"
+
+#ifdef INTERNAL_ENABLE_OPENGL
+#   include "platform_linux_opengl.c"
+#endif
 
 //~ Entry Point
 int32 main(int32 argc, char* argv[])

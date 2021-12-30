@@ -1,3 +1,5 @@
+#include <alsa/asoundlib.h>
+
 #define SOUND_LATENCY_FPS 10
 
 //~ Globals
@@ -10,7 +12,7 @@ internal int32 global_frame_count_to_output;
 internal int16* global_audio_buffer;
 internal int32 global_audio_buffer_sample_count;
 
-internal snd_pcm_t *global_playback_handle;
+internal snd_pcm_t* global_playback_handle;
 
 //~ Internal API
 internal void
@@ -108,6 +110,12 @@ Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32*
 	{
 		return NULL;
 	}
+}
+
+API void
+Platform_CloseSoundBuffer(int16* sound_buffer)
+{
+	
 }
 
 API bool32

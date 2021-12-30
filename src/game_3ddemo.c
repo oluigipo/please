@@ -97,7 +97,7 @@ Game_3DDemoScene(Engine_Data* g)
 {
 	Trace("Game_3DDemoScene");
 	
-	Game_GlobalData* global = g->user_data;
+	Game_GlobalData* global = g->game;
 	
 	Asset_3DModel model;
 	if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &model))

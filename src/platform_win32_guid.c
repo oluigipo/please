@@ -31,7 +31,7 @@ internal const IID IID_IDXGIInfoQueue =
 
 // NOTE(ljre): This should not be const
 #define DXGI_DEBUG_ALL _def_DXGI_DEBUG_ALL
-internal GUID DXGI_DEBUG_ALL =
+internal const GUID DXGI_DEBUG_ALL =
 {0xe48ae283,0xda80,0x490b,{0x87,0xe6,0x43,0xe9,0xa9,0xcf,0xda,0x08}};
 
 //~ NOTE(ljre): needed by 'c_dfDIJoystick'

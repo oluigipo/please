@@ -1,11 +1,6 @@
-#ifndef INTERNAL_OPENGL_H
+#if defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_OPENGL_H)
 #define INTERNAL_OPENGL_H
 
-struct GraphicsContext_OpenGL typedef GraphicsContext_OpenGL;
-
-#endif // INTERNAL_OPENGL_H
-
-#if defined(INTERNAL_COMPLETE_GRAPHICS_CONTEXT) && !defined(__gl_h)
 #define __gl_h
 
 #if defined(_WIN32) && !defined(APIENTRY) && !defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)
@@ -1643,7 +1638,6 @@ struct GraphicsContext_OpenGL
 	PFNGLCOLORP4UIVPROC glColorP4uiv;
 	PFNGLSECONDARYCOLORP3UIPROC glSecondaryColorP3ui;
 	PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
-}
-typedef GraphicsContext_OpenGL;
+};
 
-#endif //INTERNAL_COMPLETE_GRAPHICS_CONTEXT
+#endif // defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_OPENGL_H)

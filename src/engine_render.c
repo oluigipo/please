@@ -422,7 +422,7 @@ internal const char* const global_vertex_spriteshader =
 "void main() {"
 "    gl_Position = uView * aTransform * vec4(aPosition, 1.0);"
 //"    gl_Position = vec4(aPosition, 1.0);"
-"    vTexCoord = aTexCoords.xy + aTexCoords.zw * vec2(aTexCoord.x, 1.0 - aTexCoord.y);"
+"    vTexCoord = aTexCoords.xy + aTexCoords.zw * vec2(aTexCoord.x, aTexCoord.y);"
 "    vColor = aColor;"
 "}"
 ;
@@ -1033,7 +1033,7 @@ Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
 		GL.glGenBuffers(1, &vbo);
 		
 		GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		GL.glBufferData(GL_ARRAY_BUFFER, size, layer->sprites, GL_DYNAMIC_DRAW);
+		GL.glBufferData(GL_ARRAY_BUFFER, size, layer->sprites, GL_STATIC_DRAW);
 		
 		GL.glEnableVertexAttribArray(4);
 		GL.glVertexAttribDivisor(4, 1);
