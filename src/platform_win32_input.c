@@ -209,15 +209,13 @@ LoadXInput(void)
 	
 	for (int32 i = 0; i < ArrayLength(dll_names); ++i)
 	{
-		HMODULE library = LoadLibraryA(dll_names[i]);
+		HMODULE library = Win32_LoadLibrary(dll_names[i]);
 		
 		if (library)
 		{
 			XInputGetState        = (void*)GetProcAddress(library, "XInputGetState");
 			XInputSetState        = (void*)GetProcAddress(library, "XInputSetState");
 			XInputGetCapabilities = (void*)GetProcAddress(library, "XInputGetCapabilities");
-			
-			Platform_DebugLog("Loaded Library: %s\n", dll_names[i]);
 			break;
 		}
 	}
@@ -251,12 +249,11 @@ LoadDirectInput(void)
 	bool32 loaded = false;
 	for (int32 i = 0; i < ArrayLength(dll_names); ++i)
 	{
-		HMODULE library = LoadLibraryA(dll_names[i]);
+		HMODULE library = Win32_LoadLibrary(dll_names[i]);
 		
 		if (library)
 		{
 			DirectInput8Create = (void*)GetProcAddress(library, "DirectInput8Create");
-			Platform_DebugLog("Loaded Library: %s\n", dll_names[i]);
 			
 			loaded = true;
 			break;
@@ -628,7 +625,6 @@ gamepad->data.buttons[_i] |= !!(state.Gamepad.wButtons & _v)
 			}
 			else if (result == ERROR_DEVICE_NOT_CONNECTED)
 			{
-				// NOTE(ljre): Controller is not connected!
 				gamepad->api = GamepadAPI_None;
 				gamepad->connected = false;
 				ReleaseGamepadIndex(index);
@@ -925,6 +921,17 @@ Win32_InitInput(void)
 	Win32_CheckForGamepads();
 }
 
+internal void
+Win32_UpdateKeyboardKey(uint32 vkcode, bool32 is_down)
+{
+	Input_KeyboardKey key = global_keyboard_key_table[vkcode];
+	if (key)
+	{
+		global_keyboard_keys[key] &= ~1;
+		global_keyboard_keys[key] |= is_down;
+	}
+}
+
 internal inline void
 Win32_UpdateInputPre(void)
 {
@@ -962,6 +969,16 @@ Win32_UpdateInputPos(void)
 		
 		global_mouse.pos[0] = glm_clamp(global_mouse.pos[0], 0.0f, (float32)global_window_width);
 		global_mouse.pos[1] = glm_clamp(global_mouse.pos[1], 0.0f, (float32)global_window_height);
+		
+		if (!global_show_cursor && GetActiveWindow())
+		{
+			mouse.x = global_window_width/2;
+			mouse.y = global_window_height/2;
+			ClientToScreen(global_window, &mouse);
+			SetCursorPos(mouse.x, mouse.y);
+			global_mouse.old_pos[0] = (float32)(global_window_width/2);
+			global_mouse.old_pos[1] = (float32)(global_window_height/2);
+		}
 	}
 	
 	// NOTE(ljre): Update Gamepads

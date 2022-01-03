@@ -73,6 +73,7 @@ internal int64 global_process_started_time;
 internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
+internal bool32 global_show_cursor = true;
 internal GraphicsContext global_graphics_context;
 internal Win32_DeferredEvents global_deferred_events = { -1, -1, -1, -1 };
 
@@ -157,6 +158,17 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 	return buffer;
 }
 
+internal inline HMODULE
+Win32_LoadLibrary(const char* name)
+{
+	HMODULE result = LoadLibraryA(name);
+	
+	if (result)
+		Platform_DebugLog("Loaded Library: %s\n", name);
+	
+	return result;
+}
+
 //~ Entry Point
 #include "platform_win32_input.c"
 #include "platform_win32_audio.c"
@@ -166,7 +178,6 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 internal LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
-	Trace("WindowProc");
 	LRESULT result = 0;
 	
 	switch (message)
@@ -194,14 +205,21 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			bool32 was_down = ((lparam & (1 << 30)) != 0);
 			bool32 is_down = ((lparam & (1 << 31)) == 0);
 			
-			if (was_down == is_down || vkcode >= Input_KeyboardKey_Count)
+			if (was_down == is_down || vkcode >= ArrayLength(global_keyboard_key_table))
 				break;
 			
-			Input_KeyboardKey key = global_keyboard_key_table[vkcode];
-			if (key)
+			Win32_UpdateKeyboardKey(vkcode, is_down);
+			
+			// NOTE(ljre): Checks for which side specifically.
+			if (vkcode == VK_SHIFT)
 			{
-				global_keyboard_keys[key] &= ~1;
-				global_keyboard_keys[key] |= is_down;
+				Win32_UpdateKeyboardKey(VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
+				Win32_UpdateKeyboardKey(VK_RSHIFT, !!(GetKeyState(VK_RSHIFT) & 0x8000));
+			}
+			else if (vkcode == VK_CONTROL)
+			{
+				Win32_UpdateKeyboardKey(VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
+				Win32_UpdateKeyboardKey(VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
 			}
 		} break;
 		
@@ -385,6 +403,16 @@ Platform_CenterWindow(void)
 	
 	global_deferred_events.window_x = monitor_width / 2 - global_window_width / 2 + global_monitor.left;
 	global_deferred_events.window_y = monitor_height / 2 - global_window_height / 2 + global_monitor.top;
+}
+
+API void
+Platform_ShowCursor(bool32 show)
+{
+	if (show != global_show_cursor)
+	{
+		ShowCursor(show);
+		global_show_cursor = show;
+	}
 }
 
 API float64
@@ -572,10 +600,11 @@ Platform_CurrentPosixTime(void)
 	return (uint64)result;
 }
 
+#ifdef INTERNAL_ENABLE_DISCORD_SDK
 API void*
 Platform_LoadDiscordLibrary(void)
 {
-	HMODULE library = LoadLibraryA("discord_game_sdk.dll");
+	HMODULE library = Win32_LoadLibrary("discord_game_sdk.dll");
 	if (!library)
 		return NULL;
 	
@@ -590,6 +619,7 @@ Platform_LoadDiscordLibrary(void)
 	Platform_DebugLog("Loaded Library: discord_game_sdk.dll\n");
 	return result;
 }
+#endif
 
 //- Debug
 #ifdef DEBUG

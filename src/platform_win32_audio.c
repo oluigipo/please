@@ -41,12 +41,10 @@ internal SRWLOCK global_audio_mutex;
 internal bool32
 LoadComLibrary(void)
 {
-	HMODULE library = LoadLibraryA("ole32.dll");
+	HMODULE library = Win32_LoadLibrary("ole32.dll");
 	
 	if (!library)
 		return false;
-	
-	Platform_DebugLog("Loaded Library: ole32.dll\n");
 	
 	CoCreateInstance = (void*)GetProcAddress(library, "CoCreateInstance");
 	CoInitializeEx = (void*)GetProcAddress(library, "CoInitializeEx");

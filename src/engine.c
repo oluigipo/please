@@ -40,10 +40,11 @@ internal Engine_Data global_engine;
 // NOTE(ljre): Optional. Only matters if you are going to use Discord Game SDK
 #define DISCORD_APP_ID 0
 
-#ifdef USE_DISCORD_GAME_SDK
+#ifdef INTERNAL_ENABLE_DISCORD_SDK
 #   include "engine_discord.c"
 #endif
 
+#include "engine_file_qoi.c"
 #include "engine_file_json.c"
 #include "engine_file_gltf.c"
 #include "engine_random.c"

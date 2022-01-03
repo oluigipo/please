@@ -522,14 +522,12 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 	
 	HDC hdc = GetDC(window);
 	
-	HMODULE library = LoadLibrary("opengl32.dll");
+	HMODULE library = Win32_LoadLibrary("opengl32.dll");
 	if (!library)
 	{
 		DestroyWindow(window);
 		return false;
 	}
-	
-	Platform_DebugLog("Loaded Library: opengl32.dll\n");
 	
 	global_opengl.library = library;
 	global_opengl.wglGetProcAddress = (void*)GetProcAddress(library, "wglGetProcAddress");
@@ -641,8 +639,8 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 	}
 	
 	// Make Current
-	global_opengl.wglMakeCurrent(hdc, global_opengl.context);
-	global_opengl.wglDeleteContext(dummy_context);
+	global_opengl.wglMakeContextCurrentARB(hdc, hdc, global_opengl.context);
+	//global_opengl.wglDeleteContext(dummy_context);
 	
 	// Load All Function
 	if (!LoadOpenGLFunctions())
@@ -656,7 +654,7 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 	
 	if (IsWindowsVistaOrGreater())
 	{
-		HMODULE library = LoadLibrary("dwmapi.dll");
+		HMODULE library = Win32_LoadLibrary("dwmapi.dll");
 		
 		if (library)
 		{

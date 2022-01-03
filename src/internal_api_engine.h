@@ -37,7 +37,7 @@ API float32 Engine_DeltaTime(void);
 API void Game_MainScene(Engine_Data* data);
 
 //- Discord Game SDK (OPTIONAL)
-#ifdef USE_DISCORD_GAME_SDK
+#ifdef INTERNAL_ENABLE_DISCORD_SDK
 API bool32 Discord_Init(int64 appid);
 API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
 API void Discord_UpdateActivity(int32 type, String name, String state, String details);

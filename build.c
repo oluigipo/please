@@ -50,7 +50,7 @@ cmd_run_async((Cmd) { cstr_array_make(__VA_ARGS__, NULL) }, NULL, NULL)\
 #   define CFLAGS "-std=gnu99", "-Iinclude", "-Wall", "-Werror-implicit-function-declaration",\
 "-Wno-unused-function", "-Wconversion", "-Wno-format", "-Wno-missing-braces"
 #   define OFLAGS "-O2", "-ffast-math"
-#   if PLATFORM == WINDOWS
+#   if PLATFORM != WINDOWS
 #       define LFLAGS "-fuse-ld=lld"
 #   else
 #       define LFLAGS "-fuse-ld=lld", "-Wl,/subsystem:windows"
@@ -67,10 +67,14 @@ cmd_run_async((Cmd) { cstr_array_make(__VA_ARGS__, NULL) }, NULL, NULL)\
 #   define OUT_OBJ(x) CONCAT("/c /Fo\"", x, "\"")
 #   define LIB(x) CONCAT(x, ".lib")
 #elif defined __TINYC__
-#   define CC "TCC"
+#   define CC "tcc"
 #   define CFLAGS "-std=c99 -Iinclude"
 #   define OFLAGS ""
-#   define LFLAGS "-Wl,-subsystem=gui"
+#   if PLATFORM == WINDOWS
+#       define LFLAGS "-Wl,-subsystem=gui"
+#   else
+#       define LFLAGS ""
+#   endif
 #   define OUT_EXEC(x) CONCAT("-o\"", x, EXE, "\"")
 #   define OUT_OBJ(x) CONCAT("-c -o\"", x, "\"")
 #   define LIB(x) CONCAT("-l", x)

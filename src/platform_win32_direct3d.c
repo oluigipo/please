@@ -93,14 +93,12 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 	
 	HDC hdc = GetDC(window);
 	
-	HMODULE library = LoadLibrary("d3d11.dll");
+	HMODULE library = Win32_LoadLibrary("d3d11.dll");
 	if (!library)
 	{
 		DestroyWindow(window);
 		return false;
 	}
-	
-	Platform_DebugLog("Loaded Library: d3d11.dll\n");
 	
 	D3D11CreateDeviceAndSwapChain = (void*)GetProcAddress(library, "D3D11CreateDeviceAndSwapChain");
 	if (!D3D11CreateDeviceAndSwapChain)
@@ -160,7 +158,7 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 	
 	// NOTE(ljre): Load D3D Compiler.
 	{
-		HMODULE library = LoadLibrary("d3dcompiler_47.dll");
+		HMODULE library = Win32_LoadLibrary("d3dcompiler_47.dll");
 		
 		if (library)
 		{
@@ -172,7 +170,7 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 #if defined(DEBUG)
 	// NOTE(ljre): Load debugging thingy
 	{
-		HMODULE library = LoadLibrary("dxgidebug.dll");
+		HMODULE library = Win32_LoadLibrary("dxgidebug.dll");
 		
 		if (library)
 		{

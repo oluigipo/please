@@ -40,9 +40,12 @@ API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
+API void Platform_ShowCursor(bool32 show);
 
 // Optional Libraries
+#ifdef INTERNAL_ENABLE_DISCORD_SDK
 API void* Platform_LoadDiscordLibrary(void);
+#endif
 
 // Memory
 API void* Platform_HeapAlloc(uintsize size);

@@ -1552,13 +1552,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
 		GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
 		GL.glUniform3fv(global_uniform->dirlight_direction, 1, scene->dirlight);
-#ifdef ENABLE_FOG
-		GL.glUniform3f(global_uniform->dirlight_ambient, 0.0f, 0.0f, 0.0f);
-		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.0f, 0.0f, 0.0f);
-#else
-		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.2f, 0.2f, 0.2f);
-		GL.glUniform3f(global_uniform->dirlight_diffuse, 0.4f, 0.4f, 0.4f);
-#endif
+		GL.glUniform3fv(global_uniform->dirlight_ambient, 1, scene->dirlight_color);
 		GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
 		
 		GL.glUniform1i(global_uniform->pointlights_count, scene->point_light_count);
@@ -1596,11 +1590,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 			
 			glm_mat4_identity(matrix);
 			glm_translate(matrix, light->position);
-#ifdef ENABLE_FOG
-			glm_scale(matrix, (vec3) { 0.5f, 0.1f, 0.1f });
-#else
 			glm_scale(matrix, (vec3) { 0.25f, 0.25f, 0.25f });
-#endif
 			
 			GL.glUniform4f(global_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
 			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);

@@ -40,6 +40,7 @@ struct Render_3DScene
 {
 	Asset_3DModel* light_model;
 	vec3 dirlight;
+	vec3 dirlight_color;
 	
 	uint32 shadow_fbo, shadow_depthmap;
 	uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
