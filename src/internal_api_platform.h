@@ -34,13 +34,27 @@ API void Platform_MessageBox(String title, String message);
 API int32 Platform_WindowWidth(void);
 API int32 Platform_WindowHeight(void);
 API bool32 Platform_WindowShouldClose(void);
-API void Platform_SetWindow(int32 x, int32 y, int32 width, int32 height); // NOTE(ljre): use -1 to don't change it
-API void Platform_CenterWindow(void);
 API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
-API void Platform_ShowCursor(bool32 show);
+
+struct Platform_Config
+{
+	// NOTE(ljre): For bools, -1 is "false" and 1 is "true".
+	//             Zero Is Initialization!
+	
+	bool8 show_cursor; // if false, hide cursor when in window
+	bool8 lock_cursor; // lock cursor in the middle of the window
+	bool8 center_window; // if true, we ignore 'window_x' and 'window_y'
+	
+	int32 window_x, window_y, window_width, window_height;
+	String window_title;
+}
+typedef Platform_Config;
+
+// NOTE(ljre): Configuration will not be applied until 'Platform_PollEvents' is called.
+API void Platform_UpdateConfig(const Platform_Config* config);
 
 // Optional Libraries
 #ifdef INTERNAL_ENABLE_DISCORD_SDK

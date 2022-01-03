@@ -57,13 +57,6 @@ void WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
 #   pragma comment(lib, "hid.lib")
 #endif
 
-struct Win32_DeferredEvents
-{
-	int32 window_x, window_y;
-	int32 window_width, window_height;
-}
-typedef Win32_DeferredEvents;
-
 //~ Globals
 internal HANDLE global_heap;
 internal const wchar_t* global_class_name;
@@ -73,47 +66,13 @@ internal int64 global_process_started_time;
 internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
-internal bool32 global_show_cursor = true;
+internal bool32 global_lock_cursor;
 internal GraphicsContext global_graphics_context;
-internal Win32_DeferredEvents global_deferred_events = { -1, -1, -1, -1 };
+internal Platform_Config global_config = { 0 };
 
 internal int32 global_window_width;
 internal int32 global_window_height;
 internal RECT global_monitor;
-
-//~ Functions
-internal void
-ProcessDeferredEvents(void)
-{
-	// NOTE(ljre): Window Position & Size
-	{
-		UINT flags = SWP_NOSIZE | SWP_NOMOVE;
-		
-		int32 x = global_deferred_events.window_x;
-		int32 y = global_deferred_events.window_y;
-		int32 width = global_deferred_events.window_width;
-		int32 height = global_deferred_events.window_height;
-		
-		if (x != -1 && y != -1)
-			flags &=~ (UINT)SWP_NOMOVE;
-		
-		if (width != -1 && height != -1)
-		{
-			flags &=~ (UINT)SWP_NOSIZE;
-			
-			global_window_width = width;
-			global_window_height = height;
-		}
-		
-		if (flags != (SWP_NOSIZE | SWP_NOMOVE))
-			SetWindowPos(global_window, NULL, x, y, width, height, flags | SWP_NOZORDER);
-		
-		global_deferred_events.window_x = -1;
-		global_deferred_events.window_y = -1;
-		global_deferred_events.window_width = -1;
-		global_deferred_events.window_height = -1;
-	}
-}
 
 //~ Internal API
 internal int64
@@ -167,6 +126,74 @@ Win32_LoadLibrary(const char* name)
 		Platform_DebugLog("Loaded Library: %s\n", name);
 	
 	return result;
+}
+
+//~ Functions
+internal void
+ProcessDeferredEvents(void)
+{
+	// NOTE(ljre): Window Position & Size
+	{
+		UINT flags = SWP_NOSIZE | SWP_NOMOVE;
+		
+		int32 x = global_config.window_x;
+		int32 y = global_config.window_y;
+		int32 width = global_config.window_width;
+		int32 height = global_config.window_height;
+		
+		if (width == 0)
+			width = global_window_width;
+		else
+			flags &=~ (UINT)SWP_NOSIZE;
+		
+		if (height == 0)
+			height = global_window_height;
+		else
+			flags &=~ (UINT)SWP_NOSIZE;
+		
+		if (global_config.center_window > 0)
+		{
+			x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
+			y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
+			
+			flags &=~ (UINT)SWP_NOMOVE;
+		}
+		else if (x != 0 || y != 0)
+			flags &=~ (UINT)SWP_NOMOVE;
+		
+		if (flags != (SWP_NOSIZE | SWP_NOMOVE))
+			SetWindowPos(global_window, NULL, x, y, width, height, flags | SWP_NOZORDER);
+	}
+	
+	// NOTE(ljre): Window Title
+	{
+		if (global_config.window_title.len > 0)
+		{
+			wchar_t* name = Win32_ConvertStringToWSTR(global_config.window_title, NULL, 0);
+			SetWindowTextW(global_window, name);
+			HeapFree(global_heap, 0, name);
+		}
+	}
+	
+	// NOTE(ljre): Cursor
+	{
+		static bool32 previous_show = true;
+		bool32 show = !!(global_config.show_cursor + 1);
+		
+		if (global_config.show_cursor && previous_show != show)
+		{
+			ShowCursor(show);
+			previous_show = show;
+		}
+		
+		if (global_config.lock_cursor)
+		{
+			global_lock_cursor = !!(global_config.lock_cursor + 1);
+		}
+	}
+	
+	// NOTE(ljre): Reset config.
+	memset(&global_config, 0, sizeof(global_config));
 }
 
 //~ Entry Point
@@ -353,7 +380,7 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
 		
 		Win32_InitInput();
 		Win32_InitAudio();
-		Platform_CenterWindow();
+		global_config.center_window = true;
 		Platform_PollEvents();
 		
 		*out_graphics = &global_graphics_context;
@@ -383,36 +410,9 @@ Platform_WindowHeight(void)
 }
 
 API void
-Platform_SetWindow(int32 x, int32 y, int32 width, int32 height)
+Platform_UpdateConfig(const Platform_Config* config)
 {
-	if (x != -1)
-		global_deferred_events.window_x = x;
-	if (y != -1)
-		global_deferred_events.window_y = y;
-	if (width != -1)
-		global_deferred_events.window_width = width;
-	if (height != -1)
-		global_deferred_events.window_height = height;
-}
-
-API void
-Platform_CenterWindow(void)
-{
-	int32 monitor_width = global_monitor.right - global_monitor.left;
-	int32 monitor_height = global_monitor.bottom - global_monitor.top;
-	
-	global_deferred_events.window_x = monitor_width / 2 - global_window_width / 2 + global_monitor.left;
-	global_deferred_events.window_y = monitor_height / 2 - global_window_height / 2 + global_monitor.top;
-}
-
-API void
-Platform_ShowCursor(bool32 show)
-{
-	if (show != global_show_cursor)
-	{
-		ShowCursor(show);
-		global_show_cursor = show;
-	}
+	memcpy(&global_config, config, sizeof(global_config));
 }
 
 API float64

@@ -606,7 +606,10 @@ internal void
 Game_3DDemoScene(Engine_Data* g)
 {
 	Trace("Game_3DDemoScene");
-	Platform_ShowCursor(false);
+	Platform_UpdateConfig(&(Platform_Config) {
+							  .lock_cursor = 1,
+							  .show_cursor = -1,
+						  });
 	
 	Asset_3DModel cube;
 	if (!Render_Load3DModelFromFile(Str("./assets/cube.glb"), &cube))

@@ -970,12 +970,14 @@ Win32_UpdateInputPos(void)
 		global_mouse.pos[0] = glm_clamp(global_mouse.pos[0], 0.0f, (float32)global_window_width);
 		global_mouse.pos[1] = glm_clamp(global_mouse.pos[1], 0.0f, (float32)global_window_height);
 		
-		if (!global_show_cursor && GetActiveWindow())
+		if (global_lock_cursor && GetActiveWindow())
 		{
 			mouse.x = global_window_width/2;
 			mouse.y = global_window_height/2;
+			
 			ClientToScreen(global_window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
+			
 			global_mouse.old_pos[0] = (float32)(global_window_width/2);
 			global_mouse.old_pos[1] = (float32)(global_window_height/2);
 		}
