@@ -78,7 +78,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			int16* end_it = end_samples;
 			bool32 should_remove = false;
 			
-			float32 scale = (float32)playing->sound->sample_rate / (float32)sample_rate * playing->speed;
+			float32 scale = (float32)playing->sound->sample_rate / (float32)sample_rate;
 			int32 scaled_elapsed_frames = (int32)((float32)elapsed_frames * scale);
 			
 			if (playing->frame_index < 0)
@@ -86,7 +86,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			else
 				playing->frame_index += scaled_elapsed_frames;
 			
-			int32 sam = playing->frame_index * channels;
+			int32 sam = playing->frame_index * playing->sound->channels;
 			if (!playing->loop)
 			{
 				if (sam >= playing->sound->sample_count)
@@ -94,7 +94,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 					end_it = it;
 					should_remove = true;
 				}
-				else if (sam + sample_count > playing->sound->sample_count)
+				else if (sam + (int32)((float32)sample_count*scale) > playing->sound->sample_count)
 				{
 					end_it = it + (playing->sound->sample_count - sam);
 				}
@@ -104,7 +104,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 				playing->frame_index %= playing->sound->sample_count / playing->sound->channels;
 			}
 			
-			float32 index = (float32)playing->frame_index;
+			float32 index = (float32)playing->frame_index/scale;
 			while (it < end_it)
 			{
 				float32 index_to_use = index * scale;
@@ -143,7 +143,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 				
 				index += 1;
 				
-				if (index * scale > (float32)playing->sound->sample_count)
+				if (index * scale > (float32)(playing->sound->sample_count/playing->sound->channels))
 					index = 0;
 			}
 			

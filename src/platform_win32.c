@@ -248,6 +248,10 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 				Win32_UpdateKeyboardKey(VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
 				Win32_UpdateKeyboardKey(VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
 			}
+			
+			// NOTE(ljre): Always close on Alt+F4
+			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
+				global_window_should_close = true;
 		} break;
 		
 		case WM_LBUTTONUP: global_mouse.buttons[Input_MouseButton_Left] &=~ 1; break;
@@ -256,6 +260,12 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_MBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Middle] |= 1; break;
 		case WM_RBUTTONUP: global_mouse.buttons[Input_MouseButton_Right] &=~ 1; break;
 		case WM_RBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Right] |= 1; break;
+		
+		case WM_MOUSEWHEEL:
+		{
+			int32 delta = GET_WHEEL_DELTA_WPARAM(wparam) / 120;
+			global_mouse.scroll += delta;
+		} break;
 		
 		case WM_DEVICECHANGE:
 		{
@@ -307,6 +317,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	int32 result = Engine_Main(argc, argv);
 	
 	// NOTE(ljre): Free resources... or nah :P
+	Win32_DeinitAudio();
 	
 	return result;
 }

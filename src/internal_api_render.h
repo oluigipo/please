@@ -28,6 +28,19 @@ struct Render_3DPointLight
 }
 typedef Render_3DPointLight;
 
+struct Render_3DFlashlight
+{
+	vec3 position;
+	vec3 direction;
+	vec3 color;
+	
+	float32 constant, linear, quadratic;
+	
+	float32 inner_cutoff;
+	float32 outer_cutoff;
+}
+typedef Render_3DFlashlight;
+
 struct Render_3DModel
 {
 	mat4 transform;
@@ -45,11 +58,13 @@ struct Render_3DScene
 	uint32 shadow_fbo, shadow_depthmap;
 	uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
 	
-	int32 point_light_count;
 	int32 model_count;
+	int32 point_light_count;
+	int32 flashlights_count;
 	
-	Render_3DPointLight* point_lights;
 	Render_3DModel* models;
+	Render_3DPointLight* point_lights;
+	Render_3DFlashlight* flashlights;
 }
 typedef Render_3DScene;
 
@@ -83,6 +98,7 @@ API void Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 r
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
 API void Render_Begin2D(void);
 API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment);
+API void Render_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color);
 API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment);
 
 API void Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera);

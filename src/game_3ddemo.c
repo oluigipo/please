@@ -91,7 +91,7 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 	}
 }
 
-#if 0
+#if 1
 internal void
 Game_3DDemoScene(Engine_Data* g)
 {
@@ -623,6 +623,12 @@ Game_3DDemoScene(Engine_Data* g)
 		Platform_ExitWithErrorMessage(Str("não deu pra carregar o trollge"));
 	}
 	
+	Asset_Texture hand;
+	if (!Render_LoadTextureFromFile(Str("./assets/hand.png"), &hand))
+	{
+		Platform_ExitWithErrorMessage(Str("não deu pra carregar a mão"));
+	}
+	
 	float32 camera_yaw = PI32 / 2.0f;
 	float32 camera_pitch = 0.0f;
 	float32 sensitivity = 0.0025f;
@@ -647,61 +653,74 @@ Game_3DDemoScene(Engine_Data* g)
 		glm_translate(ground->transform, (vec3) { 0.0f, -1.0f, 0.0f });
 		glm_scale(ground->transform, (vec3) { 50.0f, 1.0f, 50.0f });
 		
-		const float32 c = 0.25f;
+		const float32 c = 0.5f;
 		glm_vec4_copy((vec4) { c, c, c, 1.0f }, ground->color);
 		
 		ground->asset = &cube;
 	}
 	
 	//- Lights
-	Render_3DPointLight lights[1];
+	Render_3DFlashlight lights[1];
 	
 	lights[0].position[0] = 0.0f;
 	lights[0].position[1] = camera_height*1.9f;
 	lights[0].position[2] = 0.0f;
 	
-	lights[0].ambient[0] = 0.2f;
-	lights[0].ambient[1] = 0.2f;
-	lights[0].ambient[2] = 0.2f;
+	lights[0].direction[0] = 0.0f;
+	lights[0].direction[1] = -1.0f;
+	lights[0].direction[2] = 0.0f;
 	
-	lights[0].diffuse[0] = 1.0f;
-	lights[0].diffuse[1] = 1.0f;
-	lights[0].diffuse[2] = 1.0f;
-	
-	lights[0].specular[0] = 0.2f;
-	lights[0].specular[1] = 0.2f;
-	lights[0].specular[2] = 0.2f;
+	lights[0].color[0] = 1.0f;
+	lights[0].color[1] = 1.0f;
+	lights[0].color[2] = 1.0f;
 	
 	lights[0].constant = 1.0f;
 	lights[0].linear = 0.13f;
 	lights[0].quadratic = 0.05f;
 	
+	lights[0].inner_cutoff = cosf(glm_rad(45.5f));
+	lights[0].outer_cutoff = cosf(glm_rad(50.5f));
+	
 	// NOTE(ljre): Render Command
-	Render_3DScene scene3d = { 0 };
-	scene3d.dirlight[0] = 0.0f;
-	scene3d.dirlight[1] = 2.0f; // TODO(ljre): discover why tf this needs to be positive
-	scene3d.dirlight[2] = 0.0f;
-	glm_vec3_fill(scene3d.dirlight_color, 0.0f);
+	Render_3DScene scene3d = {
+		.dirlight = { 0.0f, 1.0f, 0.0f },
+		.dirlight_color = GLM_VEC3_ZERO_INIT,
+		
+		.flashlights = lights,
+		.flashlights_count = ArrayLength(lights),
+		
+		.models = scene_models,
+		.model_count = 1,
+	};
+	
 	glm_vec3_normalize(scene3d.dirlight);
 	
-	scene3d.light_model = &cube;
-	scene3d.point_lights = lights;
-	scene3d.models = scene_models;
-	scene3d.point_light_count = ArrayLength(lights);
-	scene3d.model_count = 1;
+	bool32 trollge_visible = true;
+	
+	float32 trollge_y = 8.0f;
+	float32 trollge_dist = 5.0f;
+	float32 trollge_angle = 0.0f;
 	
 	while (!Platform_WindowShouldClose())
 	{
 		Trace("Game Loop");
 		void* memory_state = Arena_End(g->temp_arena);
 		
-		if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
+		if (false && Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
 			break;
+		
+		if (Input_KeyboardIsPressed('E'))
+			trollge_visible ^= 1;
 		
 		float32 dt = Engine_DeltaTime();
 		Input_Mouse mouse;
 		Input_GetMouse(&mouse);
 		
+		trollge_y += (float32)(Input_KeyboardIsDown(Input_KeyboardKey_Up) - Input_KeyboardIsDown(Input_KeyboardKey_Down)) * dt * 0.025f * (trollge_dist / 5.0f);
+		trollge_angle += (float32)(Input_KeyboardIsDown(Input_KeyboardKey_Left) - Input_KeyboardIsDown(Input_KeyboardKey_Right)) * dt * 0.01f * (trollge_dist / 5.0f);
+		trollge_dist += (float32)mouse.scroll * dt * 0.1f;
+		
+		//~ Camera
 		glm_vec2_sub(mouse.pos, mouse.old_pos, mouse.pos);
 		
 		if (mouse.pos[0] != 0.0f)
@@ -761,6 +780,81 @@ Game_3DDemoScene(Engine_Data* g)
 		Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
 		
 		Render_Draw3DScene(&scene3d, &camera);
+		
+		//~ 2D stuff
+		Render_Begin2D();
+		
+		//- Draw hands
+		if (camera_pitch < -PI32 * 0.25f)
+		{
+			float32 scalar = 1.0f - (2.0f + camera_pitch / (PI32 * 0.25f));
+			
+			mat4 view;
+			Render_CalcViewMatrix2D(&(Render_Camera) {
+										.size = {
+											(float32)Platform_WindowWidth(),
+											(float32)Platform_WindowHeight(),
+										},
+										.zoom = 1.0f,
+									}, view);
+			
+			Render_Layer2D layer = {
+				.texture = &hand,
+				.sprite_count = 2,
+				.sprites = (Render_Sprite2D[2]) { 0.0f },
+			};
+			
+			for (int32 i = 0; i < layer.sprite_count; ++i)
+			{
+				glm_mat4_identity(layer.sprites[i].transform);
+				
+				float32 dir = (i == 0) ? -1.0f : 1.0f;
+				glm_translate(layer.sprites[i].transform, (vec3) {
+								  (float32)hand.width * dir * 0.5f,
+								  (float32)Platform_WindowHeight() - (float32)hand.height * scalar,
+							  });
+				glm_scale(layer.sprites[i].transform, (vec3) {
+							  (float32)hand.width * dir,
+							  (float32)hand.height,
+							  1.0f,
+						  });
+				
+				glm_vec4_copy((vec4) { 0.0f, 0.0f, 1.0f, 1.0f }, layer.sprites[i].texcoords);
+				glm_vec4_copy(GLM_VEC4_ONE, layer.sprites[i].color);
+			}
+			
+			Render_DrawLayer2D(&layer, view);
+		}
+		
+		//- Draw trollge face
+		if (trollge_visible)
+		{
+			mat4 view;
+			{
+				mat4 proj;
+				glm_perspective(glm_rad(90.0f), (float32)Platform_WindowWidth() / (float32)Platform_WindowHeight(), 0.01f, 100.0f, proj);
+				
+				glm_mat4_identity(view);
+				glm_look(camera.pos, camera.dir, camera.up, view);
+				glm_mat4_mul(proj, view, view);
+			}
+			
+			Render_Layer2D layer = {
+				.texture = &trollge,
+				.sprite_count = 1,
+				.sprites = &(Render_Sprite2D) {
+					.transform = GLM_MAT4_IDENTITY_INIT,
+					.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+					.color = GLM_VEC4_ONE_INIT,
+				},
+			};
+			
+			glm_translate(layer.sprites[0].transform, (vec3) { sinf(trollge_angle) * trollge_dist, trollge_y, cosf(trollge_angle) * trollge_dist });
+			glm_rotate(layer.sprites[0].transform, trollge_angle, (vec3) { 0.0f, 1.0f, 0.0f });
+			glm_scale(layer.sprites[0].transform, (vec3) { 2.0f, -2.0f, 1.0f });
+			
+			Render_DrawLayer2D(&layer, view);
+		}
 		
 		Engine_FinishFrame();
 		Arena_Pop(g->temp_arena, memory_state);

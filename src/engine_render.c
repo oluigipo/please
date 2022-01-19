@@ -13,6 +13,7 @@
 #define TEXTURE_SLOT_SHADOWMAP 3
 
 #define MAX_POINT_LIGHTS 16
+#define MAX_FLASHLIGHTS 4
 
 //#define ENABLE_FOG
 
@@ -36,6 +37,21 @@ struct PointLightsUniformData
 	int32 specular;
 }
 typedef PointLightsUniformData;
+
+struct FlashlightUniformData
+{
+	int32 position;
+	int32 direction;
+	int32 color;
+	
+	int32 inner_cutoff;
+	int32 outer_cutoff;
+	
+	int32 constant;
+	int32 linear;
+	int32 quadratic;
+}
+typedef FlashlightUniformData;
 
 struct InternalShaderUniforms
 {
@@ -66,6 +82,9 @@ struct InternalShaderUniforms
 	
 	int32 pointlights_count;
 	PointLightsUniformData pointlights[MAX_POINT_LIGHTS];
+	
+	int32 flashlights_count;
+	FlashlightUniformData flashlights[MAX_FLASHLIGHTS];
 }
 typedef InternalShaderUniforms;
 
@@ -276,9 +295,24 @@ internal const char* const global_fragment_finalpassshader =
 "    vec3 specular;"
 "};"
 
+"struct Flashlight {"
+"    vec3 position;"
+"    vec3 direction;"
+"    vec3 color;"
+
+"    float innerCutoff;"
+"    float outerCutoff;"
+
+"    float constant;"
+"    float linear;"
+"    float quadratic;"
+"};"
+
 "uniform DirLight uDirLight;"
 "uniform PointLight uPointLights[" StrMacro(MAX_POINT_LIGHTS) "];"
 "uniform int uPointLightsCount;"
+"uniform Flashlight uFlashlights[" StrMacro(MAX_FLASHLIGHTS) "];"
+"uniform int uFlashlightsCount;"
 "uniform vec3 uViewPos;"
 "uniform mat4 uDirLightMatrix;\n"
 
@@ -363,6 +397,30 @@ internal const char* const global_fragment_finalpassshader =
 "    return ambient + diffuse + specular;"
 "}"
 
+"vec3 CalculateFlashlight(vec3 normal, vec3 viewDir, vec3 diffuseSample, vec3 specularSample, float shininess, vec3 fragPos, int i) {"
+"    vec3 lightDir = normalize(uFlashlights[i].position - fragPos);"
+"    vec3 halfwayDir = normalize(lightDir + viewDir);"
+
+"    float diff = max(dot(normal, lightDir), 0.0);"
+"    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);"
+
+"    vec3 diffuse  = uFlashlights[i].color * diff * diffuseSample;"
+"    vec3 specular = uFlashlights[i].color * spec * specularSample;"
+
+"    float theta = dot(lightDir, normalize(-uFlashlights[i].direction));"
+"    float epsilon = uFlashlights[i].innerCutoff - uFlashlights[i].outerCutoff;"
+"    float intensity = clamp((theta - uFlashlights[i].outerCutoff) / epsilon, 0.0, 1.0);"
+"    diffuse  *= intensity;"
+"    specular *= intensity;"
+
+"    float distance = length(uFlashlights[i].position - fragPos);"
+"    float attenuation = 1.0 / (uFlashlights[i].constant + uFlashlights[i].linear * distance + uFlashlights[i].quadratic * (distance * distance));"
+
+"    diffuse  *= attenuation;"
+"    specular *= attenuation;"
+"    return diffuse + specular;"
+"}"
+
 "void main() {"
 "    vec4 normalSample = texture(uNormal, vTexCoord);"
 "    vec4 positionSample = texture(uPosition, vTexCoord);"
@@ -380,8 +438,12 @@ internal const char* const global_fragment_finalpassshader =
 "    vec3 viewDir = normalize(uViewPos - fragPos);"
 
 "    vec3 color = CalculateDirLight(normal, viewDir, diffuseSample, specularSample, shininess, fragPos);"
-"    for(int i = 0; i < uPointLightsCount; ++i) {"
+"    for (int i = 0; i < uPointLightsCount; ++i) {"
 "        color += CalculatePointLight(normal, viewDir, diffuseSample, specularSample, shininess, fragPos, i);"
+"    }"
+
+"    for (int i = 0; i < uFlashlightsCount; ++i) {"
+"        color += CalculateFlashlight(normal, viewDir, diffuseSample, specularSample, shininess, fragPos, i);"
 "    }"
 
 #ifdef ENABLE_FOG
@@ -608,6 +670,31 @@ GetShaderUniforms(InternalShader* shader)
 		shader->uniform.pointlights[i].diffuse = GL.glGetUniformLocation(id, buf);
 		snprintf(buf, sizeof buf, "uPointLights[%i].specular", i);
 		shader->uniform.pointlights[i].specular = GL.glGetUniformLocation(id, buf);
+	}
+	
+	shader->uniform.flashlights_count = GL.glGetUniformLocation(id, "uFlashlightsCount");
+	for (int32 i = 0; i < MAX_FLASHLIGHTS; ++i)
+	{
+		char buf[128];
+		
+		snprintf(buf, sizeof buf, "uFlashlights[%i].position", i);
+		shader->uniform.flashlights[i].position = GL.glGetUniformLocation(id, buf);
+		snprintf(buf, sizeof buf, "uFlashlights[%i].direction", i);
+		shader->uniform.flashlights[i].direction = GL.glGetUniformLocation(id, buf);
+		snprintf(buf, sizeof buf, "uFlashlights[%i].color", i);
+		shader->uniform.flashlights[i].color = GL.glGetUniformLocation(id, buf);
+		
+		snprintf(buf, sizeof buf, "uFlashlights[%i].innerCutoff", i);
+		shader->uniform.flashlights[i].inner_cutoff = GL.glGetUniformLocation(id, buf);
+		snprintf(buf, sizeof buf, "uFlashlights[%i].outerCutoff", i);
+		shader->uniform.flashlights[i].outer_cutoff = GL.glGetUniformLocation(id, buf);
+		
+		snprintf(buf, sizeof buf, "uFlashlights[%i].constant", i);
+		shader->uniform.flashlights[i].constant = GL.glGetUniformLocation(id, buf);
+		snprintf(buf, sizeof buf, "uFlashlights[%i].linear", i);
+		shader->uniform.flashlights[i].linear = GL.glGetUniformLocation(id, buf);
+		snprintf(buf, sizeof buf, "uFlashlights[%i].quadratic", i);
+		shader->uniform.flashlights[i].quadratic = GL.glGetUniformLocation(id, buf);
 	}
 }
 
@@ -961,8 +1048,6 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 API void
 Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view)
 {
-	Trace("Render_CalcViewMatrix2D");
-	
 	glm_mat4_identity(out_view);
 	glm_translate(out_view, (float32*)camera->pos);
 	glm_rotate(out_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
@@ -973,8 +1058,6 @@ Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view)
 API void
 Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov, float32 aspect)
 {
-	Trace("Render_CalcViewMatrix3D");
-	
 	glm_mat4_identity(out_view);
 	glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, out_view);
 	
@@ -986,8 +1069,6 @@ Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov,
 API void
 Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view)
 {
-	Trace("Render_CalcModelMatrix2D");
-	
 	glm_mat4_identity(out_view);
 	glm_translate(out_view, (vec3) { pos[0], pos[1] });
 	glm_scale(out_view, (vec3) { scale[0], scale[1], 1.0f });
@@ -997,14 +1078,33 @@ Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 o
 API void
 Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view)
 {
-	Trace("Render_CalcModelMatrix3D");
-	
 	glm_mat4_identity(out_view);
 	glm_translate(out_view, (float32*)pos);
 	glm_scale(out_view, (float32*)scale);
 	glm_rotate(out_view, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
 	glm_rotate(out_view, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
 	glm_rotate(out_view, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+}
+
+API void
+Render_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color)
+{
+	Trace("Render_DrawTexture");
+	
+	BindShader(&global_default_shader);
+	
+	GL.glBindVertexArray(global_quad_vao);
+	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+	
+	GL.glActiveTexture(GL_TEXTURE0);
+	GL.glBindTexture(GL_TEXTURE_2D, texture->id);
+	
+	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)transform);
+	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+	GL.glUniform4fv(global_uniform->color, 1, (float32*)color);
+	GL.glUniform1i(global_uniform->texture, 0);
+	
+	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 API void
@@ -1567,6 +1667,23 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 			GL.glUniform3fv(global_uniform->pointlights[i].ambient, 1, l->ambient);
 			GL.glUniform3fv(global_uniform->pointlights[i].diffuse, 1, l->diffuse);
 			GL.glUniform3fv(global_uniform->pointlights[i].specular, 1, l->specular);
+		}
+		
+		GL.glUniform1i(global_uniform->flashlights_count, scene->flashlights_count);
+		for (int32 i = 0; i < scene->flashlights_count; ++i)
+		{
+			Render_3DFlashlight* const l = &scene->flashlights[i];
+			
+			GL.glUniform3fv(global_uniform->flashlights[i].position, 1, l->position);
+			GL.glUniform3fv(global_uniform->flashlights[i].direction, 1, l->direction);
+			GL.glUniform3fv(global_uniform->flashlights[i].color, 1, l->color);
+			
+			GL.glUniform1f(global_uniform->flashlights[i].constant, l->constant);
+			GL.glUniform1f(global_uniform->flashlights[i].linear, l->linear);
+			GL.glUniform1f(global_uniform->flashlights[i].quadratic, l->quadratic);
+			
+			GL.glUniform1f(global_uniform->flashlights[i].inner_cutoff, l->inner_cutoff);
+			GL.glUniform1f(global_uniform->flashlights[i].outer_cutoff, l->outer_cutoff);
 		}
 		
 		GL.glBindVertexArray(global_quad_vao);

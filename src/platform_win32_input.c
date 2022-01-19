@@ -950,6 +950,8 @@ Win32_UpdateInputPre(void)
 		btn = (bool8)(btn << 1) | (btn & 1);
 		global_mouse.buttons[i] = btn;
 	}
+	
+	global_mouse.scroll = 0;
 }
 
 internal inline void
