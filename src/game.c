@@ -1,5 +1,10 @@
 #include "internal.h"
 
+#if 1
+#   include "game_jam.c"
+#else
+// TODO(ljre): Fix other demos
+
 struct Game_GlobalData
 {
 	Asset_Font font;
@@ -54,14 +59,12 @@ DrawMenuButton(Game_GlobalData* global, Game_MenuButton* button, Input_Mouse* mo
 }
 
 API void
-Game_MainScene(Engine_Data* g)
+Game_Main(Engine_Data* g)
 {
 	Trace("Game_MainScene");
 	
 	g->game = Arena_Push(g->persistent_arena, sizeof(Game_GlobalData));
 	Game_GlobalData* global = g->game;
-	
-	Scene* next_scene = NULL;
 	
 	// NOTE(ljre): Load font
 	bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &global->font);
@@ -146,3 +149,4 @@ Game_MainScene(Engine_Data* g)
 	
 	g->current_scene = next_scene;
 }
+#endif

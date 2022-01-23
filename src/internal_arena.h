@@ -38,7 +38,7 @@ Arena_Create(uintsize reserved, uintsize page_size)
 }
 
 internal void*
-Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
+Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 {
 	Assert(IsPowerOf2(alignment_mask+1));
 	
@@ -57,15 +57,25 @@ Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 	void* result = arena->memory + arena->offset;
 	arena->offset += size;
 	
-	memset(result, 0, size);
-	
 	return result;
+}
+
+internal inline void*
+Arena_PushDirty(Arena* arena, uintsize size)
+{
+	return Arena_PushDirtyAligned(arena, size, 15);
+}
+
+internal inline void*
+Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
+{
+	return memset(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size);
 }
 
 internal inline void*
 Arena_Push(Arena* arena, uintsize size)
 {
-	return Arena_PushAligned(arena, size, 15);
+	return memset(Arena_PushDirtyAligned(arena, size, 15), 0, size);
 }
 
 internal void

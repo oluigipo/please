@@ -34,6 +34,7 @@ Engine_Main(int32 argc, char** argv)
 	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(16));
 	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));
 	global_engine.delta_time = 1.0f;
+	global_engine.running = true;
 	
 	// NOTE(ljre): Window width & height
 	if (!Platform_CreateWindow(1280, 720, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
@@ -46,11 +47,19 @@ Engine_Main(int32 argc, char** argv)
 	global_engine.last_frame_time = Platform_GetTime();
 	
 	// NOTE(ljre): Run
-	global_engine.current_scene = Game_MainScene;
-	
+#ifdef INTERNAL_ENABLE_HOT
 	do
-		global_engine.current_scene(&global_engine);
-	while (global_engine.current_scene);
+	{
+		void(*func)(Engine_Data*) = Platform_LoadGameLibrary();
+		
+		func(&global_engine);
+	}
+	while (global_engine.running);
+#else
+	do
+		Game_Main(&global_engine);
+	while (global_engine.running);
+#endif
 	
 	// NOTE(ljre): Deinit
 	Discord_Deinit();

@@ -2,22 +2,16 @@
 #define INTERNAL_API_ENGINE_H
 
 struct Engine_Data typedef Engine_Data;
-struct Game_GlobalData typedef Game_GlobalData;
-
-// A scene is a function pointer that should return the next scene to
-// run, or NULL if the game should close.
-// The parameter 'shared_data' is a pointer to a variable which will have the same value when changing scenes.
-// Use it to store your global game data.
-typedef void Scene(Engine_Data* data);
+struct Game_Data typedef Game_Data;
 
 struct Engine_Data
 {
 	Arena* persistent_arena;
 	Arena* temp_arena;
-	Scene* current_scene;
-	Game_GlobalData* game;
+	Game_Data* game;
 	
 	bool8 outputed_sound_this_frame;
+	bool8 running;
 	
 	float32 delta_time;
 	float64 last_frame_time;
@@ -33,8 +27,7 @@ API float64 Engine_RandomF64(void);
 API float32 Engine_RandomF32Range(float32 start, float32 end);
 API float32 Engine_DeltaTime(void);
 
-// The first scene to run.
-API void Game_MainScene(Engine_Data* data);
+API void Game_Main(Engine_Data* data);
 
 //- Discord Game SDK (OPTIONAL)
 #ifdef INTERNAL_ENABLE_DISCORD_SDK

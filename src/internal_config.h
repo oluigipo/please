@@ -25,6 +25,17 @@
 #   define API static
 #elif defined(__cplusplus)
 #   define API extern "C"
+#elif defined(INTERNAL_ENABLE_HOT)
+#   ifndef _WIN32
+#       error Hot reloading only available on Windows.
+#   endif
+#   define API __declspec(dllexport)
+
+#   define memcpy __builtin_memcpy
+#   define memmove __builtin_memmove
+#   define memcmp __builtin_memcmp
+#   define memset __builtin_memset
+#   define strstr __builtin_strstr
 #else
 #   define API
 #endif

@@ -46,7 +46,7 @@ OBJS = $(TUS:%=$(BUILDDIR)/%.o)
 #========= Platform Dependent Variables
 ifeq ($(PLATFORM), win32)
 	OUTPUT_NAME = game.exe
-	EXTS_ = o pdb exp lib ilk
+	EXTS_ = o pdb exp lib ilk dll
 	CLEAN = del $(EXTS_:%="$(BUILDDIR)\*.%")
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static -Wl,/subsystem:windows
@@ -62,7 +62,8 @@ endif
 
 #========= Rules
 all: game
-.PHONY: all game clean src/unity_build.c
+objs: $(OBJS)
+.PHONY: all objs game clean src/unity_build.c
 
 game: $(OBJS)
 	$(LD) $^ -o "$(BUILDDIR)/$(OUTPUT_NAME)" $(LDFLAGS)

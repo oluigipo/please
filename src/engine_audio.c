@@ -39,6 +39,9 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	if (out_sound->sample_count == -1)
 		return false;
 	
+	// NOTE(ljre): I don't know why.
+	out_sound->sample_count *= out_sound->channels;
+	
 	return true;
 }
 
@@ -104,7 +107,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 				playing->frame_index %= playing->sound->sample_count / playing->sound->channels;
 			}
 			
-			float32 index = (float32)playing->frame_index/scale;
+			float32 index = (float32)playing->frame_index / scale;
 			while (it < end_it)
 			{
 				float32 index_to_use = index * scale;
@@ -143,7 +146,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 				
 				index += 1;
 				
-				if (index * scale > (float32)(playing->sound->sample_count/playing->sound->channels))
+				if (index * scale > (float32)(playing->sound->sample_count / playing->sound->channels))
 					index = 0;
 			}
 			

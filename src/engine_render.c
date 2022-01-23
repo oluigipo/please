@@ -1048,10 +1048,16 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 API void
 Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view)
 {
+	vec3 size = {
+		camera->zoom / camera->size[0],
+		-camera->zoom / camera->size[1],
+		1.0f,
+	};
+	
 	glm_mat4_identity(out_view);
-	glm_translate(out_view, (float32*)camera->pos);
+	glm_translate(out_view, (vec3) { -camera->pos[0] * size[0], -camera->pos[1] * size[1] });
 	glm_rotate(out_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-	glm_scale(out_view, (vec3) { camera->zoom / camera->size[0], -camera->zoom / camera->size[1], 1.0f });
+	glm_scale(out_view, size);
 	glm_translate(out_view, (vec3) { -0.5f, -0.5f });
 }
 

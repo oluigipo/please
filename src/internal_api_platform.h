@@ -61,6 +61,10 @@ API void Platform_UpdateConfig(const Platform_Config* config);
 API void* Platform_LoadDiscordLibrary(void);
 #endif
 
+#ifdef INTERNAL_ENABLE_HOT
+API void* Platform_LoadGameLibrary(void);
+#endif
+
 // Memory
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);

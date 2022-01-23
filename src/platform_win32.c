@@ -281,8 +281,13 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 	return result;
 }
 
+#ifndef INTERNAL_ENABLE_HOT
 int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
+#else
+API int WINAPI
+WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
+#endif
 {
 	Trace("WinMain - Program Entry Point");
 	
@@ -627,7 +632,85 @@ Platform_LoadDiscordLibrary(void)
 		return NULL;
 	}
 	
-	Platform_DebugLog("Loaded Library: discord_game_sdk.dll\n");
+	return result;
+}
+#endif
+
+#ifdef INTERNAL_ENABLE_HOT
+internal uint64
+GetFileLastWriteTime(const char* filename)
+{
+	FILETIME last_write_time = { 0 };
+	WIN32_FIND_DATA find_data;
+	HANDLE find_handle = FindFirstFileA(filename, &find_data);
+	
+	if(find_handle != INVALID_HANDLE_VALUE)
+	{
+		FindClose(find_handle);
+		last_write_time = find_data.ftLastWriteTime;
+	}
+	
+	uint64 result = 0;
+	
+	result |= (uint64)(last_write_time.dwLowDateTime);
+	result |= (uint64)(last_write_time.dwHighDateTime) << 32;
+	
+	return result;
+}
+
+API void*
+Platform_LoadGameLibrary(void)
+{
+	static HMODULE library = NULL;
+	static uint64 saved_last_update;
+	static void* saved_result;
+	
+	void* result = saved_result;
+	
+	if (!library)
+	{
+		const char* target_dll_path = "./build/game_.dll";
+		if (!CopyFileA("./build/game.dll", target_dll_path, false))
+		{
+			// NOTE(ljre): fallback to the original file
+			target_dll_path = "./build/game.dll";
+			Platform_DebugLog("%x\n", (uint32)GetLastError());
+		}
+		else
+			saved_last_update = GetFileLastWriteTime("./build/game.dll");
+		
+		library = Win32_LoadLibrary(target_dll_path);
+		Assert(library);
+		
+		result = GetProcAddress(library, "Game_Main");
+	}
+	else
+	{
+		uint64 last_update = GetFileLastWriteTime("./build/game.dll");
+		
+		if (last_update > saved_last_update)
+		{
+			FreeLibrary(library);
+			
+			const char* target_dll_path = "./build/game_.dll";
+			if (!CopyFileA("./build/game.dll", target_dll_path, false))
+				// NOTE(ljre): fallback to the original file
+				target_dll_path = "./build/game.dll";
+			else
+				saved_last_update = last_update;
+			
+			library = Win32_LoadLibrary(target_dll_path);
+			Assert(library);
+			
+			result = GetProcAddress(library, "Game_Main");
+			
+			BringWindowToTop(global_window);
+		}
+	}
+	
+	Assert(result);
+	
+	saved_result = result;
 	return result;
 }
 #endif
@@ -649,11 +732,13 @@ Platform_DebugMessageBox(const char* restrict format, ...)
 API void
 Platform_DebugLog(const char* restrict format, ...)
 {
+	char buffer[Kilobytes(16)];
+	
 	va_list args;
 	va_start(args, format);
-	vprintf(format, args);
+	vsnprintf(buffer, sizeof buffer, format, args);
+	OutputDebugStringA(buffer);
 	va_end(args);
-	fflush(stdout);
 }
 
 API void
