@@ -60,9 +60,7 @@ API void Platform_FinishFrame(void);
 API void Platform_UpdateConfig(const Platform_Config* config);
 
 // Optional Libraries
-#ifdef INTERNAL_ENABLE_DISCORD_SDK
 API void* Platform_LoadDiscordLibrary(void);
-#endif
 
 #ifdef INTERNAL_ENABLE_HOT
 API void* Platform_LoadGameLibrary(void);
@@ -159,6 +157,7 @@ typedef Input_MouseButton;
 
 struct Input_Mouse
 {
+	// NOTE(ljre): Position relative to window.
 	float32 pos[2];
 	float32 old_pos[2];
 	int32 scroll;
@@ -211,7 +210,7 @@ API bool32 Input_GetGamepad(int32 index, Input_Gamepad* out_gamepad);
 //             support it.
 API void Input_SetGamepad(int32 index, float32 vibration); // vibration = 0..1
 
-// NOTE(ljre): Fetch the currently connected gamepads and write them to 'out_gamepads' array and
+// NOTE(ljre): Fetch the currently connected gamepads, write them to 'out_gamepads' array and
 //             return how many were written, but never write more than 'max_count' gamepads.
 //
 //             If 'max_count' is less than 1, then just return the number of gamepads

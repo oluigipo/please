@@ -74,11 +74,15 @@ typedef double float64;
 #endif
 
 #if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
-#    include "../../tracy/TracyC.h"
+#    include "../../../ext/tracy/TracyC.h"
 internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
-#    define Trace(x) TracyCZoneN(_ctx __attribute((cleanup(___my_tracy_zone_end))),x,true)
+#    define TraceCat__(x,y) x ## y
+#    define TraceCat_(x,y) TraceCat__(x,y)
+#    define Trace(x) TracyCZoneN(TraceCat_(_ctx,__LINE__) __attribute((cleanup(___my_tracy_zone_end))),x,true)
+#    define TraceFrameMark() TracyCFrameMark
 #else
 #    define Trace(x) ((void)0)
+#    define TraceFrameMark() ((void)0)
 #endif
 
 #include "internal_arena.h"

@@ -85,7 +85,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			int32 scaled_elapsed_frames = (int32)((float32)elapsed_frames * scale);
 			
 			if (playing->frame_index < 0)
-				playing->frame_index = 0;
+				playing->frame_index = -playing->frame_index - 1;
 			else
 				playing->frame_index += scaled_elapsed_frames;
 			

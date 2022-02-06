@@ -9,9 +9,8 @@ Engine_FinishFrame(void)
 	
 	global_engine.outputed_sound_this_frame = false;
 	
-	Discord_Update();
-	
 	Platform_FinishFrame();
+	TraceFrameMark();
 	Platform_PollEvents();
 	
 	float64 current_time = Platform_GetTime();
@@ -25,7 +24,7 @@ Engine_Main(int32 argc, char** argv)
 {
 	Trace("Engine_Main");
 	
-	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(16));
+	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(32));
 	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));
 	global_engine.delta_time = 1.0f;
 	global_engine.running = true;
@@ -44,8 +43,6 @@ Engine_Main(int32 argc, char** argv)
 		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
 	
 	Engine_InitRender();
-	Discord_Init(DISCORD_APP_ID);
-	
 	global_engine.last_frame_time = Platform_GetTime();
 	
 	// NOTE(ljre): Run
@@ -64,7 +61,6 @@ Engine_Main(int32 argc, char** argv)
 #endif
 	
 	// NOTE(ljre): Deinit
-	Discord_Deinit();
 	Engine_DeinitRender();
 	
 	Arena_Destroy(global_engine.persistent_arena);

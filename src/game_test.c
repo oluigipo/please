@@ -1,4 +1,13 @@
 #define Game_MAX_PLAYING_AUDIOS 32
+#define Game_TABLE_SIZE 16
+
+enum Game_Piece
+{
+	Game_Piece_None,
+	Game_Piece_Blue,
+	Game_Piece_Red,
+}
+typedef Game_Piece;
 
 struct Game_Data
 {
@@ -20,6 +29,8 @@ struct Game_Data
 		vec2 camera_speed;
 		float32 camera_zoom;
 		float32 camera_target_zoom;
+		
+		Game_Piece table[Game_TABLE_SIZE][Game_TABLE_SIZE];
 	};
 };
 
@@ -40,21 +51,6 @@ PushAudio(Engine_Data* g, const Asset_SoundBuffer* sound)
 }
 
 internal void
-CalcUvs(vec4 out, vec2 cell_size, vec2 coord)
-{
-	vec4 result = { 0.0f };
-	vec2 tmp;
-	
-	glm_vec2_mul(cell_size, coord, tmp); // tmp = cell_size * coord
-	glm_vec2_add(tmp, result, result);   // result[0:2] += tmp
-	
-	glm_vec2_copy(result, result+2);     // result[2:4] = result[0:2]
-	glm_vec2_add(cell_size, result+2, result+2); // result[2:4] += cell_size
-	
-	glm_vec4_copy(result, out);
-}
-
-internal void
 InitGame(Engine_Data* g)
 {
 	Game_Data* gm = g->game = Arena_Push(g->persistent_arena, sizeof(*g->game));
@@ -66,6 +62,20 @@ InitGame(Engine_Data* g)
 		Platform_ExitWithErrorMessage(Str("Could not sprites from file './assets/base_texture.png'."));
 	
 	gm->camera_target_zoom = gm->camera_zoom = 0.25f;
+	
+	
+	for (int32 y = 0; y < Game_TABLE_SIZE; ++y)
+	{
+		for (int32 x = 0; x < Game_TABLE_SIZE; ++x)
+		{
+			if (y < 2 && x % 2 != y % 2)
+				gm->table[y][x] = Game_Piece_Red;
+			else if (y >= Game_TABLE_SIZE - 2 && x % 2 != y % 2)
+				gm->table[y][x] = Game_Piece_Blue;
+			else
+				gm->table[y][x] = Game_Piece_None;
+		}
+	}
 }
 
 internal void
@@ -103,37 +113,7 @@ UpdateAndRenderGame(Engine_Data* g)
 		gm->camera_zoom = glm_lerp(gm->camera_zoom, gm->camera_target_zoom, 0.3f);
 	}
 	
-	//~ NOTE(ljre): Render
-	Render_ClearBackground(0.1f, 0.1f, 0.1f, 1.0f);
-	//Render_Begin2D();
-	
-	const int32 size = 8;
-	int32 sprite_count = size * size;
-	Render_Sprite2D* sprites = Arena_PushDirty(g->temp_arena, sizeof(*sprites) * sprite_count);
-	
-	for (int32 y = 0; y < size; ++y)
-	{
-		for (int32 x = 0; x < size; ++x)
-		{
-			Render_Sprite2D* spr = &sprites[x + y * size];
-			
-			glm_mat4_identity(spr->transform);
-			glm_translate(spr->transform, (vec3) { (float32)x * 32.0f, (float32)y * 32.0f });
-			glm_scale(spr->transform, (vec3) { 32.0f, 32.0f, 1.0f });
-			
-			glm_vec2_zero(&spr->texcoords[0]);
-			glm_vec2_copy((vec2) { 1.0f / 128.0f * 32.0f, 1.0f / 128.0f * 32.0f }, &spr->texcoords[2]);
-			
-			glm_vec4_one(spr->color);
-		}
-	}
-	
-	Render_Layer2D layer = {
-		.texture = &gm->base_texture,
-		.sprite_count = sprite_count,
-		.sprites = sprites,
-	};
-	
+	//- NOTE(ljre): Camera Matrix
 	Render_Camera camera = {
 		.pos = { 0 },
 		.size = { (float32)Platform_WindowWidth(), (float32)Platform_WindowHeight() },
@@ -144,6 +124,80 @@ UpdateAndRenderGame(Engine_Data* g)
 	
 	mat4 view;
 	Render_CalcViewMatrix2D(&camera, view);
+	
+	//- NOTE(ljre): Mouse Click
+	if (Input_IsPressed(mouse, Input_MouseButton_Left))
+	{
+		mat4 inv;
+		vec4 click_pos = { [3] = 1.0f };
+		
+		glm_vec2_copy(mouse.pos, click_pos);
+		glm_vec2_div(click_pos, camera.size, click_pos);
+		glm_vec2_scale(click_pos, 2.0f, click_pos);
+		glm_vec2_sub(click_pos, GLM_VEC2_ONE, click_pos);
+		
+		glm_mat4_inv(view, inv);
+		glm_mat4_mulv(inv, click_pos, click_pos);
+		
+		click_pos[1] *= -1.0f;
+		
+		Platform_DebugLog("%f\t%f\n", click_pos[0], click_pos[1]);
+	}
+	
+	//~ NOTE(ljre): Render
+	Render_ClearBackground(0.1f, 0.1f, 0.1f, 1.0f);
+	
+	int32 sprite_count = Game_TABLE_SIZE * Game_TABLE_SIZE * 2;
+	Render_Sprite2D* sprites = Arena_PushDirty(g->temp_arena, sizeof(*sprites) * sprite_count);
+	Render_Sprite2D* spr = sprites;
+	
+	for (int32 y = 0; y < Game_TABLE_SIZE; ++y)
+	{
+		for (int32 x = 0; x < Game_TABLE_SIZE; ++x)
+		{
+			vec4 black = { 24.0f / 255.0f, 20.0f / 255.0f, 37.0f / 255.0f, 1.0f };
+			vec4 white = GLM_VEC4_ONE_INIT;
+			
+			glm_mat4_identity(spr->transform);
+			glm_translate(spr->transform, (vec3) { (float32)x * 16.0f, (float32)y * 16.0f });
+			glm_scale(spr->transform, (vec3) { 16.0f, 16.0f, 1.0f });
+			
+			glm_vec2_zero(&spr->texcoords[0]);
+			glm_vec2_copy((vec2) { 16.0f / 128.0f, 16.0f / 128.0f }, &spr->texcoords[2]);
+			
+			if ((x + y) % 2 == 0)
+				glm_vec4_copy(black, spr->color);
+			else
+				glm_vec4_copy(white, spr->color);
+			
+			if (gm->table[y][x])
+			{
+				glm_mat4_copy(spr->transform, spr[1].transform);
+				++spr;
+				
+				glm_vec4_copy((vec4) { 16.0f / 128.0f, 0.0f, 16.0f / 128.0f, 16.0f / 128.0f }, spr->texcoords);
+				
+				switch (gm->table[y][x])
+				{
+					case Game_Piece_Red: glm_vec4_copy((vec4) { 0.8f, 0.05f, 0.1f, 1.0f }, spr->color); break;
+					case Game_Piece_Blue: glm_vec4_copy((vec4) { 0.1f, 0.05f, 0.8f, 1.0f }, spr->color); break;
+					default:;
+				}
+			}
+			else
+			{
+				sprite_count--;
+			}
+			
+			++spr;
+		}
+	}
+	
+	Render_Layer2D layer = {
+		.texture = &gm->base_texture,
+		.sprite_count = sprite_count,
+		.sprites = sprites,
+	};
 	
 	Render_DrawLayer2D(&layer, view);
 	Engine_FinishFrame();

@@ -23,26 +23,11 @@ API void Engine_FinishFrame(void);
 
 API void Game_Main(Engine_Data* data);
 
-//- Discord Game SDK (OPTIONAL)
-#ifdef INTERNAL_ENABLE_DISCORD_SDK
-API bool32 Discord_Init(int64 appid);
-API void Discord_UpdateActivityAssets(String large_image, String large_text, String small_image, String small_text);
-API void Discord_UpdateActivity(int32 type, String name, String state, String details);
-API void Discord_Update(void);
-API void Discord_Deinit(void);
-#else
-#   define Discord_Init(...) ((void)(__VA_ARGS__), 0)
-#   define Discord_UpdateActivityAssets(...) ((void)(__VA_ARGS__))
-#   define Discord_UpdateActivity(...) ((void)(__VA_ARGS__))
-#   define Discord_Update() ((void)0)
-#   define Discord_Deinit() ((void)0)
-#endif
-
 //- Audio
 struct Engine_PlayingAudio
 {
 	const Asset_SoundBuffer* sound;
-	int32 frame_index; // if < 0, then it was added this frame
+	int32 frame_index; // if < 0, then it will start playing at '-frame_index - 1'
 	bool32 loop;
 	float32 volume;
 	float32 speed;

@@ -618,7 +618,6 @@ Platform_CurrentPosixTime(void)
 	return (uint64)result;
 }
 
-#ifdef INTERNAL_ENABLE_DISCORD_SDK
 API void*
 Platform_LoadDiscordLibrary(void)
 {
@@ -636,7 +635,6 @@ Platform_LoadDiscordLibrary(void)
 	
 	return result;
 }
-#endif
 
 #ifdef INTERNAL_ENABLE_HOT
 internal uint64

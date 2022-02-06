@@ -41,8 +41,4 @@
 #   define INTERNAL_ENABLE_D3D11
 #endif
 
-#if 0 // NOTE(ljre): Never enabled by default.
-#   define INTERNAL_ENABLE_DISCORD_SDK
-#endif
-
 #endif //INTERNAL_CONFIG_H
