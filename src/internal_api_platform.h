@@ -26,8 +26,25 @@ struct GraphicsContext
 }
 typedef GraphicsContext;
 
+struct Platform_Config
+{
+	// NOTE(ljre): For bools, -1 is "false" and 1 is "true".
+	//             Zero Is Initialization!
+	
+	bool8 show_cursor; // if false, hide cursor when in window
+	bool8 lock_cursor; // lock cursor in the middle of the window
+	bool8 center_window; // if true, we ignore 'window_x' and 'window_y'
+	bool8 fullscreen; // if true, we ignore 'center_window' and 'window_x/y/width/height'
+	
+	int32 window_x, window_y, window_width, window_height;
+	String window_title;
+	
+	GraphicsAPI graphics_api;
+}
+typedef Platform_Config;
+
 // NOTE(ljre): This function also does general initialization
-API bool32 Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics);
+API bool32 Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics);
 
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);
@@ -38,20 +55,6 @@ API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
 API void Platform_PollEvents(void);
 API void Platform_FinishFrame(void);
-
-struct Platform_Config
-{
-	// NOTE(ljre): For bools, -1 is "false" and 1 is "true".
-	//             Zero Is Initialization!
-	
-	bool8 show_cursor; // if false, hide cursor when in window
-	bool8 lock_cursor; // lock cursor in the middle of the window
-	bool8 center_window; // if true, we ignore 'window_x' and 'window_y'
-	
-	int32 window_x, window_y, window_width, window_height;
-	String window_title;
-}
-typedef Platform_Config;
 
 // NOTE(ljre): Configuration will not be applied until 'Platform_PollEvents' is called.
 API void Platform_UpdateConfig(const Platform_Config* config);

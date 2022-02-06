@@ -6,7 +6,7 @@ IF "%ERRORLEVEL%" NEQ "0" GOTO :ende
 
 set FLAGS=-Wl,/NOENTRY,/DLL -lkernel32 -fuse-ld=lld -llibvcruntime -llibucrt -g
 
-IF EXIST build\game.exe COPY /B build\game.exe+NUL build\game.exe >NUL
+IF EXIST build\game.exe COPY /B build\game.exe+NUL build\game.exe >NUL 2>&1
 IF NOT EXIST empty.c ECHO ; > empty.c
 IF "%ERRORLEVEL%" EQU "0" (
 	clang build/engine.o build/platform_win32.o -o build/engine.dll %FLAGS%

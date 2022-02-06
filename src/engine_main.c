@@ -1,10 +1,4 @@
 //~ API
-API float32
-Engine_DeltaTime(void)
-{
-	return global_engine.delta_time;
-}
-
 API void
 Engine_FinishFrame(void)
 {
@@ -36,11 +30,19 @@ Engine_Main(int32 argc, char** argv)
 	global_engine.delta_time = 1.0f;
 	global_engine.running = true;
 	
+	Platform_Config config = {
+		.window_width = 1280,
+		.window_height = 720,
+		.window_title = StrI("Title"),
+		.center_window = true,
+		
+		.graphics_api = GraphicsAPI_OpenGL,
+	};
+	
 	// NOTE(ljre): Window width & height
-	if (!Platform_CreateWindow(1280, 720, Str("Title"), GraphicsAPI_OpenGL, &global_graphics))
+	if (!Platform_CreateWindow(&config, &global_graphics))
 		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
 	
-	Engine_InitRandom();
 	Engine_InitRender();
 	Discord_Init(DISCORD_APP_ID);
 	

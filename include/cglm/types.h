@@ -34,22 +34,23 @@
 
 #ifdef __GNUC__
 #  define CGLM_ASSUME_ALIGNED(expr, alignment) \
-  __builtin_assume_aligned((expr), (alignment))
+__builtin_assume_aligned((expr), (alignment))
 #else
 #  define CGLM_ASSUME_ALIGNED(expr, alignment) (expr)
 #endif
 
 #define CGLM_CASTPTR_ASSUME_ALIGNED(expr, type) \
-  ((type*)CGLM_ASSUME_ALIGNED((expr), __alignof__(type)))
+((type*)CGLM_ASSUME_ALIGNED((expr), __alignof__(type)))
 
-typedef float                   vec2[2];
-typedef float                   vec3[3];
-typedef int                    ivec3[3];
-typedef CGLM_ALIGN_IF(16) float vec4[4];
-typedef vec4                    versor;     /* |x, y, z, w| -> w is the last */
-typedef vec3                    mat3[3];
-typedef CGLM_ALIGN_IF(16) vec2  mat2[2];
-typedef CGLM_ALIGN_MAT    vec4  mat4[4];
+// NOTE(ljre): west 'typedef' :clown
+float                   typedef vec2[2];
+float                   typedef vec3[3];
+int                    typedef ivec3[3];
+CGLM_ALIGN_IF(16) float typedef vec4[4];
+vec4                    typedef versor;     /* |x, y, z, w| -> w is the last */
+vec3                    typedef mat3[3];
+CGLM_ALIGN_IF(16) vec2  typedef mat2[2];
+CGLM_ALIGN_MAT    vec4  typedef mat4[4];
 
 /*
   Important: cglm stores quaternion as [x, y, z, w] in memory since v0.4.0 

@@ -1123,6 +1123,10 @@ Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
 	int32 count = layer->sprite_count;
 	int32 size = count * (int32)sizeof(Render_Sprite2D);
 	
+	// NOTE(ljre): Config OpenGL State
+	GL.glDisable(GL_DEPTH_TEST);
+	GL.glDisable(GL_CULL_FACE);
+	
 	//- NOTE(ljre): Build Batch
 	{
 		GL.glGenVertexArrays(1, &vao);
@@ -1731,7 +1735,8 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	GL.glBindVertexArray(0);
 	
-	if (false) {
+	if (false)
+	{
 		mat4 view, matrix;
 		glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, view);
 		glm_mat4_identity(matrix);

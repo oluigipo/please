@@ -88,6 +88,12 @@ Arena_Pop(Arena* arena, void* ptr)
 	arena->offset = new_offset;
 }
 
+internal void
+Arena_Clear(Arena* arena)
+{
+	arena->offset = 0;
+}
+
 internal void*
 Arena_End(Arena* arena)
 {

@@ -91,14 +91,14 @@ Win32_CheckForErrors(void)
 	{
 		char buffer[512];
 		snprintf(buffer, sizeof buffer, "%llu", (uint64)error);
-		MessageBoxA(NULL, buffer, "Error Code", MB_OK | MB_TOPMOST);
+		MessageBoxA(NULL, buffer, "Error Code", MB_OK);
 	}
 }
 
 internal void
 Win32_ExitWithErrorMessage(const wchar_t* message)
 {
-	MessageBoxW(NULL, message, L"Error", MB_OK | MB_TOPMOST);
+	MessageBoxW(NULL, message, L"Error", MB_OK);
 	exit(1);
 }
 
@@ -322,7 +322,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	int32 result = Engine_Main(argc, argv);
 	
 	// NOTE(ljre): Free resources... or nah :P
-	Win32_DeinitAudio();
+	//Win32_DeinitAudio();
 	
 	return result;
 }
@@ -353,24 +353,24 @@ Platform_MessageBox(String title, String message)
 }
 
 API bool32
-Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics)
+Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics)
 {
 	Trace("Platform_CreateWindow");
 	
 	wchar_t window_name[1024];
-	Win32_ConvertStringToWSTR(name, window_name, ArrayLength(window_name));
+	Win32_ConvertStringToWSTR(config->window_title, window_name, ArrayLength(window_name));
 	
 	bool32 ok = false;
 	
-	if (flags & GraphicsAPI_OpenGL)
-		ok = ok || Win32_CreateOpenGLWindow(width, height, window_name);
-	if (flags & GraphicsAPI_Direct3D)
-		ok = ok || Win32_CreateDirect3DWindow(width, height, window_name);
+	if (config->graphics_api & GraphicsAPI_OpenGL)
+		ok = ok || Win32_CreateOpenGLWindow(config->window_width, config->window_height, window_name);
+	if (config->graphics_api & GraphicsAPI_Direct3D)
+		ok = ok || Win32_CreateDirect3DWindow(config->window_width, config->window_height, window_name);
 	
 	if (ok)
 	{
 		DEV_BROADCAST_DEVICEINTERFACE notification_filter = {
-			sizeof notification_filter,
+			sizeof(notification_filter),
 			DBT_DEVTYP_DEVICEINTERFACE
 		};
 		
@@ -379,8 +379,8 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
 			// TODO
 		}
 		
-		global_window_width = width;
-		global_window_height = height;
+		global_window_width = config->window_width;
+		global_window_height = config->window_height;
 		
 		// NOTE(ljre): Get Monitor Size
 		{
@@ -396,7 +396,9 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
 		
 		Win32_InitInput();
 		Win32_InitAudio();
-		global_config.center_window = true;
+		global_config.center_window = config->center_window;
+		global_config.show_cursor = config->show_cursor;
+		global_config.lock_cursor = config->lock_cursor;
 		Platform_PollEvents();
 		
 		*out_graphics = &global_graphics_context;
@@ -704,7 +706,7 @@ Platform_LoadGameLibrary(void)
 			
 			result = GetProcAddress(library, "Game_Main");
 			
-			BringWindowToTop(global_window);
+			SetForegroundWindow(global_window);
 		}
 	}
 	

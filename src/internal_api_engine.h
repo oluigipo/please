@@ -19,13 +19,7 @@ struct Engine_Data
 
 // Engine entry point. It shall be called by the platform layer.
 API int32 Engine_Main(int32 argc, char** argv);
-
 API void Engine_FinishFrame(void);
-API uint64 Engine_RandomU64(void);
-API uint32 Engine_RandomU32(void);
-API float64 Engine_RandomF64(void);
-API float32 Engine_RandomF32Range(float32 start, float32 end);
-API float32 Engine_DeltaTime(void);
 
 API void Game_Main(Engine_Data* data);
 

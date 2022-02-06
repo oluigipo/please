@@ -1,3 +1,15 @@
+/*
+*
+* TODO:
+*  - Resize Window;
+*  - Fullscreen;
+*  - Keyboard for 3D Demo;
+*  - Direct3D backend;
+*  - Systems:
+*      - Basic rect collision;
+*
+*/
+
 //
 //
 //
@@ -47,7 +59,6 @@ internal Engine_Data global_engine;
 #include "engine_file_qoi.c"
 #include "engine_file_json.c"
 #include "engine_file_gltf.c"
-#include "engine_random.c"
 #include "engine_audio.c"
 #include "engine_render.c"
 #include "engine_main.c"

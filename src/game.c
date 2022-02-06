@@ -1,7 +1,9 @@
 #include "internal.h"
 
+#include "system_random.c"
+
 #if 0
-#   include "game_jam.c"
+#   include "game_test.c"
 #else
 enum Game_State
 {
@@ -14,6 +16,7 @@ struct Game_Data
 {
 	Asset_Font font;
 	Game_State state;
+	PlsRandom_State random_state;
 	
 	//~ NOTE(ljre): Game_3DDemoScene
 	Asset_3DModel model;
@@ -158,17 +161,17 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		Engine_LoadSoundBuffer(Str("music.ogg"), &g->game->sound_music);
 		Engine_LoadSoundBuffer(Str("music3.ogg"), &g->game->sound_music3);
 		
+		g->game->playing_audio_count = 0;
+		
 		if (g->game->sound_music.samples)
 		{
-			g->game->playing_audios[0] = (Engine_PlayingAudio) {
+			g->game->playing_audios[g->game->playing_audio_count++] = (Engine_PlayingAudio) {
 				.sound = &g->game->sound_music,
 				.frame_index = -1,
 				.loop = true,
 				.volume = 1.0f,
 				.speed = 1.0f,
 			};
-			
-			g->game->playing_audio_count = 1;
 		}
 		
 		g->game->controller_index = 0;
@@ -214,9 +217,9 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 			Render_3DModel* corset = &g->game->render_models[2 + i];
 			
 			vec3 pos = {
-				Engine_RandomF32Range(-5.0f, 5.0f),
+				PlsRandom_F32Range(&g->game->random_state, -5.0f, 5.0f),
 				0.1f,
-				Engine_RandomF32Range(-5.0f, 5.0f),
+				PlsRandom_F32Range(&g->game->random_state, -5.0f, 5.0f),
 			};
 			
 			glm_mat4_identity(corset->transform);
@@ -235,9 +238,9 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 			Render_3DModel* cube = &rotating_cubes[i];
 			
 			vec3 pos = {
-				Engine_RandomF32Range(-20.0f, 20.0f),
-				Engine_RandomF32Range(3.0f, 10.0f),
-				Engine_RandomF32Range(-20.0f, 20.0f),
+				PlsRandom_F32Range(&g->game->random_state, -20.0f, 20.0f),
+				PlsRandom_F32Range(&g->game->random_state, 3.0f, 10.0f),
+				PlsRandom_F32Range(&g->game->random_state, -20.0f, 20.0f),
 			};
 			
 			glm_mat4_identity(cube->transform);
@@ -251,7 +254,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 				0xFF8100FF, 0xFFC100FF, 0xFFFF00FF, 0xFFFF00C1, 0xFFFF0081, 0xFFFF003E,
 			};
 			
-			ColorToVec4(colors[Engine_RandomU64() % ArrayLength(colors)], cube->color);
+			ColorToVec4(colors[PlsRandom_U64(&g->game->random_state) % ArrayLength(colors)], cube->color);
 		}
 		
 		//- Lights
@@ -393,6 +396,10 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		
 		g->game->render_camera.pos[1] = g->game->camera_height + sinf(g->game->moving_time) * 0.04f;
 	}
+	else
+	{
+		// TODO(ljre): Keyboard
+	}
 	
 	if (is_connected)
 		Render_ClearBackground(0.1f, 0.15f, 0.3f, 1.0f);
@@ -498,6 +505,8 @@ Game_Main(Engine_Data* g)
 		bool32 font_loaded = Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &g->game->font);
 		if (!font_loaded)
 			Platform_ExitWithErrorMessage(Str("Could not load the default font :("));
+		
+		PlsRandom_Init(&g->game->random_state);
 	}
 	
 	switch (g->game->state)
