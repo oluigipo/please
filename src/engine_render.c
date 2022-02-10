@@ -110,7 +110,6 @@ internal const uint32 global_quad_indices[] = {
 	2, 3, 0
 };
 
-internal mat4 global_view;
 internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
 internal uint32 global_default_diffuse_texture;
 internal uint32 global_default_normal_texture;
@@ -814,25 +813,33 @@ Render_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 }
 
 API void
-Render_Begin2D(void)
+Render_Begin(void)
 {
 	int32 width = Platform_WindowWidth();
 	int32 height = Platform_WindowHeight();
 	
-	mat4 proj;
-	glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
-	
-	glm_mat4_identity(global_view);
-	glm_mat4_mul(proj, global_view, global_view);
-	
-	GL.glDisable(GL_DEPTH_TEST);
-	GL.glDisable(GL_CULL_FACE);
+	GL.glViewport(0, 0, width, height);
 }
 
 API void
 Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 {
 	Trace("Render_DrawRectangle");
+	
+	mat4 view;
+	{
+		int32 width = Platform_WindowWidth();
+		int32 height = Platform_WindowHeight();
+		
+		mat4 proj;
+		glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
+		
+		glm_mat4_identity(view);
+		glm_mat4_mul(proj, view, view);
+		
+		GL.glDisable(GL_DEPTH_TEST);
+		GL.glDisable(GL_CULL_FACE);
+	}
 	
 	mat4 matrix = GLM_MAT4_IDENTITY_INIT;
 	glm_translate(matrix, pos);
@@ -841,7 +848,7 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 	
 	BindShader(&global_default_shader);
 	GL.glUniform4fv(global_uniform->color, 1, color);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)global_view);
+	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
 	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
 	GL.glUniform1i(global_uniform->texture, 0);
 	
@@ -1020,6 +1027,21 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
 	glm_translate(matrix, (float32*)alignment);
 	
+	mat4 view;
+	{
+		int32 width = Platform_WindowWidth();
+		int32 height = Platform_WindowHeight();
+		
+		mat4 proj;
+		glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
+		
+		glm_mat4_identity(view);
+		glm_mat4_mul(proj, view, view);
+		
+		GL.glDisable(GL_DEPTH_TEST);
+		GL.glDisable(GL_CULL_FACE);
+	}
+	
 	GL.glActiveTexture(GL_TEXTURE0);
 	
 	uint32 texture;
@@ -1031,7 +1053,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	
 	BindShader(&global_default_shader);
 	GL.glUniform4fv(global_uniform->color, 1, color);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)global_view);
+	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
 	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
 	GL.glUniform1i(global_uniform->texture, 0);
 	
@@ -1090,6 +1112,19 @@ Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 
 	glm_rotate(out_view, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
 	glm_rotate(out_view, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
 	glm_rotate(out_view, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+}
+
+API void
+Render_CalcPointInCamera2DSpace(const Render_Camera* camera, const vec2 pos, vec2 out_pos)
+{
+	vec2 result;
+	float32 inv_zoom = 1.0f / camera->zoom * 2.0f;
+	
+	result[0] = camera->pos[0] + (pos[0] - camera->size[0] / 2.0f) * inv_zoom;
+	result[1] = camera->pos[1] + (pos[1] - camera->size[1] / 2.0f) * inv_zoom;
+	result[1] *= -1.0f;
+	
+	glm_vec2_copy(result, out_pos);
 }
 
 API void

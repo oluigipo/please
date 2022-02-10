@@ -187,11 +187,11 @@ Linux_ProcessMouseEvent(uint32 button, bool32 pressed)
 	
 	if (button == 4)
 	{
-		global_mouse.scroll -= 1;
+		global_mouse.scroll += 1;
 	}
 	else if (button == 5)
 	{
-		global_mouse.scroll += 1;
+		global_mouse.scroll -= 1;
 	}
 	else if (button > 0 && button < ArrayLength(button_table))
 	{

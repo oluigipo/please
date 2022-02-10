@@ -88,7 +88,7 @@
 #ifdef STB_VORBIS_STATIC
 #define STB_VORBIS_DECL static
 #else
-#define STB_VORBIS_DECL extern // NOTE(ljre): 'extern' keyword alone makes no difference in function declarations.
+#define STB_VORBIS_DECL // NOTE(ljre): 'extern' keyword alone makes no difference in function declarations.
 #endif
 #endif
 
@@ -5289,8 +5289,7 @@ static void convert_channels_short_interleaved(int buf_c, short *buffer, int dat
 
 STB_VORBIS_DECL int stb_vorbis_get_frame_short_interleaved(stb_vorbis *f, int num_c, short *buffer, int num_shorts)
 {
-	float **output;
-	int len;
+	float **output;int len;
 	if (num_c == 1) return stb_vorbis_get_frame_short(f,num_c,&buffer, num_shorts);
 	len = stb_vorbis_get_frame_float(f, NULL, &output);
 	if (len) {

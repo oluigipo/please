@@ -31,6 +31,9 @@ struct Game_Data
 		float32 camera_target_zoom;
 		
 		Game_Piece table[Game_TABLE_SIZE][Game_TABLE_SIZE];
+		
+		int32 selected_piece;
+		Game_Piece turn;
 	};
 };
 
@@ -62,7 +65,8 @@ InitGame(Engine_Data* g)
 		Platform_ExitWithErrorMessage(Str("Could not sprites from file './assets/base_texture.png'."));
 	
 	gm->camera_target_zoom = gm->camera_zoom = 0.25f;
-	
+	gm->selected_piece = -1;
+	gm->turn = Game_Piece_Red;
 	
 	for (int32 y = 0; y < Game_TABLE_SIZE; ++y)
 	{
@@ -126,25 +130,70 @@ UpdateAndRenderGame(Engine_Data* g)
 	Render_CalcViewMatrix2D(&camera, view);
 	
 	//- NOTE(ljre): Mouse Click
+	vec2 mouse_pos;
+	Render_CalcPointInCamera2DSpace(&camera, mouse.pos, mouse_pos);
+	
 	if (Input_IsPressed(mouse, Input_MouseButton_Left))
 	{
-		mat4 inv;
-		vec4 click_pos = { [3] = 1.0f };
+		vec2 click_pos;
+		glm_vec2_copy(mouse_pos, click_pos);
 		
-		glm_vec2_copy(mouse.pos, click_pos);
-		glm_vec2_div(click_pos, camera.size, click_pos);
-		glm_vec2_scale(click_pos, 2.0f, click_pos);
-		glm_vec2_sub(click_pos, GLM_VEC2_ONE, click_pos);
+		glm_vec2_divs(click_pos, 16.0f, click_pos);
 		
-		glm_mat4_inv(view, inv);
-		glm_mat4_mulv(inv, click_pos, click_pos);
+		int32 xx =  (int32)click_pos[0];
+		int32 yy = -(int32)click_pos[1];
 		
-		click_pos[1] *= -1.0f;
-		
-		Platform_DebugLog("%f\t%f\n", click_pos[0], click_pos[1]);
+		if (xx >= 0 && xx < Game_TABLE_SIZE && yy >= 0 && yy < Game_TABLE_SIZE)
+		{
+			if (gm->selected_piece != -1)
+			{
+				int32 to_move = gm->selected_piece;
+				gm->selected_piece = -1;
+				
+				int32 move_x = to_move % Game_TABLE_SIZE;
+				int32 move_y = to_move / Game_TABLE_SIZE;
+				
+				if (move_x >= 0 && move_x < Game_TABLE_SIZE && move_y >= 0 && move_y < Game_TABLE_SIZE &&
+					gm->table[move_y][move_x] == gm->turn &&
+					gm->table[yy][xx] == Game_Piece_None &&
+					(gm->turn == Game_Piece_Blue ? move_y > yy : move_y < yy) &&
+					move_x != xx)
+				{
+					int32 diff_x = move_x - xx;
+					int32 diff_y = move_y - yy;
+					
+					if ((diff_y == 2 || diff_y == -2) && (diff_x == 2 || diff_x == -2))
+					{
+						int32 eating_x = xx + diff_x/2;
+						int32 eating_y = yy + diff_y/2;
+						
+						if (gm->table[eating_y][eating_x] != gm->turn)
+						{
+							gm->table[eating_y][eating_x] = Game_Piece_None;
+							gm->table[yy][xx] = gm->turn;
+							gm->table[move_y][move_x] = Game_Piece_None;
+							
+							gm->turn = !(gm->turn-1) + 1;
+						}
+					}
+					else if ((diff_x == 1 || diff_x == -1) && (diff_y == 1 || diff_y == -1) &&
+							 gm->table[yy][xx] == Game_Piece_None)
+					{
+						gm->table[yy][xx] = gm->turn;
+						gm->table[move_y][move_x] = Game_Piece_None;
+						gm->turn = !(gm->turn-1) + 1;
+					}
+				}
+			}
+			else
+			{
+				gm->selected_piece = xx + yy * Game_TABLE_SIZE;
+			}
+		}
 	}
 	
 	//~ NOTE(ljre): Render
+	Render_Begin();
 	Render_ClearBackground(0.1f, 0.1f, 0.1f, 1.0f);
 	
 	int32 sprite_count = Game_TABLE_SIZE * Game_TABLE_SIZE * 2;
@@ -200,6 +249,11 @@ UpdateAndRenderGame(Engine_Data* g)
 	};
 	
 	Render_DrawLayer2D(&layer, view);
+	
+	char buff[256];
+	snprintf(buff, sizeof buff, "%f\n%f\n%f\n%f", mouse_pos[0], mouse_pos[1]);
+	Render_DrawText(&gm->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
+	
 	Engine_FinishFrame();
 }
 
@@ -209,6 +263,6 @@ Game_Main(Engine_Data* g)
 	if (!g->game)
 		InitGame(g);
 	
-	UpdateAndRenderGame(g);
 	Arena_Clear(g->temp_arena);
+	UpdateAndRenderGame(g);
 }

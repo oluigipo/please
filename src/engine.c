@@ -25,13 +25,7 @@
 
 //~ Libraries
 #define STB_IMAGE_STATIC
-#define STBI_NO_BMP
-#define STBI_NO_PSD
-#define STBI_NO_TGA
-#define STBI_NO_GIF
-#define STBI_NO_HDR
-#define STBI_NO_PIC
-#define STBI_NO_PNM
+#define STBI_ONLY_PNG
 #define STBI_NO_STDIO
 #include "ext/stb_image.h"
 
@@ -75,9 +69,6 @@ internal Engine_Data global_engine;
 #define STBI_MALLOC(sz) Platform_HeapAlloc(sz)
 #define STBI_REALLOC(p,newsz) Platform_HeapRealloc(p,newsz)
 #define STBI_FREE(p) Platform_HeapFree(p)
-//#define STBI_MALLOC(sz) Engine_PushMemory(sz)
-//#define STBI_REALLOC(p,newsz) Engine_RePushMemory(p,newsz)
-//#define STBI_FREE(p) Engine_PopMemory(p)
 #define STBI_ASSERT Assert
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -85,8 +76,6 @@ internal Engine_Data global_engine;
 
 #define STBTT_malloc(x,u) ((void)(u),Platform_HeapAlloc(x))
 #define STBTT_free(x,u) ((void)(u),Platform_HeapFree(x))
-//#define STBTT_malloc(x,u) ((void)(u),Engine_PushMemory(x))
-//#define STBTT_free(x,u) ((void)(u),Engine_PopMemory(x))
 #define STBTT_assert Assert
 
 #define STB_TRUETYPE_IMPLEMENTATION

@@ -94,9 +94,10 @@ API void Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view);
 API void Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov, float32 aspect);
 API void Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view);
 API void Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view);
+API void Render_CalcPointInCamera2DSpace(const Render_Camera* camera, const vec2 pos, vec2 out_pos);
 
 API void Render_ClearBackground(float32 r, float32 g, float32 b, float32 a);
-API void Render_Begin2D(void);
+API void Render_Begin(void);
 API void Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment);
 API void Render_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color);
 API void Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment);

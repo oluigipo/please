@@ -40,7 +40,7 @@ internal Platform_Config global_config;
 #endif
 
 //~ Entry Point
-int32 main(int32 argc, char* argv[])
+int main(int argc, char* argv[])
 {
 	Trace("main - Program Entry Point");
 	
@@ -83,19 +83,19 @@ Platform_MessageBox(String title, String message)
 }
 
 API bool32
-Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, const GraphicsContext** out_graphics)
+Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics)
 {
 	Trace("Platform_CreateWindow");
 	char local_buffer[Kilobytes(1)];
 	const char* title;
 	
-	if (name.len > 0 && name.data[name.len-1] == 0)
+	if (config->window_title.len > 0 && config->window_title.data[config->window_title.len-1] == 0)
 	{
-		title = name.data;
+		title = config->window_title.data;
 	}
 	else
 	{
-		snprintf(local_buffer, sizeof local_buffer, "%.*s", name.len, name.data);
+		snprintf(local_buffer, sizeof local_buffer, "%.*s", StrFmt(config->window_title));
 		title = local_buffer;
 	}
 	
@@ -107,18 +107,17 @@ Platform_CreateWindow(int32 width, int32 height, String name, uint32 flags, cons
 	
 	bool32 ok = false;
 	
-	ok = ok || (flags & GraphicsAPI_OpenGL && Linux_CreateOpenGLWindow(width, height, title));
+	ok = ok || (config->graphics_api & GraphicsAPI_OpenGL && Linux_CreateOpenGLWindow(config->window_width, config->window_height, title));
 	
 	if (ok)
 	{
-		global_window_width = width;
-		global_window_height = height;
+		global_window_width = config->window_width;
+		global_window_height = config->window_height;
 		
 		*out_graphics = &global_graphics_context;
 		
 		Linux_InitInput();
 		Linux_InitAudio();
-		Linux_UpdateAudio();
 	}
 	
 	return ok;
@@ -198,14 +197,11 @@ Platform_PollEvents(void)
 	}
 	
 	Linux_UpdateInputPos();
-	Linux_UpdateAudio();
 }
 
 API void
 Platform_FinishFrame(void)
 {
-	Linux_FillAudioBuffer();
-	
 	switch (global_graphics_context.api)
 	{
 		case GraphicsAPI_OpenGL: Linux_OpenGLSwapBuffers(); break;

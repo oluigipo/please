@@ -511,7 +511,7 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 {
 	Trace("Win32_CreateOpenGLWindow");
 	
-	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
 								  CW_USEDEFAULT, CW_USEDEFAULT,
 								  width, height,

@@ -408,6 +408,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	
 	//~ NOTE(ljre): 3D World
 	float32 t = (float32)Platform_GetTime();
+	Render_Begin();
 	
 	for (int32 i = 0; i < g->game->rotating_cube_count; ++i)
 	{
@@ -426,8 +427,6 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	Render_Draw3DScene(&g->game->render_scene, &g->game->render_camera);
 	
 	//~ NOTE(ljre): 2D User Interface
-	Render_Begin2D();
-	
 	//- NOTE(ljre): Draw Controller Index
 	const vec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
 	
@@ -549,7 +548,7 @@ Game_Main(Engine_Data* g)
 			
 			//~ NOTE(ljre): Render Menu
 			{
-				Render_Begin2D();
+				Render_Begin();
 				
 				Render_ClearBackground(0.0f, 0.0f, 0.0f, 1.0f);
 				Render_DrawText(&g->game->font, Str("Welcome!\nThose are buttons"), (vec3) { 10.0f, 10.0f }, 32.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, (vec3) { 0 });
