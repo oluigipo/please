@@ -376,6 +376,8 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		uint8 lower, higher;
 		uint16 object;
 		
+		(void)higher;
+		
 		if (pov == -1)
 			continue;
 		

@@ -1122,7 +1122,7 @@ Render_CalcPointInCamera2DSpace(const Render_Camera* camera, const vec2 pos, vec
 	
 	result[0] = camera->pos[0] + (pos[0] - camera->size[0] / 2.0f) * inv_zoom;
 	result[1] = camera->pos[1] + (pos[1] - camera->size[1] / 2.0f) * inv_zoom;
-	result[1] *= -1.0f;
+	//result[1] *= -1.0f;
 	
 	glm_vec2_copy(result, out_pos);
 }

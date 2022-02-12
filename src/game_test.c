@@ -1,14 +1,54 @@
 #define Game_MAX_PLAYING_AUDIOS 32
-#define Game_TABLE_SIZE 16
 
-enum Game_Piece
+// NOTE(ljre): These globals are set every frame by 'Game_Main'!
+//             They exist just for less typing...
+internal Engine_Data* engine;
+internal Game_Data* game;
+
+//~ NOTE(ljre): Types
+enum Game_TroopKind
 {
-	Game_Piece_None,
-	Game_Piece_Blue,
-	Game_Piece_Red,
+	Game_TroopKind_Null = 0,
+	
+	Game_TroopKind_Knight,
+	Game_TroopKind_Archer,
 }
-typedef Game_Piece;
+typedef Game_TroopKind;
 
+struct Game_Troop
+{
+	Game_TroopKind kind;
+	
+	vec2 pos;
+}
+typedef Game_Troop;
+
+//- NOTE(ljre): Event Types
+enum Game_EventKind
+{
+	Game_EventKind_Null = 0,
+	
+	Game_EventKind_MovingTroop,
+}
+typedef Game_EventKind;
+
+struct Game_Event
+{
+	Game_EventKind kind;
+	
+	union
+	{
+		struct
+		{
+			Game_Troop* troop;
+			vec2 target_pos;
+		}
+		moving_troop;
+	};
+}
+typedef Game_Event;
+
+//- NOTE(ljre): Main Game Data
 struct Game_Data
 {
 	// NOTE(ljre): Assets
@@ -30,20 +70,23 @@ struct Game_Data
 		float32 camera_zoom;
 		float32 camera_target_zoom;
 		
-		Game_Piece table[Game_TABLE_SIZE][Game_TABLE_SIZE];
+		Game_Troop troops[5];
 		
-		int32 selected_piece;
-		Game_Piece turn;
+		Game_Event events[32];
+		int32 event_count;
+		
+		Game_Troop* selected_troop;
 	};
 };
 
+//~ NOTE(ljre): Functions
 internal void
-PushAudio(Engine_Data* g, const Asset_SoundBuffer* sound)
+PushAudio(const Asset_SoundBuffer* sound)
 {
-	if (g->game->playing_audio_count < Game_MAX_PLAYING_AUDIOS)
+	if (game->playing_audio_count < Game_MAX_PLAYING_AUDIOS)
 	{
-		int32 index = g->game->playing_audio_count++;
-		Engine_PlayingAudio* playing = &g->game->playing_audios[index];
+		int32 index = game->playing_audio_count++;
+		Engine_PlayingAudio* playing = &game->playing_audios[index];
 		
 		playing->sound = sound;
 		playing->frame_index = -1;
@@ -53,10 +96,73 @@ PushAudio(Engine_Data* g, const Asset_SoundBuffer* sound)
 	}
 }
 
-internal void
-InitGame(Engine_Data* g)
+internal bool32
+CollisionPointAabb(const vec2 point, const vec2 sqr, float32 size)
 {
-	Game_Data* gm = g->game = Arena_Push(g->persistent_arena, sizeof(*g->game));
+	return (point[0] > sqr[0] && sqr[0] + size > point[0] &&
+			point[1] > sqr[1] && sqr[1] + size > point[1]);
+}
+
+//- NOTE(ljre): Event Functions
+internal Game_Event*
+PushEvent(void)
+{
+	Assert(game->event_count < ArrayLength(game->events));
+	return memset(&game->events[game->event_count++], 0, sizeof(Game_Event));
+}
+
+internal void
+NextEvent(void)
+{
+	Assert(game->event_count > 0);
+	memmove(game->events, game->events + 1, --game->event_count);
+}
+
+internal Game_Event*
+PushImmediateEvent(void)
+{
+	if (game->event_count <= 0)
+		game->event_count = 1;
+	return memset(&game->events[0], 0, sizeof(Game_Event));
+}
+
+internal void
+ProcessEvent(void)
+{
+	Game_Event* event = &game->events[0];
+	bool32 event_is_done = false;
+	
+	switch (event->kind)
+	{
+		case Game_EventKind_Null: break;
+		
+		case Game_EventKind_MovingTroop:
+		{
+			Game_Troop* troop = event->moving_troop.troop;
+			
+			glm_vec2_lerp(troop->pos, event->moving_troop.target_pos, 0.2f, troop->pos);
+			
+			vec2 diff;
+			glm_vec2_sub(event->moving_troop.target_pos, troop->pos, diff);
+			glm_vec2_mul(diff, diff, diff);
+			
+			if (diff[0] + diff[1] < 0.1f)
+			{
+				glm_vec2_copy(event->moving_troop.target_pos, troop->pos);
+				event_is_done = true;
+			}
+		} break;
+	}
+	
+	if (event_is_done)
+		NextEvent();
+}
+
+//- NOTE(ljre): Init Game Function
+internal Game_Data*
+InitGame(void)
+{
+	Game_Data* gm = Arena_Push(engine->persistent_arena, sizeof(*engine->game));
 	gm->master_volume = 0.25f;
 	
 	if (!Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &gm->font))
@@ -65,130 +171,98 @@ InitGame(Engine_Data* g)
 		Platform_ExitWithErrorMessage(Str("Could not sprites from file './assets/base_texture.png'."));
 	
 	gm->camera_target_zoom = gm->camera_zoom = 0.25f;
-	gm->selected_piece = -1;
-	gm->turn = Game_Piece_Red;
 	
-	for (int32 y = 0; y < Game_TABLE_SIZE; ++y)
-	{
-		for (int32 x = 0; x < Game_TABLE_SIZE; ++x)
-		{
-			if (y < 2 && x % 2 != y % 2)
-				gm->table[y][x] = Game_Piece_Red;
-			else if (y >= Game_TABLE_SIZE - 2 && x % 2 != y % 2)
-				gm->table[y][x] = Game_Piece_Blue;
-			else
-				gm->table[y][x] = Game_Piece_None;
-		}
-	}
+	for (int32 i = 0; i < ArrayLength(gm->troops); ++i)
+		gm->troops[i] = (Game_Troop) { Game_TroopKind_Knight, .pos = {(float32)i * 16.0f, (float32)i * 16.0f}, };
+	
+	return gm;
 }
 
+//- NOTE(ljre): Update Game Function
 internal void
-UpdateAndRenderGame(Engine_Data* g)
+UpdateAndRenderGame(void)
 {
-	Game_Data* gm = g->game;
 	Input_Mouse mouse;
 	Input_GetMouse(&mouse);
 	
 	if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape) || Platform_WindowShouldClose())
-		g->running = false;
+		engine->running = false;
 	
 	//~ NOTE(ljre): Update
-	// Camera Movement
-	{
-		const float32 camera_top_speed = 10.0f / (gm->camera_zoom + 1.0f);
-		vec2 dir = {
-			(float32)(Input_KeyboardIsDown('D') - Input_KeyboardIsDown('A')),
-			(float32)(Input_KeyboardIsDown('S') - Input_KeyboardIsDown('W')),
-		};
-		
-		if (dir[0] != 0.0f && dir[1] != 0.0f)
-			glm_vec2_scale(dir, GLM_SQRT2f / 2.0f, dir);
-		
-		glm_vec2_scale(dir, camera_top_speed, dir);
-		glm_vec2_lerp(gm->camera_speed, dir, 0.3f, gm->camera_speed);
-		glm_vec2_add(gm->camera_speed, gm->camera_pos, gm->camera_pos);
-	}
-	
-	//- NOTE(ljre): Camera Zoom
-	{
-		float32 diff = (float32)mouse.scroll * 0.025f;
-		
-		gm->camera_target_zoom = glm_clamp(gm->camera_target_zoom + diff, 0.0f, 1.0f);
-		gm->camera_zoom = glm_lerp(gm->camera_zoom, gm->camera_target_zoom, 0.3f);
-	}
-	
-	//- NOTE(ljre): Camera Matrix
 	Render_Camera camera = {
 		.pos = { 0 },
 		.size = { (float32)Platform_WindowWidth(), (float32)Platform_WindowHeight() },
-		.zoom = gm->camera_zoom*gm->camera_zoom * 9.0f + 1.0f,
+		.zoom = game->camera_zoom*game->camera_zoom * 9.0f + 1.0f,
 	};
 	
-	glm_vec2_copy(gm->camera_pos, camera.pos);
+	glm_vec2_copy(game->camera_pos, camera.pos);
 	
-	mat4 view;
-	Render_CalcViewMatrix2D(&camera, view);
-	
-	//- NOTE(ljre): Mouse Click
 	vec2 mouse_pos;
 	Render_CalcPointInCamera2DSpace(&camera, mouse.pos, mouse_pos);
 	
-	if (Input_IsPressed(mouse, Input_MouseButton_Left))
+	if (game->event_count > 0)
 	{
-		vec2 click_pos;
-		glm_vec2_copy(mouse_pos, click_pos);
+		//- NOTE(ljre): Events
+		ProcessEvent();
 		
-		glm_vec2_divs(click_pos, 16.0f, click_pos);
-		
-		int32 xx =  (int32)click_pos[0];
-		int32 yy = -(int32)click_pos[1];
-		
-		if (xx >= 0 && xx < Game_TABLE_SIZE && yy >= 0 && yy < Game_TABLE_SIZE)
+		glm_vec2_lerp(game->camera_speed, GLM_VEC2_ZERO, 0.3f, game->camera_speed);
+		glm_vec2_add(game->camera_speed, game->camera_pos, game->camera_pos);
+	}
+	else
+	{
+		//- NOTE(ljre): Mouse Click
+		if (Input_IsPressed(mouse, Input_MouseButton_Left))
 		{
-			if (gm->selected_piece != -1)
+			if (game->selected_troop)
 			{
-				int32 to_move = gm->selected_piece;
-				gm->selected_piece = -1;
+				vec2 target_pos;
 				
-				int32 move_x = to_move % Game_TABLE_SIZE;
-				int32 move_y = to_move / Game_TABLE_SIZE;
+				target_pos[0] = floorf(mouse_pos[0] / 16.0f) * 16.0f;
+				target_pos[1] = floorf(mouse_pos[1] / 16.0f) * 16.0f;
 				
-				if (move_x >= 0 && move_x < Game_TABLE_SIZE && move_y >= 0 && move_y < Game_TABLE_SIZE &&
-					gm->table[move_y][move_x] == gm->turn &&
-					gm->table[yy][xx] == Game_Piece_None &&
-					(gm->turn == Game_Piece_Blue ? move_y > yy : move_y < yy) &&
-					move_x != xx)
-				{
-					int32 diff_x = move_x - xx;
-					int32 diff_y = move_y - yy;
-					
-					if ((diff_y == 2 || diff_y == -2) && (diff_x == 2 || diff_x == -2))
-					{
-						int32 eating_x = xx + diff_x/2;
-						int32 eating_y = yy + diff_y/2;
-						
-						if (gm->table[eating_y][eating_x] != gm->turn)
-						{
-							gm->table[eating_y][eating_x] = Game_Piece_None;
-							gm->table[yy][xx] = gm->turn;
-							gm->table[move_y][move_x] = Game_Piece_None;
-							
-							gm->turn = !(gm->turn-1) + 1;
-						}
-					}
-					else if ((diff_x == 1 || diff_x == -1) && (diff_y == 1 || diff_y == -1) &&
-							 gm->table[yy][xx] == Game_Piece_None)
-					{
-						gm->table[yy][xx] = gm->turn;
-						gm->table[move_y][move_x] = Game_Piece_None;
-						gm->turn = !(gm->turn-1) + 1;
-					}
-				}
+				Game_Event* event = PushEvent();
+				
+				event->kind = Game_EventKind_MovingTroop;
+				event->moving_troop.troop = game->selected_troop;
+				glm_vec2_copy(target_pos, event->moving_troop.target_pos);
+				
+				game->selected_troop = NULL;
 			}
 			else
 			{
-				gm->selected_piece = xx + yy * Game_TABLE_SIZE;
+				for (int32 i = 0; i < ArrayLength(game->troops); ++i)
+				{
+					if (CollisionPointAabb(mouse_pos, game->troops[i].pos, 16.0f))
+					{
+						game->selected_troop = &game->troops[i];
+						break;
+					}
+				}
 			}
+		}
+		
+		//- NOTE(ljre): Camera Movement
+		{
+			const float32 camera_top_speed = 10.0f / (game->camera_zoom + 1.0f);
+			vec2 dir = {
+				(float32)(Input_KeyboardIsDown('D') - Input_KeyboardIsDown('A')),
+				(float32)(Input_KeyboardIsDown('S') - Input_KeyboardIsDown('W')),
+			};
+			
+			if (dir[0] != 0.0f && dir[1] != 0.0f)
+				glm_vec2_scale(dir, GLM_SQRT2f / 2.0f, dir);
+			
+			glm_vec2_scale(dir, camera_top_speed, dir);
+			glm_vec2_lerp(game->camera_speed, dir, 0.3f, game->camera_speed);
+			glm_vec2_add(game->camera_speed, game->camera_pos, game->camera_pos);
+		}
+		
+		//- NOTE(ljre): Camera Zoom
+		{
+			float32 diff = (float32)mouse.scroll * 0.025f;
+			
+			game->camera_target_zoom = glm_clamp(game->camera_target_zoom + diff, 0.0f, 1.0f);
+			game->camera_zoom = glm_lerp(game->camera_zoom, game->camera_target_zoom, 0.3f);
 		}
 	}
 	
@@ -196,73 +270,73 @@ UpdateAndRenderGame(Engine_Data* g)
 	Render_Begin();
 	Render_ClearBackground(0.1f, 0.1f, 0.1f, 1.0f);
 	
-	int32 sprite_count = Game_TABLE_SIZE * Game_TABLE_SIZE * 2;
-	Render_Sprite2D* sprites = Arena_PushDirty(g->temp_arena, sizeof(*sprites) * sprite_count);
+	const int32 table_size = 20;
+	
+	int32 sprite_count = table_size*table_size + ArrayLength(game->troops);
+	Render_Sprite2D* sprites = Arena_PushDirty(engine->temp_arena, sizeof(*sprites) * sprite_count);
 	Render_Sprite2D* spr = sprites;
 	
-	for (int32 y = 0; y < Game_TABLE_SIZE; ++y)
+	for (int32 y = 0; y < table_size; ++y)
 	{
-		for (int32 x = 0; x < Game_TABLE_SIZE; ++x)
+		for (int32 x = 0; x < table_size; ++x)
 		{
-			vec4 black = { 24.0f / 255.0f, 20.0f / 255.0f, 37.0f / 255.0f, 1.0f };
-			vec4 white = GLM_VEC4_ONE_INIT;
-			
 			glm_mat4_identity(spr->transform);
 			glm_translate(spr->transform, (vec3) { (float32)x * 16.0f, (float32)y * 16.0f });
 			glm_scale(spr->transform, (vec3) { 16.0f, 16.0f, 1.0f });
 			
-			glm_vec2_zero(&spr->texcoords[0]);
+			glm_vec2_copy((vec2) { 0.0f, 16.0f / 128.0f }, &spr->texcoords[0]);
 			glm_vec2_copy((vec2) { 16.0f / 128.0f, 16.0f / 128.0f }, &spr->texcoords[2]);
 			
-			if ((x + y) % 2 == 0)
-				glm_vec4_copy(black, spr->color);
-			else
-				glm_vec4_copy(white, spr->color);
-			
-			if (gm->table[y][x])
-			{
-				glm_mat4_copy(spr->transform, spr[1].transform);
-				++spr;
-				
-				glm_vec4_copy((vec4) { 16.0f / 128.0f, 0.0f, 16.0f / 128.0f, 16.0f / 128.0f }, spr->texcoords);
-				
-				switch (gm->table[y][x])
-				{
-					case Game_Piece_Red: glm_vec4_copy((vec4) { 0.8f, 0.05f, 0.1f, 1.0f }, spr->color); break;
-					case Game_Piece_Blue: glm_vec4_copy((vec4) { 0.1f, 0.05f, 0.8f, 1.0f }, spr->color); break;
-					default:;
-				}
-			}
-			else
-			{
-				sprite_count--;
-			}
+			glm_vec4_copy(GLM_VEC4_ONE, spr->color);
 			
 			++spr;
 		}
 	}
 	
+	for (int32 i = 0; i < ArrayLength(game->troops); ++i)
+	{
+		Game_Troop* troop = &game->troops[i];
+		
+		glm_mat4_identity(spr->transform);
+		glm_translate(spr->transform, (vec3) { troop->pos[0], troop->pos[1], 0.0f });
+		glm_scale(spr->transform, (vec3) { 16.0f, 16.0f, 1.0f });
+		
+		glm_vec4_copy((vec4) {
+						  16.0f / 128.0f, 0.0f,
+						  16.0f / 128.0f, 16.0f / 128.0f,
+					  }, spr->texcoords);
+		
+		glm_vec4_copy(GLM_VEC4_ONE, spr->color);
+		
+		++spr;
+	}
+	
 	Render_Layer2D layer = {
-		.texture = &gm->base_texture,
+		.texture = &game->base_texture,
 		.sprite_count = sprite_count,
 		.sprites = sprites,
 	};
 	
+	mat4 view;
+	Render_CalcViewMatrix2D(&camera, view);
 	Render_DrawLayer2D(&layer, view);
 	
 	char buff[256];
-	snprintf(buff, sizeof buff, "%f\n%f\n%f\n%f", mouse_pos[0], mouse_pos[1]);
-	Render_DrawText(&gm->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
+	snprintf(buff, sizeof buff, "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
+	Render_DrawText(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
 	Engine_FinishFrame();
 }
 
+//~ NOTE(ljre): Public API
 API void
 Game_Main(Engine_Data* g)
 {
+	engine = g;
 	if (!g->game)
-		InitGame(g);
+		g->game = InitGame();
+	game = g->game;
 	
-	Arena_Clear(g->temp_arena);
-	UpdateAndRenderGame(g);
+	Arena_Clear(engine->temp_arena);
+	UpdateAndRenderGame();
 }

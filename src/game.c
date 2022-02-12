@@ -2,7 +2,7 @@
 
 #include "system_random.c"
 
-#if 0
+#if 1
 #   include "game_test.c"
 #else
 enum Game_State

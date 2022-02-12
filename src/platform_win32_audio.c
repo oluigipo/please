@@ -85,14 +85,11 @@ AudioThreadProc(void* data)
 		void* source = buffer + offset * sizeof(int16);
 		
 		HRESULT errcode = IAudioRenderClient_GetBuffer(global_audio_render_client, frame_count, &dest);
+		(void)errcode;
+		
 		if (dest)
-		{
 			memcpy(dest, source, (uintsize)(frame_count * global_channels) * sizeof(int16));
-		}
-		else
-		{
-			Platform_DebugLog("AudioThreadProc: ERROR: HRESULT %x\n", (uint32)errcode);
-		}
+		
 		IAudioRenderClient_ReleaseBuffer(global_audio_render_client, frame_count, 0);
 	}
 }
