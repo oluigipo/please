@@ -2,7 +2,7 @@
 
 #include "system_random.c"
 
-#if 1
+#if 0
 #   include "game_test.c"
 #else
 enum Game_State
@@ -516,13 +516,13 @@ Game_Main(Engine_Data* g)
 			Game_MenuButton button_3dscene = {
 				.position = { 100.0f, 200.0f },
 				.size = { 200.0f, 50.0f },
-				.text = StrI("Run 3D Scene"),
+				.text = StrInit("Run 3D Scene"),
 			};
 			
 			Game_MenuButton button_quit = {
 				.position = { 100.0f, 400.0f },
 				.size = { 200.0f, 50.0f },
-				.text = StrI("Quit"),
+				.text = StrInit("Quit"),
 			};
 			
 			//~ NOTE(ljre): Update

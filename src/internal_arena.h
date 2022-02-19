@@ -1,6 +1,8 @@
 #ifndef INTERNAL_ARENA_H
 #define INTERNAL_ARENA_H
 
+#define Arena_Scope(arena) for (void* end__ = Arena_End(arena); end__; Arena_Pop(arena, end__), end__ = 0)
+
 struct Arena
 {
 	uintsize reserved;
@@ -69,13 +71,13 @@ Arena_PushDirty(Arena* arena, uintsize size)
 internal inline void*
 Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 {
-	return memset(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size);
+	return MemSet(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size);
 }
 
 internal inline void*
 Arena_Push(Arena* arena, uintsize size)
 {
-	return memset(Arena_PushDirtyAligned(arena, size, 15), 0, size);
+	return MemSet(Arena_PushDirtyAligned(arena, size, 15), 0, size);
 }
 
 internal void

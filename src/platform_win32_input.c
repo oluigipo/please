@@ -150,7 +150,7 @@ internal const Input_KeyboardKey global_keyboard_key_table[] = {
 internal inline bool32
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {
-	return memcmp(a, b, sizeof (GUID)) == 0;
+	return MemCmp(a, b, sizeof (GUID)) == 0;
 }
 
 internal inline int32
@@ -803,7 +803,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i) {
 			const GamepadMappings* map = &global_gamepadmap_database[i];
 			
-			if (memcmp(guid_str, map->guid, ArrayLength(map->guid)) == 0)
+			if (MemCmp(guid_str, map->guid, ArrayLength(map->guid)) == 0)
 			{
 				gamepad->dinput.map = map;
 				index_of_map_being_used = i;

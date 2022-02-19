@@ -88,7 +88,7 @@ AudioThreadProc(void* data)
 		(void)errcode;
 		
 		if (dest)
-			memcpy(dest, source, (uintsize)(frame_count * global_channels) * sizeof(int16));
+			MemCopy(dest, source, (uintsize)(frame_count * global_channels) * sizeof(int16));
 		
 		IAudioRenderClient_ReleaseBuffer(global_audio_render_client, frame_count, 0);
 	}
@@ -203,7 +203,7 @@ Win32_InitAudio(void)
 	global_audio_buffer = Platform_HeapAlloc(size * 2);
 	global_audio_buffer_hot = global_audio_buffer;
 	global_audio_buffer_cold = global_audio_buffer_hot + size;
-	memset(global_audio_buffer, 0, size * 2);
+	MemSet(global_audio_buffer, 0, size * 2);
 	
 	global_audio_thread = CreateThread(NULL, 0, AudioThreadProc, NULL, 0, NULL);
 	if (!global_audio_thread)
@@ -249,7 +249,7 @@ Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32*
 		}
 		ReleaseSRWLockExclusive(&global_audio_mutex);
 		
-		memset(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
+		MemSet(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
 		return (int16*)global_audio_buffer_cold;
 	}
 	else

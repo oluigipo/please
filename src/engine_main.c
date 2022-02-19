@@ -32,7 +32,7 @@ Engine_Main(int32 argc, char** argv)
 	Platform_Config config = {
 		.window_width = 1280,
 		.window_height = 720,
-		.window_title = StrI("Title"),
+		.window_title = StrInit("Title"),
 		.center_window = true,
 		
 		.graphics_api = GraphicsAPI_OpenGL,

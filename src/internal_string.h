@@ -3,24 +3,25 @@
 
 struct String
 {
-	uintsize len; // NOTE(ljre): length IN BYTES and MAY include the null terminator!!!!!
-	const char* data;
+	uintsize size;
+	uint8* data;
 }
 typedef String;
 
-#define Str(x) (String) StrI(x)
-#define StrI(x) { sizeof(x), (x) }
-#define StrFmt(x) (x).len, (x).data
+#define Str(x) (String) StrInit(x)
+#define StrInit(x) { sizeof(x) - 1, (uint8*)(x) }
+#define StrFmt(x) (x).size, (char*)(x).data
+#define StrMake(size,data) (String) { size, data }
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
 #define StrNull (String) { 0 }
 
 internal int32
-String_Decode(String str, int32* index)
+String_Decode(const String str, int32* index)
 {
 	int32 result = 0;
-	const char* p = str.data + *index;
-	if (p >= str.data + str.len || !*p)
+	const uint8* p = str.data + *index;
+	if (p >= str.data + str.size || !*p)
 		return 0;
 	
 	uint8 byte = (uint8)*p++;
@@ -59,7 +60,7 @@ String_Decode(String str, int32* index)
 
 // TODO(ljre): make this better (?)
 internal uintsize
-String_Length(String str)
+String_DecodedLength(const String str)
 {
 	uintsize len = 0;
 	
@@ -71,58 +72,36 @@ String_Length(String str)
 }
 
 internal inline int32
-String_Compare(String a, String b)
+String_Compare(const String a, const String b)
 {
-	const char* ap = a.data;
-	const char* bp = b.data;
+	if (a.size != b.size)
+		return (int32)(a.size - b.size);
 	
-	const char* ap_end = ap + a.len;
-	const char* bp_end = bp + b.len;
-	
-	while (ap < ap_end && !ap_end[-1]) --ap_end;
-	while (bp < bp_end && !bp_end[-1]) --bp_end;
-	
-	while (ap < ap_end && bp < bp_end)
-	{
-		if (*ap != *bp)
-			return (int32)*ap - (int32)*bp;
-		
-		++ap;
-		++bp;
-	}
-	
-	int32 alen = (int32)(ap_end - ap);
-	int32 blen = (int32)(bp_end - bp);
-	
-	return alen - blen;
+	uintsize min = Min(a.size, b.size);
+	return MemCmp(a.data, b.data, min);
 }
 
 internal inline bool32
-String_EndsWith(String check, String s)
+String_EndsWith(const String check, const String s)
 {
-	if (s.len > check.len)
+	if (s.size > check.size)
 		return false;
 	
 	String substr = {
-		.data = check.data + (check.len - s.len),
-		.len = s.len,
+		.size = s.size,
+		.data = check.data + (check.size - s.size),
 	};
 	
-	return strncmp(substr.data, s.data, substr.len) == 0;
+	return MemCmp(substr.data, s.data, substr.size) == 0;
 }
 
-internal inline char*
-String_Copy(String dst, String src)
+internal inline uintsize
+String_Copy(String dst, const String src)
 {
-	char* d = (char*)dst.data;
-	const char* s = src.data;
+	uintsize len = Min(dst.size, src.size);
+	MemCopy(dst.data, src.data, len);
 	
-	uintsize len = Min(dst.len, src.len);
-	
-	while (len--)
-		*d++ = *s++;
-	
-	return d;
+	return len;
 }
 
 #endif //INTERNAL_STRING_H

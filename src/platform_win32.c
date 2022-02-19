@@ -107,12 +107,12 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 {
 	if (!buffer)
 	{
-		size = 1 + (uintsize)MultiByteToWideChar(CP_UTF8, 0, str.data, (int32)str.len, NULL, 0);
+		size = 1 + (uintsize)MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, NULL, 0);
 		buffer = HeapAlloc(global_heap, 0, size * sizeof(wchar_t));
 	}
 	
-	MultiByteToWideChar(CP_UTF8, 0, str.data, (int32)str.len, buffer, (int32)size);
-	buffer[size-1] = 0;
+	size = MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, buffer, (int32)size - 1);
+	buffer[size] = 0;
 	
 	return buffer;
 }
@@ -167,7 +167,7 @@ ProcessDeferredEvents(void)
 	
 	// NOTE(ljre): Window Title
 	{
-		if (global_config.window_title.len > 0)
+		if (global_config.window_title.size > 0)
 		{
 			wchar_t* name = Win32_ConvertStringToWSTR(global_config.window_title, NULL, 0);
 			SetWindowTextW(global_window, name);
@@ -193,7 +193,7 @@ ProcessDeferredEvents(void)
 	}
 	
 	// NOTE(ljre): Reset config.
-	memset(&global_config, 0, sizeof(global_config));
+	MemSet(&global_config, 0, sizeof(global_config));
 }
 
 //~ Entry Point
@@ -428,7 +428,7 @@ Platform_WindowHeight(void)
 API void
 Platform_UpdateConfig(const Platform_Config* config)
 {
-	memcpy(&global_config, config, sizeof(global_config));
+	MemCopy(&global_config, config, sizeof(global_config));
 }
 
 API float64

@@ -204,7 +204,7 @@ ReadUint32(const uint8* begin, const uint8* end, uint32* out_value)
 	if (begin + sizeof(uint32) > end)
 		return NULL;
 	
-	memcpy(out_value, begin, sizeof(uint32));
+	MemCopy(out_value, begin, sizeof(uint32));
 	return begin + sizeof(uint32);
 }
 

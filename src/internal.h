@@ -115,6 +115,7 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #    define TraceFrameMark() ((void)0)
 #endif
 
+#include "internal_memory.h"
 #include "internal_string.h"
 #include "internal_arena.h"
 #include "internal_assets.h"

@@ -64,7 +64,7 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 	SwapQoiBytes(&header.width);
 	SwapQoiBytes(&header.height);
 	
-	if (memcmp(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
+	if (MemCmp(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
 		header.channels < 3 || header.channels > 4 || header.colorspace > 1 || // NOTE(ljre): Format limitations.
 		header.colorspace != 1 || header.width > INT32_MAX || header.height > INT32_MAX) // NOTE(ljre): Our limitations.
 	{
@@ -215,7 +215,7 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 	{
 		const uint8 end_marker[8] = { 0,0,0,0, 0,0,0,1 };
 		
-		if (memcmp(head, end_marker, 8) != 0)
+		if (MemCmp(head, end_marker, 8) != 0)
 			err = true;
 	}
 	

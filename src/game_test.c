@@ -162,6 +162,20 @@ ProcessEvent(void)
 		NextEvent();
 }
 
+internal void
+ProcessDiscordEvents(void)
+{
+	if (game->discord.connected)
+	{
+		if (!game->discord.lobby.id && !game->discord.connecting_to_lobby)
+		{
+			PlsDiscord_CreateLobby(&game->discord);
+		}
+	}
+	
+	PlsDiscord_Update(&game->discord);
+}
+
 //- NOTE(ljre): Init Game Function
 internal Game_Data*
 InitGame(void)
@@ -190,13 +204,7 @@ InitGame(void)
 internal void
 UpdateAndRenderGame(void)
 {
-	if (game->discord.connected)
-	{
-		if (!game->discord.lobby.id && !game->discord.connecting_to_lobby)
-		{
-			PlsDiscord_CreateLobby(&game->discord);
-		}
-	}
+	ProcessDiscordEvents();
 	
 	Input_Mouse mouse;
 	Input_GetMouse(&mouse);
@@ -341,7 +349,6 @@ UpdateAndRenderGame(void)
 	snprintf(buff, sizeof buff, "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
 	Render_DrawText(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
-	PlsDiscord_Update(&game->discord);
 	Engine_FinishFrame();
 }
 

@@ -172,8 +172,8 @@ Json_RawFieldName(const Json_Field* field)
 {
 	String result;
 	
-	result.data = (const char*)field->begin + 1;
-	result.len = (uintsize)((const char*)field->name_end - result.data);
+	result.data = (uint8*)field->begin + 1;
+	result.size = (uintsize)(field->name_end - result.data);
 	
 	return result;
 }
@@ -187,10 +187,10 @@ Json_NumberValueF64(const Json_Value* value)
 	
 	uintsize len = (uintsize)(value->end - value->begin);
 	
-	Assert(len < 128);
+	Assert(len < 127);
 	
 	char buf[128];
-	memcpy(buf, value->begin, len);
+	MemCopy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtod(buf, NULL);
@@ -205,10 +205,10 @@ Json_NumberValueI64(const Json_Value* value)
 	
 	uintsize len = (uintsize)(value->end - value->begin);
 	
-	Assert(len < 128);
+	Assert(len < 127);
 	
 	char buf[128];
-	memcpy(buf, value->begin, len);
+	MemCopy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtoll(buf, NULL, 10);
@@ -233,8 +233,8 @@ Json_RawStringValue(const Json_Value* value)
 	
 	String result;
 	
-	result.data = (const char*)value->begin + 1;
-	result.len = (uintsize)value->end - (uintsize)result.data - 1;
+	result.data = (uint8*)value->begin + 1;
+	result.size = (uintsize)value->end - (uintsize)result.data - 1;
 	
 	return result;
 }
