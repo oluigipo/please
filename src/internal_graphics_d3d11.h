@@ -1,5 +1,5 @@
-#if defined(INTERNAL_ENABLE_D3D11) && !defined(INTERNAL_DIRECT3D_H)
-#define INTERNAL_DIRECT3D_H
+#if defined(INTERNAL_ENABLE_D3D11) && !defined(INTERNAL_GRAPHICS_D3D11_H)
+#define INTERNAL_GRAPHICS_D3D11_H
 
 //~ Windows Stuff
 #ifndef WIN32_LEAN_AND_MEAN
@@ -37,4 +37,4 @@ typedef GraphicsContext_Direct3D;
 #pragma pop_macro("far")
 #pragma pop_macro("near")
 
-#endif // INTERNAL_ENABLE_D3D11
+#endif // INTERNAL_GRAPHICS_D3D11_H

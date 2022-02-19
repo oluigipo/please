@@ -1,7 +1,7 @@
 #define near
 #define far
 
-#include "internal_direct3d.h"
+#include "internal_graphics_d3d11.h"
 
 #if defined(DEBUG)
 #   include <dxgidebug.h>

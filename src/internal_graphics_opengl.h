@@ -1,5 +1,5 @@
-#if defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_OPENGL_H)
-#define INTERNAL_OPENGL_H
+#if defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_GRAPHICS_OPENGL_H)
+#define INTERNAL_GRAPHICS_OPENGL_H
 
 #define __gl_h
 
@@ -1640,4 +1640,4 @@ struct GraphicsContext_OpenGL
 	PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
 };
 
-#endif // defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_OPENGL_H)
+#endif // defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_GRAPHICS_OPENGL_H)

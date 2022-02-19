@@ -1,4 +1,4 @@
-#include "internal_opengl.h"
+#include "internal_graphics_opengl.h"
 #include <GL/glx.h>
 
 #define GLX_CONTEXT_MAJOR_VERSION_ARB           0x2091

@@ -349,6 +349,14 @@ Platform_CurrentPosixTime(void)
 //- Debug
 #ifdef DEBUG
 API void
+Platform_DebugError(const char* msg)
+{
+	printf("======== Debug Error\n%s\n", msg);
+	exit(1);
+	/* no return */
+}
+
+API void
 Platform_DebugMessageBox(const char* restrict format, ...)
 {
 	char buffer[Kilobytes(16)];

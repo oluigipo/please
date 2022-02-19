@@ -331,8 +331,6 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 API void
 Platform_ExitWithErrorMessage(String message)
 {
-	Trace("Platform_ExitWithErrorMessage");
-	
 	wchar_t* msg = Win32_ConvertStringToWSTR(message, NULL, 0);
 	Win32_ExitWithErrorMessage(msg);
 	/* no return */
@@ -717,6 +715,14 @@ Platform_LoadGameLibrary(void)
 
 //- Debug
 #ifdef DEBUG
+API void
+Platform_DebugError(const char* msg)
+{
+	MessageBoxA(NULL, msg, "Debug Error", MB_OK);
+	exit(1);
+	/* no return */
+}
+
 API void
 Platform_DebugMessageBox(const char* restrict format, ...)
 {

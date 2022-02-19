@@ -1,3 +1,5 @@
+#include "system_discord.c"
+
 #define Game_MAX_PLAYING_AUDIOS 32
 
 // NOTE(ljre): These globals are set every frame by 'Game_Main'!
@@ -61,6 +63,8 @@ struct Game_Data
 	
 	// NOTE(ljre): Options
 	float32 master_volume;
+	
+	PlsDiscord_Client discord;
 	
 	// NOTE(ljre): Gameplay Data
 	struct
@@ -170,6 +174,10 @@ InitGame(void)
 	if (!Render_LoadTextureFromFile(Str("./assets/base_texture.png"), &gm->base_texture))
 		Platform_ExitWithErrorMessage(Str("Could not sprites from file './assets/base_texture.png'."));
 	
+	PlsDiscord_Init(778719957956689922LL, &gm->discord);
+	PlsDiscord_UpdateActivityAssets(&gm->discord, Str("eredin"), Str("cat"), Str("preto"), Str("white"));
+	PlsDiscord_UpdateActivity(&gm->discord, DiscordActivityType_Playing, Str("Name"), Str("State"), Str("Details"));
+	
 	gm->camera_target_zoom = gm->camera_zoom = 0.25f;
 	
 	for (int32 i = 0; i < ArrayLength(gm->troops); ++i)
@@ -182,6 +190,14 @@ InitGame(void)
 internal void
 UpdateAndRenderGame(void)
 {
+	if (game->discord.connected)
+	{
+		if (!game->discord.lobby.id && !game->discord.connecting_to_lobby)
+		{
+			PlsDiscord_CreateLobby(&game->discord);
+		}
+	}
+	
 	Input_Mouse mouse;
 	Input_GetMouse(&mouse);
 	
@@ -325,6 +341,7 @@ UpdateAndRenderGame(void)
 	snprintf(buff, sizeof buff, "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
 	Render_DrawText(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
+	PlsDiscord_Update(&game->discord);
 	Engine_FinishFrame();
 }
 
@@ -339,4 +356,7 @@ Game_Main(Engine_Data* g)
 	
 	Arena_Clear(engine->temp_arena);
 	UpdateAndRenderGame();
+	
+	if (!g->running)
+		PlsDiscord_Deinit(&g->game->discord);
 }

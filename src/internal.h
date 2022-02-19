@@ -14,6 +14,43 @@
 #define Min(x,y) ((x) < (y) ? (x) : (y))
 #define Max(x,y) ((x) > (y) ? (x) : (y))
 
+#if defined(__clang__)
+#   define Assume(x) __builtin_assume(x)
+#   define Debugbreak() __builtin_debugtrap()
+#   define Likely(x) __builtin_expect(!!(x), 1)
+#   define Unlikely(x) __builtin_expect((x), 0)
+#   define Unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER)
+#   define Assume(x) __assume(x)
+#   define Debugbreak() __debugbreak()
+#   define Likely(x) (x)
+#   define Unlikely(x) (x)
+#   define Unreachable() do { Assume(0); } while (0)
+#elif defined(__GNUC__)
+#   define Assume(x) do { if (!(x)) __builtin_unreachable(); } while (0)
+#   define Debugbreak() __asm__ __volatile__ ("int $3")
+#   define Likely(x) __builtin_expect(!!(x), 1)
+#   define Unlikely(x) __builtin_expect((x), 0)
+#   define Unreachable() __builtin_unreachable()
+#else
+#   define Assume(x) ((void)0)
+#   define Debugbreak() ((void)0)
+#   define Likely(x) (x)
+#   define Unlikely(x) (x)
+#   define Unreachable() ((void)0)
+#endif
+
+#if defined(DEBUG)
+API void Platform_DebugError(const char* msg);
+#   undef Unreachable
+#   define Unreachable() do { Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__)); } while (0)
+#   define Assert(x) do { if (!(x)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nExpression: " #x); } } while (0)
+#else
+#   define Assert(x) Assume(x)
+#   undef Debugbreak
+#   define Debugbreak() ((void)0)
+#endif
+
 //~ Standard headers & Libraries
 #if defined(__clang__)
 #   pragma clang diagnostic push
@@ -31,6 +68,7 @@
 #include <string.h>
 #include <math.h>
 #include <cglm/cglm.h>
+#include <stdbool.h>
 
 //- Enable Warnings
 #if defined(__clang__)
@@ -65,14 +103,6 @@ typedef float float32;
 typedef double float64;
 
 //~ Debug
-#ifndef DEBUG
-#   define Assert(x) ((void)0)
-#else
-#   undef NDEBUG
-#   include <assert.h>
-#   define Assert assert
-#endif
-
 #if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
 #    include "../../../ext/tracy/TracyC.h"
 internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
@@ -85,8 +115,8 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #    define TraceFrameMark() ((void)0)
 #endif
 
-#include "internal_arena.h"
 #include "internal_string.h"
+#include "internal_arena.h"
 #include "internal_assets.h"
 
 #include "internal_api_engine.h"

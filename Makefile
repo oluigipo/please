@@ -74,3 +74,5 @@ $(BUILDDIR):
 	mkdir $(BUILDDIR)
 $(BUILDDIR)/%.o: src/%.c src/%*.c src/internal*.h | $(BUILDDIR)
 	$(CC) $< -c -o $@ $(CFLAGS)
+$(BUILDDIR)/game.o: src/game.c src/game*.c src/internal*.h src/system*.c | $(BUILDDIR)
+	$(CC) src/game.c -c -o $@ $(CFLAGS)

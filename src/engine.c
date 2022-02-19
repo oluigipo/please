@@ -17,10 +17,10 @@
 
 #include "internal.h"
 #ifdef INTERNAL_ENABLE_OPENGL
-#   include "internal_opengl.h"
+#   include "internal_graphics_opengl.h"
 #endif
 #ifdef INTERNAL_ENABLE_D3D11
-#   include "internal_direct3d.h"
+#   include "internal_graphics_d3d11.h"
 #endif
 
 //~ Libraries
