@@ -112,14 +112,14 @@ internal Game_Event*
 PushEvent(void)
 {
 	Assert(game->event_count < ArrayLength(game->events));
-	return memset(&game->events[game->event_count++], 0, sizeof(Game_Event));
+	return MemSet(&game->events[game->event_count++], 0, sizeof(Game_Event));
 }
 
 internal void
 NextEvent(void)
 {
 	Assert(game->event_count > 0);
-	memmove(game->events, game->events + 1, --game->event_count);
+	MemMove(&game->events[0], &game->events[1], --game->event_count * sizeof(Game_Event));
 }
 
 internal Game_Event*
@@ -127,7 +127,7 @@ PushImmediateEvent(void)
 {
 	if (game->event_count <= 0)
 		game->event_count = 1;
-	return memset(&game->events[0], 0, sizeof(Game_Event));
+	return MemSet(&game->events[0], 0, sizeof(Game_Event));
 }
 
 internal void

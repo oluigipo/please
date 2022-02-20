@@ -42,6 +42,41 @@ MemSet(void* restrict dst, uint8 byte, uintsize size)
 	return dst;
 }
 
+internal inline void*
+MemMove(void* dst, const void* src, uintsize size)
+{
+	uint8* d = dst;
+	const uint8* s = src;
+	
+	if (d <= s)
+	{
+		// NOTE(ljre): Good news: 'rep movsb' allows overlapping memory :)
+#if defined(__clang__) || defined(__GNUC__)
+		__asm__ __volatile__("rep movsb"
+							 :"+D"(d), "+S"(src), "+c"(size)
+							 :: "memory");
+#elif defined(_MSC_VER)
+		__movsb(dst, src, size);
+#else
+		uint8* d = dst;
+		const uint8* s = src;
+		while (size--)
+			*d++ = *s++;
+#endif
+	}
+	else
+	{
+		// NOTE(ljre): Reversed copy.
+		d += size;
+		s += size;
+		
+		while (size--)
+			*--d = *--s;
+	}
+	
+	return dst;
+}
+
 internal inline int32
 BitCtz(int32 i)
 {

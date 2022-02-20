@@ -15,28 +15,28 @@
 #define Max(x,y) ((x) > (y) ? (x) : (y))
 
 #if defined(__clang__)
-#   define Assume(x) __builtin_assume(x)
+#   define Assume(...) __builtin_assume(__VA_ARGS__)
 #   define Debugbreak() __builtin_debugtrap()
-#   define Likely(x) __builtin_expect(!!(x), 1)
-#   define Unlikely(x) __builtin_expect((x), 0)
+#   define Likely(...) __builtin_expect(!!(__VA_ARGS__), 1)
+#   define Unlikely(...) __builtin_expect((__VA_ARGS__), 0)
 #   define Unreachable() __builtin_unreachable()
 #elif defined(_MSC_VER)
-#   define Assume(x) __assume(x)
+#   define Assume(...) __assume(__VA_ARGS__)
 #   define Debugbreak() __debugbreak()
-#   define Likely(x) (x)
-#   define Unlikely(x) (x)
+#   define Likely(...) (__VA_ARGS__)
+#   define Unlikely(...) (__VA_ARGS__)
 #   define Unreachable() do { Assume(0); } while (0)
 #elif defined(__GNUC__)
-#   define Assume(x) do { if (!(x)) __builtin_unreachable(); } while (0)
+#   define Assume(...) do { if (!(__VA_ARGS__)) __builtin_unreachable(); } while (0)
 #   define Debugbreak() __asm__ __volatile__ ("int $3")
-#   define Likely(x) __builtin_expect(!!(x), 1)
-#   define Unlikely(x) __builtin_expect((x), 0)
+#   define Likely(...) __builtin_expect(!!(__VA_ARGS__), 1)
+#   define Unlikely(...) __builtin_expect((__VA_ARGS__), 0)
 #   define Unreachable() __builtin_unreachable()
 #else
-#   define Assume(x) ((void)0)
+#   define Assume(...) ((void)0)
 #   define Debugbreak() ((void)0)
-#   define Likely(x) (x)
-#   define Unlikely(x) (x)
+#   define Likely(...) (__VA_ARGS__)
+#   define Unlikely(...) (__VA_ARGS__)
 #   define Unreachable() ((void)0)
 #endif
 
@@ -44,9 +44,9 @@
 API void Platform_DebugError(const char* msg);
 #   undef Unreachable
 #   define Unreachable() do { Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__)); } while (0)
-#   define Assert(x) do { if (!(x)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nExpression: " #x); } } while (0)
+#   define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nExpression: " #__VA_ARGS__); } } while (0)
 #else
-#   define Assert(x) Assume(x)
+#   define Assert(...) Assume(__VA_ARGS__)
 #   undef Debugbreak
 #   define Debugbreak() ((void)0)
 #endif
