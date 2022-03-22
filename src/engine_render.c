@@ -2,9 +2,9 @@
 #define D3D (*global_graphics->d3d)
 
 #ifdef DEBUG
-#   define D3DCall(x) do{HRESULT r=(x);if(FAILED(r)){Platform_DebugMessageBox("D3DCall Failed\nFile: " __FILE__ "\nLine: %i\nError code: %lx",__LINE__,r);exit(1);}}while(0)
+#   define D3DCall(...) do{HRESULT r=(__VA_ARGS__);if(FAILED(r)){Platform_DebugMessageBox("D3DCall Failed\nFile: " __FILE__ "\nLine: %i\nError code: %lx",__LINE__,r);exit(1);}}while(0)
 #else
-#   define D3DCall(x) (x)
+#   define D3DCall(...) (__VA_ARGS__)
 #endif
 
 #define TEXTURE_SLOT_DIFFUSE 0
@@ -589,7 +589,7 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 	int32 width = 0, line_width = 0, height = 0;
 	int32 codepoint, it = 0;
 	
-	height += (int32)roundf((float32)(font->ascent - font->descent + font->line_gap) * scale);
+	height += (int32)roundf((font->ascent - font->descent + font->line_gap) * scale);
 	while (codepoint = String_Decode(text, &it), codepoint)
 	{
 		if (codepoint == '\n')
@@ -598,14 +598,14 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 				width = line_width;
 			
 			line_width = 0;
-			height += (int32)roundf((float32)(font->ascent - font->descent + font->line_gap) * scale);
+			height += (int32)roundf((font->ascent - font->descent + font->line_gap) * scale);
 			continue;
 		}
 		
 		int32 advance, bearing;
 		stbtt_GetCodepointHMetrics(&font->info, codepoint, &advance, &bearing);
 		
-		line_width += (int32)roundf((float32)advance * scale);
+		line_width += (int32)roundf(advance * scale);
 	}
 	
 	if (line_width > width)
@@ -832,7 +832,7 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 		int32 height = Platform_WindowHeight();
 		
 		mat4 proj;
-		glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
+		glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
 		
 		glm_mat4_identity(view);
 		glm_mat4_mul(proj, view, view);
@@ -987,7 +987,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	int32 bitmap_width, bitmap_height;
 	CalcBitmapSizeForText(font, scale, text, &bitmap_width, &bitmap_height);
 	
-	uint8* bitmap = Arena_Push(global_engine.temp_arena, (uintsize)(bitmap_width * bitmap_height));
+	uint8* bitmap = Arena_Push(global_engine.temp_arena, (uintsize)bitmap_width * bitmap_height);
 	
 	float32 xx = 0, yy = 0;
 	int32 codepoint, it = 0;
@@ -996,7 +996,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 		if (codepoint == '\n')
 		{
 			xx = 0;
-			yy += (float32)(font->ascent - font->descent + font->line_gap) * scale;
+			yy += (font->ascent - font->descent + font->line_gap) * scale;
 			continue;
 		}
 		
@@ -1011,20 +1011,20 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 		int32 char_width = char_x2 - char_x1;
 		int32 char_height = char_y2 - char_y1;
 		
-		int32 end_x = (int32)roundf(xx + (float32)bearing * scale) + char_x1;
-		int32 end_y = (int32)roundf(yy + (float32)font->ascent * scale) + char_y1;
+		int32 end_x = (int32)roundf(xx + bearing * scale) + char_x1;
+		int32 end_y = (int32)roundf(yy + font->ascent * scale) + char_y1;
 		
 		int32 offset = end_x + (end_y * bitmap_width);
 		stbtt_MakeCodepointBitmap(&font->info, bitmap + offset, char_width, char_height, bitmap_width, scale, scale, codepoint);
 		
-		xx += (float32)advance * scale;
+		xx += advance * scale;
 	}
 	
 	//Platform_DebugDumpBitmap("test.ppm", bitmap, bitmap_width, bitmap_height, 1);
 	
 	mat4 matrix = GLM_MAT4_IDENTITY_INIT;
 	glm_translate(matrix, (vec3) { pos[0], pos[1], pos[2] });
-	glm_scale(matrix, (vec3) { (float32)bitmap_width, (float32)bitmap_height });
+	glm_scale(matrix, (vec3) { bitmap_width, bitmap_height });
 	glm_translate(matrix, (float32*)alignment);
 	
 	mat4 view;
@@ -1033,7 +1033,7 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 		int32 height = Platform_WindowHeight();
 		
 		mat4 proj;
-		glm_ortho(0.0f, (float32)width, (float32)height, 0.0f, -1.0f, 1.0f, proj);
+		glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
 		
 		glm_mat4_identity(view);
 		glm_mat4_mul(proj, view, view);
@@ -1545,7 +1545,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	//~ NOTE(ljre): Setup
 	{
 		mat4 proj;
-		glm_perspective(glm_rad(90.0f), (float32)width / (float32)height, 0.01f, 100.0f, proj);
+		glm_perspective(glm_rad(90.0f), (float32)width / height, 0.01f, 100.0f, proj);
 		
 		glm_mat4_identity(view);
 		if (camera)
@@ -1794,3 +1794,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }
+
+#undef D3DCall
+#undef D3D
+#undef GL

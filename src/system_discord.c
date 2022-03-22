@@ -29,8 +29,6 @@ struct PlsDiscord_Client
 }
 typedef PlsDiscord_Client;
 
-internal void PlsDiscord_UpdateActivity(PlsDiscord_Client* discord, int32 type, String name, String state, String details);
-
 //~ NOTE(ljre): Callbacks
 internal void
 DiscordCallbackUpdateActivity(void* data, enum EDiscordResult result)
@@ -316,34 +314,14 @@ PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 	discord->connecting_to_lobby = false;
 	MemSet(&discord->lobby, 0, sizeof(discord->lobby));
 	
-	PlsDiscord_UpdateActivity(discord, DiscordActivityType_Playing, StrNull, StrNull, StrNull);
+	discord->activities->update_activity(discord->activities, &discord->activity, NULL, DiscordCallbackUpdateActivity);
 	
 	return true;
 }
 
 internal void
-PlsDiscord_UpdateActivityAssets(PlsDiscord_Client* discord, String large_image, String large_text, String small_image, String small_text)
+PlsDiscord_UpdateActivity(PlsDiscord_Client* discord)
 {
-	if (large_image.size)
-		String_Copy(Str(discord->activity.assets.large_image), large_image);
-	if (large_text.size)
-		String_Copy(Str(discord->activity.assets.large_text), large_text);
-	if (small_image.size)
-		String_Copy(Str(discord->activity.assets.small_image), small_image);
-	if (small_text.size)
-		String_Copy(Str(discord->activity.assets.small_text), small_text);
-}
-
-internal void
-PlsDiscord_UpdateActivity(PlsDiscord_Client* discord, int32 type, String name, String state, String details)
-{
-	discord->activity.type = type;
-	discord->activity.application_id = discord->appid;
-	
-	String_Copy(Str(discord->activity.name), name);
-	String_Copy(Str(discord->activity.state), state);
-	String_Copy(Str(discord->activity.details), details);
-	
 	discord->activities->update_activity(discord->activities, &discord->activity, NULL, DiscordCallbackUpdateActivity);
 }
 

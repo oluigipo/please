@@ -53,10 +53,10 @@ struct Game_Data
 internal void
 ColorToVec4(uint32 color, vec4 out)
 {
-	out[0] = (float32)(color>>16 & 0xFF) / 255.0f;
-	out[1] = (float32)(color>>8 & 0xFF) / 255.0f;
-	out[2] = (float32)(color & 0xFF) / 255.0f;
-	out[3] = (float32)(color>>24 & 0xFF) / 255.0f;
+	out[0] = (color>>16 & 0xFF) / 255.0f;
+	out[1] = (color>>8 & 0xFF) / 255.0f;
+	out[2] = (color & 0xFF) / 255.0f;
+	out[3] = (color>>24 & 0xFF) / 255.0f;
 }
 
 internal void
@@ -421,7 +421,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		
 		glm_mat4_identity(g->game->render_rotating_cubes[i].transform);
 		glm_translate(g->game->render_rotating_cubes[i].transform, pos);
-		glm_rotate(g->game->render_rotating_cubes[i].transform, t + (float32)i, (vec3) { 0.0f, 1.0f, 0.0f });
+		glm_rotate(g->game->render_rotating_cubes[i].transform, t + i, (vec3) { 0.0f, 1.0f, 0.0f });
 	}
 	
 	Render_Draw3DScene(&g->game->render_scene, &g->game->render_camera);

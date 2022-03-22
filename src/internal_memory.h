@@ -113,7 +113,7 @@ MemCmp(const void* left_, const void* right_, uintsize size)
         int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(ldata, rdata));
         cmp = ~cmp & 0xffff;
 		
-        if (cmp != 0)
+        if (Unlikely(cmp != 0))
         {
             union
             {

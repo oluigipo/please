@@ -104,7 +104,7 @@ enum Input_KeyboardKey
 	Input_KeyboardKey_LeftAlt, Input_KeyboardKey_RightAlt, Input_KeyboardKey_Alt,
 	Input_KeyboardKey_Tab, Input_KeyboardKey_Enter, Input_KeyboardKey_Backspace,
 	Input_KeyboardKey_PageUp, Input_KeyboardKey_PageDown, Input_KeyboardKey_End, Input_KeyboardKey_Home,
-	// NOTE(ljre): Try to not mess up. Input_KeyboardKey_Space = 32, and those above can be (but shouldn't)
+	// NOTE(ljre): Try to not mess up. Input_KeyboardKey_Space = 32, and those above may reach it if you blindly add stuff.
 	
 	Input_KeyboardKey_Space = ' ',
 	

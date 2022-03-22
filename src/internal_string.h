@@ -77,8 +77,7 @@ String_Compare(const String a, const String b)
 	if (a.size != b.size)
 		return (int32)(a.size - b.size);
 	
-	uintsize min = Min(a.size, b.size);
-	return MemCmp(a.data, b.data, min);
+	return MemCmp(a.data, b.data, a.size);
 }
 
 internal inline bool32

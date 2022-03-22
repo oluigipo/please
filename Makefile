@@ -11,7 +11,7 @@ DEBUG ?=
 BUILDDIR ?= build
 
 CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-unused-function -Wconversion -Wno-format
-CFLAGS += -Wno-missing-braces -Wno-sign-conversion
+CFLAGS += -Wno-missing-braces -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay
 CFLAGS += -std=gnu99 -Iinclude $(DEBUG) $(CUSTOMC)
 LDFLAGS += -Llib $(DEBUG) $(CUSTOMLD)
 
@@ -50,9 +50,7 @@ ifeq ($(PLATFORM), win32)
 	CLEAN = del $(EXTS_:%="$(BUILDDIR)\*.%")
 	
 	LDFLAGS += -luser32 -lgdi32 -lhid -static -Wl,/subsystem:windows
-	
-	CFLAGS += -Wsizeof-array-decay -Werror=implicit-int-float-conversion
-	CFLAGS += -Werror=float-conversion -Wno-int-to-void-pointer-cast
+	CFLAGS += -static
 else ifeq ($(PLATFORM), linux)
 	OUTPUT_NAME = game
 	CLEAN = rm ./build/*.o
