@@ -157,4 +157,6 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			--*audio_count;
 		}
 	}
+	
+	Platform_CloseSoundBuffer(samples);
 }

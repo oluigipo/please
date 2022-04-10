@@ -313,6 +313,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 		.lpfnWndProc = WindowProc,
 		.lpszClassName = global_class_name,
 		.hInstance = instance,
+		.hCursor = LoadCursorA(NULL, IDC_ARROW),
 	};
 	
 	if (!RegisterClassW(&window_class))
@@ -401,7 +402,6 @@ Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out
 		
 		*out_graphics = &global_graphics_context;
 		ShowWindow(global_window, SW_SHOWDEFAULT);
-		SetCursor(LoadCursorA(NULL, IDC_ARROW));
 	}
 	
 	return ok;

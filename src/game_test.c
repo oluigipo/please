@@ -30,6 +30,7 @@ struct Game_PlayerData
 {
 	vec4 color;
 	Game_Troop troops[5];
+	int32 troop_count;
 }
 typedef Game_PlayerData;
 
@@ -327,6 +328,7 @@ Game_Init(Game_Data* game)
 	{
 		Game_PlayerData* player = &game->players[0];
 		
+		player->troop_count = ArrayLength(player->troops);
 		for (int32 i = 0; i < ArrayLength(player->troops); ++i)
 		{
 			player->troops[i] = (Game_Troop) {
@@ -346,6 +348,7 @@ Game_Init(Game_Data* game)
 	{
 		Game_PlayerData* player = &game->players[1];
 		
+		player->troop_count = ArrayLength(player->troops);
 		for (int32 i = 0; i < ArrayLength(player->troops); ++i)
 		{
 			player->troops[i] = (Game_Troop) {
