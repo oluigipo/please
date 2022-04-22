@@ -4,31 +4,14 @@ made to be simple, easy to build, and mainly to learn.
 ## License
 Everyone is free to use my code to do whatever they want.
 The license note in the file LICENSE is valid just for the stuff in the `src` folder.
-Everything in the `src` folder is either mine, or is available in the public domain.
+Everything in the `src` folder is either mine or is available in the public domain.
 
 The code inside the `include` folder may be redistributed under it's own license (generally found at the top of the file or in a `LICENSE` file).
 
 ## Build
-Simplest way: If you are on Windows, simply run `build-debug-cl.bat` through VS's Developer Command Prompt x64 and it should compile normally. If you are on Linux, then run `build-debug-gcc.sh` instead. Both of these scripts have only 1 command. You can read it to understand what is needed to compile.
+Simplest way: If you are on Windows, simply run `build-debug-cl.bat` through VS's Developer Command Prompt x64 and it should compile normally. If you are on Linux, then run `build-debug-gcc.sh` instead. Both of these scripts have only 1 command. You can read them to understand what is needed to compile.
 
-#### build.c
-[nobuild](https://github.com/tsoding/nobuild): Works on Windows and Linux.
-Simply do
-```bash
-cc build.c -o build
-./build
-```
-and it should build with the `cc` compiler of your choosing. It can be `gcc`, `clang`, `cl`, or `tcc`.
-
-#### Makefile
-You may also have noticed the `Makefile` file. If you want to use it, make sure you have Clang installed on your machine.
-Here are some variables you can set (all of them are optional):
-* `CUSTOMC` and `CUSTOMLD`: Custom flags for compiling and linking respectively;
-* `DEBUG`: Debug flags. It will be passed both for compilation and linking stages;
-* `BUILDDIR`: The build directory where the object files and executable are going to be placed at. Defaults to `build`;
-* `PLATFORM`: The platform you want to build to. It's worth noting that you should setup your own environment for cross-compilation;
-
-If `CUSTOMC` and `DEBUG` are both not specified, `CUSTOMC` will default to optimization flags.
+There's also the `build.ninja` file. If you want to use it, make sure you have Clang installed on your Windows machine.
 
 #### Config macros
 Some macros you can `-D` or `-U` to enable/disable stuff. Check out the `src/internal_config.h` file. It has the default options and conditions for each of them.
