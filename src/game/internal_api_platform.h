@@ -1,30 +1,30 @@
 #ifndef INTERNAL_API_PLATFORM_H
 #define INTERNAL_API_PLATFORM_H
 
-enum GraphicsAPI
+enum Platform_GraphicsApi
 {
-	GraphicsAPI_None = 0,
+	Platform_GraphicsApi_None = 0,
 	
-	GraphicsAPI_OpenGL = 1,
-	GraphicsAPI_Direct3D = 2, // NOTE(ljre): not implemented yet :(
+	Platform_GraphicsApi_OpenGL = 1,
+	Platform_GraphicsApi_Direct3D = 2, // NOTE(ljre): not implemented yet :(
 	
-	GraphicsAPI_Any = GraphicsAPI_OpenGL | GraphicsAPI_Direct3D,
+	Platform_GraphicsApi_Any = Platform_GraphicsApi_OpenGL | Platform_GraphicsApi_Direct3D,
 }
-typedef GraphicsAPI;
+typedef Platform_GraphicsApi;
 
-struct GraphicsContext_OpenGL typedef GraphicsContext_OpenGL;
-struct GraphicsContext_Direct3D typedef GraphicsContext_Direct3D;
+struct Platform_OpenGLGraphicsContext typedef Platform_OpenGLGraphicsContext;
+struct Platform_Direct3DGraphicsContext typedef Platform_Direct3DGraphicsContext;
 
-struct GraphicsContext
+struct Platform_GraphicsContext
 {
-	GraphicsAPI api;
+	Platform_GraphicsApi api;
 	union
 	{
-		GraphicsContext_OpenGL* opengl;
-		GraphicsContext_Direct3D* d3d;
+		const Platform_OpenGLGraphicsContext* opengl;
+		const Platform_Direct3DGraphicsContext* d3d;
 	};
 }
-typedef GraphicsContext;
+typedef Platform_GraphicsContext;
 
 struct Platform_Config
 {
@@ -39,12 +39,12 @@ struct Platform_Config
 	int32 window_x, window_y, window_width, window_height;
 	String window_title;
 	
-	GraphicsAPI graphics_api;
+	Platform_GraphicsApi graphics_api;
 }
 typedef Platform_Config;
 
 // NOTE(ljre): This function also does general initialization
-API bool32 Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics);
+API bool32 Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics);
 
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);

@@ -29,6 +29,8 @@ struct PlsDiscord_Client
 }
 typedef PlsDiscord_Client;
 
+#include "common_printf.h"
+
 //~ NOTE(ljre): Callbacks
 internal void
 DiscordCallbackUpdateActivity(void* data, enum EDiscordResult result)
@@ -49,7 +51,7 @@ DiscordCallbackCreateLobby(void* event_data, enum EDiscordResult result, struct 
 	Platform_DebugLog("Created Lobby!\n");
 	
 	MemCopy(discord->activity.secrets.join, discord->lobby.secret, sizeof(discord->lobby.secret));
-	snprintf(discord->activity.party.id, sizeof(discord->activity.party.id), "%lli", discord->lobby.id);
+	SPrintf(discord->activity.party.id, sizeof(discord->activity.party.id), "%lli", discord->lobby.id);
 	discord->activity.party.size.current_size = 1;
 	discord->activity.party.size.max_size = discord->lobby.capacity;
 	
@@ -322,6 +324,8 @@ PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 internal void
 PlsDiscord_UpdateActivity(PlsDiscord_Client* discord)
 {
+	Assert(discord->core);
+	
 	discord->activities->update_activity(discord->activities, &discord->activity, NULL, DiscordCallbackUpdateActivity);
 }
 

@@ -1,1 +1,1 @@
-gcc -o game "src/engine.c" "src/game.c" "src/platform_linux.c" -Iinclude -DDEBUG -g -lm -lX11 -ldl -lasound -w
+gcc -o game src/game/engine.c src/game/game.c src/game/platform_linux.c -Iinclude -Igame -DDEBUG -g -lm -lX11 -ldl -lasound -w

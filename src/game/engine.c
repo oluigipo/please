@@ -1,7 +1,6 @@
 /*
 *
 * TODO:
-*  - Resize Window;
 *  - Fullscreen;
 *  - Keyboard for 3D Demo;
 *  - Direct3D backend;
@@ -52,20 +51,8 @@ internal Engine_Data global_engine;
 #include "engine_main.c"
 
 //~ External
-//  Disable Warnings
-#if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Weverything"
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wall"
-#   pragma GCC diagnostic ignored "-Wextra"
-#   pragma GCC diagnostic ignored "-Wsign-conversion"
-#else
-#   pragma warning(push, 0)
-#endif
+DisableWarnings();
 
-//- Includes
 #define STBI_MALLOC(sz) Platform_HeapAlloc(sz)
 #define STBI_REALLOC(p,newsz) Platform_HeapRealloc(p,newsz)
 #define STBI_FREE(p) Platform_HeapFree(p)
@@ -97,11 +84,4 @@ internal Engine_Data global_engine;
 #undef realloc
 #undef free
 
-//- Enable warnings
-#if defined(__clang__)
-#   pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
-#else
-#   pragma warning(pop, 0)
-#endif
+ReenableWarnings();

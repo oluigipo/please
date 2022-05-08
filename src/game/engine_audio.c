@@ -30,8 +30,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	// not inside 'if'
 	{
 		Trace("stb_vorbis_decode_memory");
-		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels,
-														   &out_sound->sample_rate, &out_sound->samples);
+		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels, &out_sound->sample_rate, &out_sound->samples);
 	}
 	
 	Arena_Pop(global_engine.temp_arena, memory);

@@ -9,24 +9,6 @@ HashOfQoiPixel(uint32 color)
 	return (r*3 + g*5 + b*7 + a*11) % 64;
 }
 
-internal void
-SwapQoiBytes(uint32* restrict v)
-{
-	union
-	{
-		uint8 arr[4];
-		uint32 value;
-	} r;
-	uint8 tmp;
-	
-	r.value = *v;
-	
-	tmp = r.arr[0]; r.arr[0] = r.arr[3]; r.arr[3] = tmp;
-	tmp = r.arr[1]; r.arr[1] = r.arr[2]; r.arr[2] = tmp;
-	
-	*v = r.value;
-}
-
 //~ Internal API
 internal uint32*
 Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width, int32* out_height)
@@ -61,8 +43,8 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 		return NULL;
 	
 	struct QoiHeader header = *(const struct QoiHeader*)data;
-	SwapQoiBytes(&header.width);
-	SwapQoiBytes(&header.height);
+	header.width = ByteSwap32(header.width);
+	header.height = ByteSwap32(header.height);
 	
 	if (MemCmp(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
 		header.channels < 3 || header.channels > 4 || header.colorspace > 1 || // NOTE(ljre): Format limitations.

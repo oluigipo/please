@@ -1,4 +1,3 @@
-
 #include "system_discord.c"
 
 #define Game_MAX_PLAYING_AUDIOS 32
@@ -138,22 +137,6 @@ struct Game_Data
 };
 
 //~ NOTE(ljre): Functions
-internal void
-PushAudio(const Asset_SoundBuffer* sound)
-{
-	if (game->playing_audio_count < Game_MAX_PLAYING_AUDIOS)
-	{
-		int32 index = game->playing_audio_count++;
-		Engine_PlayingAudio* playing = &game->playing_audios[index];
-		
-		playing->sound = sound;
-		playing->frame_index = -1;
-		playing->loop = false;
-		playing->volume = 1.0f;
-		playing->speed = 1.0f;
-	}
-}
-
 internal bool32
 CollisionPointAabb(const vec2 point, const vec2 sqr, float32 size)
 {
@@ -186,8 +169,37 @@ CompareDistance(const vec2 a, const vec2 b, float32 cmp)
 	return (int32)glm_signf(diff[0] + diff[1] - cmp);
 }
 
+internal inline Game_TroopHandle
+MakeTroopHandle(uint32 player_index, uint32 troop_index)
+{
+	Assert(player_index < ArrayLength(game->players));
+	Assert(troop_index < ArrayLength(game->players[player_index].troops));
+	
+	return (Game_TroopHandle) {
+		.generation = game->players[player_index].troops[troop_index].generation,
+		.player = (uint16)player_index,
+		.index = (uint16)troop_index,
+	};
+}
+
+internal void
+Game_PushAudio(const Asset_SoundBuffer* sound)
+{
+	if (game->playing_audio_count < Game_MAX_PLAYING_AUDIOS)
+	{
+		int32 index = game->playing_audio_count++;
+		Engine_PlayingAudio* playing = &game->playing_audios[index];
+		
+		playing->sound = sound;
+		playing->frame_index = -1;
+		playing->loop = false;
+		playing->volume = 0.25f;
+		playing->speed = 1.0f;
+	}
+}
+
 internal Game_TroopHandle
-FindTroopAt(const vec2 pos, Game_TroopData** out_data)
+Game_FindTroopAt(const vec2 pos, Game_TroopData** out_data)
 {
 	Game_TroopHandle result = { 0 };
 	
@@ -225,7 +237,7 @@ FindTroopAt(const vec2 pos, Game_TroopData** out_data)
 }
 
 internal inline Game_TroopData*
-FetchTroopData(Game_TroopHandle handle)
+Game_FetchTroopData(Game_TroopHandle handle)
 {
 	if (!handle.valid)
 		return NULL;
@@ -242,7 +254,7 @@ FetchTroopData(Game_TroopHandle handle)
 }
 
 internal void
-KillTroop(Game_TroopHandle handle)
+Game_KillTroop(Game_TroopHandle handle)
 {
 	if (!handle.valid)
 		return;
@@ -262,7 +274,7 @@ KillTroop(Game_TroopHandle handle)
 }
 
 internal Game_TroopHandle
-CreateTroop(uint32 player_index, Game_TroopData** out_data)
+Game_CreateTroop(uint32 player_index, Game_TroopData** out_data)
 {
 	Assert(player_index < ArrayLength(game->players));
 	
@@ -294,36 +306,23 @@ CreateTroop(uint32 player_index, Game_TroopData** out_data)
 	return result;
 }
 
-internal inline Game_TroopHandle
-MakeTroopHandle(uint32 player_index, uint32 troop_index)
-{
-	Assert(player_index < ArrayLength(game->players));
-	Assert(troop_index < ArrayLength(game->players[player_index].troops));
-	
-	return (Game_TroopHandle) {
-		.generation = game->players[player_index].troops[troop_index].generation,
-		.player = (uint16)player_index,
-		.index = (uint16)troop_index,
-	};
-}
-
 //- NOTE(ljre): Event Functions
 internal Game_Event*
-PushEvent(void)
+Game_PushEvent(void)
 {
 	Assert(game->event_count < ArrayLength(game->events));
 	return MemSet(&game->events[game->event_count++], 0, sizeof(Game_Event));
 }
 
 internal void
-NextEvent(void)
+Game_NextEvent(void)
 {
 	Assert(game->event_count > 0);
 	MemMove(&game->events[0], &game->events[1], --game->event_count * sizeof(Game_Event));
 }
 
 internal Game_Event*
-PushImmediateEvent(void)
+Game_PushImmediateEvent(void)
 {
 	if (game->event_count <= 0)
 		game->event_count = 1;
@@ -331,7 +330,7 @@ PushImmediateEvent(void)
 }
 
 internal void
-ProcessEvent(void)
+Game_ProcessEvent(void)
 {
 	Assert(game->event_count > 0);
 	
@@ -344,7 +343,7 @@ ProcessEvent(void)
 		
 		case Game_EventKind_MovingTroop:
 		{
-			Game_TroopData* troop = FetchTroopData(event->moving_troop.troop);
+			Game_TroopData* troop = Game_FetchTroopData(event->moving_troop.troop);
 			
 			if (!troop)
 			{
@@ -372,7 +371,7 @@ ProcessEvent(void)
 		
 		case Game_EventKind_Attacking:
 		{
-			Game_TroopData* troop = FetchTroopData(event->attacking.troop);
+			Game_TroopData* troop = Game_FetchTroopData(event->attacking.troop);
 			if (!troop)
 			{
 				event_is_done = true;
@@ -394,7 +393,7 @@ ProcessEvent(void)
 			}
 			else
 			{
-				Game_TroopData* other_troop = FetchTroopData(event->attacking.other_troop);
+				Game_TroopData* other_troop = Game_FetchTroopData(event->attacking.other_troop);
 				if (!other_troop)
 				{
 					event_is_done = true;
@@ -410,7 +409,7 @@ ProcessEvent(void)
 					--other_troop->life;
 					
 					if (other_troop->life <= 0)
-						KillTroop(event->attacking.other_troop);
+						Game_KillTroop(event->attacking.other_troop);
 				}
 			}
 		} break;
@@ -419,7 +418,7 @@ ProcessEvent(void)
 	}
 	
 	if (event_is_done)
-		NextEvent();
+		Game_NextEvent();
 }
 
 //- NOTE(ljre): Init Game Function
@@ -433,9 +432,9 @@ Game_Init(Game_Data* game)
 		.selected_troop_index = -1,
 	};
 	
-	if (!Render_LoadFontFromFile(Str("./assets/FalstinRegular-XOr2.ttf"), &game->font))
+	if (!engine->renderer->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &game->font))
 		Platform_ExitWithErrorMessage(Str("Could not load font './assets/FalstinRegular-XOr2.ttf'."));
-	if (!Render_LoadTextureFromFile(Str("./assets/base_texture.png"), &game->base_texture))
+	if (!engine->renderer->load_texture_from_file(Str("./assets/base_texture.png"), &game->base_texture))
 		Platform_ExitWithErrorMessage(Str("Could not load sprites from file './assets/base_texture.png'."));
 	
 	game->discord.activity = (struct DiscordActivity) {
@@ -452,8 +451,8 @@ Game_Init(Game_Data* game)
 		.details = "Details",
 	};
 	
-	PlsDiscord_Init(778719957956689922LL, &game->discord);
-	PlsDiscord_UpdateActivity(&game->discord);
+	if (PlsDiscord_Init(778719957956689922LL, &game->discord))
+		PlsDiscord_UpdateActivity(&game->discord);
 	
 	// NOTE(ljre): Player Troops
 	{
@@ -527,19 +526,19 @@ Game_UpdateAndRender(void)
 		engine->running = false;
 	
 	//~ NOTE(ljre): Update
-	Render_Camera camera = {
+	Engine_RendererCamera camera = {
 		.pos = { game->camera_pos[0], game->camera_pos[1] },
 		.size = { Platform_WindowWidth(), Platform_WindowHeight() },
 		.zoom = game->camera_zoom*game->camera_zoom * 9.0f + 1.0f,
 	};
 	
 	vec2 mouse_pos;
-	Render_CalcPointInCamera2DSpace(&camera, mouse.pos, mouse_pos);
+	Engine_CalcPointInCamera2DSpace(&camera, mouse.pos, mouse_pos);
 	
 	if (game->event_count > 0)
 	{
 		//- NOTE(ljre): Events
-		ProcessEvent();
+		Game_ProcessEvent();
 		
 		game->camera_speed[0] = glm_lerp(game->camera_speed[0], 0.0f, 0.3f);
 		game->camera_speed[1] = glm_lerp(game->camera_speed[1], 0.0f, 0.3f);
@@ -569,14 +568,14 @@ Game_UpdateAndRender(void)
 				
 				if (pos_diff[0] <= 1 && pos_diff[1] <= 1)
 				{
-					Game_TroopHandle other_troop_handle = FindTroopAt(target_pos, NULL);
+					Game_TroopHandle other_troop_handle = Game_FindTroopAt(target_pos, NULL);
 					
 					if (!other_troop_handle.valid)
 					{
 						Game_Event* event;
 						
 						// NOTE(ljre): Move Troop
-						event = PushEvent();
+						event = Game_PushEvent();
 						
 						event->kind = Game_EventKind_MovingTroop;
 						event->moving_troop.troop = troop_handle;
@@ -585,7 +584,7 @@ Game_UpdateAndRender(void)
 						event->moving_troop.target_pos[1] = target_pos[1];
 						
 						// NOTE(ljre): Next Turn
-						event = PushEvent();
+						event = Game_PushEvent();
 						
 						event->kind = Game_EventKind_NextTurn;
 					}
@@ -594,7 +593,7 @@ Game_UpdateAndRender(void)
 						Game_Event* event;
 						
 						// NOTE(ljre): Attack
-						event = PushEvent();
+						event = Game_PushEvent();
 						
 						event->kind = Game_EventKind_Attacking;
 						event->attacking.troop = troop_handle;
@@ -603,7 +602,7 @@ Game_UpdateAndRender(void)
 						event->attacking.original_troop_pos[1] = troop->pos[1];
 						
 						// NOTE(ljre): Next Turn
-						event = PushEvent();
+						event = Game_PushEvent();
 						
 						event->kind = Game_EventKind_NextTurn;
 					}
@@ -661,8 +660,8 @@ Game_UpdateAndRender(void)
 	}
 	
 	//~ NOTE(ljre): Render
-	Render_Begin();
-	Render_ClearBackground(0.1f, 0.1f, 0.1f, 1.0f);
+	engine->renderer->begin();
+	engine->renderer->clear_background(0.1f, 0.1f, 0.1f, 1.0f);
 	
 	const int32 table_size = 20;
 	
@@ -670,8 +669,8 @@ Game_UpdateAndRender(void)
 		+ ArrayLength(game->players[0].troops) * ArrayLength(game->players)
 		+ 1 + (game->selected_troop_index != -1);
 	
-	Render_Sprite2D* sprites = Arena_PushDirty(engine->temp_arena, sizeof(*sprites) * sprite_count);
-	Render_Sprite2D* spr = sprites;
+	Engine_Renderer2DSprite* sprites = Arena_Push(engine->temp_arena, sizeof(*sprites) * sprite_count);
+	Engine_Renderer2DSprite* spr = sprites;
 	
 	for (int32 y = 0; y < table_size; ++y)
 	{
@@ -777,19 +776,17 @@ Game_UpdateAndRender(void)
 		++spr;
 	}
 	
-	Render_Layer2D layer = {
+	Engine_Renderer2DLayer layer = {
 		.texture = &game->base_texture,
 		.sprite_count = sprite_count,
 		.sprites = sprites,
 	};
 	
-	mat4 view;
-	Render_CalcViewMatrix2D(&camera, view);
-	Render_DrawLayer2D(&layer, view);
+	engine->renderer->draw_2dlayer(&layer, &camera);
 	
 	char buff[256];
-	snprintf(buff, sizeof buff, "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
-	Render_DrawText(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
+	SPrintf(buff, sizeof(buff), "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
+	engine->renderer->draw_text(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
 	ProcessDiscordEvents();
 	Engine_FinishFrame();

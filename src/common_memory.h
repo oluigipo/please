@@ -1,5 +1,5 @@
-#ifndef INTERNAL_MEMORY_H
-#define INTERNAL_MEMORY_H
+#ifndef COMMON_MEMORY_H
+#define COMMON_MEMORY_H
 
 #include <immintrin.h>
 
@@ -58,8 +58,6 @@ MemMove(void* dst, const void* src, uintsize size)
 #elif defined(_MSC_VER)
 		__movsb(dst, src, size);
 #else
-		uint8* d = dst;
-		const uint8* s = src;
 		while (size--)
 			*d++ = *s++;
 #endif
@@ -92,6 +90,61 @@ BitCtz(int32 i)
 	
 	while ((i & 1<<result) == 0)
 		++result;
+#endif
+	
+	return result;
+}
+
+internal inline uint16
+ByteSwap16(uint16 x)
+{
+	return (uint16)((x >> 8) | (x << 8));
+}
+
+internal inline uint32
+ByteSwap32(uint32 x)
+{
+	uint32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_bswap32(x);
+#elif defined (_MSC_VER)
+	extern unsigned long _byteswap_ulong(unsigned long);
+	
+	result = _byteswap_ulong(x);
+#else
+	result = (x << 24) | (x >> 24) | (x >> 8 & 0xff00) | (x << 8 & 0xff0000);
+#endif
+	
+	return result;
+}
+
+internal inline uint64
+ByteSwap64(uint64 x)
+{
+	uint64 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_bswap64(x);
+#elif defined (_MSC_VER)
+	extern unsigned __int64 _byteswap_uint64(unsigned __int64);
+	
+	result = _byteswap_uint64(x);
+#else
+	union
+	{
+		uint64 v;
+		uint8 arr[8];
+	}
+	r = { .v = x };
+	uint8 tmp;
+	
+    tmp = r.arr[0]; r.arr[0] = r.arr[7]; r.arr[7] = tmp;
+    tmp = r.arr[1]; r.arr[1] = r.arr[6]; r.arr[6] = tmp;
+    tmp = r.arr[2]; r.arr[2] = r.arr[5]; r.arr[5] = tmp;
+    tmp = r.arr[3]; r.arr[3] = r.arr[4]; r.arr[4] = tmp;
+	
+	result = r.v;
 #endif
 	
 	return result;
@@ -131,7 +184,7 @@ MemCmp(const void* left_, const void* right_, uintsize size)
 	
     while (size --> 0)
     {
-        if (*left != *right)
+        if (Unlikely(*left != *right))
             return (*left - *right < 0) ? -1 : 1;
 		
         ++left;
@@ -141,4 +194,4 @@ MemCmp(const void* left_, const void* right_, uintsize size)
     return 0;
 }
 
-#endif //INTERNAL_MEMORY_H
+#endif // COMMON_MEMORY_H

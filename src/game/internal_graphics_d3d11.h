@@ -21,7 +21,7 @@ typedef HRESULT WINAPI ProcD3DCompile(LPCVOID pSrcData, SIZE_T SrcDataSize, LPCS
 									  LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1,
 									  UINT Flags2, ID3DBlob** ppCode, ID3DBlob** ppErrorMsgs);
 
-struct GraphicsContext_Direct3D
+struct Platform_Direct3DGraphicsContext
 {
 	ID3D11Device* device;
 	ID3D11DeviceContext* context;
@@ -31,7 +31,7 @@ struct GraphicsContext_Direct3D
 	// Optional
 	ProcD3DCompile* compile_shader;
 }
-typedef GraphicsContext_Direct3D;
+typedef Platform_Direct3DGraphicsContext;
 //-
 
 #pragma pop_macro("far")

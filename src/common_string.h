@@ -1,15 +1,15 @@
-#ifndef INTERNAL_STRING_H
-#define INTERNAL_STRING_H
+#ifndef COMMON_STRING_H
+#define COMMON_STRING_H
 
 struct String
 {
 	uintsize size;
-	uint8* data;
+	const uint8* data;
 }
 typedef String;
 
 #define Str(x) (String) StrInit(x)
-#define StrInit(x) { sizeof(x) - 1, (uint8*)(x) }
+#define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }
 #define StrFmt(x) (x).size, (char*)(x).data
 #define StrMake(size,data) (String) { size, data }
 #define StrMacro_(x) #x
@@ -94,13 +94,4 @@ String_EndsWith(const String check, const String s)
 	return MemCmp(substr.data, s.data, substr.size) == 0;
 }
 
-internal inline uintsize
-String_Copy(String dst, const String src)
-{
-	uintsize len = Min(dst.size, src.size);
-	MemCopy(dst.data, src.data, len);
-	
-	return len;
-}
-
-#endif //INTERNAL_STRING_H
+#endif // COMMON_STRING_H

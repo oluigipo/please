@@ -1,14 +1,8 @@
 #include "internal.h"
 
-//- Disable Warnings
-#if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Weverything"
-#else
-#   pragma warning(push, 0)
-#endif
-
 //- Includes
+DisableWarnings();
+
 #define WIN32_LEAN_AND_MEAN
 #define COBJMACROS
 #define DIRECTINPUT_VERSION 0x0800
@@ -44,17 +38,18 @@ void WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
 
 #include "platform_win32_guid.c"
 
-//- Enable Warnings
-#if defined(__clang__)
-#   pragma clang diagnostic pop
-#else
-#   pragma warning(pop, 0)
-#endif
+ReenableWarnings();
+
+//#define ENABLE_SEH_IN_MAIN
 
 #if defined(_MSC_VER)
 #   pragma comment(lib, "user32.lib")
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
+#   if ENABLE_SEH_IN_MAIN
+#       pragma comment(lib, "dbghelp.lib")
+#       include <minidumpapiset.h>
+#   endif
 #endif
 
 //~ Globals
@@ -67,7 +62,7 @@ internal HWND global_window;
 internal HDC global_hdc;
 internal bool32 global_window_should_close;
 internal bool32 global_lock_cursor;
-internal GraphicsContext global_graphics_context;
+internal Platform_GraphicsContext global_graphics_context;
 internal Platform_Config global_config = { 0 };
 
 internal int32 global_window_width;
@@ -90,7 +85,7 @@ Win32_CheckForErrors(void)
 	if (error != ERROR_SUCCESS)
 	{
 		char buffer[512];
-		snprintf(buffer, sizeof buffer, "%llu", (uint64)error);
+		SPrintf(buffer, sizeof buffer, "%llu", (uint64)error);
 		MessageBoxA(NULL, buffer, "Error Code", MB_OK);
 	}
 }
@@ -320,7 +315,34 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 		Win32_ExitWithErrorMessage(L"Could not create window class.");
 	
 	//- Run
-	int32 result = Engine_Main(argc, argv);
+	int32 result;
+	
+#if !defined(_MSC_VER) || !defined(ENABLE_SEH_IN_MAIN)
+	result = Engine_Main(argc, argv);
+#else
+	MINIDUMP_EXCEPTION_INFORMATION info = { 0 };
+	
+	__try
+	{
+		result = Engine_Main(argc, argv);
+	}
+	__except (info.ExceptionPointers = GetExceptionInformation(),
+			  GetExceptionCode() == EXCEPTION_BREAKPOINT ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER)
+	{
+		HANDLE file = CreateFileA("minidump.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		
+		if (file)
+		{
+			info.ThreadId = GetCurrentThreadId();
+			info.ClientPointers = FALSE;
+			
+			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file,
+							  MiniDumpNormal, &info, NULL, NULL);
+		}
+		
+		ExitProcess(2);
+	}
+#endif
 	
 	// NOTE(ljre): Free resources... or nah :P
 	//Win32_DeinitAudio();
@@ -352,7 +374,7 @@ Platform_MessageBox(String title, String message)
 }
 
 API bool32
-Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics)
+Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics)
 {
 	Trace("Platform_CreateWindow");
 	
@@ -361,9 +383,9 @@ Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out
 	
 	bool32 ok = false;
 	
-	if (config->graphics_api & GraphicsAPI_OpenGL)
+	if (config->graphics_api & Platform_GraphicsApi_OpenGL)
 		ok = ok || Win32_CreateOpenGLWindow(config->window_width, config->window_height, window_name);
-	if (config->graphics_api & GraphicsAPI_Direct3D)
+	if (config->graphics_api & Platform_GraphicsApi_Direct3D)
 		ok = ok || Win32_CreateDirect3DWindow(config->window_width, config->window_height, window_name);
 	
 	if (ok)
@@ -463,8 +485,8 @@ Platform_FinishFrame(void)
 	
 	switch (global_graphics_context.api)
 	{
-		case GraphicsAPI_OpenGL: Win32_OpenGLSwapBuffers(); break;
-		case GraphicsAPI_Direct3D: Win32_Direct3DSwapBuffers(); break;
+		case Platform_GraphicsApi_OpenGL: Win32_OpenGLSwapBuffers(); break;
+		case Platform_GraphicsApi_Direct3D: Win32_Direct3DSwapBuffers(); break;
 		default: {} break;
 	}
 }
@@ -730,7 +752,7 @@ Platform_DebugMessageBox(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	vsnprintf(buffer, sizeof buffer, format, args);
+	VSPrintf(buffer, sizeof buffer, format, args);
 	MessageBoxA(NULL, buffer, "Debug", MB_OK | MB_TOPMOST);
 	va_end(args);
 }
@@ -742,7 +764,7 @@ Platform_DebugLog(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	vsnprintf(buffer, sizeof buffer, format, args);
+	VSPrintf(buffer, sizeof buffer, format, args);
 	OutputDebugStringA(buffer);
 	va_end(args);
 }

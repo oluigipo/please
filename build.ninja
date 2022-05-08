@@ -1,7 +1,7 @@
-cflags = -std=gnu99 -Iinclude -Wall -Werror-implicit-function-declaration -Wno-unused-function $
+cflags = -std=c11 -Iinclude -Isrc -Wall -Werror-implicit-function-declaration -Wno-unused-function $
          -Wconversion -Wno-format -Wno-missing-braces -Wno-sign-conversion -Wno-implicit-int-float-conversion $
 		 -Wsizeof-array-decay -Wno-assume
-ldflags = -Llib
+ldflags = -Llib -Wl,/INCREMENTAL:no
 builddir = build
 
 cflags_hot = $cflags -DINTERNAL_ENABLE_HOT -Wno-dll-attribute-on-redeclaration -g -DDEBUG
@@ -23,7 +23,7 @@ rule cc_link
 rule make_empty_tu
   command = cmd /c echo ; > $out
 
-# Debug
+# Game - Debug
 build $builddir/game-debug.exe: link $builddir/game.obj $builddir/engine.obj $builddir/platform_win32.obj
   ldflags = $ldflags_exe -g
 build $builddir/game.obj: cc src/game.c
@@ -33,23 +33,23 @@ build $builddir/engine.obj: cc src/engine.c
 build $builddir/platform_win32.obj: cc src/platform_win32.c
   cflags = $cflags -g -DDEBUG
 
-# Release
-build $builddir/game-release.exe: cc_link src/unity_build.c
+# Game - Release
+build $builddir/game-release.exe: cc_link src/game/unity_build.c
   cflags = $cflags -static -O2 -ffast-math
   ldflags = $ldflags_exe
 
-# Hot Reloading
+# Game - Hot Reloading
 build $builddir/empty.c: make_empty_tu
 build $builddir/game-hot.exe: cc_link $builddir/empty.c $builddir/engine.lib
   ldflags = $ldflags_exe
-build $builddir/game.dll: cc_link src/game.c $builddir/engine.lib
+build $builddir/game.dll: cc_link src/game/game.c $builddir/engine.lib
   cflags = $cflags_hot
   ldflags = $ldflags_hot
 build $builddir/engine.dll | $builddir/engine.lib: link $builddir/engine-hot.obj $builddir/platform_win32-hot.obj
   ldflags = $ldflags_hot
-build $builddir/engine-hot.obj: cc src/engine.c
+build $builddir/engine-hot.obj: cc src/game/engine.c
   cflags = $cflags_hot
-build $builddir/platform_win32-hot.obj: cc src/platform_win32.c
+build $builddir/platform_win32-hot.obj: cc src/game/platform_win32.c
   cflags = $cflags_hot
 
 # phony

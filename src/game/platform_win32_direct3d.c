@@ -26,7 +26,7 @@ ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
 								  ID3D11DeviceContext** ppImmediateContext);
 
 //~ Globals
-internal GraphicsContext_Direct3D global_direct3d;
+internal Platform_Direct3DGraphicsContext global_direct3d;
 internal ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
 #if defined(DEBUG)
@@ -190,7 +190,7 @@ Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
 	global_window = window;
 	global_hdc = hdc;
 	global_graphics_context.d3d = &global_direct3d;
-	global_graphics_context.api = GraphicsAPI_Direct3D;
+	global_graphics_context.api = Platform_GraphicsApi_Direct3D;
 	
 	return true;
 }

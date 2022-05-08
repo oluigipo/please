@@ -1,5 +1,5 @@
-#ifndef INTERNAL_ARENA_H
-#define INTERNAL_ARENA_H
+#ifndef COMMON_ARENA_H
+#define COMMON_ARENA_H
 
 #define Arena_Scope(arena) for (void* end__ = Arena_End(arena); end__; Arena_Pop(arena, end__), end__ = 0)
 
@@ -14,9 +14,20 @@ struct Arena
 }
 typedef Arena;
 
-API void* Platform_VirtualReserve(uintsize size);
-API void Platform_VirtualCommit(void* ptr, uintsize size);
-API void Platform_VirtualFree(void* ptr, uintsize size);
+#ifndef Arena_OsReserve_
+#   if defined(_WIN32)
+extern void* __stdcall VirtualAlloc(void* base, uintsize size, unsigned long type, unsigned long protect);
+extern int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type);
+#       define Arena_OsReserve_(size) VirtualAlloc(NULL,size,0x00002000/*MEM_RESERVE*/,0x04/*PAGE_READWRITE*/)
+#       define Arena_OsCommit_(ptr, size) VirtualAlloc(ptr,size,0x00001000/*MEM_COMMIT*/,0x04/*PAGE_READWRITE*/)
+#       define Arena_OsFree_(ptr, size) ((void)(size), VirtualFree(ptr,0,0x00008000/*MEM_RELEASE*/))
+#   elif defined(__linux__)
+#       include <sys/mman.h>
+#       define Arena_OsReserve_(size) mmap(NULL,size,PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0)
+#       define Arena_OsCommit_(ptr, size) mprotect(ptr,size,PROT_READ|PROT_WRITE)
+#       define Arena_OsFree_(ptr, size) munmap(ptr,size)
+#   endif
+#endif
 
 internal Arena*
 Arena_Create(uintsize reserved, uintsize page_size)
@@ -25,10 +36,10 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	Assert(reserved > 0);
 	
 	reserved = AlignUp(reserved, page_size-1);
-	Arena* result = Platform_VirtualReserve(reserved + sizeof(Arena));
+	Arena* result = Arena_OsReserve_(reserved + sizeof(Arena));
 	if (result)
 	{
-		Platform_VirtualCommit(result, sizeof(Arena) + page_size);
+		Arena_OsCommit_(result, sizeof(Arena) + page_size);
 		
 		result->reserved = reserved;
 		result->commited = page_size;
@@ -47,12 +58,12 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 	arena->offset = AlignUp(arena->offset, alignment_mask);
 	uintsize needed = arena->offset + size;
 	
-	if (needed > arena->commited)
+	if (Unlikely(needed > arena->commited))
 	{
 		uintsize size_to_commit = AlignUp(arena->commited - needed, arena->page_size);
 		Assert(size_to_commit + arena->commited <= arena->reserved);
 		
-		Platform_VirtualCommit(arena->memory + arena->commited, size_to_commit);
+		Arena_OsCommit_(arena->memory + arena->commited, size_to_commit);
 		arena->commited += size_to_commit;
 	}
 	
@@ -105,7 +116,11 @@ Arena_End(Arena* arena)
 internal void
 Arena_Destroy(Arena* arena)
 {
-	Platform_VirtualFree(arena, arena->reserved + sizeof(Arena));
+	Arena_OsFree_(arena, arena->reserved + sizeof(Arena));
 }
 
-#endif //INTERNAL_ARENA_H
+#undef Arena_OsReserve_
+#undef Arena_OsCommit_
+#undef Arena_OsFree_
+
+#endif // COMMON_ARENA_H

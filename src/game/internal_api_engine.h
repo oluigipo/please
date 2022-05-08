@@ -9,6 +9,8 @@ struct Engine_Data
 	Arena* persistent_arena;
 	Arena* temp_arena;
 	Game_Data* game;
+	const Platform_GraphicsContext* graphics_context;
+	const Engine_RendererApi* renderer;
 	
 	bool8 outputed_sound_this_frame;
 	bool8 running;

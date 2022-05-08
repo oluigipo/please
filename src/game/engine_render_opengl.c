@@ -1,12 +1,6 @@
-#define GL (*global_graphics->opengl)
-#define D3D (*global_graphics->d3d)
+#define GL (*global_engine.graphics_context->opengl)
 
-#ifdef DEBUG
-#   define D3DCall(...) do{HRESULT r=(__VA_ARGS__);if(FAILED(r)){Platform_DebugMessageBox("D3DCall Failed\nFile: " __FILE__ "\nLine: %i\nError code: %lx",__LINE__,r);exit(1);}}while(0)
-#else
-#   define D3DCall(...) (__VA_ARGS__)
-#endif
-
+//~ Types and Macros
 #define TEXTURE_SLOT_DIFFUSE 0
 #define TEXTURE_SLOT_NORMAL 1
 #define TEXTURE_SLOT_SPECULAR 2
@@ -17,15 +11,15 @@
 
 //#define ENABLE_FOG
 
-struct Vertex
+struct OpenGL_Vertex
 {
 	vec3 position;
 	vec3 normal;
 	vec2 texcoord;
 }
-typedef Vertex;
+typedef OpenGL_Vertex;
 
-struct PointLightsUniformData
+struct OpenGL_PointLightsUniformData
 {
 	int32 constant;
 	int32 linear;
@@ -36,9 +30,9 @@ struct PointLightsUniformData
 	int32 diffuse;
 	int32 specular;
 }
-typedef PointLightsUniformData;
+typedef OpenGL_PointLightsUniformData;
 
-struct FlashlightUniformData
+struct OpenGL_FlashlightUniformData
 {
 	int32 position;
 	int32 direction;
@@ -51,9 +45,9 @@ struct FlashlightUniformData
 	int32 linear;
 	int32 quadratic;
 }
-typedef FlashlightUniformData;
+typedef OpenGL_FlashlightUniformData;
 
-struct InternalShaderUniforms
+struct OpenGL_InternalShaderUniforms
 {
 	int32 color;
 	int32 view;
@@ -81,23 +75,23 @@ struct InternalShaderUniforms
 	int32 dirlight_shadowmap;
 	
 	int32 pointlights_count;
-	PointLightsUniformData pointlights[MAX_POINT_LIGHTS];
+	OpenGL_PointLightsUniformData pointlights[MAX_POINT_LIGHTS];
 	
 	int32 flashlights_count;
-	FlashlightUniformData flashlights[MAX_FLASHLIGHTS];
+	OpenGL_FlashlightUniformData flashlights[MAX_FLASHLIGHTS];
 }
-typedef InternalShaderUniforms;
+typedef OpenGL_InternalShaderUniforms;
 
-struct InternalShader
+struct OpenGL_InternalShader
 {
 	uint32 id;
-	InternalShaderUniforms uniform;
+	OpenGL_InternalShaderUniforms uniform;
 }
-typedef InternalShader;
+typedef OpenGL_InternalShader;
 
 //~ Globals
-internal const GraphicsContext* global_graphics;
-internal const Vertex global_quad_vertices[] = {
+
+internal const OpenGL_Vertex global_ogl_quad_vertices[] = {
 	// Positions         // Normals           // Texcoords
 	{ 0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, },
 	{ 1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f, },
@@ -105,26 +99,27 @@ internal const Vertex global_quad_vertices[] = {
 	{ 0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f, },
 };
 
-internal const uint32 global_quad_indices[] = {
+internal const uint32 global_ogl_quad_indices[] = {
 	0, 1, 2,
 	2, 3, 0
 };
 
-internal uint32 global_quad_vbo, global_quad_ebo, global_quad_vao;
-internal uint32 global_default_diffuse_texture;
-internal uint32 global_default_normal_texture;
-internal uint32 global_default_specular_texture;
+internal uint32 global_ogl_quad_vbo, global_ogl_quad_ebo, global_ogl_quad_vao;
+internal uint32 global_ogl_default_diffuse_texture;
+internal uint32 global_ogl_default_normal_texture;
+internal uint32 global_ogl_default_specular_texture;
 
-internal InternalShader global_default_shader;
-internal InternalShader global_default_3dshader;
-internal InternalShader global_default_shadowshader;
-internal InternalShader global_default_gbuffershader;
-internal InternalShader global_default_finalpassshader;
-internal InternalShader global_default_spriteshader;
+internal OpenGL_InternalShader global_ogl_default_shader;
+internal OpenGL_InternalShader global_ogl_default_3dshader;
+internal OpenGL_InternalShader global_ogl_default_shadowshader;
+internal OpenGL_InternalShader global_ogl_default_gbuffershader;
+internal OpenGL_InternalShader global_ogl_default_finalpassshader;
+internal OpenGL_InternalShader global_ogl_default_spriteshader;
 
-internal InternalShaderUniforms* global_uniform;
+internal OpenGL_InternalShaderUniforms* global_ogl_uniform;
 
-internal const char* const global_vertex_shader =
+//~ Shaders
+internal const char* const global_ogl_vertex_shader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -141,7 +136,7 @@ internal const char* const global_vertex_shader =
 "}"
 ;
 
-internal const char* const global_fragment_shader =
+internal const char* const global_ogl_fragment_shader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -173,7 +168,7 @@ internal const char* const global_fragment_shader =
 "}"
 ;
 
-internal const char* const global_vertex_shadowshader =
+internal const char* const global_ogl_vertex_shadowshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 
@@ -185,14 +180,14 @@ internal const char* const global_vertex_shadowshader =
 "}"
 ;
 
-internal const char* const global_fragment_shadowshader =
+internal const char* const global_ogl_fragment_shadowshader =
 "#version 330 core\n"
 
 "void main() {"
 "}"
 ;
 
-internal const char* const global_vertex_gbuffershader =
+internal const char* const global_ogl_vertex_gbuffershader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -221,7 +216,7 @@ internal const char* const global_vertex_gbuffershader =
 "}"
 ;
 
-internal const char* const global_fragment_gbuffershader =
+internal const char* const global_ogl_fragment_gbuffershader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -252,7 +247,7 @@ internal const char* const global_fragment_gbuffershader =
 "}"
 ;
 
-internal const char* const global_vertex_finalpassshader =
+internal const char* const global_ogl_vertex_finalpassshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 2) in vec2 aTexCoord;\n"
@@ -267,7 +262,7 @@ internal const char* const global_vertex_finalpassshader =
 "}"
 ;
 
-internal const char* const global_fragment_finalpassshader =
+internal const char* const global_ogl_fragment_finalpassshader =
 "#version 330 core\n"
 "#define PI 3.141592653589793238462643383279\n"
 
@@ -465,7 +460,7 @@ internal const char* const global_fragment_finalpassshader =
 "}\n"
 ;
 
-internal const char* const global_vertex_spriteshader =
+internal const char* const global_ogl_vertex_spriteshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -488,7 +483,7 @@ internal const char* const global_vertex_spriteshader =
 "}"
 ;
 
-internal const char* const global_fragment_spriteshader =
+internal const char* const global_ogl_fragment_spriteshader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -506,8 +501,8 @@ internal const char* const global_fragment_spriteshader =
 //~ Functions
 #ifdef DEBUG
 internal void APIENTRY
-OpenGLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-						   GLsizei length, const GLchar* message, const void* userParam)
+OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
+							 GLsizei length, const GLchar* message, const void* userParam)
 {
 	if (type == GL_DEBUG_TYPE_ERROR)
 	{
@@ -523,7 +518,7 @@ OpenGLDebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severit
 #endif
 
 internal uint32
-CompileShader(const char* vertex_source, const char* fragment_source)
+OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 {
 	Trace("CompileShader");
 	
@@ -616,7 +611,7 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 }
 
 internal void
-GetShaderUniforms(InternalShader* shader)
+GetShaderUniforms(OpenGL_InternalShader* shader)
 {
 	Trace("GetShaderUniforms");
 	uint32 id = shader->id;
@@ -654,20 +649,20 @@ GetShaderUniforms(InternalShader* shader)
 	{
 		char buf[128];
 		
-		snprintf(buf, sizeof buf, "uPointLights[%i].constant", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].constant", i);
 		shader->uniform.pointlights[i].constant = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uPointLights[%i].linear", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].linear", i);
 		shader->uniform.pointlights[i].linear = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uPointLights[%i].quadratic", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].quadratic", i);
 		shader->uniform.pointlights[i].quadratic = GL.glGetUniformLocation(id, buf);
 		
-		snprintf(buf, sizeof buf, "uPointLights[%i].position", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].position", i);
 		shader->uniform.pointlights[i].position = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uPointLights[%i].ambient", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].ambient", i);
 		shader->uniform.pointlights[i].ambient = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uPointLights[%i].diffuse", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].diffuse", i);
 		shader->uniform.pointlights[i].diffuse = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uPointLights[%i].specular", i);
+		SPrintf(buf, sizeof buf, "uPointLights[%i].specular", i);
 		shader->uniform.pointlights[i].specular = GL.glGetUniformLocation(id, buf);
 	}
 	
@@ -676,144 +671,44 @@ GetShaderUniforms(InternalShader* shader)
 	{
 		char buf[128];
 		
-		snprintf(buf, sizeof buf, "uFlashlights[%i].position", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].position", i);
 		shader->uniform.flashlights[i].position = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uFlashlights[%i].direction", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].direction", i);
 		shader->uniform.flashlights[i].direction = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uFlashlights[%i].color", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].color", i);
 		shader->uniform.flashlights[i].color = GL.glGetUniformLocation(id, buf);
 		
-		snprintf(buf, sizeof buf, "uFlashlights[%i].innerCutoff", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].innerCutoff", i);
 		shader->uniform.flashlights[i].inner_cutoff = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uFlashlights[%i].outerCutoff", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].outerCutoff", i);
 		shader->uniform.flashlights[i].outer_cutoff = GL.glGetUniformLocation(id, buf);
 		
-		snprintf(buf, sizeof buf, "uFlashlights[%i].constant", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].constant", i);
 		shader->uniform.flashlights[i].constant = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uFlashlights[%i].linear", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].linear", i);
 		shader->uniform.flashlights[i].linear = GL.glGetUniformLocation(id, buf);
-		snprintf(buf, sizeof buf, "uFlashlights[%i].quadratic", i);
+		SPrintf(buf, sizeof buf, "uFlashlights[%i].quadratic", i);
 		shader->uniform.flashlights[i].quadratic = GL.glGetUniformLocation(id, buf);
 	}
 }
 
 internal void
-BindShader(InternalShader* shader)
+BindShader(OpenGL_InternalShader* shader)
 {
 	GL.glUseProgram(shader->id);
-	global_uniform = &shader->uniform;
+	global_ogl_uniform = &shader->uniform;
 }
 
-//~ Temporary Internal API
+//~ Renerer API
 internal void
-Engine_InitRender(void)
-{
-	Trace("Render_Init");
-	
-	int32 width = Platform_WindowWidth();
-	int32 height = Platform_WindowHeight();
-	
-#ifdef DEBUG
-	GL.glEnable(GL_DEBUG_OUTPUT);
-	GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	GL.glDebugMessageCallback(OpenGLDebugMessageCallback, NULL);
-#endif
-	
-	GL.glEnable(GL_DEPTH_TEST);
-	GL.glEnable(GL_BLEND);
-	GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	GL.glViewport(0, 0, width, height);
-	
-	uint32 vbo, vao, ebo;
-	GL.glGenBuffers(1, &vbo);
-	GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	GL.glBufferData(GL_ARRAY_BUFFER, sizeof global_quad_vertices, global_quad_vertices, GL_STATIC_DRAW);
-	
-	GL.glGenVertexArrays(1, &vao);
-	GL.glBindVertexArray(vao);
-	
-	GL.glEnableVertexAttribArray(0);
-	GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
-	GL.glEnableVertexAttribArray(1);
-	GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-	GL.glEnableVertexAttribArray(2);
-	GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
-	
-	GL.glGenBuffers(1, &ebo);
-	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof global_quad_indices, global_quad_indices, GL_STATIC_DRAW);
-	
-	global_quad_vbo = vbo;
-	global_quad_vao = vao;
-	global_quad_ebo = ebo;
-	
-	global_default_shader.id = CompileShader(global_vertex_shader, global_fragment_shader);
-	global_default_spriteshader.id = CompileShader(global_vertex_spriteshader, global_fragment_spriteshader);
-	global_default_shadowshader.id = CompileShader(global_vertex_shadowshader, global_fragment_shadowshader);
-	global_default_gbuffershader.id = CompileShader(global_vertex_gbuffershader, global_fragment_gbuffershader);
-	global_default_finalpassshader.id = CompileShader(global_vertex_finalpassshader, global_fragment_finalpassshader);
-	
-	GetShaderUniforms(&global_default_shader);
-	GetShaderUniforms(&global_default_spriteshader);
-	GetShaderUniforms(&global_default_shadowshader);
-	GetShaderUniforms(&global_default_gbuffershader);
-	GetShaderUniforms(&global_default_finalpassshader);
-	
-	uint32 white_texture[] = {
-		0xFFFFFFFF, 0xFFFFFFFF,
-		0xFFFFFFFF, 0xFFFFFFFF,
-	};
-	
-	GL.glGenTextures(1, &global_default_diffuse_texture);
-	GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, white_texture);
-	
-	uint32 normal_texture[] = {
-		0xFFFF8080, 0xFFFF8080,
-		0xFFFF8080, 0xFFFF8080,
-	};
-	
-	GL.glGenTextures(1, &global_default_normal_texture);
-	GL.glBindTexture(GL_TEXTURE_2D, global_default_normal_texture);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, normal_texture);
-	
-	uint32 specular_texture[] = {
-		0xFF808080, 0xFF808080,
-		0xFF808080, 0xFF808080,
-	};
-	
-	GL.glGenTextures(1, &global_default_specular_texture);
-	GL.glBindTexture(GL_TEXTURE_2D, global_default_specular_texture);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, specular_texture);
-	
-	GL.glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-internal void
-Engine_DeinitRender(void)
-{
-	Trace("Render_Deinit");
-	
-	// TODO(ljre): deinit
-}
-
-//~ API
-API void
-Render_ClearBackground(float32 r, float32 g, float32 b, float32 a)
+OpenGL_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 {
 	GL.glClearColor(r, g, b, a);
 	GL.glClear(GL_COLOR_BUFFER_BIT);
 }
 
-API void
-Render_Begin(void)
+internal void
+OpenGL_Begin(void)
 {
 	int32 width = Platform_WindowWidth();
 	int32 height = Platform_WindowHeight();
@@ -821,10 +716,10 @@ Render_Begin(void)
 	GL.glViewport(0, 0, width, height);
 }
 
-API void
-Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
+internal void
+OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 {
-	Trace("Render_DrawRectangle");
+	Trace("OpenGL_DrawRectangle");
 	
 	mat4 view;
 	{
@@ -846,26 +741,26 @@ Render_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 	glm_scale(matrix, size);
 	glm_translate(matrix, alignment);
 	
-	BindShader(&global_default_shader);
-	GL.glUniform4fv(global_uniform->color, 1, color);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
-	GL.glUniform1i(global_uniform->texture, 0);
+	BindShader(&global_ogl_default_shader);
+	GL.glUniform4fv(global_ogl_uniform->color, 1, color);
+	GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+	GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
+	GL.glUniform1i(global_ogl_uniform->texture, 0);
 	
 	GL.glActiveTexture(GL_TEXTURE0);
-	GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
+	GL.glBindTexture(GL_TEXTURE_2D, global_ogl_default_diffuse_texture);
 	
-	GL.glBindVertexArray(global_quad_vao);
-	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+	GL.glBindVertexArray(global_ogl_quad_vao);
+	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-API bool32
-Render_LoadFontFromFile(String path, Asset_Font* out_font)
+internal bool
+OpenGL_LoadFontFromFile(String path, Asset_Font* out_font)
 {
-	Trace("Render_LoadFontFromFile");
+	Trace("OpenGL_LoadFontFromFile");
 	
 	bool32 result = false;
 	out_font->data = Platform_ReadEntireFile(path, &out_font->data_size, global_engine.persistent_arena);
@@ -886,10 +781,10 @@ Render_LoadFontFromFile(String path, Asset_Font* out_font)
 	return result;
 }
 
-API bool32
-Render_LoadTextureFromFile(String path, Asset_Texture* out_texture)
+internal bool
+OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 {
-	Trace("Render_LoadTextureFromFile");
+	Trace("OpenGL_LoadTextureFromFile");
 	
 	uintsize size;
 	void* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
@@ -922,10 +817,10 @@ Render_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	return true;
 }
 
-API bool32
-Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height)
+internal bool
+OpenGL_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height)
 {
-	Trace("Render_LoadTextureArrayFromFile");
+	Trace("OpenGL_LoadTextureArrayFromFile");
 	
 	uintsize file_size;
 	void* file_data = Platform_ReadEntireFile(path, &file_size, global_engine.temp_arena);
@@ -978,10 +873,10 @@ Render_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 c
 	return true;
 }
 
-API void
-Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment)
+internal void
+OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment)
 {
-	Trace("Render_DrawText");
+	Trace("OpenGL_DrawText");
 	float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
 	
 	int32 bitmap_width, bitmap_height;
@@ -1051,14 +946,14 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
 	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
 	
-	BindShader(&global_default_shader);
-	GL.glUniform4fv(global_uniform->color, 1, color);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
-	GL.glUniform1i(global_uniform->texture, 0);
+	BindShader(&global_ogl_default_shader);
+	GL.glUniform4fv(global_ogl_uniform->color, 1, color);
+	GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+	GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
+	GL.glUniform1i(global_ogl_uniform->texture, 0);
 	
-	GL.glBindVertexArray(global_quad_vao);
-	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+	GL.glBindVertexArray(global_ogl_quad_vao);
+	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
@@ -1067,96 +962,39 @@ Render_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	Arena_Pop(global_engine.temp_arena, bitmap);
 }
 
-API void
-Render_CalcViewMatrix2D(const Render_Camera* camera, mat4 out_view)
+internal void
+OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color)
 {
-	vec3 size = {
-		camera->zoom / camera->size[0],
-		-camera->zoom / camera->size[1],
-		1.0f,
-	};
+	Trace("OpenGL_DrawTexture");
 	
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (vec3) { -camera->pos[0] * size[0], -camera->pos[1] * size[1] });
-	glm_rotate(out_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-	glm_scale(out_view, size);
-	glm_translate(out_view, (vec3) { -0.5f, -0.5f });
-}
-
-API void
-Render_CalcViewMatrix3D(const Render_Camera* camera, mat4 out_view, float32 fov, float32 aspect)
-{
-	glm_mat4_identity(out_view);
-	glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, out_view);
+	BindShader(&global_ogl_default_shader);
 	
-	mat4 proj;
-	glm_perspective(fov, aspect, 0.01f, 100.0f, proj);
-	glm_mat4_mul(proj, out_view, out_view);
-}
-
-API void
-Render_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view)
-{
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (vec3) { pos[0], pos[1] });
-	glm_scale(out_view, (vec3) { scale[0], scale[1], 1.0f });
-	glm_rotate(out_view, angle, (vec3) { 0.0f, 0.0f, 1.0f });
-}
-
-API void
-Render_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view)
-{
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (float32*)pos);
-	glm_scale(out_view, (float32*)scale);
-	glm_rotate(out_view, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
-	glm_rotate(out_view, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
-	glm_rotate(out_view, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
-}
-
-API void
-Render_CalcPointInCamera2DSpace(const Render_Camera* camera, const vec2 pos, vec2 out_pos)
-{
-	vec2 result;
-	float32 inv_zoom = 1.0f / camera->zoom * 2.0f;
-	
-	result[0] = camera->pos[0] + (pos[0] - camera->size[0] / 2.0f) * inv_zoom;
-	result[1] = camera->pos[1] + (pos[1] - camera->size[1] / 2.0f) * inv_zoom;
-	//result[1] *= -1.0f;
-	
-	glm_vec2_copy(result, out_pos);
-}
-
-API void
-Render_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color)
-{
-	Trace("Render_DrawTexture");
-	
-	BindShader(&global_default_shader);
-	
-	GL.glBindVertexArray(global_quad_vao);
-	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+	GL.glBindVertexArray(global_ogl_quad_vao);
+	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 	
 	GL.glActiveTexture(GL_TEXTURE0);
 	GL.glBindTexture(GL_TEXTURE_2D, texture->id);
 	
-	GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)transform);
-	GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-	GL.glUniform4fv(global_uniform->color, 1, (float32*)color);
-	GL.glUniform1i(global_uniform->texture, 0);
+	GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)transform);
+	GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+	GL.glUniform4fv(global_ogl_uniform->color, 1, (float32*)color);
+	GL.glUniform1i(global_ogl_uniform->texture, 0);
 	
 	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-API void
-Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
+internal void
+OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCamera* camera)
 {
-	Trace("Render_DrawLayer2D");
+	Trace("OpenGL_DrawLayer2D");
+	
+	mat4 view;
+	Engine_CalcViewMatrix2D(camera, view);
 	
 	// NOTE(ljre): Render layers
 	uint32 vbo, vao;
 	int32 count = layer->sprite_count;
-	int32 size = count * (int32)sizeof(Render_Sprite2D);
+	int32 size = count * (int32)sizeof(Engine_Renderer2DSprite);
 	
 	// NOTE(ljre): Config OpenGL State
 	GL.glDisable(GL_DEPTH_TEST);
@@ -1167,13 +1005,13 @@ Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
 		GL.glGenVertexArrays(1, &vao);
 		GL.glBindVertexArray(vao);
 		
-		GL.glBindBuffer(GL_ARRAY_BUFFER, global_quad_vbo);
+		GL.glBindBuffer(GL_ARRAY_BUFFER, global_ogl_quad_vbo);
 		GL.glEnableVertexAttribArray(0);
-		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, position));
+		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, position));
 		GL.glEnableVertexAttribArray(1);
-		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, normal));
 		GL.glEnableVertexAttribArray(2);
-		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
+		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, texcoord));
 		
 		GL.glGenBuffers(1, &vbo);
 		
@@ -1182,36 +1020,36 @@ Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
 		
 		GL.glEnableVertexAttribArray(4);
 		GL.glVertexAttribDivisor(4, 1);
-		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, color));
+		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, color));
 		GL.glEnableVertexAttribArray(5);
 		GL.glVertexAttribDivisor(5, 1);
-		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, texcoords));
+		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, texcoords));
 		GL.glEnableVertexAttribArray(6);
 		GL.glVertexAttribDivisor(6, 1);
-		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[0]));
+		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[0]));
 		GL.glEnableVertexAttribArray(7);
 		GL.glVertexAttribDivisor(7, 1);
-		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[1]));
+		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[1]));
 		GL.glEnableVertexAttribArray(8);
 		GL.glVertexAttribDivisor(8, 1);
-		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[2]));
+		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[2]));
 		GL.glEnableVertexAttribArray(9);
 		GL.glVertexAttribDivisor(9, 1);
-		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(Render_Sprite2D), (void*)offsetof(Render_Sprite2D, transform[3]));
+		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[3]));
 	}
 	
 	//- NOTE(ljre): Render Batch
 	{
-		BindShader(&global_default_spriteshader);
+		BindShader(&global_ogl_default_spriteshader);
 		
-		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-		GL.glUniform1i(global_uniform->texture, 0);
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+		GL.glUniform1i(global_ogl_uniform->texture, 0);
 		
 		GL.glActiveTexture(GL_TEXTURE0);
 		GL.glBindTexture(GL_TEXTURE_2D, layer->texture->id);
 		
 		GL.glBindVertexArray(vao);
-		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 		
 		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
 	}
@@ -1223,10 +1061,10 @@ Render_DrawLayer2D(const Render_Layer2D* layer, const mat4 view)
 	}
 }
 
-API bool32
-Render_Load3DModelFromFile(String path, Asset_3DModel* out)
+internal bool
+OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
-	Trace("Render_Load3DModelFromFile");
+	Trace("OpenGL_Load3DModelFromFile");
 	uintsize size;
 	void* state = Arena_End(global_engine.temp_arena);
 	
@@ -1454,10 +1292,10 @@ Render_Load3DModelFromFile(String path, Asset_3DModel* out)
 	return result;
 }
 
-API void
-Render_ProperlySetup3DScene(Render_3DScene* scene)
+internal void
+OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 {
-	Trace("Render_ProperlySetupManager");
+	Trace("OpenGL_ProperlySetupManager");
 	const uint32 depthmap_width = 2048, depthmap_height = 2048;
 	
 	if (!scene->shadow_fbo)
@@ -1528,10 +1366,10 @@ Render_ProperlySetup3DScene(Render_3DScene* scene)
 	}
 }
 
-API void
-Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
+internal void
+OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* camera)
 {
-	Trace("Render_DrawManager");
+	Trace("OpenGL_DrawManager");
 	
 	const uint32 depthmap_width = 2048, depthmap_height = 2048;
 	vec3 viewpos;
@@ -1562,7 +1400,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	GL.glClear(GL_DEPTH_BUFFER_BIT);
 	
 	if (!scene->shadow_fbo || !scene->gbuffer)
-		Render_ProperlySetup3DScene(scene);
+		OpenGL_ProperlySetup3DScene(scene);
 	
 	//~ NOTE(ljre): Draw to Framebuffer
 	{
@@ -1583,14 +1421,14 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->shadow_fbo);
 		GL.glViewport(0, 0, depthmap_width, depthmap_height);
 		GL.glClear(GL_DEPTH_BUFFER_BIT);
-		BindShader(&global_default_shadowshader);
+		BindShader(&global_ogl_default_shadowshader);
 		//GL.glCullFace(GL_FRONT);
 		
-		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)light_space_matrix);
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)light_space_matrix);
 		
 		for (int32 i = 0; i < scene->model_count; ++i)
 		{
-			Render_3DModel* const model = &scene->models[i];
+			Engine_Renderer3DModel* const model = &scene->models[i];
 			Asset_3DModel* const asset = model->asset;
 			
 			glm_mat4_identity(matrix);
@@ -1600,7 +1438,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 			GL.glBindVertexArray(asset->vao);
 			GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
 			
-			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+			GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
 			
 			GL.glDrawElements(asset->prim_mode, asset->index_count, asset->index_type, 0);
 		}
@@ -1618,17 +1456,17 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		GL.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		BindShader(&global_default_gbuffershader);
+		BindShader(&global_ogl_default_gbuffershader);
 		
-		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 		
-		GL.glUniform1i(global_uniform->material_diffuse, TEXTURE_SLOT_DIFFUSE);
-		GL.glUniform1i(global_uniform->material_specular, TEXTURE_SLOT_SPECULAR);
-		GL.glUniform1i(global_uniform->material_normal, TEXTURE_SLOT_NORMAL);
+		GL.glUniform1i(global_ogl_uniform->material_diffuse, TEXTURE_SLOT_DIFFUSE);
+		GL.glUniform1i(global_ogl_uniform->material_specular, TEXTURE_SLOT_SPECULAR);
+		GL.glUniform1i(global_ogl_uniform->material_normal, TEXTURE_SLOT_NORMAL);
 		
 		for (int32 i = 0; i < scene->model_count; ++i)
 		{
-			Render_3DModel* const model = &scene->models[i];
+			Engine_Renderer3DModel* const model = &scene->models[i];
 			Asset_3DModel* const asset = model->asset;
 			
 			glm_mat4_identity(matrix);
@@ -1641,20 +1479,20 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 			GL.glBindVertexArray(asset->vao);
 			GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
 			
-			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
-			GL.glUniformMatrix4fv(global_uniform->inversed_model, 1, false, (float32*)inversed);
-			GL.glUniform4fv(global_uniform->color, 1, model->color);
-			GL.glUniform3fv(global_uniform->material_ambient, 1, asset->material.ambient);
-			GL.glUniform1f(global_uniform->material_shininess, asset->material.shininess);
+			GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
+			GL.glUniformMatrix4fv(global_ogl_uniform->inversed_model, 1, false, (float32*)inversed);
+			GL.glUniform4fv(global_ogl_uniform->color, 1, model->color);
+			GL.glUniform3fv(global_ogl_uniform->material_ambient, 1, asset->material.ambient);
+			GL.glUniform1f(global_ogl_uniform->material_shininess, asset->material.shininess);
 			
 			GL.glActiveTexture(GL_TEXTURE0 + TEXTURE_SLOT_DIFFUSE);
-			GL.glBindTexture(GL_TEXTURE_2D, asset->material.diffuse ? asset->material.diffuse : global_default_diffuse_texture);
+			GL.glBindTexture(GL_TEXTURE_2D, asset->material.diffuse ? asset->material.diffuse : global_ogl_default_diffuse_texture);
 			
 			GL.glActiveTexture(GL_TEXTURE0 + TEXTURE_SLOT_SPECULAR);
-			GL.glBindTexture(GL_TEXTURE_2D, asset->material.specular ? asset->material.specular : global_default_specular_texture);
+			GL.glBindTexture(GL_TEXTURE_2D, asset->material.specular ? asset->material.specular : global_ogl_default_specular_texture);
 			
 			GL.glActiveTexture(GL_TEXTURE0 + TEXTURE_SLOT_NORMAL);
-			GL.glBindTexture(GL_TEXTURE_2D, asset->material.normal ? asset->material.normal : global_default_normal_texture);
+			GL.glBindTexture(GL_TEXTURE_2D, asset->material.normal ? asset->material.normal : global_ogl_default_normal_texture);
 			
 			GL.glDrawElements(asset->prim_mode, asset->index_count, asset->index_type, 0);
 		}
@@ -1671,7 +1509,7 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	//- NOTE(ljre): Render GBuffer
 	{
 		//GL.glDepthFunc(GL_ALWAYS);
-		BindShader(&global_default_finalpassshader);
+		BindShader(&global_ogl_default_finalpassshader);
 		
 		mat4 model;
 		glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, model);
@@ -1687,52 +1525,52 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		GL.glActiveTexture(GL_TEXTURE0 + 4);
 		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_depth);
 		
-		GL.glUniform1i(global_uniform->position, 0);
-		GL.glUniform1i(global_uniform->normal, 1);
-		GL.glUniform1i(global_uniform->albedo, 2);
-		GL.glUniform1i(global_uniform->dirlight_shadowmap, 3);
-		GL.glUniform1i(global_uniform->depth, 4);
+		GL.glUniform1i(global_ogl_uniform->position, 0);
+		GL.glUniform1i(global_ogl_uniform->normal, 1);
+		GL.glUniform1i(global_ogl_uniform->albedo, 2);
+		GL.glUniform1i(global_ogl_uniform->dirlight_shadowmap, 3);
+		GL.glUniform1i(global_ogl_uniform->depth, 4);
 		
-		GL.glUniformMatrix4fv(global_uniform->dirlight_matrix, 1, false, (float32*)light_space_matrix);
-		GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)model);
-		GL.glUniform3fv(global_uniform->viewpos, 1, viewpos);
-		GL.glUniform3fv(global_uniform->dirlight_direction, 1, scene->dirlight);
-		GL.glUniform3fv(global_uniform->dirlight_ambient, 1, scene->dirlight_color);
-		GL.glUniform3f(global_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
+		GL.glUniformMatrix4fv(global_ogl_uniform->dirlight_matrix, 1, false, (float32*)light_space_matrix);
+		GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)model);
+		GL.glUniform3fv(global_ogl_uniform->viewpos, 1, viewpos);
+		GL.glUniform3fv(global_ogl_uniform->dirlight_direction, 1, scene->dirlight);
+		GL.glUniform3fv(global_ogl_uniform->dirlight_ambient, 1, scene->dirlight_color);
+		GL.glUniform3f(global_ogl_uniform->dirlight_specular, 0.0f, 0.0f, 0.0f);
 		
-		GL.glUniform1i(global_uniform->pointlights_count, scene->point_light_count);
+		GL.glUniform1i(global_ogl_uniform->pointlights_count, scene->point_light_count);
 		for (int32 i = 0; i < scene->point_light_count; ++i)
 		{
-			Render_3DPointLight* const l = &scene->point_lights[i];
+			Engine_Renderer3DPointLight* const l = &scene->point_lights[i];
 			
-			GL.glUniform3fv(global_uniform->pointlights[i].position, 1, l->position);
-			GL.glUniform1f(global_uniform->pointlights[i].constant, l->constant);
-			GL.glUniform1f(global_uniform->pointlights[i].linear, l->linear);
-			GL.glUniform1f(global_uniform->pointlights[i].quadratic, l->quadratic);
-			GL.glUniform3fv(global_uniform->pointlights[i].ambient, 1, l->ambient);
-			GL.glUniform3fv(global_uniform->pointlights[i].diffuse, 1, l->diffuse);
-			GL.glUniform3fv(global_uniform->pointlights[i].specular, 1, l->specular);
+			GL.glUniform3fv(global_ogl_uniform->pointlights[i].position, 1, l->position);
+			GL.glUniform1f(global_ogl_uniform->pointlights[i].constant, l->constant);
+			GL.glUniform1f(global_ogl_uniform->pointlights[i].linear, l->linear);
+			GL.glUniform1f(global_ogl_uniform->pointlights[i].quadratic, l->quadratic);
+			GL.glUniform3fv(global_ogl_uniform->pointlights[i].ambient, 1, l->ambient);
+			GL.glUniform3fv(global_ogl_uniform->pointlights[i].diffuse, 1, l->diffuse);
+			GL.glUniform3fv(global_ogl_uniform->pointlights[i].specular, 1, l->specular);
 		}
 		
-		GL.glUniform1i(global_uniform->flashlights_count, scene->flashlights_count);
+		GL.glUniform1i(global_ogl_uniform->flashlights_count, scene->flashlights_count);
 		for (int32 i = 0; i < scene->flashlights_count; ++i)
 		{
-			Render_3DFlashlight* const l = &scene->flashlights[i];
+			Engine_Renderer3DFlashlight* const l = &scene->flashlights[i];
 			
-			GL.glUniform3fv(global_uniform->flashlights[i].position, 1, l->position);
-			GL.glUniform3fv(global_uniform->flashlights[i].direction, 1, l->direction);
-			GL.glUniform3fv(global_uniform->flashlights[i].color, 1, l->color);
+			GL.glUniform3fv(global_ogl_uniform->flashlights[i].position, 1, l->position);
+			GL.glUniform3fv(global_ogl_uniform->flashlights[i].direction, 1, l->direction);
+			GL.glUniform3fv(global_ogl_uniform->flashlights[i].color, 1, l->color);
 			
-			GL.glUniform1f(global_uniform->flashlights[i].constant, l->constant);
-			GL.glUniform1f(global_uniform->flashlights[i].linear, l->linear);
-			GL.glUniform1f(global_uniform->flashlights[i].quadratic, l->quadratic);
+			GL.glUniform1f(global_ogl_uniform->flashlights[i].constant, l->constant);
+			GL.glUniform1f(global_ogl_uniform->flashlights[i].linear, l->linear);
+			GL.glUniform1f(global_ogl_uniform->flashlights[i].quadratic, l->quadratic);
 			
-			GL.glUniform1f(global_uniform->flashlights[i].inner_cutoff, l->inner_cutoff);
-			GL.glUniform1f(global_uniform->flashlights[i].outer_cutoff, l->outer_cutoff);
+			GL.glUniform1f(global_ogl_uniform->flashlights[i].inner_cutoff, l->inner_cutoff);
+			GL.glUniform1f(global_ogl_uniform->flashlights[i].outer_cutoff, l->outer_cutoff);
 		}
 		
-		GL.glBindVertexArray(global_quad_vao);
-		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+		GL.glBindVertexArray(global_ogl_quad_vao);
+		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 		GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		//GL.glDepthFunc(GL_LESS);
 	}
@@ -1740,25 +1578,25 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 	//~ NOTE(ljre): Point Lights
 	if (scene->light_model)
 	{
-		BindShader(&global_default_shader);
+		BindShader(&global_ogl_default_shader);
 		
-		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-		GL.glUniform1i(global_uniform->texture, 0);
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+		GL.glUniform1i(global_ogl_uniform->texture, 0);
 		
 		for (int32 i = 0; i < scene->point_light_count; ++i)
 		{
-			Render_3DPointLight* const light = &scene->point_lights[i];
+			Engine_Renderer3DPointLight* const light = &scene->point_lights[i];
 			Asset_3DModel* const asset = scene->light_model;
 			
 			glm_mat4_identity(matrix);
 			glm_translate(matrix, light->position);
 			glm_scale(matrix, (vec3) { 0.25f, 0.25f, 0.25f });
 			
-			GL.glUniform4f(global_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
-			GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
+			GL.glUniform4f(global_ogl_uniform->color, light->diffuse[0], light->diffuse[1], light->diffuse[2], 1.0f);
+			GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
 			
 			GL.glActiveTexture(GL_TEXTURE0);
-			GL.glBindTexture(GL_TEXTURE_2D, global_default_diffuse_texture);
+			GL.glBindTexture(GL_TEXTURE_2D, global_ogl_default_diffuse_texture);
 			
 			GL.glBindVertexArray(asset->vao);
 			GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset->ebo);
@@ -1777,24 +1615,138 @@ Render_Draw3DScene(Render_3DScene* scene, const Render_Camera* camera)
 		glm_mat4_identity(matrix);
 		
 		GL.glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-		BindShader(&global_default_shader);
+		BindShader(&global_ogl_default_shader);
 		
-		GL.glUniform4fv(global_uniform->color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
-		GL.glUniformMatrix4fv(global_uniform->view, 1, false, (float32*)view);
-		GL.glUniformMatrix4fv(global_uniform->model, 1, false, (float32*)matrix);
-		GL.glUniform1i(global_uniform->texture, 0);
+		GL.glUniform4fv(global_ogl_uniform->color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+		GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
+		GL.glUniform1i(global_ogl_uniform->texture, 0);
 		
 		GL.glActiveTexture(GL_TEXTURE0);
 		GL.glBindTexture(GL_TEXTURE_2D, scene->gbuffer_norm);
 		
-		GL.glBindVertexArray(global_quad_vao);
-		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_quad_ebo);
+		GL.glBindVertexArray(global_ogl_quad_vao);
+		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 		GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		
 		GL.glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }
 
-#undef D3DCall
-#undef D3D
+//~ Internal API
+internal bool
+OpenGL_Init(const Engine_RendererApi** out_api)
+{
+	static const Engine_RendererApi vtable = {
+		.load_font_from_file = OpenGL_LoadFontFromFile,
+		.load_3dmodel_from_file = OpenGL_Load3DModelFromFile,
+		.load_texture_from_file = OpenGL_LoadTextureFromFile,
+		.load_texture_array_from_file = OpenGL_LoadTextureArrayFromFile,
+		
+		.clear_background = OpenGL_ClearBackground,
+		.begin = OpenGL_Begin,
+		.draw_rectangle = OpenGL_DrawRectangle,
+		.draw_texture = OpenGL_DrawTexture,
+		.draw_text = OpenGL_DrawText,
+		
+		.draw_3dscene = OpenGL_Draw3DScene,
+		.draw_2dlayer = OpenGL_DrawLayer2D,
+	};
+	
+	*out_api = &vtable;
+	
+	int32 width = Platform_WindowWidth();
+	int32 height = Platform_WindowHeight();
+	
+#ifdef DEBUG
+	GL.glEnable(GL_DEBUG_OUTPUT);
+	GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	GL.glDebugMessageCallback(OpenGL_DebugMessageCallback_, NULL);
+#endif
+	
+	GL.glEnable(GL_DEPTH_TEST);
+	GL.glEnable(GL_BLEND);
+	GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	GL.glViewport(0, 0, width, height);
+	
+	uint32 vbo, vao, ebo;
+	GL.glGenBuffers(1, &vbo);
+	GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	GL.glBufferData(GL_ARRAY_BUFFER, sizeof global_ogl_quad_vertices, global_ogl_quad_vertices, GL_STATIC_DRAW);
+	
+	GL.glGenVertexArrays(1, &vao);
+	GL.glBindVertexArray(vao);
+	
+	GL.glEnableVertexAttribArray(0);
+	GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, position));
+	GL.glEnableVertexAttribArray(1);
+	GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, normal));
+	GL.glEnableVertexAttribArray(2);
+	GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, texcoord));
+	
+	GL.glGenBuffers(1, &ebo);
+	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof global_ogl_quad_indices, global_ogl_quad_indices, GL_STATIC_DRAW);
+	
+	global_ogl_quad_vbo = vbo;
+	global_ogl_quad_vao = vao;
+	global_ogl_quad_ebo = ebo;
+	
+	global_ogl_default_shader.id = OpenGL_CompileShader_(global_ogl_vertex_shader, global_ogl_fragment_shader);
+	global_ogl_default_spriteshader.id = OpenGL_CompileShader_(global_ogl_vertex_spriteshader, global_ogl_fragment_spriteshader);
+	global_ogl_default_shadowshader.id = OpenGL_CompileShader_(global_ogl_vertex_shadowshader, global_ogl_fragment_shadowshader);
+	global_ogl_default_gbuffershader.id = OpenGL_CompileShader_(global_ogl_vertex_gbuffershader, global_ogl_fragment_gbuffershader);
+	global_ogl_default_finalpassshader.id = OpenGL_CompileShader_(global_ogl_vertex_finalpassshader, global_ogl_fragment_finalpassshader);
+	
+	GetShaderUniforms(&global_ogl_default_shader);
+	GetShaderUniforms(&global_ogl_default_spriteshader);
+	GetShaderUniforms(&global_ogl_default_shadowshader);
+	GetShaderUniforms(&global_ogl_default_gbuffershader);
+	GetShaderUniforms(&global_ogl_default_finalpassshader);
+	
+	uint32 white_texture[] = {
+		0xFFFFFFFF, 0xFFFFFFFF,
+		0xFFFFFFFF, 0xFFFFFFFF,
+	};
+	
+	GL.glGenTextures(1, &global_ogl_default_diffuse_texture);
+	GL.glBindTexture(GL_TEXTURE_2D, global_ogl_default_diffuse_texture);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, white_texture);
+	
+	uint32 normal_texture[] = {
+		0xFFFF8080, 0xFFFF8080,
+		0xFFFF8080, 0xFFFF8080,
+	};
+	
+	GL.glGenTextures(1, &global_ogl_default_normal_texture);
+	GL.glBindTexture(GL_TEXTURE_2D, global_ogl_default_normal_texture);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, normal_texture);
+	
+	uint32 specular_texture[] = {
+		0xFF808080, 0xFF808080,
+		0xFF808080, 0xFF808080,
+	};
+	
+	GL.glGenTextures(1, &global_ogl_default_specular_texture);
+	GL.glBindTexture(GL_TEXTURE_2D, global_ogl_default_specular_texture);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, specular_texture);
+	
+	GL.glBindTexture(GL_TEXTURE_2D, 0);
+	
+	return true;
+}
+
+internal void
+OpenGL_Deinit(void)
+{
+	
+}
+
 #undef GL

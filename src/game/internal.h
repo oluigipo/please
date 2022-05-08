@@ -1,0 +1,58 @@
+#ifndef INTERNAL_H
+#define INTERNAL_H
+
+#include "internal_config.h"
+
+//~ Common
+#include "common_defs.h"
+#include "common_types.h"
+
+API void* Platform_VirtualReserve(uintsize size);
+API void Platform_VirtualCommit(void* ptr, uintsize size);
+API void Platform_VirtualFree(void* ptr, uintsize size);
+#define Arena_OsReserve_(size) Platform_VirtualReserve(size)
+#define Arena_OsCommit_(ptr, size) Platform_VirtualCommit(ptr, size)
+#define Arena_OsFree_(ptr, size) Platform_VirtualFree(ptr, size)
+
+#include "common.h"
+
+//~ Debug
+#if defined(DEBUG)
+API void Platform_DebugError(const char* msg);
+#   undef Unreachable
+#   undef Assert
+#   define Unreachable() do { Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__)); } while (0)
+#   define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nExpression: " #__VA_ARGS__); } } while (0)
+#else
+#   undef Assert
+#   undef Debugbreak
+#   define Assert(...) Assume(__VA_ARGS__)
+#   define Debugbreak() ((void)0)
+#endif
+
+//~ Libraries
+DisableWarnings();
+#include <cglm/cglm.h>
+ReenableWarnings();
+
+//~ Tracy
+#if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
+#    include "../../../ext/tracy/TracyC.h"
+internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
+#    define TraceCat__(x,y) x ## y
+#    define TraceCat_(x,y) TraceCat__(x,y)
+#    define Trace(x) TracyCZoneN(TraceCat_(_ctx,__LINE__) __attribute((cleanup(___my_tracy_zone_end))),x,true)
+#    define TraceFrameMark() TracyCFrameMark
+#else
+#    define Trace(x) ((void)0)
+#    define TraceFrameMark() ((void)0)
+#endif
+
+//~ More Headers
+#include "internal_assets.h"
+
+#include "internal_api_platform.h"
+#include "internal_api_render.h"
+#include "internal_api_engine.h"
+
+#endif //INTERNAL_H

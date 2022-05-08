@@ -431,7 +431,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	const vec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
 	
 	char buf[128];
-	snprintf(buf, sizeof buf, "Controller Index: %i", g->game->controller_index);
+	SPrintf(buf, sizeof buf, "Controller Index: %i", g->game->controller_index);
 	Render_DrawText(&g->game->font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, white, (vec3) { 0 });
 	
 	Render_DrawText(&g->game->font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, white, (vec3) { 0 });

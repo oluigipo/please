@@ -35,14 +35,14 @@ Engine_Main(int32 argc, char** argv)
 		.window_title = StrInit("Title"),
 		.center_window = true,
 		
-		.graphics_api = GraphicsAPI_OpenGL,
+		.graphics_api = Platform_GraphicsApi_OpenGL,
 	};
 	
 	// NOTE(ljre): Window width & height
-	if (!Platform_CreateWindow(&config, &global_graphics))
+	if (!Platform_CreateWindow(&config, &global_engine.graphics_context))
 		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
 	
-	Engine_InitRender();
+	Engine_InitRender(&global_engine.renderer);
 	global_engine.last_frame_time = Platform_GetTime();
 	
 	// NOTE(ljre): Run
