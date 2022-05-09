@@ -425,7 +425,7 @@ internal const char* const global_ogl_fragment_finalpassshader =
 
 "    vec3 normal = normalSample.rgb;"
 "    vec3 fragPos = positionSample.rgb;"
-"    vec3 diffuseSample = albedoSample.rgb;"
+"    vec3 diffuseSample = pow(albedoSample.rgb, vec3(2.2));"
 "    vec3 specularSample = vec3(albedoSample.a);"
 "    float shininess = positionSample.a;"
 
@@ -456,7 +456,7 @@ internal const char* const global_ogl_fragment_finalpassshader =
 "    }"
 #endif
 
-"    oFragColor = vec4(color, 1.0);"
+"    oFragColor = vec4(pow(color, vec3(1.0/2.2)), 1.0);"
 "}\n"
 ;
 

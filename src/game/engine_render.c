@@ -10,8 +10,9 @@ Engine_InitRender(const Engine_RendererApi** out_api)
 	
 	switch (global_engine.graphics_context->api)
 	{
+		case Platform_GraphicsApi_None: return false;
 		case Platform_GraphicsApi_OpenGL: return OpenGL_Init(out_api);
-		case Platform_GraphicsApi_Direct3D: return D3d11_Init(out_api);
+		case Platform_GraphicsApi_Direct3D: return D3D11_Init(out_api);
 		default: Unreachable(); break;
 	}
 	
@@ -25,8 +26,9 @@ Engine_DeinitRender(void)
 	
 	switch (global_engine.graphics_context->api)
 	{
+		case Platform_GraphicsApi_None: break;
 		case Platform_GraphicsApi_OpenGL: OpenGL_Deinit(); break;
-		case Platform_GraphicsApi_Direct3D: D3d11_Deinit(); break;
+		case Platform_GraphicsApi_Direct3D: D3D11_Deinit(); break;
 		default: Unreachable(); break;
 	}
 }
@@ -85,8 +87,8 @@ Engine_CalcPointInCamera2DSpace(const Engine_RendererCamera* camera, const vec2 
 	vec2 result;
 	float32 inv_zoom = 1.0f / camera->zoom * 2.0f;
 	
-	result[0] = camera->pos[0] + (pos[0] - camera->size[0] / 2.0f) * inv_zoom;
-	result[1] = camera->pos[1] + (pos[1] - camera->size[1] / 2.0f) * inv_zoom;
+	result[0] = camera->pos[0] + (pos[0] - camera->size[0] * 0.5f) * inv_zoom;
+	result[1] = camera->pos[1] + (pos[1] - camera->size[1] * 0.5f) * inv_zoom;
 	//result[1] *= -1.0f;
 	
 	glm_vec2_copy(result, out_pos);

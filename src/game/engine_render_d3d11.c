@@ -8,13 +8,16 @@
 
 
 internal bool
-D3d11_Init(const Engine_RendererApi** out_api)
+D3D11_Init(const Engine_RendererApi** out_api)
 {
 	return false;
 }
 
 internal void
-D3d11_Deinit(void)
+D3D11_Deinit(void)
 {
 	
 }
+
+#undef D3D
+#undef D3DCall

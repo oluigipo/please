@@ -52,7 +52,6 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 #include "internal_assets.h"
 
 #include "internal_api_platform.h"
-#include "internal_api_render.h"
 #include "internal_api_engine.h"
 
 #endif //INTERNAL_H
