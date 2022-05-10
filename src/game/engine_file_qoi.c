@@ -13,7 +13,7 @@ HashOfQoiPixel(uint32 color)
 internal uint32*
 Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width, int32* out_height)
 {
-	Trace("Engine_ParseQoi");
+	Trace();
 	
 	//- NOTE(ljre): Some types.
 	struct QoiHeader

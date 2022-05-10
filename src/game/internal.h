@@ -41,10 +41,16 @@ ReenableWarnings();
 internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
 #    define TraceCat__(x,y) x ## y
 #    define TraceCat_(x,y) TraceCat__(x,y)
-#    define Trace(x) TracyCZoneN(TraceCat_(_ctx,__LINE__) __attribute((cleanup(___my_tracy_zone_end))),x,true)
+#    define Trace() TracyCZone(TraceCat_(_ctx,__LINE__) __attribute((cleanup(___my_tracy_zone_end))),true); ((void)TraceCat_(_ctx,__LINE__))
+#    define TraceName(...) do { String a = (__VA_ARGS__); TracyCZoneName(TraceCat_(_ctx,__LINE__), (const char*)a.data, a.size); } while (0)
+#    define TraceText(...) do { String a = (__VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), (const char*)a.data, a.size); } while (0)
+#    define TraceColor(...) TracyCZoneColor(TraceCat_(_ctx,__LINE__), (__VA_ARGS__))
 #    define TraceFrameMark() TracyCFrameMark
 #else
-#    define Trace(x) ((void)0)
+#    define Trace() ((void)0)
+#    define TraceName(...) ((void)0)
+#    define TraceText(...) ((void)0)
+#    define TraceColor(...) ((void)0)
 #    define TraceFrameMark() ((void)0)
 #endif
 

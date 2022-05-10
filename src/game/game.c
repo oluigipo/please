@@ -2,7 +2,7 @@
 
 #include "system_random.c"
 
-#if 1
+#if 0
 #   include "game_test.c"
 #else
 // NOTE(ljre): This is set every frame.
@@ -149,10 +149,10 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 internal void
 Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 {
-	Trace("Game_3DDemoScene");
-	
 	if (needs_init)
 	{
+		Trace(); TraceName(Str("Init"));
+		
 		if (!engine->renderer->load_3dmodel_from_file(Str("./assets/cube.glb"), &g->game->model))
 			Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
 		if (!engine->renderer->load_3dmodel_from_file(Str("./assets/first_tree.glb"), &g->game->tree_model))
@@ -318,7 +318,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	}
 	
 	//~ NOTE(ljre): 3D Scene
-	Trace("Game Loop");
+	Trace(); TraceName(Str("Game Loop"));
 	void* memory_state = Arena_End(g->temp_arena);
 	
 	if (Platform_WindowShouldClose() || Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
@@ -497,7 +497,7 @@ DrawMenuButton(Game_Data* game, Game_MenuButton* button, Input_Mouse* mouse)
 API void
 Game_Main(Engine_Data* g)
 {
-	Trace("Game_MainScene");
+	Trace();
 	engine = g;
 	
 	if (!g->game)

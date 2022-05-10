@@ -98,7 +98,7 @@ AudioThreadProc(void* data)
 internal void
 Win32_InitAudio(void)
 {
-	Trace("Win32_InitAudio");
+	Trace();
 	
 	if (!LoadComLibrary())
 		return;
@@ -215,7 +215,7 @@ Win32_InitAudio(void)
 internal void
 Win32_DeinitAudio(void)
 {
-	Trace("Win32_DeinitAudio");
+	Trace();
 	
 	if (!global_audio_is_initialized)
 		return;

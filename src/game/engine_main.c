@@ -2,7 +2,7 @@
 API void
 Engine_FinishFrame(void)
 {
-	Trace("Engine_FinishFrame");
+	Trace();
 	
 	if (!global_engine.outputed_sound_this_frame)
 		Engine_PlayAudios(NULL, NULL, 1.0f);
@@ -22,7 +22,7 @@ Engine_FinishFrame(void)
 API int32
 Engine_Main(int32 argc, char** argv)
 {
-	Trace("Engine_Main");
+	Trace();
 	
 	global_engine.persistent_arena = Arena_Create(Gigabytes(2), Megabytes(32));
 	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));

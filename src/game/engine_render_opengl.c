@@ -520,7 +520,7 @@ OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sever
 internal uint32
 OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 {
-	Trace("CompileShader");
+	Trace();
 	
 	char info[512];
 	int32 success;
@@ -579,7 +579,7 @@ OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 internal void
 CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
-	Trace("CalcBitmapSizeForText");
+	Trace();
 	
 	int32 width = 0, line_width = 0, height = 0;
 	int32 codepoint, it = 0;
@@ -613,7 +613,7 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 internal void
 GetShaderUniforms(OpenGL_InternalShader* shader)
 {
-	Trace("GetShaderUniforms");
+	Trace();
 	uint32 id = shader->id;
 	
 	if (!id)
@@ -719,7 +719,7 @@ OpenGL_Begin(void)
 internal void
 OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 {
-	Trace("OpenGL_DrawRectangle");
+	Trace();
 	
 	mat4 view;
 	{
@@ -760,7 +760,7 @@ OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 internal bool
 OpenGL_LoadFontFromFile(String path, Asset_Font* out_font)
 {
-	Trace("OpenGL_LoadFontFromFile");
+	Trace(); TraceText(path);
 	
 	bool32 result = false;
 	out_font->data = Platform_ReadEntireFile(path, &out_font->data_size, global_engine.persistent_arena);
@@ -784,7 +784,7 @@ OpenGL_LoadFontFromFile(String path, Asset_Font* out_font)
 internal bool
 OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 {
-	Trace("OpenGL_LoadTextureFromFile");
+	Trace(); TraceText(path);
 	
 	uintsize size;
 	void* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
@@ -792,7 +792,11 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 		return false;
 	
 	int32 width, height, channels;
-	void* texture_data = stbi_load_from_memory(data, (int32)size, &width, &height, &channels, 4);
+	void* texture_data;
+	{
+		Trace(); TraceName(Str("stbi_load_from_memory"));
+		texture_data = stbi_load_from_memory(data, (int32)size, &width, &height, &channels, 4);
+	}
 	
 	Arena_Pop(global_engine.temp_arena, data);
 	if (!texture_data)
@@ -820,7 +824,7 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 internal bool
 OpenGL_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height)
 {
-	Trace("OpenGL_LoadTextureArrayFromFile");
+	Trace(); TraceText(path);
 	
 	uintsize file_size;
 	void* file_data = Platform_ReadEntireFile(path, &file_size, global_engine.temp_arena);
@@ -828,7 +832,11 @@ OpenGL_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 c
 		return false;
 	
 	int32 width, height, channels;
-	void* texture_data = stbi_load_from_memory(file_data, (int32)file_size, &width, &height, &channels, 4);
+	void* texture_data;
+	{
+		Trace(); TraceName(Str("stbi_load_from_memory"));
+		texture_data = stbi_load_from_memory(file_data, (int32)file_size, &width, &height, &channels, 4);
+	}
 	
 	Arena_Pop(global_engine.temp_arena, file_data);
 	if (!texture_data)
@@ -876,7 +884,7 @@ OpenGL_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 c
 internal void
 OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment)
 {
-	Trace("OpenGL_DrawText");
+	Trace();
 	float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
 	
 	int32 bitmap_width, bitmap_height;
@@ -965,7 +973,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 internal void
 OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color)
 {
-	Trace("OpenGL_DrawTexture");
+	Trace();
 	
 	BindShader(&global_ogl_default_shader);
 	
@@ -986,7 +994,7 @@ OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat
 internal void
 OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCamera* camera)
 {
-	Trace("OpenGL_DrawLayer2D");
+	Trace();
 	
 	mat4 view;
 	Engine_CalcViewMatrix2D(camera, view);
@@ -1064,7 +1072,7 @@ OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCam
 internal bool
 OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
-	Trace("OpenGL_Load3DModelFromFile");
+	Trace(); TraceText(path);
 	uintsize size;
 	void* state = Arena_End(global_engine.temp_arena);
 	
@@ -1076,7 +1084,6 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 	bool32 result;
 	
 	{
-		Trace("Engine_ParseGltf");
 		result = Engine_ParseGltf(data, size, &model);
 	}
 	
@@ -1189,7 +1196,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				int32 width, height, channels;
 				uint8* data;
 				{
-					Trace("stbi_load_from_memory");
+					Trace(); TraceName(Str("stbi_load_from_memory"));
 					data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
 												 view->byte_length,
 												 &width, &height, &channels, 3);
@@ -1240,7 +1247,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				int32 width, height, channels;
 				uint8* data;
 				{
-					Trace("stbi_load_from_memory");
+					Trace(); TraceName(Str("stbi_load_from_memory"));
 					data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
 												 view->byte_length,
 												 &width, &height, &channels, 3);
@@ -1295,7 +1302,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 internal void
 OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 {
-	Trace("OpenGL_ProperlySetupManager");
+	Trace();
 	const uint32 depthmap_width = 2048, depthmap_height = 2048;
 	
 	if (!scene->shadow_fbo)
@@ -1369,7 +1376,7 @@ OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 internal void
 OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* camera)
 {
-	Trace("OpenGL_DrawManager");
+	Trace();
 	
 	const uint32 depthmap_width = 2048, depthmap_height = 2048;
 	vec3 viewpos;

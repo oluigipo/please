@@ -80,11 +80,9 @@ API void Platform_FreeFileMemory(void* ptr, uintsize size);
 #ifdef DEBUG
 API void Platform_DebugMessageBox(const char* restrict format, ...);
 API void Platform_DebugLog(const char* restrict format, ...);
-API void Platform_DebugDumpBitmap(const char* restrict path, const void* data, int32 width, int32 height, int32 channels);
 #else // DEBUG
 #   define Platform_DebugMessageBox(...) ((void)0)
 #   define Platform_DebugLog(...) ((void)0)
-#   define Platform_DebugDumpBitmap(...) ((void)0)
 #endif // DEBUG
 
 //- Platform Audio

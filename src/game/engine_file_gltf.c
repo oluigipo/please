@@ -1344,6 +1344,8 @@ ParseGltfData(const uint8* json_begin, const uint8* json_end,
 internal bool32
 Engine_ParseGltf(const uint8* data, uintsize size, Engine_GltfJson* out)
 {
+	Trace();
+	
 	const uint8* begin = data;
 	const uint8* end = begin + size;
 	

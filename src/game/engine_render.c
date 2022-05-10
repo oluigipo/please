@@ -1,18 +1,18 @@
-//~ Backends
-#include "engine_render_opengl.c"
-#include "engine_render_d3d11.c"
-
 //~ Internal API
 internal bool
 Engine_InitRender(const Engine_RendererApi** out_api)
 {
-	Trace("Engine_InitRender");
+	Trace();
 	
 	switch (global_engine.graphics_context->api)
 	{
 		case Platform_GraphicsApi_None: return false;
+#ifdef INTERNAL_ENABLE_OPENGL
 		case Platform_GraphicsApi_OpenGL: return OpenGL_Init(out_api);
+#endif
+#ifdef INTERNAL_ENABLE_D3D11
 		case Platform_GraphicsApi_Direct3D: return D3D11_Init(out_api);
+#endif
 		default: Unreachable(); break;
 	}
 	
@@ -22,13 +22,17 @@ Engine_InitRender(const Engine_RendererApi** out_api)
 internal void
 Engine_DeinitRender(void)
 {
-	Trace("Engine_DeinitRender");
+	Trace();
 	
 	switch (global_engine.graphics_context->api)
 	{
 		case Platform_GraphicsApi_None: break;
+#ifdef INTERNAL_ENABLE_OPENGL
 		case Platform_GraphicsApi_OpenGL: OpenGL_Deinit(); break;
+#endif
+#ifdef INTERNAL_ENABLE_D3D11
 		case Platform_GraphicsApi_Direct3D: D3D11_Deinit(); break;
+#endif
 		default: Unreachable(); break;
 	}
 }

@@ -10,13 +10,15 @@
 internal bool
 D3D11_Init(const Engine_RendererApi** out_api)
 {
+	Trace();
+	
 	return false;
 }
 
 internal void
 D3D11_Deinit(void)
 {
-	
+	Trace();
 }
 
 #undef D3D

@@ -272,7 +272,7 @@ internal void
 TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 					const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
-	Trace("TranslateController");
+	Trace();
 	
 	//- Update Buttons
 	for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
@@ -452,7 +452,7 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 internal void
 UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
-	Trace("UpdateConnectedGamepad");
+	Trace();
 	
 	int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof *gamepad);
 	
@@ -723,7 +723,7 @@ SortGamepadObjects(Win32_Gamepad* gamepad)
 internal BOOL CALLBACK
 DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata)
 {
-	Trace("DirectInputEnumDevicesCallback");
+	Trace();
 	
 	if (global_gamepad_free_count <= 0)
 		return DIENUM_STOP;
@@ -862,7 +862,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 internal void
 Win32_CheckForGamepads(void)
 {
-	Trace("Win32_CheckForGamepads");
+	Trace();
 	
 	// NOTE(ljre): Don't check for more devices if there isn't more space
 	if (global_gamepad_free_count <= 0)
@@ -908,7 +908,7 @@ Win32_CheckForGamepads(void)
 internal void
 Win32_InitInput(void)
 {
-	Trace("Win32_InitInput");
+	Trace();
 	
 	// NOTE(ljre): Fill 'free spaces stack'
 	global_gamepad_free_count = ArrayLength(global_gamepads);

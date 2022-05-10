@@ -170,12 +170,7 @@ FindEndOfValue(const uint8* begin, const uint8* end)
 internal String
 Json_RawFieldName(const Json_Field* field)
 {
-	String result;
-	
-	result.data = (uint8*)field->begin + 1;
-	result.size = (uintsize)(field->name_end - result.data);
-	
-	return result;
+	return StrMake(field->name_end - (field->begin + 1), field->begin + 1);
 }
 
 internal float64
@@ -221,7 +216,7 @@ Json_BoolValue(const Json_Value* value)
 	Assert(value->begin);
 	Assert(value->kind == Json_ValueKind_Bool);
 	
-	return strncmp((const char*)value->begin, "true", (uintsize)(value->end - value->begin)) == 0;
+	return String_Compare(StrMake(value->end - value->begin, value->begin), Str("true")) == 0;
 }
 
 internal String
@@ -306,8 +301,8 @@ Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
 		{
 			uintsize len = (uintsize)(value->end - value->begin);
 			
-			if (strncmp((const char*)value->begin, "true", len) == 0 ||
-				strncmp((const char*)value->begin, "false", len) == 0)
+			if (String_Compare(StrMake(len, value->begin), Str("true")) == 0 ||
+				String_Compare(StrMake(len, value->begin), Str("false")) == 0)
 			{
 				value->kind = Json_ValueKind_Bool;
 			}
@@ -428,8 +423,8 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
 		{
 			uintsize len = (uintsize)(value->end - value->begin);
 			
-			if (strncmp((const char*)value->begin, "true", len) == 0 ||
-				strncmp((const char*)value->begin, "false", len) == 0)
+			if (String_Compare(StrMake(len, value->begin), Str("true")) == 0 ||
+				String_Compare(StrMake(len, value->begin), Str("false")) == 0)
 			{
 				value->kind = Json_ValueKind_Bool;
 			}
@@ -532,8 +527,8 @@ Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_s
 				{
 					uintsize len = (uintsize)(out_state->end - out_state->begin);
 					
-					if (strncmp((const char*)out_state->begin, "true", len) == 0 ||
-						strncmp((const char*)out_state->begin, "false", len) == 0)
+					if (String_Compare(StrMake(len, out_state->begin), Str("true")) == 0 ||
+						String_Compare(StrMake(len, out_state->begin), Str("false")) == 0)
 					{
 						out_state->kind = Json_ValueKind_Bool;
 					}

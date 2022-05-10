@@ -81,7 +81,7 @@ OpenGLGetProc(const char* name)
 internal bool32
 LoadOpenGLFunctions(void)
 {
-	Trace("LoadOpenGLFunctions");
+	Trace();
 	
 	Platform_OpenGLGraphicsContext* opengl = &global_opengl.vtable;
 	void* (*loader)(const char*) = OpenGLGetProc;
@@ -509,7 +509,7 @@ Win32_OpenGLSwapBuffers(void)
 internal bool32
 Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 {
-	Trace("Win32_CreateOpenGLWindow");
+	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,

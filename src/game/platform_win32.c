@@ -43,6 +43,7 @@ ReenableWarnings();
 //#define ENABLE_SEH_IN_MAIN
 
 #if defined(_MSC_VER)
+#   pragma comment(lib, "kernel32.lib")
 #   pragma comment(lib, "user32.lib")
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
@@ -284,7 +285,7 @@ API int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 #endif
 {
-	Trace("WinMain - Program Entry Point");
+	Trace();
 	
 	// NOTE(ljre): __argc and __argv - those are public symbols
 	int32 argc = __argc;
@@ -362,7 +363,7 @@ Platform_ExitWithErrorMessage(String message)
 API void
 Platform_MessageBox(String title, String message)
 {
-	Trace("Platform_MessageBox");
+	Trace();
 	
 	wchar_t* wtitle = Win32_ConvertStringToWSTR(title, NULL, 0);
 	wchar_t* wmessage = Win32_ConvertStringToWSTR(message, NULL, 0);
@@ -376,7 +377,7 @@ Platform_MessageBox(String title, String message)
 API bool32
 Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics)
 {
-	Trace("Platform_CreateWindow");
+	Trace();
 	
 	wchar_t window_name[1024];
 	Win32_ConvertStringToWSTR(config->window_title, window_name, ArrayLength(window_name));
@@ -463,7 +464,7 @@ Platform_GetTime(void)
 API void
 Platform_PollEvents(void)
 {
-	Trace("Platform_PollEvents");
+	Trace();
 	
 	Win32_UpdateInputPre();
 	ProcessDeferredEvents();
@@ -481,7 +482,7 @@ Platform_PollEvents(void)
 API void
 Platform_FinishFrame(void)
 {
-	Trace("Platform_FinishFrame");
+	Trace();
 	
 	switch (global_graphics_context.api)
 	{
@@ -494,7 +495,7 @@ Platform_FinishFrame(void)
 API void*
 Platform_HeapAlloc(uintsize size)
 {
-	Trace("Platform_HeapAlloc");
+	Trace();
 	
 	void* result = HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
 	
@@ -504,7 +505,7 @@ Platform_HeapAlloc(uintsize size)
 API void*
 Platform_HeapRealloc(void* ptr, uintsize size)
 {
-	Trace("Platform_HeapRealloc");
+	Trace();
 	
 	void* result;
 	
@@ -519,7 +520,7 @@ Platform_HeapRealloc(void* ptr, uintsize size)
 API void
 Platform_HeapFree(void* ptr)
 {
-	Trace("Platform_HeapFree");
+	Trace();
 	if (!ptr)
 		return;
 	
@@ -529,7 +530,7 @@ Platform_HeapFree(void* ptr)
 API void*
 Platform_VirtualReserve(uintsize size)
 {
-	Trace("Platform_VirtualAlloc");
+	Trace();
 	
 	void* result = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
 	return result;
@@ -538,14 +539,14 @@ Platform_VirtualReserve(uintsize size)
 API void
 Platform_VirtualCommit(void* ptr, uintsize size)
 {
-	Trace("Platform_VirtualCommit");
+	Trace();
 	VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 }
 
 API void
 Platform_VirtualFree(void* ptr, uintsize size)
 {
-	Trace("Platform_VirtualFree");
+	Trace();
 	VirtualFree(ptr, 0, MEM_RELEASE);
 	(void)size;
 }
@@ -553,7 +554,7 @@ Platform_VirtualFree(void* ptr, uintsize size)
 API void*
 Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 {
-	Trace("Platform_ReadEntireFile");
+	Trace(); TraceText(path);
 	wchar_t wpath[1024];
 	Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
 	
@@ -596,7 +597,7 @@ Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 API bool32
 Platform_WriteEntireFile(String path, const void* data, uintsize size)
 {
-	Trace("Platform_WriteEntireFile");
+	Trace(); TraceText(path);
 	
 	wchar_t wpath[1024];
 	Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
@@ -767,56 +768,5 @@ Platform_DebugLog(const char* restrict format, ...)
 	VSPrintf(buffer, sizeof buffer, format, args);
 	OutputDebugStringA(buffer);
 	va_end(args);
-}
-
-API void
-Platform_DebugDumpBitmap(const char* restrict path, const void* data, int32 width, int32 height, int32 channels)
-{
-	FILE* file = fopen(path, "w");
-	if (!file)
-		return;
-	
-	fprintf(file, "P3\n%i %i 255\n", width, height);
-	int32 size = width*height;
-	const uint8* pixels = data;
-	
-	for (int32 i = 0; i < size; ++i)
-	{
-		int32 r, g, b;
-		
-		switch (channels)
-		{
-			case 1:
-			{
-				r = *pixels;
-				g = *pixels;
-				b = *pixels;
-				
-				++pixels;
-			} break;
-			
-			case 2:
-			{
-				r = pixels[0];
-				g = pixels[1];
-				b = 0;
-				
-				pixels += 2;
-			} break;
-			
-			case 3:
-			{
-				r = pixels[0];
-				g = pixels[1];
-				b = pixels[2];
-				
-				pixels += 3;
-			} break;
-		}
-		
-		fprintf(file, "%i %i %i ", r, g, b);
-	}
-	
-	fclose(file);
 }
 #endif // DEBUG

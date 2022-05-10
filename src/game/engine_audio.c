@@ -19,7 +19,7 @@ InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, cons
 API bool32
 Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 {
-	Trace("Audio_LoadFile");
+	Trace(); TraceText(path);
 	
 	uintsize size;
 	void* memory = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
@@ -29,7 +29,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	
 	// not inside 'if'
 	{
-		Trace("stb_vorbis_decode_memory");
+		Trace(); TraceName(Str("stb_vorbis_decode_memory"));
 		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels, &out_sound->sample_rate, &out_sound->samples);
 	}
 	
@@ -53,7 +53,7 @@ Engine_FreeSoundBuffer(Asset_SoundBuffer* sound)
 API void
 Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volume)
 {
-	Trace("Engine_PlayAudios");
+	Trace();
 	
 	Assert(!global_engine.outputed_sound_this_frame);
 	global_engine.outputed_sound_this_frame = true;

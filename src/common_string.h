@@ -11,7 +11,7 @@ typedef String;
 #define Str(x) (String) StrInit(x)
 #define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }
 #define StrFmt(x) (x).size, (char*)(x).data
-#define StrMake(size,data) (String) { size, data }
+#define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
 #define StrNull (String) { 0 }

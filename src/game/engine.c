@@ -47,6 +47,12 @@ internal Engine_Data global_engine;
 #include "engine_file_json.c"
 #include "engine_file_gltf.c"
 #include "engine_audio.c"
+#ifdef INTERNAL_ENABLE_OPENGL
+#   include "engine_render_opengl.c"
+#endif
+#ifdef INTERNAL_ENABLE_D3D11
+#   include "engine_render_d3d11.c"
+#endif
 #include "engine_render.c"
 #include "engine_main.c"
 

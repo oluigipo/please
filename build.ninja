@@ -26,11 +26,11 @@ rule make_empty_tu
 # Game - Debug
 build $builddir/game-debug.exe: link $builddir/game.obj $builddir/engine.obj $builddir/platform_win32.obj
   ldflags = $ldflags_exe -g
-build $builddir/game.obj: cc src/game.c
+build $builddir/game.obj: cc src/game/game.c
   cflags = $cflags -g -DDEBUG
-build $builddir/engine.obj: cc src/engine.c
+build $builddir/engine.obj: cc src/game/engine.c
   cflags = $cflags -g -DDEBUG
-build $builddir/platform_win32.obj: cc src/platform_win32.c
+build $builddir/platform_win32.obj: cc src/game/platform_win32.c
   cflags = $cflags -g -DDEBUG
 
 # Game - Release
@@ -52,9 +52,15 @@ build $builddir/engine-hot.obj: cc src/game/engine.c
 build $builddir/platform_win32-hot.obj: cc src/game/platform_win32.c
   cflags = $cflags_hot
 
+# Game - Tracy
+build $builddir/game-tracy.exe: cc_link src/game/unity_build.c TracyClient.obj
+  cflags = $cflags -static -O2 -ffast-math -DTRACY_ENABLE
+  ldflags = $ldflags_exe
+
 # phony
 build debug: phony $builddir/game-debug.exe
 build release: phony $builddir/game-release.exe
+build tracy: phony $builddir/game-tracy.exe
 build hot: phony $builddir/game-hot.exe $builddir/game.dll $builddir/engine.dll
 
 default debug

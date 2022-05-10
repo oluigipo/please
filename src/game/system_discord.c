@@ -234,6 +234,8 @@ DiscordEventOnToggle(void* event_data, bool locked)
 internal bool32
 PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 {
+	Trace();
+	
 	// Events
 	static struct IDiscordUserEvents user_events = {
 		.on_current_user_update = DiscordEventOnCurrentUserUpdate,
@@ -332,7 +334,7 @@ PlsDiscord_UpdateActivity(PlsDiscord_Client* discord)
 internal void
 PlsDiscord_Update(PlsDiscord_Client* discord)
 {
-	Trace("PlsDiscord_Update");
+	Trace();
 	Assert(discord->core);
 	
 	if (discord->core)
