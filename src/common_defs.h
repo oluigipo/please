@@ -5,8 +5,6 @@
 #   define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <stddef.h>
-
 #define internal static
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
 #define IsPowerOf2(x) ( ((x) & (x)-1) == 0 )
@@ -64,14 +62,15 @@ _Pragma("GCC diagnostic pop")
 
 #define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Unreachable(); } } while (0)
 
-#ifndef __cplusplus
-#   define alignas(x) _Alignas(x)
-#   define alignof(x) _Alignof(x)
+#if 0 // NOTE(ljre): Ignore this.
+#define NULL
 #endif
 
-#if 0 // NOTE(ljre): Ignore this.
-#define restrict
-#define NULL
+#ifdef __cplusplus
+#   define restrict
+#else
+#   define alignas(x) _Alignas(x)
+#   define alignof(x) _Alignof(x)
 #endif
 
 #endif //COMMON_DEFS_H

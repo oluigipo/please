@@ -3,6 +3,103 @@
 
 #include <immintrin.h>
 
+internal inline int32
+BitCtz(int32 i)
+{
+	Assume(i != 0);
+	int32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_ctz(i);
+#elif defined(_MSC_VER)
+	_BitScanForward(&result, i);
+#else
+	result = 0;
+	
+	while ((i & 1<<result) == 0)
+		++result;
+#endif
+	
+	return result;
+}
+
+internal inline int32
+BitClz(int32 i)
+{
+	Assume(i != 0);
+	int32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_clz(i);
+#elif defined(_MSC_VER)
+	_BitScanReverse(&result, i);
+	result = 31 - result;
+#else
+	result = 0;
+	
+	while ((i & (uint32)-1>>result) == 0)
+		++result;
+#endif
+	
+	return result;
+}
+
+internal inline uint16
+ByteSwap16(uint16 x)
+{
+	return (uint16)((x >> 8) | (x << 8));
+}
+
+internal inline uint32
+ByteSwap32(uint32 x)
+{
+	uint32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_bswap32(x);
+#elif defined (_MSC_VER)
+	extern unsigned long _byteswap_ulong(unsigned long);
+	
+	result = _byteswap_ulong(x);
+#else
+	result = (x << 24) | (x >> 24) | (x >> 8 & 0xff00) | (x << 8 & 0xff0000);
+#endif
+	
+	return result;
+}
+
+internal inline uint64
+ByteSwap64(uint64 x)
+{
+	uint64 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_bswap64(x);
+#elif defined (_MSC_VER)
+	extern unsigned __int64 _byteswap_uint64(unsigned __int64);
+	
+	result = _byteswap_uint64(x);
+#else
+	union
+	{
+		uint64 v;
+		uint8 arr[8];
+	}
+	r = { .v = x };
+	uint8 tmp;
+	
+    tmp = r.arr[0]; r.arr[0] = r.arr[7]; r.arr[7] = tmp;
+    tmp = r.arr[1]; r.arr[1] = r.arr[6]; r.arr[6] = tmp;
+    tmp = r.arr[2]; r.arr[2] = r.arr[5]; r.arr[5] = tmp;
+    tmp = r.arr[3]; r.arr[3] = r.arr[4]; r.arr[4] = tmp;
+	
+	result = r.v;
+#endif
+	
+	return result;
+}
+
+#ifdef COMMON_DONT_USE_CRT
 internal inline void*
 MemCopy(void* restrict dst, const void* restrict src, uintsize size)
 {
@@ -76,81 +173,6 @@ MemMove(void* dst, const void* src, uintsize size)
 }
 
 internal inline int32
-BitCtz(int32 i)
-{
-	Assume(i != 0);
-	int32 result;
-	
-#if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_ctz(i);
-#elif defined(_MSC_VER)
-	_BitScanForward(&result, i);
-#else
-	result = 0;
-	
-	while ((i & 1<<result) == 0)
-		++result;
-#endif
-	
-	return result;
-}
-
-internal inline uint16
-ByteSwap16(uint16 x)
-{
-	return (uint16)((x >> 8) | (x << 8));
-}
-
-internal inline uint32
-ByteSwap32(uint32 x)
-{
-	uint32 result;
-	
-#if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_bswap32(x);
-#elif defined (_MSC_VER)
-	extern unsigned long _byteswap_ulong(unsigned long);
-	
-	result = _byteswap_ulong(x);
-#else
-	result = (x << 24) | (x >> 24) | (x >> 8 & 0xff00) | (x << 8 & 0xff0000);
-#endif
-	
-	return result;
-}
-
-internal inline uint64
-ByteSwap64(uint64 x)
-{
-	uint64 result;
-	
-#if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_bswap64(x);
-#elif defined (_MSC_VER)
-	extern unsigned __int64 _byteswap_uint64(unsigned __int64);
-	
-	result = _byteswap_uint64(x);
-#else
-	union
-	{
-		uint64 v;
-		uint8 arr[8];
-	}
-	r = { .v = x };
-	uint8 tmp;
-	
-    tmp = r.arr[0]; r.arr[0] = r.arr[7]; r.arr[7] = tmp;
-    tmp = r.arr[1]; r.arr[1] = r.arr[6]; r.arr[6] = tmp;
-    tmp = r.arr[2]; r.arr[2] = r.arr[5]; r.arr[5] = tmp;
-    tmp = r.arr[3]; r.arr[3] = r.arr[4]; r.arr[4] = tmp;
-	
-	result = r.v;
-#endif
-	
-	return result;
-}
-
-internal inline int32
 MemCmp(const void* left_, const void* right_, uintsize size)
 {
     const uint8* left = left_;
@@ -193,5 +215,27 @@ MemCmp(const void* left_, const void* right_, uintsize size)
 	
     return 0;
 }
+
+#else // COMMON_DONT_USE_CRT
+
+#include <string.h>
+
+internal inline void*
+MemCopy(void* restrict dst, const void* restrict src, uintsize size)
+{ return memcpy(dst, src, size); }
+
+internal inline void*
+MemMove(void* dst, const void* src, uintsize size)
+{ return memmove(dst, src, size); }
+
+internal inline void*
+MemSet(void* restrict dst, uint8 byte, uintsize size)
+{ return memset(dst, byte, size); }
+
+internal inline int32
+MemCmp(const void* left_, const void* right_, uintsize size)
+{ return memcmp(left_, right_, size); }
+
+#endif
 
 #endif // COMMON_MEMORY_H

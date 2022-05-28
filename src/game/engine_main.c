@@ -11,11 +11,17 @@ Engine_FinishFrame(void)
 	
 	Platform_FinishFrame();
 	TraceFrameMark();
-	Platform_PollEvents();
+	Platform_PollEvents(global_engine.input);
 	
 	float64 current_time = Platform_GetTime();
 	global_engine.delta_time = (float32)( (current_time - global_engine.last_frame_time) * REFERENCE_FPS );
 	global_engine.last_frame_time = current_time;
+}
+
+API bool
+Engine_IsGamepadConnected(uint32 index)
+{
+	return global_engine.input->connected_gamepads & (1 << index);
 }
 
 //~ Entry Point
@@ -28,6 +34,7 @@ Engine_Main(int32 argc, char** argv)
 	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));
 	global_engine.delta_time = 1.0f;
 	global_engine.running = true;
+	global_engine.input = Arena_Push(global_engine.persistent_arena, sizeof(*global_engine.input));
 	
 	Platform_Config config = {
 		.window_width = 1280,
@@ -39,7 +46,7 @@ Engine_Main(int32 argc, char** argv)
 	};
 	
 	// NOTE(ljre): Window width & height
-	if (!Platform_CreateWindow(&config, &global_engine.graphics_context))
+	if (!Platform_CreateWindow(&config, &global_engine.graphics_context, global_engine.input))
 		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
 	
 	Engine_InitRender(&global_engine.renderer);

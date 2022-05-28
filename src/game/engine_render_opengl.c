@@ -577,7 +577,7 @@ OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 }
 
 internal void
-CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
+OpenGL_CalcBitmapSizeForText_(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
 	Trace();
 	
@@ -611,7 +611,7 @@ CalcBitmapSizeForText(const Asset_Font* font, float32 scale, String text, int32*
 }
 
 internal void
-GetShaderUniforms(OpenGL_InternalShader* shader)
+OpenGL_GetShaderUniforms_(OpenGL_InternalShader* shader)
 {
 	Trace();
 	uint32 id = shader->id;
@@ -693,7 +693,7 @@ GetShaderUniforms(OpenGL_InternalShader* shader)
 }
 
 internal void
-BindShader(OpenGL_InternalShader* shader)
+OpenGL_BindShader_(OpenGL_InternalShader* shader)
 {
 	GL.glUseProgram(shader->id);
 	global_ogl_uniform = &shader->uniform;
@@ -741,7 +741,7 @@ OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 	glm_scale(matrix, size);
 	glm_translate(matrix, alignment);
 	
-	BindShader(&global_ogl_default_shader);
+	OpenGL_BindShader_(&global_ogl_default_shader);
 	GL.glUniform4fv(global_ogl_uniform->color, 1, color);
 	GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 	GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
@@ -888,7 +888,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	float32 scale = stbtt_ScaleForPixelHeight(&font->info, char_height);
 	
 	int32 bitmap_width, bitmap_height;
-	CalcBitmapSizeForText(font, scale, text, &bitmap_width, &bitmap_height);
+	OpenGL_CalcBitmapSizeForText_(font, scale, text, &bitmap_width, &bitmap_height);
 	
 	uint8* bitmap = Arena_Push(global_engine.temp_arena, (uintsize)bitmap_width * bitmap_height);
 	
@@ -954,7 +954,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
 	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
 	
-	BindShader(&global_ogl_default_shader);
+	OpenGL_BindShader_(&global_ogl_default_shader);
 	GL.glUniform4fv(global_ogl_uniform->color, 1, color);
 	GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 	GL.glUniformMatrix4fv(global_ogl_uniform->model, 1, false, (float32*)matrix);
@@ -975,7 +975,7 @@ OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat
 {
 	Trace();
 	
-	BindShader(&global_ogl_default_shader);
+	OpenGL_BindShader_(&global_ogl_default_shader);
 	
 	GL.glBindVertexArray(global_ogl_quad_vao);
 	GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
@@ -1001,8 +1001,10 @@ OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCam
 	
 	// NOTE(ljre): Render layers
 	uint32 vbo, vao;
-	int32 count = layer->sprite_count;
-	int32 size = count * (int32)sizeof(Engine_Renderer2DSprite);
+	uintsize count = layer->sprite_count;
+	uintsize size = count * sizeof(Engine_Renderer2DSprite);
+	
+	Assert(count <= INT32_MAX);
 	
 	// NOTE(ljre): Config OpenGL State
 	GL.glDisable(GL_DEPTH_TEST);
@@ -1048,7 +1050,7 @@ OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCam
 	
 	//- NOTE(ljre): Render Batch
 	{
-		BindShader(&global_ogl_default_spriteshader);
+		OpenGL_BindShader_(&global_ogl_default_spriteshader);
 		
 		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 		GL.glUniform1i(global_ogl_uniform->texture, 0);
@@ -1059,7 +1061,7 @@ OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCam
 		GL.glBindVertexArray(vao);
 		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
 		
-		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, count);
+		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, (int32)count);
 	}
 	
 	//- NOTE(ljre): Free Batch
@@ -1428,7 +1430,7 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->shadow_fbo);
 		GL.glViewport(0, 0, depthmap_width, depthmap_height);
 		GL.glClear(GL_DEPTH_BUFFER_BIT);
-		BindShader(&global_ogl_default_shadowshader);
+		OpenGL_BindShader_(&global_ogl_default_shadowshader);
 		//GL.glCullFace(GL_FRONT);
 		
 		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)light_space_matrix);
@@ -1463,7 +1465,7 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 		GL.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		GL.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		BindShader(&global_ogl_default_gbuffershader);
+		OpenGL_BindShader_(&global_ogl_default_gbuffershader);
 		
 		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 		
@@ -1516,7 +1518,7 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 	//- NOTE(ljre): Render GBuffer
 	{
 		//GL.glDepthFunc(GL_ALWAYS);
-		BindShader(&global_ogl_default_finalpassshader);
+		OpenGL_BindShader_(&global_ogl_default_finalpassshader);
 		
 		mat4 model;
 		glm_ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f, model);
@@ -1585,7 +1587,7 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 	//~ NOTE(ljre): Point Lights
 	if (scene->light_model)
 	{
-		BindShader(&global_ogl_default_shader);
+		OpenGL_BindShader_(&global_ogl_default_shader);
 		
 		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
 		GL.glUniform1i(global_ogl_uniform->texture, 0);
@@ -1622,7 +1624,7 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 		glm_mat4_identity(matrix);
 		
 		GL.glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-		BindShader(&global_ogl_default_shader);
+		OpenGL_BindShader_(&global_ogl_default_shader);
 		
 		GL.glUniform4fv(global_ogl_uniform->color, 1, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f });
 		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
@@ -1706,11 +1708,11 @@ OpenGL_Init(const Engine_RendererApi** out_api)
 	global_ogl_default_gbuffershader.id = OpenGL_CompileShader_(global_ogl_vertex_gbuffershader, global_ogl_fragment_gbuffershader);
 	global_ogl_default_finalpassshader.id = OpenGL_CompileShader_(global_ogl_vertex_finalpassshader, global_ogl_fragment_finalpassshader);
 	
-	GetShaderUniforms(&global_ogl_default_shader);
-	GetShaderUniforms(&global_ogl_default_spriteshader);
-	GetShaderUniforms(&global_ogl_default_shadowshader);
-	GetShaderUniforms(&global_ogl_default_gbuffershader);
-	GetShaderUniforms(&global_ogl_default_finalpassshader);
+	OpenGL_GetShaderUniforms_(&global_ogl_default_shader);
+	OpenGL_GetShaderUniforms_(&global_ogl_default_spriteshader);
+	OpenGL_GetShaderUniforms_(&global_ogl_default_shadowshader);
+	OpenGL_GetShaderUniforms_(&global_ogl_default_gbuffershader);
+	OpenGL_GetShaderUniforms_(&global_ogl_default_finalpassshader);
 	
 	uint32 white_texture[] = {
 		0xFFFFFFFF, 0xFFFFFFFF,

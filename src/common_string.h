@@ -17,7 +17,7 @@ typedef String;
 #define StrNull (String) { 0 }
 
 internal int32
-String_Decode(const String str, int32* index)
+String_Decode(String str, int32* index)
 {
 	int32 result = 0;
 	const uint8* p = str.data + *index;
@@ -28,24 +28,26 @@ String_Decode(const String str, int32* index)
 	
 	if (byte & 0b10000000)
 	{
-		int32 size = 1;
-		int32 byte_copy = byte << 1;
-		while (byte_copy & 0b10000000)
+		int32 size = BitClz(~byte);
+		
+		if (size == 1)
 		{
-			++size;
-			byte_copy <<= 1;
+			// NOTE(ljre): Continuation byte. Something is wrong.
+			result = 0;
 		}
-		
-		Assert(size < 5);
-		
-		result |= byte & ((1 << (8-size)) - 1);
-		while (size > 1)
+		else
 		{
-			result <<= 6;
-			byte = (uint8)*p++;
-			result |= byte & 0b00111111;
+			Assert(size < 5);
 			
-			--size;
+			result |= byte & ((1 << (8-size)) - 1);
+			while (size > 1)
+			{
+				result <<= 6;
+				byte = (uint8)*p++;
+				result |= byte & 0b00111111;
+				
+				--size;
+			}
 		}
 	}
 	else
@@ -60,7 +62,7 @@ String_Decode(const String str, int32* index)
 
 // TODO(ljre): make this better (?)
 internal uintsize
-String_DecodedLength(const String str)
+String_DecodedLength(String str)
 {
 	uintsize len = 0;
 	
@@ -72,16 +74,27 @@ String_DecodedLength(const String str)
 }
 
 internal inline int32
-String_Compare(const String a, const String b)
+String_Compare(String a, String b)
+{
+	int32 result = MemCmp(a.data, b.data, Min(a.size, b.size));
+	
+	if (result == 0 && a.size != b.size)
+		return (a.size > b.size) ? 1 : -1;
+	
+	return result;
+}
+
+internal inline int32
+String_Equals(String a, String b)
 {
 	if (a.size != b.size)
 		return (int32)(a.size - b.size);
 	
-	return MemCmp(a.data, b.data, a.size);
+	return MemCmp(a.data, b.data, a.size) == 0;
 }
 
 internal inline bool32
-String_EndsWith(const String check, const String s)
+String_EndsWith(String check, String s)
 {
 	if (s.size > check.size)
 		return false;

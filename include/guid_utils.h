@@ -70,26 +70,26 @@ IsXInputDevice(const GUID* guid)
 internal bool32
 ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize guid_str_size)
 {
-    char name[256];
-    
-    // Generate a joystick GUID that matches the SDL 2.0.5+ one
-    if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof name, NULL, NULL))
-        return false;
-    
-    if (memcmp(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
+    if (MemCmp(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
     {
-        snprintf(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
-                 (uint8) instance->guidProduct.Data1,
-                 (uint8) (instance->guidProduct.Data1 >> 8),
-                 (uint8) (instance->guidProduct.Data1 >> 16),
-                 (uint8) (instance->guidProduct.Data1 >> 24));
+        SPrintf(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
+				(uint8) instance->guidProduct.Data1,
+				(uint8) (instance->guidProduct.Data1 >> 8),
+				(uint8) (instance->guidProduct.Data1 >> 16),
+				(uint8) (instance->guidProduct.Data1 >> 24));
     }
     else
     {
-        snprintf(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
-                 name[0], name[1], name[2], name[3],
-                 name[4], name[5], name[6], name[7],
-                 name[8], name[9], name[10]);
+        char name[256];
+		
+		// Generate a joystick GUID that matches the SDL 2.0.5+ one
+		if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof(name), NULL, NULL))
+			return false;
+		
+		SPrintf(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
+				name[0], name[1], name[2], name[3],
+				name[4], name[5], name[6], name[7],
+				name[8], name[9], name[10]);
     }
     
     return true;

@@ -1,6 +1,5 @@
 #include "internal_gamepad_map.h"
 
-#define MAX_GAMEPAD_COUNT 16
 #define GAMEPAD_DEADZONE 0.3f
 
 // TODO(ljre): it's probably better to move TranslateController and GamepadMappings to
@@ -9,19 +8,19 @@
 // TODO(ljre): Make more tests - I still don't trust it enough.
 
 //~ Types and Macros
-enum GamepadAPI
+enum Win32_GamepadAPI
 {
-	GamepadAPI_None = 0,
-	GamepadAPI_XInput = 1,
-	GamepadAPI_DirectInput = 2,
+	Win32_GamepadAPI_None = 0,
+	Win32_GamepadAPI_XInput = 1,
+	Win32_GamepadAPI_DirectInput = 2,
 }
-typedef GamepadAPI;
+typedef Win32_GamepadAPI;
 
 struct Win32_Gamepad
 {
-	GamepadAPI api;
+	Win32_GamepadAPI api;
 	bool32 connected;
-	Input_Gamepad data;
+	Engine_GamepadState data;
 	
 	union
 	{
@@ -80,10 +79,8 @@ typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, 
 #endif
 
 //~ Globals
-internal bool8           global_keyboard_keys[Input_KeyboardKey_Count];
-internal Input_Mouse     global_mouse;
-internal Win32_Gamepad   global_gamepads[MAX_GAMEPAD_COUNT];
-internal int32           global_gamepad_free[MAX_GAMEPAD_COUNT];
+internal Win32_Gamepad   global_gamepads[Engine_MAX_GAMEPAD_COUNT];
+internal int32           global_gamepad_free[Engine_MAX_GAMEPAD_COUNT];
 internal int32           global_gamepad_free_count;
 internal IDirectInput8W* global_dinput;
 internal bool32          global_dinput_enabled;
@@ -93,55 +90,55 @@ internal ProcXInputSetState*        XInputSetState;
 internal ProcXInputGetCapabilities* XInputGetCapabilities;
 internal ProcDirectInput8Create*    DirectInput8Create;
 
-internal const Input_KeyboardKey global_keyboard_key_table[] = {
-	[0] = Input_KeyboardKey_Any,
+internal const Engine_KeyboardKey global_keyboard_key_table[] = {
+	[0] = Engine_KeyboardKey_Any,
 	
-	[VK_ESCAPE] = Input_KeyboardKey_Escape,
-	[VK_CONTROL] = Input_KeyboardKey_Control,
-	[VK_SHIFT] = Input_KeyboardKey_Shift,
-	[VK_MENU] = Input_KeyboardKey_Alt,
-	[VK_TAB] = Input_KeyboardKey_Tab,
-	[VK_RETURN] = Input_KeyboardKey_Enter,
-	[VK_BACK] = Input_KeyboardKey_Backspace,
-	[VK_UP] = Input_KeyboardKey_Up,
-	[VK_DOWN] = Input_KeyboardKey_Down,
-	[VK_LEFT] = Input_KeyboardKey_Left,
-	[VK_RIGHT] = Input_KeyboardKey_Right,
-	[VK_LCONTROL] = Input_KeyboardKey_LeftControl,
-	[VK_RCONTROL] = Input_KeyboardKey_RightControl,
-	[VK_LSHIFT] = Input_KeyboardKey_LeftShift,
-	[VK_RSHIFT] = Input_KeyboardKey_RightShift,
-	[VK_PRIOR] = Input_KeyboardKey_PageUp,
-	[VK_NEXT] = Input_KeyboardKey_PageDown,
-	[VK_END] = Input_KeyboardKey_End,
-	[VK_HOME] = Input_KeyboardKey_Home,
+	[VK_ESCAPE] = Engine_KeyboardKey_Escape,
+	[VK_CONTROL] = Engine_KeyboardKey_Control,
+	[VK_SHIFT] = Engine_KeyboardKey_Shift,
+	[VK_MENU] = Engine_KeyboardKey_Alt,
+	[VK_TAB] = Engine_KeyboardKey_Tab,
+	[VK_RETURN] = Engine_KeyboardKey_Enter,
+	[VK_BACK] = Engine_KeyboardKey_Backspace,
+	[VK_UP] = Engine_KeyboardKey_Up,
+	[VK_DOWN] = Engine_KeyboardKey_Down,
+	[VK_LEFT] = Engine_KeyboardKey_Left,
+	[VK_RIGHT] = Engine_KeyboardKey_Right,
+	[VK_LCONTROL] = Engine_KeyboardKey_LeftControl,
+	[VK_RCONTROL] = Engine_KeyboardKey_RightControl,
+	[VK_LSHIFT] = Engine_KeyboardKey_LeftShift,
+	[VK_RSHIFT] = Engine_KeyboardKey_RightShift,
+	[VK_PRIOR] = Engine_KeyboardKey_PageUp,
+	[VK_NEXT] = Engine_KeyboardKey_PageDown,
+	[VK_END] = Engine_KeyboardKey_End,
+	[VK_HOME] = Engine_KeyboardKey_Home,
 	
-	[VK_SPACE] = Input_KeyboardKey_Space,
+	[VK_SPACE] = Engine_KeyboardKey_Space,
 	
-	['0'] = Input_KeyboardKey_0,
-	Input_KeyboardKey_1, Input_KeyboardKey_2, Input_KeyboardKey_3, Input_KeyboardKey_4,
-	Input_KeyboardKey_5, Input_KeyboardKey_6, Input_KeyboardKey_7, Input_KeyboardKey_8,
-	Input_KeyboardKey_9,
+	['0'] = Engine_KeyboardKey_0,
+	Engine_KeyboardKey_1, Engine_KeyboardKey_2, Engine_KeyboardKey_3, Engine_KeyboardKey_4,
+	Engine_KeyboardKey_5, Engine_KeyboardKey_6, Engine_KeyboardKey_7, Engine_KeyboardKey_8,
+	Engine_KeyboardKey_9,
 	
-	['A'] = Input_KeyboardKey_A,
-	Input_KeyboardKey_B, Input_KeyboardKey_C, Input_KeyboardKey_D, Input_KeyboardKey_E,
-	Input_KeyboardKey_F, Input_KeyboardKey_G, Input_KeyboardKey_H, Input_KeyboardKey_I,
-	Input_KeyboardKey_J, Input_KeyboardKey_K, Input_KeyboardKey_L, Input_KeyboardKey_M,
-	Input_KeyboardKey_N, Input_KeyboardKey_O, Input_KeyboardKey_P, Input_KeyboardKey_Q,
-	Input_KeyboardKey_R, Input_KeyboardKey_S, Input_KeyboardKey_T, Input_KeyboardKey_U,
-	Input_KeyboardKey_V, Input_KeyboardKey_W, Input_KeyboardKey_X, Input_KeyboardKey_Y,
-	Input_KeyboardKey_Z,
+	['A'] = Engine_KeyboardKey_A,
+	Engine_KeyboardKey_B, Engine_KeyboardKey_C, Engine_KeyboardKey_D, Engine_KeyboardKey_E,
+	Engine_KeyboardKey_F, Engine_KeyboardKey_G, Engine_KeyboardKey_H, Engine_KeyboardKey_I,
+	Engine_KeyboardKey_J, Engine_KeyboardKey_K, Engine_KeyboardKey_L, Engine_KeyboardKey_M,
+	Engine_KeyboardKey_N, Engine_KeyboardKey_O, Engine_KeyboardKey_P, Engine_KeyboardKey_Q,
+	Engine_KeyboardKey_R, Engine_KeyboardKey_S, Engine_KeyboardKey_T, Engine_KeyboardKey_U,
+	Engine_KeyboardKey_V, Engine_KeyboardKey_W, Engine_KeyboardKey_X, Engine_KeyboardKey_Y,
+	Engine_KeyboardKey_Z,
 	
-	[VK_F1] = Input_KeyboardKey_F1,
-	Input_KeyboardKey_F2, Input_KeyboardKey_F3,  Input_KeyboardKey_F4,  Input_KeyboardKey_F4,
-	Input_KeyboardKey_F5, Input_KeyboardKey_F6,  Input_KeyboardKey_F7,  Input_KeyboardKey_F8,
-	Input_KeyboardKey_F9, Input_KeyboardKey_F10, Input_KeyboardKey_F11, Input_KeyboardKey_F12,
-	Input_KeyboardKey_F13,
+	[VK_F1] = Engine_KeyboardKey_F1,
+	Engine_KeyboardKey_F2, Engine_KeyboardKey_F3,  Engine_KeyboardKey_F4,  Engine_KeyboardKey_F4,
+	Engine_KeyboardKey_F5, Engine_KeyboardKey_F6,  Engine_KeyboardKey_F7,  Engine_KeyboardKey_F8,
+	Engine_KeyboardKey_F9, Engine_KeyboardKey_F10, Engine_KeyboardKey_F11, Engine_KeyboardKey_F12,
+	Engine_KeyboardKey_F13,
 	
-	[VK_NUMPAD0] = Input_KeyboardKey_Numpad0,
-	Input_KeyboardKey_Numpad1, Input_KeyboardKey_Numpad2, Input_KeyboardKey_Numpad3, Input_KeyboardKey_Numpad4,
-	Input_KeyboardKey_Numpad5, Input_KeyboardKey_Numpad6, Input_KeyboardKey_Numpad7, Input_KeyboardKey_Numpad8,
-	Input_KeyboardKey_Numpad9,
+	[VK_NUMPAD0] = Engine_KeyboardKey_Numpad0,
+	Engine_KeyboardKey_Numpad1, Engine_KeyboardKey_Numpad2, Engine_KeyboardKey_Numpad3, Engine_KeyboardKey_Numpad4,
+	Engine_KeyboardKey_Numpad5, Engine_KeyboardKey_Numpad6, Engine_KeyboardKey_Numpad7, Engine_KeyboardKey_Numpad8,
+	Engine_KeyboardKey_Numpad9,
 };
 
 //~ Functions
@@ -269,7 +266,7 @@ LoadDirectInput(void)
 }
 
 internal void
-TranslateController(Input_Gamepad* out, const GamepadMappings* map,
+TranslateController(Engine_GamepadState* out, const GamepadMappings* map,
 					const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
 	Trace();
@@ -277,7 +274,7 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 	//- Update Buttons
 	for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
 	{
-		out->buttons[i] <<= 1;
+		out->buttons[i].changes = 0;
 	}
 	
 	//- Translate Buttons
@@ -286,27 +283,27 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		if (!map->buttons[i])
 			continue;
 		
-		Input_GamepadButton as_button = -1;
+		Engine_GamepadButton as_button = -1;
 		
 		uint8 lower = map->buttons[i] & 255;
 		//uint8 higher = map->buttons[i] >> 8;
 		
 		switch (lower)
 		{
-			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
-			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
-			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
-			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
-			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
-			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
-			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
-			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
-			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
-			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
-			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
-			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
-			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
-			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			case GamepadObject_Button_A: as_button = Engine_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Engine_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Engine_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Engine_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Engine_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Engine_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Engine_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Engine_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Engine_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Engine_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Engine_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Engine_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Engine_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Engine_GamepadButton_Back; break;
 			
 			case GamepadObject_Pressure_LeftTrigger: out->lt = (float32)(buttons[i] != 0); break;
 			case GamepadObject_Pressure_RightTrigger: out->rt = (float32)(buttons[i] != 0); break;
@@ -317,7 +314,10 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] |= buttons[i];
+			bool is_down = buttons[i];
+			
+			out->buttons[as_button].changes = (out->buttons[as_button].is_down != is_down);
+			out->buttons[as_button].is_down = is_down;
 		}
 	}
 	
@@ -371,7 +371,7 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		if (!map->povs[i][0])
 			continue;
 		
-		Input_GamepadButton as_button;
+		Engine_GamepadButton as_button;
 		int32 pov = povs[i];
 		uint8 lower, higher;
 		uint16 object;
@@ -387,27 +387,30 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		higher = object >> 8;
 		switch (lower)
 		{
-			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
-			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
-			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
-			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
-			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
-			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
-			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
-			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
-			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
-			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
-			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
-			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
-			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
-			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			case GamepadObject_Button_A: as_button = Engine_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Engine_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Engine_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Engine_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Engine_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Engine_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Engine_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Engine_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Engine_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Engine_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Engine_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Engine_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Engine_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Engine_GamepadButton_Back; break;
 			
 			default: break;
 		}
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] |= 1;
+			bool is_down = buttons[i];
+			
+			out->buttons[as_button].changes = (out->buttons[as_button].is_down != is_down);
+			out->buttons[as_button].is_down = is_down;
 		}
 		
 		// NOTE(ljre): if it's not pointing to a diagonal, ignore next step
@@ -420,27 +423,30 @@ TranslateController(Input_Gamepad* out, const GamepadMappings* map,
 		higher = object >> 8;
 		switch (lower)
 		{
-			case GamepadObject_Button_A: as_button = Input_GamepadButton_A; break;
-			case GamepadObject_Button_B: as_button = Input_GamepadButton_B; break;
-			case GamepadObject_Button_X: as_button = Input_GamepadButton_X; break;
-			case GamepadObject_Button_Y: as_button = Input_GamepadButton_Y; break;
-			case GamepadObject_Button_Left: as_button = Input_GamepadButton_Left; break;
-			case GamepadObject_Button_Right: as_button = Input_GamepadButton_Right; break;
-			case GamepadObject_Button_Up: as_button = Input_GamepadButton_Up; break;
-			case GamepadObject_Button_Down: as_button = Input_GamepadButton_Down; break;
-			case GamepadObject_Button_LeftShoulder: as_button = Input_GamepadButton_LB; break;
-			case GamepadObject_Button_RightShoulder: as_button = Input_GamepadButton_RB; break;
-			case GamepadObject_Button_LeftStick: as_button = Input_GamepadButton_LS; break;
-			case GamepadObject_Button_RightStick: as_button = Input_GamepadButton_RS; break;
-			case GamepadObject_Button_Start: as_button = Input_GamepadButton_Start; break;
-			case GamepadObject_Button_Back: as_button = Input_GamepadButton_Back; break;
+			case GamepadObject_Button_A: as_button = Engine_GamepadButton_A; break;
+			case GamepadObject_Button_B: as_button = Engine_GamepadButton_B; break;
+			case GamepadObject_Button_X: as_button = Engine_GamepadButton_X; break;
+			case GamepadObject_Button_Y: as_button = Engine_GamepadButton_Y; break;
+			case GamepadObject_Button_Left: as_button = Engine_GamepadButton_Left; break;
+			case GamepadObject_Button_Right: as_button = Engine_GamepadButton_Right; break;
+			case GamepadObject_Button_Up: as_button = Engine_GamepadButton_Up; break;
+			case GamepadObject_Button_Down: as_button = Engine_GamepadButton_Down; break;
+			case GamepadObject_Button_LeftShoulder: as_button = Engine_GamepadButton_LB; break;
+			case GamepadObject_Button_RightShoulder: as_button = Engine_GamepadButton_RB; break;
+			case GamepadObject_Button_LeftStick: as_button = Engine_GamepadButton_LS; break;
+			case GamepadObject_Button_RightStick: as_button = Engine_GamepadButton_RS; break;
+			case GamepadObject_Button_Start: as_button = Engine_GamepadButton_Start; break;
+			case GamepadObject_Button_Back: as_button = Engine_GamepadButton_Back; break;
 			
 			default: break;
 		}
 		
 		if (as_button != -1)
 		{
-			out->buttons[as_button] |= 1;
+			bool is_down = buttons[i];
+			
+			out->buttons[as_button].changes = (out->buttons[as_button].is_down != is_down);
+			out->buttons[as_button].is_down = is_down;
 		}
 	}
 	
@@ -454,23 +460,23 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
 	Trace();
 	
-	int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof *gamepad);
+	int32 index = (int32)(gamepad - global_gamepads) / (int32)(sizeof(*gamepad));
 	
 	switch (gamepad->api)
 	{
 		//~ DirectInput
-		case GamepadAPI_DirectInput:
+		case Win32_GamepadAPI_DirectInput:
 		{
 			DIJOYSTATE2 state;
 			IDirectInputDevice8_Poll(gamepad->dinput.device);
 			
-			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
+			HRESULT result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof(state), &state);
 			if (result == DIERR_NOTACQUIRED || result == DIERR_INPUTLOST)
 			{
 				IDirectInputDevice8_Acquire(gamepad->dinput.device);
 				IDirectInputDevice8_Poll(gamepad->dinput.device);
 				
-				result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof state, &state);
+				result = IDirectInputDevice8_GetDeviceState(gamepad->dinput.device, sizeof(state), &state);
 			}
 			
 			if (result == DI_OK)
@@ -530,46 +536,6 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 				}
 				
 				TranslateController(&gamepad->data, gamepad->dinput.map, buttons, axes, povs);
-				
-#ifdef DEBUG
-				// NOTE(ljre): Debug Only
-				if (Input_KeyboardIsPressed(Input_KeyboardKey_Space))
-				{
-					Platform_DebugLog("Raw:");
-					Platform_DebugLog("%6li %6li %6li ", state.lX, state.lY, state.lZ);
-					Platform_DebugLog("%6li %6li %6li ", state.lRx, state.lRy, state.lRz);
-					Platform_DebugLog("%6li %6li ", state.rglSlider[0], state.rglSlider[1]);
-					Platform_DebugLog("%6li %6li %6li %6li ", state.rgdwPOV[0], state.rgdwPOV[1], state.rgdwPOV[2], state.rgdwPOV[3]);
-					for (int32 i = 0; i < ArrayLength(state.rgbButtons); ++i)
-						Platform_DebugLog("%c", (state.rgbButtons[i] & 128) ? '1' : '0');
-					Platform_DebugLog("\n");
-					
-					Platform_DebugLog("Cooked:\n");
-					Platform_DebugLog("\tLS: (%f, %f) - %c\n", gamepad->data.left[0], gamepad->data.left[1],
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_LS] & 1));
-					Platform_DebugLog("\tRS: (%f, %f) - %c\n", gamepad->data.right[0], gamepad->data.right[1],
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_RS] & 1));
-					Platform_DebugLog("\tA, B: %c, %c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_A] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_B] & 1));
-					Platform_DebugLog("\tX, Y: %c, %c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_X] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Y] & 1));
-					Platform_DebugLog("\tLB, RB: %c, %c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_LB] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_RB] & 1));
-					Platform_DebugLog("\tLT, RT: %f, %f\n", gamepad->data.lt, gamepad->data.rt);
-					Platform_DebugLog("\tBack, Start: %c, %c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Back] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Start] & 1));
-					Platform_DebugLog("\tPOV right, up, left, down: %c%c%c%c\n",
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Right] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Up] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Left] & 1),
-									  '0' + (gamepad->data.buttons[Input_GamepadButton_Down] & 1));
-				}
-#endif
-				
 			}
 			else
 			{
@@ -577,13 +543,13 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 				IDirectInputDevice8_Release(gamepad->dinput.device);
 				
 				gamepad->connected = false;
-				gamepad->api = GamepadAPI_None;
+				gamepad->api = Win32_GamepadAPI_None;
 				ReleaseGamepadIndex(index);
 			}
 		} break;
 		
 		//~ XInput
-		case GamepadAPI_XInput:
+		case Win32_GamepadAPI_XInput:
 		{
 			XINPUT_STATE state;
 			DWORD result = XInputGetState(gamepad->xinput.index, &state);
@@ -604,36 +570,46 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 				gamepad->data.rt = (float32)state.Gamepad.bRightTrigger / 255.0f;
 				
 				//- Buttons
-#define _SetButton(_i, _v)\
-gamepad->data.buttons[_i] <<= 1;\
-gamepad->data.buttons[_i] |= !!(state.Gamepad.wButtons & _v)
+				struct
+				{
+					Engine_GamepadButton gpad;
+					int32 xinput;
+				}
+				const table[] = {
+					{ Engine_GamepadButton_Left, XINPUT_GAMEPAD_DPAD_LEFT },
+					{ Engine_GamepadButton_Right, XINPUT_GAMEPAD_DPAD_RIGHT },
+					{ Engine_GamepadButton_Up, XINPUT_GAMEPAD_DPAD_UP },
+					{ Engine_GamepadButton_Down, XINPUT_GAMEPAD_DPAD_DOWN },
+					{ Engine_GamepadButton_Start, XINPUT_GAMEPAD_START },
+					{ Engine_GamepadButton_Back, XINPUT_GAMEPAD_BACK },
+					{ Engine_GamepadButton_LS, XINPUT_GAMEPAD_LEFT_THUMB },
+					{ Engine_GamepadButton_RS, XINPUT_GAMEPAD_RIGHT_THUMB },
+					{ Engine_GamepadButton_LB, XINPUT_GAMEPAD_LEFT_SHOULDER },
+					{ Engine_GamepadButton_RB, XINPUT_GAMEPAD_RIGHT_SHOULDER },
+					{ Engine_GamepadButton_A, XINPUT_GAMEPAD_A },
+					{ Engine_GamepadButton_B, XINPUT_GAMEPAD_B },
+					{ Engine_GamepadButton_X, XINPUT_GAMEPAD_X },
+					{ Engine_GamepadButton_Y, XINPUT_GAMEPAD_Y },
+				};
 				
-				_SetButton(Input_GamepadButton_Left, XINPUT_GAMEPAD_DPAD_LEFT);
-				_SetButton(Input_GamepadButton_Right, XINPUT_GAMEPAD_DPAD_RIGHT);
-				_SetButton(Input_GamepadButton_Up, XINPUT_GAMEPAD_DPAD_UP);
-				_SetButton(Input_GamepadButton_Down, XINPUT_GAMEPAD_DPAD_DOWN);
-				_SetButton(Input_GamepadButton_Start, XINPUT_GAMEPAD_START);
-				_SetButton(Input_GamepadButton_Back, XINPUT_GAMEPAD_BACK);
-				_SetButton(Input_GamepadButton_LS, XINPUT_GAMEPAD_LEFT_THUMB);
-				_SetButton(Input_GamepadButton_RS, XINPUT_GAMEPAD_RIGHT_THUMB);
-				_SetButton(Input_GamepadButton_LB, XINPUT_GAMEPAD_LEFT_SHOULDER);
-				_SetButton(Input_GamepadButton_RB, XINPUT_GAMEPAD_RIGHT_SHOULDER);
-				_SetButton(Input_GamepadButton_A, XINPUT_GAMEPAD_A);
-				_SetButton(Input_GamepadButton_B, XINPUT_GAMEPAD_B);
-				_SetButton(Input_GamepadButton_X, XINPUT_GAMEPAD_X);
-				_SetButton(Input_GamepadButton_Y, XINPUT_GAMEPAD_Y);
-				
-#undef _SetButton
+				for (int32 i = 0; i < ArrayLength(table); ++i)
+				{
+					bool is_down = state.Gamepad.wButtons & table[i].xinput;
+					Engine_ButtonState* button = &gamepad->data.buttons[table[i].gpad];
+					
+					button->changes = button->is_down != is_down;
+					button->is_down = is_down;
+				}
 			}
 			else if (result == ERROR_DEVICE_NOT_CONNECTED)
 			{
-				gamepad->api = GamepadAPI_None;
+				gamepad->api = Win32_GamepadAPI_None;
 				gamepad->connected = false;
 				ReleaseGamepadIndex(index);
 			}
 		} break;
 		
-		case GamepadAPI_None:
+		case Win32_GamepadAPI_None:
 		{
 			// NOTE(ljre): This should be unreachable... just to be safe
 			gamepad->connected = false;
@@ -653,8 +629,8 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 		int32 axis_offset;
 		DIPROPRANGE range_property = {
 			.diph = {
-				.dwSize = sizeof range_property,
-				.dwHeaderSize = sizeof range_property.diph,
+				.dwSize = sizeof(range_property),
+				.dwHeaderSize = sizeof(range_property.diph),
 				.dwObj = object->dwType,
 				.dwHow = DIPH_BYID,
 			},
@@ -729,14 +705,14 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		return DIENUM_STOP;
 	
 	const GUID* guid = &instance->guidInstance;
-	if (XInputGetState && IsXInputDevice(&instance->guidProduct))
+	if (XInputGetState != XInputGetStateStub && IsXInputDevice(&instance->guidProduct))
 		return DIENUM_CONTINUE;
 	
 	// Check if device is already added
 	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
 	{
 		if (global_gamepads[i].connected &&
-			global_gamepads[i].api == GamepadAPI_DirectInput &&
+			global_gamepads[i].api == Win32_GamepadAPI_DirectInput &&
 			AreGUIDsEqual(guid, &global_gamepads[i].dinput.guid))
 		{
 			return DIENUM_CONTINUE;
@@ -752,12 +728,12 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	gamepad->dinput.pov_count = 0;
 	
 	DIDEVCAPS capabilities = {
-		.dwSize = sizeof capabilities,
+		.dwSize = sizeof(capabilities),
 	};
 	DIPROPDWORD word_property = {
 		.diph = {
-			.dwSize = sizeof word_property,
-			.dwHeaderSize = sizeof word_property.diph,
+			.dwSize = sizeof(word_property),
+			.dwHeaderSize = sizeof(word_property.diph),
 			.dwObj = 0,
 			.dwHow = DIPH_DEVICE,
 		},
@@ -787,7 +763,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	
 	// Success
 	gamepad->connected = true;
-	gamepad->api = GamepadAPI_DirectInput;
+	gamepad->api = Win32_GamepadAPI_DirectInput;
 	gamepad->dinput.guid = *guid;
 	gamepad->dinput.map = &global_gamepadmap_default;
 	
@@ -850,7 +826,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	_failure:
 	{
 		gamepad->connected = false;
-		gamepad->api = GamepadAPI_None;
+		gamepad->api = Win32_GamepadAPI_None;
 		IDirectInputDevice8_Release(gamepad->dinput.device);
 		ReleaseGamepadIndex(index);
 		
@@ -880,7 +856,7 @@ Win32_CheckForGamepads(void)
 		for (int32 index = 0; index < ArrayLength(global_gamepads); ++index)
 		{
 			if (global_gamepads[index].connected &&
-				global_gamepads[index].api == GamepadAPI_XInput &&
+				global_gamepads[index].api == Win32_GamepadAPI_XInput &&
 				global_gamepads[index].xinput.index == i)
 			{
 				already_exists = true;
@@ -894,7 +870,7 @@ Win32_CheckForGamepads(void)
 			Win32_Gamepad* gamepad = &global_gamepads[index];
 			
 			gamepad->connected = true;
-			gamepad->api = GamepadAPI_XInput;
+			gamepad->api = Win32_GamepadAPI_XInput;
 			gamepad->xinput.index = i;
 			
 			Platform_DebugLog("Device Connected:\n");
@@ -924,55 +900,57 @@ Win32_InitInput(void)
 }
 
 internal void
-Win32_UpdateKeyboardKey(uint32 vkcode, bool32 is_down)
+Win32_UpdateKeyboardKey(Engine_InputData* out_input_data, uint32 vkcode, bool is_down)
 {
-	Input_KeyboardKey key = global_keyboard_key_table[vkcode];
+	Engine_KeyboardKey key = global_keyboard_key_table[vkcode];
+	
 	if (key)
 	{
-		global_keyboard_keys[key] &= ~1;
-		global_keyboard_keys[key] |= is_down;
+		out_input_data->keyboard.buttons[key].changes += 1;
+		out_input_data->keyboard.buttons[key].is_down = is_down;
+		
+		if (out_input_data->keyboard.buffered_count < ArrayLength(out_input_data->keyboard.buffered))
+			out_input_data->keyboard.buffered[out_input_data->keyboard.buffered_count++] = (uint8)key;
 	}
 }
 
+internal void
+Win32_UpdateMouseButton(Engine_InputData* out_input_data, Engine_MouseButton button, bool is_down)
+{
+	out_input_data->mouse.buttons[button].changes += 1;
+	out_input_data->mouse.buttons[button].is_down = is_down;
+}
+
 internal inline void
-Win32_UpdateInputPre(void)
+Win32_UpdateInputPre(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Update Keyboard
-	for (int32 i = 0; i < ArrayLength(global_keyboard_keys); ++i)
-	{
-		bool8 key = global_keyboard_keys[i];
-		key = (bool8)(key << 1) | (key & 1);
-		global_keyboard_keys[i] = key;
-	}
+	for (int32 i = 0; i < ArrayLength(out_input_data->keyboard.buttons); ++i)
+		out_input_data->keyboard.buttons[i].changes = 0;
+	
+	out_input_data->keyboard.buffered_count = 0;
 	
 	// NOTE(ljre): Update Mouse
-	for (int32 i = 0; i < ArrayLength(global_mouse.buttons); ++i)
-	{
-		bool8 btn = global_mouse.buttons[i];
-		btn = (bool8)(btn << 1) | (btn & 1);
-		global_mouse.buttons[i] = btn;
-	}
+	for (int32 i = 0; i < ArrayLength(out_input_data->mouse.buttons); ++i)
+		out_input_data->mouse.buttons[i].changes = 0;
 	
-	global_mouse.scroll = 0;
+	out_input_data->mouse.scroll = 0;
 }
 
 internal inline void
-Win32_UpdateInputPos(void)
+Win32_UpdateInputPos(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Get mouse cursor
 	{
-		global_mouse.old_pos[0] = global_mouse.pos[0];
-		global_mouse.old_pos[1] = global_mouse.pos[1];
+		out_input_data->mouse.old_pos[0] = out_input_data->mouse.pos[0];
+		out_input_data->mouse.old_pos[1] = out_input_data->mouse.pos[1];
 		
 		POINT mouse;
 		GetCursorPos(&mouse);
 		ScreenToClient(global_window, &mouse);
 		
-		global_mouse.pos[0] = (float32)mouse.x;
-		global_mouse.pos[1] = (float32)mouse.y;
-		
-		global_mouse.pos[0] = glm_clamp(global_mouse.pos[0], 0.0f, (float32)global_window_width);
-		global_mouse.pos[1] = glm_clamp(global_mouse.pos[1], 0.0f, (float32)global_window_height);
+		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_window_width);
+		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_window_height);
 		
 		if (global_lock_cursor && GetActiveWindow())
 		{
@@ -982,155 +960,26 @@ Win32_UpdateInputPos(void)
 			ClientToScreen(global_window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
 			
-			global_mouse.old_pos[0] = (float32)(global_window_width/2);
-			global_mouse.old_pos[1] = (float32)(global_window_height/2);
+			out_input_data->mouse.old_pos[0] = (float32)(global_window_width/2);
+			out_input_data->mouse.old_pos[1] = (float32)(global_window_height/2);
 		}
 	}
 	
 	// NOTE(ljre): Update Gamepads
+	out_input_data->connected_gamepads = 0;
+	
+	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
 	{
-		for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
+		Win32_Gamepad* gamepad = &global_gamepads[i];
+		
+		if (gamepad->connected)
 		{
-			Win32_Gamepad* gamepad = &global_gamepads[i];
+			out_input_data->connected_gamepads |= 1 << i;
 			
-			if (gamepad->connected)
-				UpdateConnectedGamepad(gamepad);
+			UpdateConnectedGamepad(gamepad);
+			out_input_data->gamepads[i] = gamepad->data;
 		}
-	}
-}
-
-//~ API
-API bool32
-Input_KeyboardIsPressed(int32 key)
-{
-	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
-		return false;
-	
-	return !(global_keyboard_keys[key] & 2) && (global_keyboard_keys[key] & 1);
-}
-
-API bool32
-Input_KeyboardIsDown(int32 key)
-{
-	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
-		return false;
-	
-	return (global_keyboard_keys[key] & 1);
-}
-
-API bool32
-Input_KeyboardIsReleased(int32 key)
-{
-	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
-		return false;
-	
-	return (global_keyboard_keys[key] & 2) && !(global_keyboard_keys[key] & 1);
-}
-
-API bool32
-Input_KeyboardIsUp(int32 key)
-{
-	if (key < 0 || key >= ArrayLength(global_keyboard_keys))
-		return false;
-	
-	return !(global_keyboard_keys[key] & 1);
-}
-
-API void
-Input_GetMouse(Input_Mouse* out_mouse)
-{
-	*out_mouse = global_mouse;
-}
-
-API bool32
-Input_GetGamepad(int32 index, Input_Gamepad* out_gamepad)
-{
-	if (index < 0 || index >= ArrayLength(global_gamepads))
-		return false;
-	
-	Win32_Gamepad* gamepad = &global_gamepads[index];
-	if (!gamepad->connected)
-		return false;
-	
-	*out_gamepad = gamepad->data;
-	return true;
-}
-
-API void
-Input_SetGamepad(int32 index, float32 vibration)
-{
-	if (index < 0 || index >= ArrayLength(global_gamepads))
-		return;
-	
-	Win32_Gamepad* gamepad = &global_gamepads[index];
-	if (!gamepad->connected)
-		return;
-	
-	switch (gamepad->api)
-	{
-		case GamepadAPI_DirectInput:
-		{
-			// NOTE(ljre): You can't. At least afaik.
-		} break;
-		
-		case GamepadAPI_XInput:
-		{
-			WORD speed = (WORD)(vibration * 65.535f);
-			
-			XINPUT_VIBRATION vibration = {
-				.wLeftMotorSpeed = speed,
-				.wRightMotorSpeed = speed
-			};
-			
-			XInputSetState(gamepad->xinput.index, &vibration);
-		} break;
-		
-		case GamepadAPI_None:
-		{
-			// NOTE(ljre): unreachable
-		} break;
-	}
-}
-
-API int32
-Input_ConnectedGamepads(Input_Gamepad* gamepads, int32 max_count)
-{
-	// NOTE(ljre): Return how many gamepads were written to the array
-	if (max_count > 0)
-	{
-		int32 count = 0;
-		
-		for (int32 i = 0; i < ArrayLength(global_gamepads) && count < max_count; ++i)
-		{
-			if (global_gamepads[i].connected)
-				gamepads[count++] = global_gamepads[i].data;
-		}
-		
-		return count;
-	}
-	else // NOTE(ljre): Just return how many gamepads are connected
-	{
-		return (int32)ArrayLength(global_gamepads) - global_gamepad_free_count;
-	}
-}
-
-API int32
-Input_ConnectedGamepadsIndices(int32* indices, int32 max_count)
-{
-	if (max_count > 0)
-	{
-		int32 count = 0;
-		
-		for (int32 i = 0; i < ArrayLength(global_gamepads) && count < max_count; ++i)
-		{
-			if (global_gamepads[i].connected)
-				indices[count++] = i;
-		}
-		
-		return count;
-	}
-	else
-	{
-		return (int32)ArrayLength(global_gamepads) - global_gamepad_free_count;
+		else
+			MemSet(&out_input_data->gamepads[i], 0, sizeof(Engine_GamepadState));
 	}
 }

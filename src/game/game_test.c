@@ -519,10 +519,9 @@ ProcessDiscordEvents(void)
 internal void
 Game_UpdateAndRender(void)
 {
-	Input_Mouse mouse;
-	Input_GetMouse(&mouse);
+	Engine_MouseState mouse = engine->input->mouse;
 	
-	if (Input_KeyboardIsPressed(Input_KeyboardKey_Escape) || Platform_WindowShouldClose())
+	if (Engine_IsPressed(engine->input->keyboard, Engine_KeyboardKey_Escape) || Platform_WindowShouldClose())
 		engine->running = false;
 	
 	//~ NOTE(ljre): Update
@@ -549,7 +548,7 @@ Game_UpdateAndRender(void)
 	else
 	{
 		//- NOTE(ljre): Mouse Click
-		if (Input_IsPressed(mouse, Input_MouseButton_Left))
+		if (Engine_IsPressed(mouse, Engine_MouseButton_Left))
 		{
 			if (game->selected_troop_index != -1)
 			{
@@ -630,8 +629,8 @@ Game_UpdateAndRender(void)
 		{
 			const float32 camera_top_speed = 10.0f / (game->camera_zoom + 1.0f);
 			vec2 dir = {
-				Input_KeyboardIsDown('D') - Input_KeyboardIsDown('A'),
-				Input_KeyboardIsDown('S') - Input_KeyboardIsDown('W'),
+				Engine_IsDown(engine->input->keyboard, 'D') - Engine_IsDown(engine->input->keyboard, 'A'),
+				Engine_IsDown(engine->input->keyboard, 'S') - Engine_IsDown(engine->input->keyboard, 'W'),
 			};
 			
 			if (dir[0] != 0.0f && dir[1] != 0.0f)

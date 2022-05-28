@@ -35,7 +35,7 @@ internal IAudioClient* global_audio_client;
 internal IAudioRenderClient* global_audio_render_client;
 internal HANDLE global_audio_event;
 internal HANDLE global_audio_thread;
-internal SRWLOCK global_audio_mutex;
+internal RWLock global_audio_mutex;
 
 //~ Functions
 internal bool32
@@ -71,13 +71,13 @@ AudioThreadProc(void* data)
 		
 		uint8* buffer;
 		int32 elapsed_frames;
-		AcquireSRWLockExclusive(&global_audio_mutex);
+		RWLock_LockWrite(&global_audio_mutex);
 		{
 			buffer = global_audio_buffer_hot;
 			elapsed_frames = global_audio_elapsed_frames;
 			global_audio_elapsed_frames += frame_count;
 		}
-		ReleaseSRWLockExclusive(&global_audio_mutex);
+		RWLock_UnlockWrite(&global_audio_mutex);
 		
 		uintsize offset = (uintsize)((elapsed_frames * global_channels) % global_audio_buffer_sample_count);
 		
@@ -174,7 +174,7 @@ Win32_InitAudio(void)
 	
 	//Platform_DebugLog("%i\t%lli\n", global_latency_frame_count, reftime);
 	
-	global_audio_mutex = (SRWLOCK) SRWLOCK_INIT;
+	RWLock_Init(&global_audio_mutex);
 	
 	global_audio_event = CreateEventW(NULL, FALSE, FALSE, NULL);
 	if (!global_audio_event)
@@ -243,11 +243,11 @@ Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32*
 		*out_channels = global_channels;
 		*out_sample_rate = global_samples_per_second;
 		
-		AcquireSRWLockExclusive(&global_audio_mutex);
+		RWLock_LockWrite(&global_audio_mutex);
 		{
 			*out_elapsed_frames = global_audio_to_override = global_audio_elapsed_frames;
 		}
-		ReleaseSRWLockExclusive(&global_audio_mutex);
+		RWLock_UnlockWrite(&global_audio_mutex);
 		
 		MemSet(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
 		return (int16*)global_audio_buffer_cold;
@@ -263,7 +263,7 @@ Platform_CloseSoundBuffer(int16* sound_buffer)
 {
 	Assert(sound_buffer == (int16*)global_audio_buffer_cold);
 	
-	AcquireSRWLockExclusive(&global_audio_mutex);
+	RWLock_LockWrite(&global_audio_mutex);
 	{
 		void* temp = global_audio_buffer_hot;
 		global_audio_buffer_hot = global_audio_buffer_cold;
@@ -271,7 +271,7 @@ Platform_CloseSoundBuffer(int16* sound_buffer)
 		//global_audio_elapsed_frames = 0;
 		global_audio_elapsed_frames -= global_audio_to_override;
 	}
-	ReleaseSRWLockExclusive(&global_audio_mutex);
+	RWLock_UnlockWrite(&global_audio_mutex);
 }
 
 API bool32

@@ -13,5 +13,6 @@
 #include "common_string.h"
 #include "common_arena.h"
 #include "common_printf.h"
+#include "common_rwlock.h"
 
 #endif //COMMON_H

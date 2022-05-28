@@ -4,6 +4,8 @@
 #include "internal_config.h"
 
 //~ Common
+#define COMMON_DONT_USE_CRT
+
 #include "common_defs.h"
 #include "common_types.h"
 
@@ -57,7 +59,7 @@ internal inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*c
 //~ More Headers
 #include "internal_assets.h"
 
-#include "internal_api_platform.h"
 #include "internal_api_engine.h"
+#include "internal_api_platform.h"
 
 #endif //INTERNAL_H

@@ -1,6 +1,7 @@
 #ifndef COMMON_TYPES_H
 #define COMMON_TYPES_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 

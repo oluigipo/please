@@ -86,7 +86,7 @@ Win32_CheckForErrors(void)
 	if (error != ERROR_SUCCESS)
 	{
 		char buffer[512];
-		SPrintf(buffer, sizeof buffer, "%llu", (uint64)error);
+		SPrintf(buffer, sizeof(buffer), "%llu", (uint64)error);
 		MessageBoxA(NULL, buffer, "Error Code", MB_OK);
 	}
 }
@@ -202,6 +202,7 @@ internal LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	LRESULT result = 0;
+	Engine_InputData* input = (void*)GetWindowLongPtrW(window, GWLP_USERDATA);
 	
 	switch (message)
 	{
@@ -225,24 +226,24 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_KEYDOWN:
 		{
 			uint32 vkcode = (uint32)wparam;
-			bool32 was_down = ((lparam & (1 << 30)) != 0);
-			bool32 is_down = ((lparam & (1 << 31)) == 0);
+			bool was_down = ((lparam & (1 << 30)) != 0);
+			bool is_down = ((lparam & (1 << 31)) == 0);
 			
 			if (was_down == is_down || vkcode >= ArrayLength(global_keyboard_key_table))
 				break;
 			
-			Win32_UpdateKeyboardKey(vkcode, is_down);
+			Win32_UpdateKeyboardKey(input, vkcode, is_down);
 			
 			// NOTE(ljre): Checks for which side specifically.
 			if (vkcode == VK_SHIFT)
 			{
-				Win32_UpdateKeyboardKey(VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
-				Win32_UpdateKeyboardKey(VK_RSHIFT, !!(GetKeyState(VK_RSHIFT) & 0x8000));
+				Win32_UpdateKeyboardKey(input, VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
+				Win32_UpdateKeyboardKey(input, VK_RSHIFT, !!(GetKeyState(VK_RSHIFT) & 0x8000));
 			}
 			else if (vkcode == VK_CONTROL)
 			{
-				Win32_UpdateKeyboardKey(VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
-				Win32_UpdateKeyboardKey(VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
+				Win32_UpdateKeyboardKey(input, VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
+				Win32_UpdateKeyboardKey(input, VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
 			}
 			
 			// NOTE(ljre): Always close on Alt+F4
@@ -250,17 +251,17 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 				global_window_should_close = true;
 		} break;
 		
-		case WM_LBUTTONUP: global_mouse.buttons[Input_MouseButton_Left] &=~ 1; break;
-		case WM_LBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Left] |= 1; break;
-		case WM_MBUTTONUP: global_mouse.buttons[Input_MouseButton_Middle] &=~ 1; break;
-		case WM_MBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Middle] |= 1; break;
-		case WM_RBUTTONUP: global_mouse.buttons[Input_MouseButton_Right] &=~ 1; break;
-		case WM_RBUTTONDOWN: global_mouse.buttons[Input_MouseButton_Right] |= 1; break;
+		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, Engine_MouseButton_Left, false); break;
+		case WM_LBUTTONDOWN: Win32_UpdateMouseButton(input, Engine_MouseButton_Left, true); break;
+		case WM_MBUTTONUP: Win32_UpdateMouseButton(input, Engine_MouseButton_Middle, false); break;
+		case WM_MBUTTONDOWN: Win32_UpdateMouseButton(input, Engine_MouseButton_Middle, true); break;
+		case WM_RBUTTONUP: Win32_UpdateMouseButton(input, Engine_MouseButton_Right, false); break;
+		case WM_RBUTTONDOWN: Win32_UpdateMouseButton(input, Engine_MouseButton_Right, true); break;
 		
 		case WM_MOUSEWHEEL:
 		{
 			int32 delta = GET_WHEEL_DELTA_WPARAM(wparam) / 120;
-			global_mouse.scroll += delta;
+			input->mouse.scroll += delta;
 		} break;
 		
 		case WM_DEVICECHANGE:
@@ -375,7 +376,7 @@ Platform_MessageBox(String title, String message)
 }
 
 API bool32
-Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics)
+Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics, Engine_InputData* input_data)
 {
 	Trace();
 	
@@ -421,9 +422,12 @@ Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsCont
 		global_config.center_window = config->center_window;
 		global_config.show_cursor = config->show_cursor;
 		global_config.lock_cursor = config->lock_cursor;
-		Platform_PollEvents();
+		
+		MemSet(input_data, 0, sizeof(*input_data));
+		Platform_PollEvents(input_data);
 		
 		*out_graphics = &global_graphics_context;
+		
 		ShowWindow(global_window, SW_SHOWDEFAULT);
 	}
 	
@@ -432,21 +436,15 @@ Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsCont
 
 API bool32
 Platform_WindowShouldClose(void)
-{
-	return global_window_should_close;
-}
+{ return global_window_should_close; }
 
 API int32
 Platform_WindowWidth(void)
-{
-	return global_window_width;
-}
+{ return global_window_width; }
 
 API int32
 Platform_WindowHeight(void)
-{
-	return global_window_height;
-}
+{ return global_window_height; }
 
 API void
 Platform_UpdateConfig(const Platform_Config* config)
@@ -462,11 +460,13 @@ Platform_GetTime(void)
 }
 
 API void
-Platform_PollEvents(void)
+Platform_PollEvents(Engine_InputData* out_input_data)
 {
 	Trace();
 	
-	Win32_UpdateInputPre();
+	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)out_input_data);
+	
+	Win32_UpdateInputPre(out_input_data);
 	ProcessDeferredEvents();
 	
 	MSG message;
@@ -476,7 +476,7 @@ Platform_PollEvents(void)
 		DispatchMessageW(&message);
 	}
 	
-	Win32_UpdateInputPos();
+	Win32_UpdateInputPos(out_input_data);
 }
 
 API void
@@ -682,6 +682,8 @@ GetFileLastWriteTime(const char* filename)
 API void*
 Platform_LoadGameLibrary(void)
 {
+	Trace();
+	
 	static HMODULE library = NULL;
 	static uint64 saved_last_update;
 	static void* saved_result;

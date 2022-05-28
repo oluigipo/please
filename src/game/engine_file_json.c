@@ -14,7 +14,7 @@ EXAMPLE USAGE
 		// NOTE(ljre): "raw name" = without processing escape sequences, etc.
 		String name = Json_RawFieldName(&field);
 		
-		if (String_Compare(name, Str("to_print")))
+		if (String_Equals(name, Str("to_print")))
 		{
 			Json_Value value;
 			Json_FieldValue(&field, &value);

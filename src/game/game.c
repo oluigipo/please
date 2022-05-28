@@ -3,6 +3,8 @@
 #include "system_random.c"
 
 #if 0
+#   include "game_test2.c"
+#elif 0
 #   include "game_test.c"
 #else
 // NOTE(ljre): This is set every frame.
@@ -63,7 +65,7 @@ ColorToVec4(uint32 color, vec4 out)
 }
 
 internal void
-DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 width, float32 height)
+DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, float32 width, float32 height)
 {
 	vec3 alignment = { -0.5f, -0.5f };
 	vec4 black = { 0.1f, 0.1f, 0.1f, 1.0f };
@@ -81,7 +83,7 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 										 (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
 										 (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
-		engine->renderer->draw_rectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_LS)],
+		engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_LS)],
 										 (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
 											 y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
 										 (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
@@ -90,7 +92,7 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 										 (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
 										 (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
-		engine->renderer->draw_rectangle(colors[Input_IsDown(*gamepad, Input_GamepadButton_RS)],
+		engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_RS)],
 										 (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
 										 (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
 	}
@@ -102,21 +104,21 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 			vec3 pos;
 			vec3 size;
 		} buttons[] = {
-			[Input_GamepadButton_Y] = { { width * 0.84f, height * 0.44f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_B] = { { width * 0.90f, height * 0.50f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_A] = { { width * 0.84f, height * 0.56f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_X] = { { width * 0.78f, height * 0.50f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_Y] = { { width * 0.84f, height * 0.44f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_B] = { { width * 0.90f, height * 0.50f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_A] = { { width * 0.84f, height * 0.56f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_X] = { { width * 0.78f, height * 0.50f }, { 30.0f, 30.0f } },
 			
-			[Input_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
-			[Input_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
+			[Engine_GamepadButton_LB] = { { width * 0.20f, height * 0.30f }, { 60.0f, 20.0f } },
+			[Engine_GamepadButton_RB] = { { width * 0.80f, height * 0.30f }, { 60.0f, 20.0f } },
 			
-			[Input_GamepadButton_Up]= { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_Down]  = { { width * 0.16f, height * 0.56f }, { 30.0f, 30.0f } },
-			[Input_GamepadButton_Left]  = { { width * 0.10f, height * 0.50f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_Up]= { { width * 0.16f, height * 0.44f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_Right] = { { width * 0.22f, height * 0.50f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_Down]  = { { width * 0.16f, height * 0.56f }, { 30.0f, 30.0f } },
+			[Engine_GamepadButton_Left]  = { { width * 0.10f, height * 0.50f }, { 30.0f, 30.0f } },
 			
-			[Input_GamepadButton_Back]  = { { width * 0.45f, height * 0.48f }, { 25.0f, 15.0f } },
-			[Input_GamepadButton_Start] = { { width * 0.55f, height * 0.48f }, { 25.0f, 15.0f } },
+			[Engine_GamepadButton_Back]  = { { width * 0.45f, height * 0.48f }, { 25.0f, 15.0f } },
+			[Engine_GamepadButton_Start] = { { width * 0.55f, height * 0.48f }, { 25.0f, 15.0f } },
 		};
 		
 		for (int32 i = 0; i < ArrayLength(buttons); ++i)
@@ -126,7 +128,7 @@ DrawGamepadLayout(const Input_Gamepad* gamepad, float32 x, float32 y, float32 wi
 			buttons[i].size[0] *= xscale;
 			buttons[i].size[1] *= yscale;
 			
-			engine->renderer->draw_rectangle(colors[Input_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size, alignment);
+			engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size, alignment);
 		}
 	}
 	
@@ -321,17 +323,17 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	Trace(); TraceName(Str("Game Loop"));
 	void* memory_state = Arena_End(g->temp_arena);
 	
-	if (Platform_WindowShouldClose() || Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
+	if (Platform_WindowShouldClose() || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
 		g->running = false;
 	
-	if (Input_KeyboardIsPressed(Input_KeyboardKey_Left))
+	if (Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Left))
 		g->game->controller_index = (g->game->controller_index - 1) & 15;
-	else if (Input_KeyboardIsPressed(Input_KeyboardKey_Right))
+	else if (Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Right))
 		g->game->controller_index = (g->game->controller_index + 1) & 15;
 	
 	if (g->game->sound_music3.samples &&
 		g->game->playing_audio_count < ArrayLength(g->game->playing_audios) &&
-		Input_KeyboardIsPressed(Input_KeyboardKey_Space))
+		Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Space))
 	{
 		g->game->playing_audios[g->game->playing_audio_count++] = (Engine_PlayingAudio) {
 			.sound = &g->game->sound_music3,
@@ -342,8 +344,8 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		};
 	}
 	
-	Input_Gamepad gamepad;
-	bool32 is_connected = Input_GetGamepad(g->game->controller_index, &gamepad);
+	Engine_GamepadState gamepad = g->input->gamepads[g->game->controller_index];
+	bool32 is_connected = Engine_IsGamepadConnected(g->game->controller_index);
 	
 	float32 dt = g->delta_time;
 	
@@ -387,9 +389,9 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		g->game->render_camera.pos[0] += g->game->camera_speed[0] * dt;
 		g->game->render_camera.pos[2] += g->game->camera_speed[1] * dt;
 		
-		if (Input_IsDown(gamepad, Input_GamepadButton_A))
+		if (Engine_IsDown(gamepad, Engine_GamepadButton_A))
 			g->game->camera_height += 0.05f * dt;
-		else if (Input_IsDown(gamepad, Input_GamepadButton_B))
+		else if (Engine_IsDown(gamepad, Engine_GamepadButton_B))
 			g->game->camera_height -= 0.05f * dt;
 		
 		//~ Bump
@@ -458,14 +460,14 @@ struct Game_MenuButton
 typedef Game_MenuButton;
 
 internal bool32
-IsMouseOverButton(Input_Mouse* mouse, Game_MenuButton* button)
+IsMouseOverButton(Engine_MouseState* mouse, Game_MenuButton* button)
 {
 	return ((mouse->pos[0] >= button->position[0] && mouse->pos[0] <= button->position[0] + button->size[0]) &&
 			(mouse->pos[1] >= button->position[1] && mouse->pos[1] <= button->position[1] + button->size[1]));
 }
 
 internal void
-DrawMenuButton(Game_Data* game, Game_MenuButton* button, Input_Mouse* mouse)
+DrawMenuButton(Game_Data* game, Game_MenuButton* button, Engine_MouseState* mouse)
 {
 	vec4 highlight_none = { 0.1f, 0.1f, 0.1f, 1.0f };
 	vec4 highlight_over = { 0.2f, 0.2f, 0.2f, 1.0f };
@@ -476,10 +478,8 @@ DrawMenuButton(Game_Data* game, Game_MenuButton* button, Input_Mouse* mouse)
 	{
 		color = highlight_over;
 		
-		if (Input_IsDown(*mouse, Input_MouseButton_Left))
-		{
+		if (Engine_IsDown(*mouse, Engine_MouseButton_Left))
 			color = highlight_pressed;
-		}
 	}
 	
 	engine->renderer->draw_rectangle(color, button->position, button->size, (vec3) { 0 });
@@ -532,13 +532,12 @@ Game_Main(Engine_Data* g)
 			//~ NOTE(ljre): Update
 			void* memory_state = Arena_End(g->temp_arena);
 			
-			Input_Mouse mouse;
-			Input_GetMouse(&mouse);
+			Engine_MouseState mouse = g->input->mouse;
 			
-			if (Platform_WindowShouldClose() || Input_KeyboardIsPressed(Input_KeyboardKey_Escape))
+			if (Platform_WindowShouldClose() || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
 				g->running = false;
 			
-			if (Input_IsReleased(mouse, Input_MouseButton_Left))
+			if (Engine_IsReleased(mouse, Engine_MouseButton_Left))
 			{
 				if (IsMouseOverButton(&mouse, &button_3dscene))
 				{

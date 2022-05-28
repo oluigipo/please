@@ -50,6 +50,17 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	return result;
 }
 
+internal void
+Arena_Destroy(Arena* arena)
+{ Arena_OsFree_(arena, arena->reserved + sizeof(Arena)); }
+
+internal void*
+Arena_EndAligned(Arena* arena, uintsize alignment_mask)
+{
+	arena->offset = AlignUp(arena->offset, alignment_mask);
+	return arena->memory + arena->offset;
+}
+
 internal void*
 Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 {
@@ -73,24 +84,6 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 	return result;
 }
 
-internal inline void*
-Arena_PushDirty(Arena* arena, uintsize size)
-{
-	return Arena_PushDirtyAligned(arena, size, 15);
-}
-
-internal inline void*
-Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
-{
-	return MemSet(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size);
-}
-
-internal inline void*
-Arena_Push(Arena* arena, uintsize size)
-{
-	return MemSet(Arena_PushDirtyAligned(arena, size, 15), 0, size);
-}
-
 internal void
 Arena_Pop(Arena* arena, void* ptr)
 {
@@ -101,23 +94,33 @@ Arena_Pop(Arena* arena, void* ptr)
 	arena->offset = new_offset;
 }
 
-internal void
+internal inline void*
+Arena_PushDirty(Arena* arena, uintsize size)
+{ return Arena_PushDirtyAligned(arena, size, 15); }
+
+internal inline void*
+Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
+{ return MemSet(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size); }
+
+internal inline void*
+Arena_Push(Arena* arena, uintsize size)
+{ return MemSet(Arena_PushDirtyAligned(arena, size, 15), 0, size); }
+
+internal inline void*
+Arena_PushMemory(Arena* arena, const void* buf, uintsize size)
+{ return MemCopy(Arena_PushDirtyAligned(arena, size, 0), buf, size); }
+
+internal inline void*
+Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment_mask)
+{ return MemCopy(Arena_PushDirtyAligned(arena, size, alignment_mask), buf, size); }
+
+internal inline void
 Arena_Clear(Arena* arena)
-{
-	arena->offset = 0;
-}
+{ arena->offset = 0; }
 
-internal void*
+internal inline void*
 Arena_End(Arena* arena)
-{
-	return arena->memory + arena->offset;
-}
-
-internal void
-Arena_Destroy(Arena* arena)
-{
-	Arena_OsFree_(arena, arena->reserved + sizeof(Arena));
-}
+{ return arena->memory + arena->offset; }
 
 #undef Arena_OsReserve_
 #undef Arena_OsCommit_
