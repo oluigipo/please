@@ -37,7 +37,7 @@ BitClz(int32 i)
 #else
 	result = 0;
 	
-	while ((i & (uint32)-1>>result) == 0)
+	while ((i & 1<<(31-result)) == 0)
 		++result;
 #endif
 	
