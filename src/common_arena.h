@@ -59,7 +59,7 @@ internal Arena*
 Arena_FromMemory(void* memory, uintsize size)
 {
 	Assert(size > sizeof(Arena));
-	Assert((uintptr)memory & ~15 == (uintptr)memory);
+	Assert(((uintptr)memory & ~15) == (uintptr)memory);
 	
 	Arena* result = memory;
 	size -= sizeof(Arena);
