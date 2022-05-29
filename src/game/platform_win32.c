@@ -498,7 +498,7 @@ Platform_FinishFrame(void)
 API void*
 Platform_HeapAlloc(uintsize size)
 {
-	Trace();
+	Trace(); TraceF(64, "%fKiB", (float64)size / 1024.0);
 	
 	void* result = HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
 	
@@ -508,7 +508,7 @@ Platform_HeapAlloc(uintsize size)
 API void*
 Platform_HeapRealloc(void* ptr, uintsize size)
 {
-	Trace();
+	Trace(); TraceF(64, "%fKiB", (float64)size / 1024.0);
 	
 	void* result;
 	
