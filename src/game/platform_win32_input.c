@@ -788,7 +788,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		}
 	}
 	
-	Platform_DebugLog("Device Connected:\n");
+	Platform_DebugLog("[info-win32] Device Connected:\n");
 	Platform_DebugLog("\tIndex: %i\n", index);
 	Platform_DebugLog("\tDriver: DirectInput\n");
 	Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
@@ -873,7 +873,7 @@ Win32_CheckForGamepads(void)
 			gamepad->api = Win32_GamepadAPI_XInput;
 			gamepad->xinput.index = i;
 			
-			Platform_DebugLog("Device Connected:\n");
+			Platform_DebugLog("[info-win32] Device Connected:\n");
 			Platform_DebugLog("\tIndex: %i\n", index);
 			Platform_DebugLog("\tDriver: XInput\n");
 			Platform_DebugLog("\tSubtype: %s Controller\n", GetXInputSubTypeString(cap.SubType));
@@ -906,11 +906,21 @@ Win32_UpdateKeyboardKey(Engine_InputData* out_input_data, uint32 vkcode, bool is
 	
 	if (key)
 	{
-		out_input_data->keyboard.buttons[key].changes += 1;
-		out_input_data->keyboard.buttons[key].is_down = is_down;
+		Engine_ButtonState* btn = &out_input_data->keyboard.buttons[key];
 		
-		if (out_input_data->keyboard.buffered_count < ArrayLength(out_input_data->keyboard.buffered))
-			out_input_data->keyboard.buffered[out_input_data->keyboard.buffered_count++] = (uint8)key;
+		if (btn->is_down != is_down)
+		{
+			btn->changes += 1;
+			btn->is_down = is_down;
+		}
+		
+		if (is_down)
+		{
+			if (out_input_data->keyboard.buffered_count < ArrayLength(out_input_data->keyboard.buffered))
+				out_input_data->keyboard.buffered[out_input_data->keyboard.buffered_count++] = (uint8)key;
+			else
+				Platform_DebugLog("[warning-win32] Lost buffered input: %u\n");
+		}
 	}
 }
 

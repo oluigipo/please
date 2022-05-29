@@ -47,7 +47,7 @@ ReenableWarnings();
 #   pragma comment(lib, "user32.lib")
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
-#   if ENABLE_SEH_IN_MAIN
+#   ifdef ENABLE_SEH_IN_MAIN
 #       pragma comment(lib, "dbghelp.lib")
 #       include <minidumpapiset.h>
 #   endif
@@ -229,12 +229,13 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			bool was_down = ((lparam & (1 << 30)) != 0);
 			bool is_down = ((lparam & (1 << 31)) == 0);
 			
-			if (was_down == is_down || vkcode >= ArrayLength(global_keyboard_key_table))
+			(void)was_down;
+			
+			if (vkcode >= ArrayLength(global_keyboard_key_table))
 				break;
 			
-			Win32_UpdateKeyboardKey(input, vkcode, is_down);
-			
 			// NOTE(ljre): Checks for which side specifically.
+			// TODO(ljre): This might fuck up a bit the buffering...
 			if (vkcode == VK_SHIFT)
 			{
 				Win32_UpdateKeyboardKey(input, VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
@@ -245,6 +246,8 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 				Win32_UpdateKeyboardKey(input, VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
 				Win32_UpdateKeyboardKey(input, VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
 			}
+			else
+				Win32_UpdateKeyboardKey(input, vkcode, is_down);
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
@@ -278,13 +281,11 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 	return result;
 }
 
-#ifndef INTERNAL_ENABLE_HOT
+#ifdef INTERNAL_ENABLE_HOT
+API
+#endif
 int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
-#else
-API int WINAPI
-WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
-#endif
 {
 	Trace();
 	
@@ -331,7 +332,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	__except (info.ExceptionPointers = GetExceptionInformation(),
 			  GetExceptionCode() == EXCEPTION_BREAKPOINT ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER)
 	{
-		HANDLE file = CreateFileA("minidump.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		HANDLE file = CreateFileW(L"minidump.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 		
 		if (file)
 		{
@@ -340,6 +341,8 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 			
 			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file,
 							  MiniDumpNormal, &info, NULL, NULL);
+			
+			CloseHandle(file);
 		}
 		
 		ExitProcess(2);
