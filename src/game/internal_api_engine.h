@@ -3,11 +3,10 @@
 
 //~ Main Data
 struct Engine_Data typedef Engine_Data;
-struct Game_Data typedef Game_Data;
-
 struct Engine_RendererApi typedef Engine_RendererApi;
 struct Engine_InputData typedef Engine_InputData;
 
+struct Game_Data typedef Game_Data;
 struct Platform_GraphicsContext typedef Platform_GraphicsContext;
 
 struct Engine_Data
@@ -20,11 +19,11 @@ struct Engine_Data
 	const Engine_RendererApi* renderer;
 	Engine_InputData* input;
 	
-	bool8 outputed_sound_this_frame;
-	bool8 running;
-	
 	float32 delta_time;
 	float64 last_frame_time;
+	
+	bool8 outputed_sound_this_frame;
+	bool8 running;
 };
 
 // Engine entry point. It shall be called by the platform layer.

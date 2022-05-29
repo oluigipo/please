@@ -61,7 +61,6 @@ API void Platform_UpdateConfig(const Platform_Config* config);
 
 // Optional Libraries
 API void* Platform_LoadDiscordLibrary(void);
-
 #ifdef INTERNAL_ENABLE_HOT
 API void* Platform_LoadGameLibrary(void);
 #endif
@@ -70,9 +69,11 @@ API void* Platform_LoadGameLibrary(void);
 API void* Platform_HeapAlloc(uintsize size);
 API void* Platform_HeapRealloc(void* ptr, uintsize size);
 API void Platform_HeapFree(void* ptr);
+
 API void* Platform_VirtualReserve(uintsize size);
 API void Platform_VirtualCommit(void* ptr, uintsize size);
 API void Platform_VirtualFree(void* ptr, uintsize size);
+
 API void* Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena); // 'opt_arena' can be NULL
 API bool32 Platform_WriteEntireFile(String path, const void* data, uintsize size);
 API void Platform_FreeFileMemory(void* ptr, uintsize size);

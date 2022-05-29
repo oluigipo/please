@@ -58,14 +58,22 @@ LoadComLibrary(void)
 	return false;
 }
 
+//#include <avrt.h>
+//#pragma comment(lib, "avrt.lib")
+
 internal DWORD WINAPI
 AudioThreadProc(void* data)
 {
+	//DWORD task_index;
+	//AvSetMmThreadCharacteristicsW(L"Pro Audio", &task_index);
+	
 	while (true)
 	{
 		DWORD result = WaitForSingleObject(global_audio_event, 2000);
 		if (result != WAIT_OBJECT_0)
 			return 1;
+		
+		Trace();
 		
 		int32 frame_count = global_latency_frame_count;
 		
@@ -134,7 +142,7 @@ Win32_InitAudio(void)
 	WAVEFORMATEX* wave_format;
 	IAudioClient_GetMixFormat(global_audio_client, &wave_format);
 	
-	const REFERENCE_TIME requested_sound_duration = 10000000; // 1 second
+	const REFERENCE_TIME requested_sound_duration = 10000000;
 	uint16 bytes_per_sample = sizeof(int16);
 	uint16 bits_per_sample = bytes_per_sample * 8;
 	uint16 block_align = (uint16)global_channels * bytes_per_sample;
@@ -160,6 +168,14 @@ Win32_InitAudio(void)
 	if (result != S_OK)
 		goto error3;
 	
+#if 0
+	result = IAudioClient_GetBufferSize(global_audio_client, &global_audio_buffer_sample_count);
+	if (result != S_OK)
+		goto error3;
+	
+	global_audio_buffer_sample_count *= global_channels;
+#endif
+	
 	result = IAudioClient_GetService(global_audio_client, &IID_IAudioRenderClient, (void**)&global_audio_render_client);
 	if (result != S_OK)
 		goto error3;
@@ -172,7 +188,7 @@ Win32_InitAudio(void)
 	global_latency_frame_count = (int32)(reftime * (int64)(global_samples_per_second / global_channels) / (int64)10000000);
 	global_latency_frame_count *= 2;
 	
-	//Platform_DebugLog("%i\t%lli\n", global_latency_frame_count, reftime);
+	Platform_DebugLog("%i\t%lli\n", global_latency_frame_count, reftime);
 	
 	RWLock_Init(&global_audio_mutex);
 	

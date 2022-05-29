@@ -344,6 +344,9 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		};
 	}
 	
+	if (g->game->sound_music.samples && Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Enter))
+		g->game->playing_audios[0].frame_index = -1;
+	
 	Engine_GamepadState gamepad = g->input->gamepads[g->game->controller_index];
 	bool32 is_connected = Engine_IsGamepadConnected(g->game->controller_index);
 	

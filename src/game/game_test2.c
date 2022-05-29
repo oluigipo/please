@@ -183,7 +183,9 @@ Game_UpdateAndRender(void)
 	}
 	
 	char buf[128];
-	uintsize len = SPrintf(buf, sizeof(buf), "mouse (%.2f, %.2f)", mouse_pos[0], mouse_pos[1]);
+	uintsize len = SPrintf(buf, sizeof(buf), "mouse (%.2f, %.2f)\n%.*s",
+						   mouse_pos[0], mouse_pos[1],
+						   engine->input->keyboard.buffered_count, engine->input->keyboard.buffered);
 	engine->renderer->draw_text(&game->font, StrMake(len, buf), (vec3) { 10.0f, 10.0f }, 32.0f, GLM_VEC4_ONE, (vec3) { 0 });
 	
 	Engine_FinishFrame();
