@@ -5,6 +5,11 @@
 
 struct Arena
 {
+	// NOTE(ljre): If this arena owns it's memory, then 'page_size == 0'.
+	// This is needed to check if we can actually commit more memory.
+	//
+	// An arena created using 'Arena_FromMemory' does not own it's memory.
+	
 	uintsize reserved;
 	uintsize commited;
 	uintsize offset;
@@ -50,6 +55,22 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	return result;
 }
 
+internal Arena*
+Arena_FromMemory(void* memory, uintsize size)
+{
+	Assert(size > sizeof(Arena));
+	
+	Arena* result = memory;
+	size -= sizeof(Arena);
+	
+	result->reserved = size;
+	result->commited = size;
+	result->offset = 0;
+	result->page_size = 0;
+	
+	return result;
+}
+
 internal void
 Arena_Destroy(Arena* arena)
 { Arena_OsFree_(arena, arena->reserved + sizeof(Arena)); }
@@ -71,7 +92,12 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
 	
 	if (Unlikely(needed > arena->commited))
 	{
-		uintsize size_to_commit = AlignUp(arena->commited - needed, arena->page_size);
+		// NOTE(ljre): If we don't own this memory, just return NULL as we can't commit
+		//             more memory.
+		if (!arena->page_size)
+			return NULL;
+		
+		uintsize size_to_commit = AlignUp(needed - arena->commited, arena->page_size-1);
 		Assert(size_to_commit + arena->commited <= arena->reserved);
 		
 		Arena_OsCommit_(arena->memory + arena->commited, size_to_commit);
