@@ -40,7 +40,7 @@ void WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
 
 ReenableWarnings();
 
-//#define ENABLE_SEH_IN_MAIN
+#define ENABLE_SEH_IN_MAIN
 
 #if defined(_MSC_VER)
 #   pragma comment(lib, "kernel32.lib")
@@ -332,7 +332,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	__except (info.ExceptionPointers = GetExceptionInformation(),
 			  GetExceptionCode() == EXCEPTION_BREAKPOINT ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER)
 	{
-		HANDLE file = CreateFileW(L"minidump.bin", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		HANDLE file = CreateFileW(L"minidump.dmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 		
 		if (file)
 		{

@@ -143,7 +143,7 @@ Game_UpdateAndRender(void)
 	{
 		Arena* arena = engine->temp_arena;
 		void* saved_state = Arena_End(arena);
-		Engine_Renderer2DSprite* sprites = Arena_EndAligned(arena, 15);
+		Engine_Renderer2DSprite* sprites = Arena_EndAligned(arena, 16);
 		Engine_Renderer2DSprite* spr;
 		
 		Engine_RendererCamera camera = {
@@ -202,7 +202,7 @@ Game_Main(Engine_Data* data)
 	
 	if (!engine->game)
 	{
-		engine->game = game = Arena_PushDirty(engine->persistent_arena, sizeof(Game_Data));
+		engine->game = game = Arena_Push(engine->persistent_arena, sizeof(Game_Data));
 		Game_Init();
 	}
 	

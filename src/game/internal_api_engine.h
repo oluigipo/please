@@ -55,6 +55,8 @@ struct Engine_ButtonState
 }
 typedef Engine_ButtonState;
 
+static_assert(sizeof(Engine_ButtonState) == 1);
+
 enum Engine_KeyboardKey
 {
 	Engine_KeyboardKey_Any = 0,

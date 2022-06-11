@@ -71,6 +71,7 @@ _Pragma("GCC diagnostic pop")
 #else
 #   define alignas(x) _Alignas(x)
 #   define alignof(x) _Alignof(x)
+#   define static_assert(...) _Static_assert(__VA_ARGS__, "static_assert")
 #endif
 
 #endif //COMMON_DEFS_H

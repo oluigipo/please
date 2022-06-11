@@ -5,7 +5,7 @@
 
 struct Arena
 {
-	// NOTE(ljre): If this arena owns it's memory, then 'page_size == 0'.
+	// NOTE(ljre): If this arena owns it's memory, then 'page_size != 0'.
 	// This is needed to check if we can actually commit more memory.
 	//
 	// An arena created using 'Arena_FromMemory' does not own it's memory.
@@ -32,6 +32,10 @@ extern int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type
 #       define Arena_OsCommit_(ptr, size) mprotect(ptr,size,PROT_READ|PROT_WRITE)
 #       define Arena_OsFree_(ptr, size) munmap(ptr,size)
 #   endif
+#endif
+
+#ifndef Arena_DEFAULT_ALIGNMENT
+#   define Arena_DEFAULT_ALIGNMENT 16
 #endif
 
 internal Arena*
@@ -77,18 +81,18 @@ Arena_Destroy(Arena* arena)
 { Arena_OsFree_(arena, arena->reserved + sizeof(Arena)); }
 
 internal void*
-Arena_EndAligned(Arena* arena, uintsize alignment_mask)
+Arena_EndAligned(Arena* arena, uintsize alignment)
 {
-	arena->offset = AlignUp(arena->offset, alignment_mask);
+	arena->offset = AlignUp(arena->offset, alignment-1);
 	return arena->memory + arena->offset;
 }
 
 internal void*
-Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment_mask)
+Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 {
-	Assert(IsPowerOf2(alignment_mask+1));
+	Assert(IsPowerOf2(alignment));
 	
-	arena->offset = AlignUp(arena->offset, alignment_mask);
+	arena->offset = AlignUp(arena->offset, alignment-1);
 	uintsize needed = arena->offset + size;
 	
 	if (Unlikely(needed > arena->commited))
@@ -123,23 +127,23 @@ Arena_Pop(Arena* arena, void* ptr)
 
 internal inline void*
 Arena_PushDirty(Arena* arena, uintsize size)
-{ return Arena_PushDirtyAligned(arena, size, 15); }
+{ return Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT); }
 
 internal inline void*
-Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment_mask)
-{ return MemSet(Arena_PushDirtyAligned(arena, size, alignment_mask), 0, size); }
+Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment)
+{ return MemSet(Arena_PushDirtyAligned(arena, size, alignment), 0, size); }
 
 internal inline void*
 Arena_Push(Arena* arena, uintsize size)
-{ return MemSet(Arena_PushDirtyAligned(arena, size, 15), 0, size); }
+{ return MemSet(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), 0, size); }
 
 internal inline void*
 Arena_PushMemory(Arena* arena, const void* buf, uintsize size)
-{ return MemCopy(Arena_PushDirtyAligned(arena, size, 0), buf, size); }
+{ return MemCopy(Arena_PushDirtyAligned(arena, size, 1), buf, size); }
 
 internal inline void*
-Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment_mask)
-{ return MemCopy(Arena_PushDirtyAligned(arena, size, alignment_mask), buf, size); }
+Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment)
+{ return MemCopy(Arena_PushDirtyAligned(arena, size, alignment), buf, size); }
 
 internal inline void
 Arena_Clear(Arena* arena)
