@@ -44,6 +44,31 @@ BitClz(int32 i)
 	return result;
 }
 
+// NOTE(ljre): https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
+internal inline int32
+PopCnt64(uint64 x)
+{
+	x -= (x >> 1) & 0x5555555555555555ull;
+    x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
+    x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
+    return (x * 0x0101010101010101ull) >> 56;
+}
+
+internal inline int32
+PopCnt32(uint32 x)
+{
+	x -= (x >> 1) & 0x55555555u;
+    x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+    x = (x + (x >> 4)) & 0x0f0f0f0fu;
+    return (x * 0x01010101u) >> 24;
+}
+
+internal inline int32
+PopCnt16(uint16 x)
+{
+	return PopCnt32(x);
+}
+
 internal inline uint16
 ByteSwap16(uint16 x)
 {

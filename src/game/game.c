@@ -168,7 +168,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		
 		g->game->playing_audio_count = 0;
 		
-		if (g->game->sound_music.samples)
+		if (g->game->sound_music.sample_count)
 		{
 			g->game->playing_audios[g->game->playing_audio_count++] = (Engine_PlayingAudio) {
 				.sound = &g->game->sound_music,
@@ -331,7 +331,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	else if (Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Right))
 		g->game->controller_index = (g->game->controller_index + 1) & 15;
 	
-	if (g->game->sound_music3.samples &&
+	if (g->game->sound_music3.sample_count &&
 		g->game->playing_audio_count < ArrayLength(g->game->playing_audios) &&
 		Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Space))
 	{
@@ -344,7 +344,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		};
 	}
 	
-	if (g->game->sound_music.samples && Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Enter))
+	if (g->game->sound_music.sample_count && Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Enter))
 		g->game->playing_audios[0].frame_index = -1;
 	
 	Engine_GamepadState gamepad = g->input->gamepads[g->game->controller_index];

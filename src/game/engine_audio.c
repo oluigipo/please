@@ -5,7 +5,7 @@ InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, cons
 {
 	float32 result = samples[(int32)frame_index * channels + channel_index];
 	
-	if (frame_index+1 < sample_count)
+	if ((frame_index+1) * channels < sample_count)
 	{
 		result = glm_lerp(result,
 						  samples[((int32)frame_index + 1) * channels + channel_index],

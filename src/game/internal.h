@@ -34,7 +34,7 @@ API void Platform_DebugError(const char* msg);
 
 //~ Libraries
 DisableWarnings();
-#include <cglm/cglm.h>
+#include "ext/cglm/cglm.h"
 ReenableWarnings();
 
 //~ Tracy

@@ -142,7 +142,7 @@ internal const Engine_KeyboardKey global_keyboard_key_table[] = {
 };
 
 //~ Functions
-#include "guid_utils.h"
+#include "ext/guid_utils.h"
 
 internal inline bool32
 AreGUIDsEqual(const GUID* a, const GUID* b)
@@ -575,7 +575,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 					Engine_GamepadButton gpad;
 					int32 xinput;
 				}
-				const table[] = {
+				static const table[] = {
 					{ Engine_GamepadButton_Left, XINPUT_GAMEPAD_DPAD_LEFT },
 					{ Engine_GamepadButton_Right, XINPUT_GAMEPAD_DPAD_RIGHT },
 					{ Engine_GamepadButton_Up, XINPUT_GAMEPAD_DPAD_UP },
@@ -776,7 +776,8 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	
 	if (ConvertGuidToSDLGuid(instance, guid_str, sizeof guid_str))
 	{
-		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i) {
+		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i)
+		{
 			const GamepadMappings* map = &global_gamepadmap_database[i];
 			
 			if (MemCmp(guid_str, map->guid, ArrayLength(map->guid)) == 0)

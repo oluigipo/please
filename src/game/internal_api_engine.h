@@ -191,6 +191,8 @@ struct Engine_InputData
 #define Engine_IsUp(state, btn) (!(state).buttons[btn].is_down)
 
 API bool Engine_IsGamepadConnected(uint32 index);
+API int32 Engine_ConnectedGamepadCount(void);
+API int32 Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT]);
 
 //~ Renderer
 struct Engine_RendererCamera
@@ -263,7 +265,7 @@ typedef Engine_Renderer3DScene;
 struct Engine_Renderer2DSprite
 {
 	mat4 transform;
-	vec4 texcoords; // [top, left, width, height] normalized
+	vec4 texcoords; // [left, top, width, height] normalized
 	vec4 color;
 }
 typedef Engine_Renderer2DSprite;
