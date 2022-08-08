@@ -61,13 +61,9 @@ internal int64 global_time_frequency;
 internal int64 global_process_started_time;
 internal HWND global_window;
 internal HDC global_hdc;
-internal bool32 global_window_should_close;
-internal bool32 global_lock_cursor;
+internal bool global_lock_cursor;
 internal Platform_GraphicsContext global_graphics_context;
-internal Platform_Config global_config = { 0 };
-
-internal int32 global_window_width;
-internal int32 global_window_height;
+internal Platform_Data global_platform_data = { 0 };
 internal RECT global_monitor;
 
 //~ Internal API
@@ -124,72 +120,73 @@ Win32_LoadLibrary(const char* name)
 	return result;
 }
 
-//~ Functions
 internal void
-ProcessDeferredEvents(void)
+Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 {
-	// NOTE(ljre): Window Position & Size
+	// TODO(ljre): Update Graphics API at runtime
+	Assert(inout_data->graphics_api == global_platform_data.graphics_api);
+	
+	//- NOTE(ljre): Simple-idk-how-to-call-it data.
+	{
+		inout_data->window_should_close = global_platform_data.window_should_close;
+		inout_data->user_resized_window = global_platform_data.user_resized_window;
+		
+		if (global_platform_data.user_resized_window)
+		{
+			inout_data->window_width = global_platform_data.window_width;
+			inout_data->window_height = global_platform_data.window_height;
+		}
+	}
+	
+	//- NOTE(ljre): Window Position & Size
 	{
 		UINT flags = SWP_NOSIZE | SWP_NOMOVE;
 		
-		int32 x = global_config.window_x;
-		int32 y = global_config.window_y;
-		int32 width = global_config.window_width;
-		int32 height = global_config.window_height;
+		int32 x = inout_data->window_x;
+		int32 y = inout_data->window_y;
+		int32 width = inout_data->window_width;
+		int32 height = inout_data->window_height;
 		
-		if (width == 0)
-			width = global_window_width;
-		else
-			flags &=~ (UINT)SWP_NOSIZE;
+		if (width != global_platform_data.window_width || height != global_platform_data.window_height)
+			flags &= ~(UINT)SWP_NOSIZE;
 		
-		if (height == 0)
-			height = global_window_height;
-		else
-			flags &=~ (UINT)SWP_NOSIZE;
-		
-		if (global_config.center_window > 0)
+		if (inout_data->center_window)
 		{
-			x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
-			y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
+			inout_data->window_x = x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
+			inout_data->window_y = y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
+			inout_data->center_window = false;
 			
-			flags &=~ (UINT)SWP_NOMOVE;
+			flags &= ~(UINT)SWP_NOMOVE;
 		}
-		else if (x != 0 || y != 0)
-			flags &=~ (UINT)SWP_NOMOVE;
+		else if (x != global_platform_data.window_x || y != global_platform_data.window_y)
+			flags &= ~(UINT)SWP_NOMOVE;
 		
-		if (flags != (SWP_NOSIZE | SWP_NOMOVE))
+		if (flags)
 			SetWindowPos(global_window, NULL, x, y, width, height, flags | SWP_NOZORDER);
 	}
 	
-	// NOTE(ljre): Window Title
+	//- NOTE(ljre): Window Title
 	{
-		if (global_config.window_title.size > 0)
+		if (!String_Equals(inout_data->window_title, global_platform_data.window_title))
 		{
-			wchar_t* name = Win32_ConvertStringToWSTR(global_config.window_title, NULL, 0);
+			wchar_t* name = Win32_ConvertStringToWSTR(inout_data->window_title, NULL, 0);
 			SetWindowTextW(global_window, name);
 			HeapFree(global_heap, 0, name);
 		}
 	}
 	
-	// NOTE(ljre): Cursor
+	//- NOTE(ljre): Cursor
 	{
-		static bool32 previous_show = true;
-		bool32 show = !!(global_config.show_cursor + 1);
+		if (inout_data->show_cursor != global_platform_data.show_cursor)
+			ShowCursor(inout_data->show_cursor);
 		
-		if (global_config.show_cursor && previous_show != show)
-		{
-			ShowCursor(show);
-			previous_show = show;
-		}
-		
-		if (global_config.lock_cursor)
-		{
-			global_lock_cursor = !!(global_config.lock_cursor + 1);
-		}
+		global_lock_cursor = inout_data->lock_cursor;
 	}
 	
-	// NOTE(ljre): Reset config.
-	MemSet(&global_config, 0, sizeof(global_config));
+	//- NOTE(ljre): Sync
+	global_platform_data = *inout_data;
+	global_platform_data.user_resized_window = false;
+	//global_platform_data.window_should_close = false;
 }
 
 //~ Entry Point
@@ -198,6 +195,7 @@ ProcessDeferredEvents(void)
 #include "platform_win32_opengl.c"
 #include "platform_win32_direct3d.c"
 
+//~ Functions
 internal LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
@@ -211,13 +209,15 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_QUIT:
 		{
 			if (global_window == window)
-				global_window_should_close = true;
+				global_platform_data.window_should_close = true;
 		} break;
 		
 		case WM_SIZE:
 		{
-			global_window_width = LOWORD(lparam);
-			global_window_height = HIWORD(lparam);
+			global_platform_data.window_width = LOWORD(lparam);
+			global_platform_data.window_height = HIWORD(lparam);
+			
+			global_platform_data.user_resized_window = true;
 		} break;
 		
 		case WM_SYSKEYDOWN:
@@ -251,7 +251,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
-				global_window_should_close = true;
+				global_platform_data.window_should_close = true;
 		} break;
 		
 		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, Engine_MouseButton_Left, false); break;
@@ -289,7 +289,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 {
 	Trace();
 	
-	// NOTE(ljre): __argc and __argv - those are public symbols
+	// NOTE(ljre): __argc and __argv - those are public symbols from the CRT
 	int32 argc = __argc;
 	char** argv = __argv;
 	
@@ -303,19 +303,33 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	global_process_started_time = Win32_GetTimer();
 	global_heap = GetProcessHeap();
 	global_instance = instance;
-	global_window_should_close = false;
 	global_class_name = L"GameClassName";
 	
-	WNDCLASSW window_class = {
-		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
-		.lpfnWndProc = WindowProc,
-		.lpszClassName = global_class_name,
-		.hInstance = instance,
-		.hCursor = LoadCursorA(NULL, IDC_ARROW),
-	};
+	// NOTE(ljre): Register window class
+	{
+		WNDCLASSW window_class = {
+			.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
+			.lpfnWndProc = WindowProc,
+			.lpszClassName = global_class_name,
+			.hInstance = instance,
+			.hCursor = LoadCursorA(NULL, IDC_ARROW),
+		};
+		
+		if (!RegisterClassW(&window_class))
+			Win32_ExitWithErrorMessage(L"Could not create window class.");
+	}
 	
-	if (!RegisterClassW(&window_class))
-		Win32_ExitWithErrorMessage(L"Could not create window class.");
+	// NOTE(ljre): Get Monitor Size
+	{
+		HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
+		MONITORINFO info;
+		info.cbSize = sizeof info;
+		
+		if (GetMonitorInfoA(monitor, &info))
+		{
+			global_monitor = info.rcWork;
+		}
+	}
 	
 	//- Run
 	int32 result;
@@ -378,20 +392,48 @@ Platform_MessageBox(String title, String message)
 	Platform_HeapFree(wmessage);
 }
 
-API bool32
-Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsContext** out_graphics, Engine_InputData* input_data)
+API void
+Platform_DefaultData(Platform_Data* out_data)
+{
+	*out_data = (Platform_Data) {
+		.show_cursor = true,
+		.lock_cursor = false,
+		.center_window = true,
+		.fullscreen = false,
+		.window_should_close = false,
+		
+		.window_x = 0,
+		.window_y = 0,
+		.window_width = 800,
+		.window_height = 600,
+		.window_title = StrInit(""),
+		
+		.graphics_api = Platform_GraphicsApi_OpenGL,
+	};
+}
+
+API bool
+Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** out_graphics, Engine_InputData* input_data)
 {
 	Trace();
+	
+	if (config->center_window)
+	{
+		config->window_x = (global_monitor.right - global_monitor.left) / 2 - config->window_width / 2;
+		config->window_y = (global_monitor.bottom - global_monitor.top) / 2 - config->window_height / 2;
+		
+		config->center_window = false;
+	}
 	
 	wchar_t window_name[1024];
 	Win32_ConvertStringToWSTR(config->window_title, window_name, ArrayLength(window_name));
 	
-	bool32 ok = false;
+	bool ok = false;
 	
 	if (config->graphics_api & Platform_GraphicsApi_OpenGL)
-		ok = ok || Win32_CreateOpenGLWindow(config->window_width, config->window_height, window_name);
+		ok = ok || Win32_CreateOpenGLWindow(config, window_name);
 	if (config->graphics_api & Platform_GraphicsApi_Direct3D)
-		ok = ok || Win32_CreateDirect3DWindow(config->window_width, config->window_height, window_name);
+		ok = ok || Win32_CreateDirect3DWindow(config, window_name);
 	
 	if (ok)
 	{
@@ -400,34 +442,19 @@ Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsCont
 			DBT_DEVTYP_DEVICEINTERFACE
 		};
 		
-		if (NULL == RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
+		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 		{
 			// TODO
 		}
 		
-		global_window_width = config->window_width;
-		global_window_height = config->window_height;
-		
-		// NOTE(ljre): Get Monitor Size
-		{
-			HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
-			MONITORINFO info;
-			info.cbSize = sizeof info;
-			
-			if (GetMonitorInfoA(monitor, &info))
-			{
-				global_monitor = info.rcWork;
-			}
-		}
-		
 		Win32_InitInput();
 		Win32_InitAudio();
-		global_config.center_window = config->center_window;
-		global_config.show_cursor = config->show_cursor;
-		global_config.lock_cursor = config->lock_cursor;
+		config->user_resized_window = false;
+		config->window_should_close = false;
+		global_platform_data = *config;
 		
 		MemSet(input_data, 0, sizeof(*input_data));
-		Platform_PollEvents(input_data);
+		Platform_PollEvents(config, input_data);
 		
 		*out_graphics = &global_graphics_context;
 		
@@ -435,24 +462,6 @@ Platform_CreateWindow(const Platform_Config* config, const Platform_GraphicsCont
 	}
 	
 	return ok;
-}
-
-API bool32
-Platform_WindowShouldClose(void)
-{ return global_window_should_close; }
-
-API int32
-Platform_WindowWidth(void)
-{ return global_window_width; }
-
-API int32
-Platform_WindowHeight(void)
-{ return global_window_height; }
-
-API void
-Platform_UpdateConfig(const Platform_Config* config)
-{
-	MemCopy(&global_config, config, sizeof(global_config));
 }
 
 API float64
@@ -463,14 +472,14 @@ Platform_GetTime(void)
 }
 
 API void
-Platform_PollEvents(Engine_InputData* out_input_data)
+Platform_PollEvents(Platform_Data* inout_data, Engine_InputData* out_input_data)
 {
 	Trace();
 	
 	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)out_input_data);
 	
 	Win32_UpdateInputPre(out_input_data);
-	ProcessDeferredEvents();
+	Win32_UpdatePlatformConfigIfNeeded(inout_data);
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -597,7 +606,7 @@ Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 	return memory;
 }
 
-API bool32
+API bool
 Platform_WriteEntireFile(String path, const void* data, uintsize size)
 {
 	Trace(); TraceText(path);

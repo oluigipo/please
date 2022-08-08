@@ -507,14 +507,14 @@ Win32_OpenGLSwapBuffers(void)
 }
 
 internal bool32
-Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
+Win32_CreateOpenGLWindow(const Platform_Data* config, const wchar_t* title)
 {
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-								  CW_USEDEFAULT, CW_USEDEFAULT,
-								  width, height,
+								  config->window_x, config->window_y,
+								  config->window_width, config->window_height,
 								  NULL, NULL, global_instance, NULL);
 	
 	if (!window)
@@ -640,7 +640,6 @@ Win32_CreateOpenGLWindow(int32 width, int32 height, const wchar_t* title)
 	
 	// Make Current
 	global_opengl.wglMakeContextCurrentARB(hdc, hdc, global_opengl.context);
-	//global_opengl.wglDeleteContext(dummy_context);
 	
 	// Load All Function
 	if (!LoadOpenGLFunctions())

@@ -136,8 +136,8 @@ MemCopy(void* restrict dst, const void* restrict src, uintsize size)
 #elif defined(_MSC_VER)
 	__movsb(dst, src, size);
 #else
-	uint8* restrict d = dst;
-	const uint8* restrict s = src;
+	uint8* restrict d = (uint8*)dst;
+	const uint8* restrict s = (const uint8*)src;
 	while (size--)
 		*d++ = *s++;
 #endif
@@ -156,7 +156,7 @@ MemSet(void* restrict dst, uint8 byte, uintsize size)
 #elif defined(_MSC_VER)
 	__stosb(dst, byte, size);
 #else
-	uint8* restrict d = dst;
+	uint8* restrict d = (uint8*)dst;
 	while (size--)
 		*d++ = byte;
 #endif
@@ -167,8 +167,8 @@ MemSet(void* restrict dst, uint8 byte, uintsize size)
 internal inline void*
 MemMove(void* dst, const void* src, uintsize size)
 {
-	uint8* d = dst;
-	const uint8* s = src;
+	uint8* d = (uint8*)dst;
+	const uint8* s = (const uint8*)src;
 	
 	if (d <= s)
 	{
@@ -200,15 +200,15 @@ MemMove(void* dst, const void* src, uintsize size)
 internal inline int32
 MemCmp(const void* left_, const void* right_, uintsize size)
 {
-    const uint8* left = left_;
-    const uint8* right = right_;
+    const uint8* left = (const uint8*)left_;
+    const uint8* right = (const uint8*)right_;
 	
     while (size >= 16)
     {
         __m128i ldata, rdata;
 		
-        ldata = _mm_loadu_si128((void*)left);
-        rdata = _mm_loadu_si128((void*)right);
+        ldata = _mm_loadu_si128((const __m128i_u*)left);
+        rdata = _mm_loadu_si128((const __m128i_u*)right);
 		
         int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(ldata, rdata));
         cmp = ~cmp & 0xffff;

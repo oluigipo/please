@@ -45,7 +45,7 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	Assert(reserved > 0);
 	
 	reserved = AlignUp(reserved, page_size-1);
-	Arena* result = Arena_OsReserve_(reserved + sizeof(Arena));
+	Arena* result = (Arena*)Arena_OsReserve_(reserved + sizeof(Arena));
 	if (result)
 	{
 		Arena_OsCommit_(result, sizeof(Arena) + page_size);
@@ -65,7 +65,7 @@ Arena_FromMemory(void* memory, uintsize size)
 	Assert(size > sizeof(Arena));
 	Assert(((uintptr)memory & ~15) == (uintptr)memory);
 	
-	Arena* result = memory;
+	Arena* result = (Arena*)memory;
 	size -= sizeof(Arena);
 	
 	result->reserved = size;
@@ -118,7 +118,7 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 internal void
 Arena_Pop(Arena* arena, void* ptr)
 {
-	uint8* p = ptr;
+	uint8* p = (uint8*)ptr;
 	Assert(p >= arena->memory && p <= arena->memory + arena->offset);
 	
 	uintsize new_offset = p - arena->memory;

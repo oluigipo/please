@@ -8,7 +8,7 @@
 
 
 internal bool
-D3D11_Init(const Engine_RendererApi** out_api)
+D3D11_Init(const Engine_RenderApi** out_api)
 {
 	Trace();
 	

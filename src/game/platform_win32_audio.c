@@ -38,7 +38,7 @@ internal HANDLE global_audio_thread;
 internal RWLock global_audio_mutex;
 
 //~ Functions
-internal bool32
+internal bool
 LoadComLibrary(void)
 {
 	HMODULE library = Win32_LoadLibrary("ole32.dll");
@@ -290,7 +290,7 @@ Platform_CloseSoundBuffer(int16* sound_buffer)
 	RWLock_UnlockWrite(&global_audio_mutex);
 }
 
-API bool32
+API bool
 Platform_IsAudioAvailable(void)
 {
 	return global_audio_is_initialized;

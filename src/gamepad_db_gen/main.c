@@ -22,7 +22,7 @@ IsHexChar(char c)
 }
 
 internal int32
-AsHexChar(char c);
+AsHexChar(char c)
 {
 	if (c >= 'a')
 		return c - 'a' + 10;
@@ -119,9 +119,9 @@ Process(Arena* arena, const char* input_data, const char* input_name, FILE* outf
 				Write(&w, "'%c',", guid[i]);
 			Write(&w, "},");
 			
-			Write(&w, "},");
 			//
 			
+			Write(&w, "},");
 			DoneWriting(&w, outfile);
 		}
 		

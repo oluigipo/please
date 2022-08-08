@@ -78,14 +78,14 @@ Win32_Direct3DSwapBuffers(void)
 }
 
 internal bool32
-Win32_CreateDirect3DWindow(int32 width, int32 height, const wchar_t* title)
+Win32_CreateDirect3DWindow(const Platform_Data* config, const wchar_t* title)
 {
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-								  CW_USEDEFAULT, CW_USEDEFAULT,
-								  width, height,
+								  config->window_x, config->window_y,
+								  config->window_width, config->window_height,
 								  NULL, NULL, global_instance, NULL);
 	
 	if (!window)

@@ -3,20 +3,23 @@
 
 //~ Main Data
 struct Engine_Data typedef Engine_Data;
-struct Engine_RendererApi typedef Engine_RendererApi;
+struct Engine_RenderApi typedef Engine_RenderApi;
 struct Engine_InputData typedef Engine_InputData;
 
 struct Game_Data typedef Game_Data;
+
 struct Platform_GraphicsContext typedef Platform_GraphicsContext;
+struct Platform_Data typedef Platform_Data;
 
 struct Engine_Data
 {
 	Arena* persistent_arena;
 	Arena* temp_arena;
 	Game_Data* game;
+	Platform_Data* platform;
 	
 	const Platform_GraphicsContext* graphics_context;
-	const Engine_RendererApi* renderer;
+	const Engine_RenderApi* render;
 	Engine_InputData* input;
 	
 	float32 delta_time;
@@ -194,22 +197,7 @@ API bool Engine_IsGamepadConnected(uint32 index);
 API int32 Engine_ConnectedGamepadCount(void);
 API int32 Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT]);
 
-//~ Renderer
-struct Engine_RendererCamera
-{
-	vec3 pos;
-	
-	union
-	{
-		// NOTE(ljre): 2D Stuff
-		struct { vec2 size; float32 zoom; float32 angle; };
-		
-		// NOTE(ljre): 3D Stuff
-		struct { vec3 dir; vec3 up; };
-	};
-}
-typedef Engine_RendererCamera;
-
+//~ OLD Renderer
 struct Engine_Renderer3DPointLight
 {
 	vec3 position;
@@ -262,44 +250,13 @@ struct Engine_Renderer3DScene
 }
 typedef Engine_Renderer3DScene;
 
-struct Engine_Renderer2DSprite
-{
-	mat4 transform;
-	vec4 texcoords; // [left, top, width, height] normalized
-	vec4 color;
-}
-typedef Engine_Renderer2DSprite;
+struct Render_Camera2D typedef Render_Camera2D;
+struct Render_Camera3D typedef Render_Camera3D;
 
-struct Engine_Renderer2DLayer
-{
-	Asset_Texture* texture;
-	
-	uintsize sprite_count;
-	Engine_Renderer2DSprite* sprites;
-}
-typedef Engine_Renderer2DLayer;
-
-API void Engine_CalcViewMatrix2D(const Engine_RendererCamera* camera, mat4 out_view);
-API void Engine_CalcViewMatrix3D(const Engine_RendererCamera* camera, mat4 out_view, float32 fov, float32 aspect);
+API void Engine_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view);
+API void Engine_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect);
 API void Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view);
 API void Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view);
-API void Engine_CalcPointInCamera2DSpace(const Engine_RendererCamera* camera, const vec2 pos, vec2 out_pos);
-
-struct Engine_RendererApi
-{
-	bool (*load_font_from_file)(String path, Asset_Font* out_font);
-	bool (*load_3dmodel_from_file)(String path, Asset_3DModel* out_model);
-	bool (*load_texture_from_file)(String path, Asset_Texture* out_texture);
-	bool (*load_texture_array_from_file)(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height);
-	
-	void (*clear_background)(float32 r, float32 g, float32 b, float32 a);
-	void (*begin)(void);
-	void (*draw_rectangle)(vec4 color, vec3 pos, vec3 size, vec3 alignment);
-	void (*draw_texture)(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color);
-	void (*draw_text)(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment);
-	
-	void (*draw_3dscene)(Engine_Renderer3DScene* scene, const Engine_RendererCamera* camera);
-	void (*draw_2dlayer)(const Engine_Renderer2DLayer* layer, const Engine_RendererCamera* camera);
-};
+API void Engine_CalcPointInCamera2DSpace(const Render_Camera2D* camera, const vec2 pos, vec2 out_pos);
 
 #endif //INTERNAL_API_ENGINE_H

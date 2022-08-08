@@ -44,7 +44,7 @@ struct Game_Data
 	float32 moving_time;
 	vec2 camera_speed;
 	
-	Engine_RendererCamera render_camera;
+	Render_Camera3D render_camera;
 	
 	// NOTE(ljre): Models to render
 	Engine_Renderer3DModel* render_models;
@@ -79,22 +79,22 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 	
 	// NOTE(ljre): Draw Axes
 	{
-		engine->renderer->draw_rectangle(black,
-										 (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-										 (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
+		engine->render->draw_rectangle(black,
+									   (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+									   (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
-		engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_LS)],
-										 (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
-											 y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
-										 (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
+		engine->render->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_LS)],
+									   (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
+										   y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
+									   (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
 		
-		engine->renderer->draw_rectangle(black,
-										 (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-										 (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
+		engine->render->draw_rectangle(black,
+									   (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+									   (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
-		engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_RS)],
-										 (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
-										 (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
+		engine->render->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_RS)],
+									   (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
+									   (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
 	}
 	
 	// NOTE(ljre): Draw Buttons
@@ -128,7 +128,7 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 			buttons[i].size[0] *= xscale;
 			buttons[i].size[1] *= yscale;
 			
-			engine->renderer->draw_rectangle(colors[Engine_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size, alignment);
+			engine->render->draw_rectangle(colors[Engine_IsDown(*gamepad, i)], buttons[i].pos, buttons[i].size, alignment);
 		}
 	}
 	
@@ -137,14 +137,14 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 		vec4 color;
 		
 		glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
-		engine->renderer->draw_rectangle(color,
-										 (vec3) { x + width * 0.20f, y + height * 0.23f },
-										 (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
+		engine->render->draw_rectangle(color,
+									   (vec3) { x + width * 0.20f, y + height * 0.23f },
+									   (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
 		
 		glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
-		engine->renderer->draw_rectangle(color,
-										 (vec3) { x + width * 0.80f, y + height * 0.23f },
-										 (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
+		engine->render->draw_rectangle(color,
+									   (vec3) { x + width * 0.80f, y + height * 0.23f },
+									   (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
 	}
 }
 
@@ -155,11 +155,11 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	{
 		Trace(); TraceName(Str("Init"));
 		
-		if (!engine->renderer->load_3dmodel_from_file(Str("./assets/cube.glb"), &g->game->model))
+		if (!engine->render->load_3dmodel_from_file(Str("./assets/cube.glb"), &g->game->model))
 			Platform_ExitWithErrorMessage(Str("Could not load cube located in 'assets/cube.sobj'. Are you running this program on the build directory or repository directory? Make sure it's on the repository one."));
-		if (!engine->renderer->load_3dmodel_from_file(Str("./assets/first_tree.glb"), &g->game->tree_model))
+		if (!engine->render->load_3dmodel_from_file(Str("./assets/first_tree.glb"), &g->game->tree_model))
 			Platform_ExitWithErrorMessage(Str("Could not load tree model :("));
-		if (!engine->renderer->load_3dmodel_from_file(Str("./assets/corset.glb"), &g->game->corset_model))
+		if (!engine->render->load_3dmodel_from_file(Str("./assets/corset.glb"), &g->game->corset_model))
 			Platform_ExitWithErrorMessage(Str("Could not load corset model :("));
 		
 		// NOTE(ljre): Load Audio
@@ -189,7 +189,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		g->game->moving_time = 0.0f;
 		glm_vec2_zero(g->game->camera_speed);
 		
-		g->game->render_camera = (Engine_RendererCamera) {
+		g->game->render_camera = (Render_Camera3D) {
 			.pos = { 0.0f, g->game->camera_height, 0.0f },
 			.dir = { 0.0f, 0.0f, -1.0f },
 			.up = { 0.0f, 1.0f, 0.0f },
@@ -323,7 +323,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	Trace(); TraceName(Str("Game Loop"));
 	void* memory_state = Arena_End(g->temp_arena);
 	
-	if (Platform_WindowShouldClose() || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
+	if (engine->platform->window_should_close || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
 		g->running = false;
 	
 	if (Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Left))
@@ -348,7 +348,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		g->game->playing_audios[0].frame_index = -1;
 	
 	Engine_GamepadState gamepad = g->input->gamepads[g->game->controller_index];
-	bool32 is_connected = Engine_IsGamepadConnected(g->game->controller_index);
+	bool is_connected = Engine_IsGamepadConnected(g->game->controller_index);
 	
 	float32 dt = g->delta_time;
 	
@@ -410,13 +410,13 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	}
 	
 	if (is_connected)
-		engine->renderer->clear_background(0.1f, 0.15f, 0.3f, 1.0f);
+		engine->render->clear_background(0.1f, 0.15f, 0.3f, 1.0f);
 	else
-		engine->renderer->clear_background(0.0f, 0.0f, 0.0f, 1.0f);
+		engine->render->clear_background(0.0f, 0.0f, 0.0f, 1.0f);
 	
 	//~ NOTE(ljre): 3D World
 	float32 t = (float32)Platform_GetTime();
-	engine->renderer->begin();
+	engine->render->begin();
 	
 	for (int32 i = 0; i < g->game->rotating_cube_count; ++i)
 	{
@@ -432,7 +432,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		glm_rotate(g->game->render_rotating_cubes[i].transform, t + i, (vec3) { 0.0f, 1.0f, 0.0f });
 	}
 	
-	engine->renderer->draw_3dscene(&g->game->render_scene, &g->game->render_camera);
+	engine->render->draw_3dscene(&g->game->render_scene, &g->game->render_camera);
 	
 	//~ NOTE(ljre): 2D User Interface
 	//- NOTE(ljre): Draw Controller Index
@@ -440,9 +440,9 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	
 	char buf[128];
 	SPrintf(buf, sizeof buf, "Controller Index: %i", g->game->controller_index);
-	engine->renderer->draw_text(&g->game->font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, white, (vec3) { 0 });
+	engine->render->draw_text(&g->game->font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, white, (vec3) { 0 });
 	
-	engine->renderer->draw_text(&g->game->font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, white, (vec3) { 0 });
+	engine->render->draw_text(&g->game->font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, white, (vec3) { 0 });
 	
 	if (is_connected)
 		DrawGamepadLayout(&gamepad, 0.0f, 0.0f, 300.0f, 300.0f);
@@ -485,7 +485,7 @@ DrawMenuButton(Game_Data* game, Game_MenuButton* button, Engine_MouseState* mous
 			color = highlight_pressed;
 	}
 	
-	engine->renderer->draw_rectangle(color, button->position, button->size, (vec3) { 0 });
+	engine->render->draw_rectangle(color, button->position, button->size, (vec3) { 0 });
 	
 	vec3 pos = {
 		button->position[0] + button->size[0] / 2.0f,
@@ -494,7 +494,7 @@ DrawMenuButton(Game_Data* game, Game_MenuButton* button, Engine_MouseState* mous
 	
 	vec3 alignment = { -0.5f, -0.5f, 0.0f };
 	
-	engine->renderer->draw_text(&game->font, button->text, pos, 24.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, alignment);
+	engine->render->draw_text(&game->font, button->text, pos, 24.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, alignment);
 }
 
 API void
@@ -508,7 +508,7 @@ Game_Main(Engine_Data* g)
 		g->game = Arena_Push(g->persistent_arena, sizeof(Game_Data));
 		g->game->state = Game_State_Menu;
 		
-		bool32 font_loaded = engine->renderer->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &g->game->font);
+		bool32 font_loaded = engine->render->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &g->game->font);
 		if (!font_loaded)
 			Platform_ExitWithErrorMessage(Str("Could not load the default font :("));
 		
@@ -537,7 +537,7 @@ Game_Main(Engine_Data* g)
 			
 			Engine_MouseState mouse = g->input->mouse;
 			
-			if (Platform_WindowShouldClose() || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
+			if (engine->platform->window_should_close || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
 				g->running = false;
 			
 			if (Engine_IsReleased(mouse, Engine_MouseButton_Left))
@@ -554,10 +554,10 @@ Game_Main(Engine_Data* g)
 			
 			//~ NOTE(ljre): Render Menu
 			{
-				engine->renderer->begin();
+				engine->render->begin();
 				
-				engine->renderer->clear_background(0.0f, 0.0f, 0.0f, 1.0f);
-				engine->renderer->draw_text(&g->game->font, Str("Welcome!\nThose are buttons"), (vec3) { 10.0f, 10.0f }, 32.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, (vec3) { 0 });
+				engine->render->clear_background(0.0f, 0.0f, 0.0f, 1.0f);
+				engine->render->draw_text(&g->game->font, Str("Welcome!\nThose are buttons"), (vec3) { 10.0f, 10.0f }, 32.0f, (vec4) { 1.0f, 1.0f, 1.0f, 1.0f }, (vec3) { 0 });
 				
 				DrawMenuButton(g->game, &button_3dscene, &mouse);
 				DrawMenuButton(g->game, &button_quit, &mouse);

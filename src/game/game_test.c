@@ -432,9 +432,9 @@ Game_Init(Game_Data* game)
 		.selected_troop_index = -1,
 	};
 	
-	if (!engine->renderer->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &game->font))
+	if (!engine->render->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &game->font))
 		Platform_ExitWithErrorMessage(Str("Could not load font './assets/FalstinRegular-XOr2.ttf'."));
-	if (!engine->renderer->load_texture_from_file(Str("./assets/base_texture.png"), &game->base_texture))
+	if (!engine->render->load_texture_from_file(Str("./assets/base_texture.png"), &game->base_texture))
 		Platform_ExitWithErrorMessage(Str("Could not load sprites from file './assets/base_texture.png'."));
 	
 	game->discord.activity = (struct DiscordActivity) {
@@ -521,13 +521,13 @@ Game_UpdateAndRender(void)
 {
 	Engine_MouseState mouse = engine->input->mouse;
 	
-	if (Engine_IsPressed(engine->input->keyboard, Engine_KeyboardKey_Escape) || Platform_WindowShouldClose())
+	if (Engine_IsPressed(engine->input->keyboard, Engine_KeyboardKey_Escape) || engine->platform->window_should_close)
 		engine->running = false;
 	
 	//~ NOTE(ljre): Update
-	Engine_RendererCamera camera = {
+	Render_Camera2D camera = {
 		.pos = { game->camera_pos[0], game->camera_pos[1] },
-		.size = { Platform_WindowWidth(), Platform_WindowHeight() },
+		.size = { engine->platform->window_width, engine->platform->window_height },
 		.zoom = game->camera_zoom*game->camera_zoom * 9.0f + 1.0f,
 	};
 	
@@ -659,8 +659,8 @@ Game_UpdateAndRender(void)
 	}
 	
 	//~ NOTE(ljre): Render
-	engine->renderer->begin();
-	engine->renderer->clear_background(0.1f, 0.1f, 0.1f, 1.0f);
+	engine->render->begin();
+	engine->render->clear_background(0.1f, 0.1f, 0.1f, 1.0f);
 	
 	const int32 table_size = 20;
 	
@@ -668,8 +668,8 @@ Game_UpdateAndRender(void)
 		+ ArrayLength(game->players[0].troops) * ArrayLength(game->players)
 		+ 1 + (game->selected_troop_index != -1);
 	
-	Engine_Renderer2DSprite* sprites = Arena_Push(engine->temp_arena, sizeof(*sprites) * sprite_count);
-	Engine_Renderer2DSprite* spr = sprites;
+	Render_Data2DInstance* sprites = Arena_Push(engine->temp_arena, sizeof(*sprites) * sprite_count);
+	Render_Data2DInstance* spr = sprites;
 	
 	for (int32 y = 0; y < table_size; ++y)
 	{
@@ -775,17 +775,18 @@ Game_UpdateAndRender(void)
 		++spr;
 	}
 	
-	Engine_Renderer2DLayer layer = {
+	Render_Data2D render_data = {
 		.texture = &game->base_texture,
-		.sprite_count = sprite_count,
-		.sprites = sprites,
+		.camera = camera,
+		.instance_count = sprite_count,
+		.instances = sprites,
 	};
 	
-	engine->renderer->draw_2dlayer(&layer, &camera);
+	Render_Draw2D(engine, &render_data);
 	
 	char buff[256];
 	SPrintf(buff, sizeof(buff), "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
-	engine->renderer->draw_text(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
+	engine->render->draw_text(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
 	ProcessDiscordEvents();
 	Engine_FinishFrame();

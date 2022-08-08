@@ -710,8 +710,8 @@ OpenGL_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 internal void
 OpenGL_Begin(void)
 {
-	int32 width = Platform_WindowWidth();
-	int32 height = Platform_WindowHeight();
+	int32 width = global_engine.platform->window_width;
+	int32 height = global_engine.platform->window_height;
 	
 	GL.glViewport(0, 0, width, height);
 }
@@ -723,8 +723,8 @@ OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 	
 	mat4 view;
 	{
-		int32 width = Platform_WindowWidth();
-		int32 height = Platform_WindowHeight();
+		int32 width = global_engine.platform->window_width;
+		int32 height = global_engine.platform->window_height;
 		
 		mat4 proj;
 		glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
@@ -932,8 +932,8 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	
 	mat4 view;
 	{
-		int32 width = Platform_WindowWidth();
-		int32 height = Platform_WindowHeight();
+		int32 width = global_engine.platform->window_width;
+		int32 height = global_engine.platform->window_height;
 		
 		mat4 proj;
 		glm_ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f, proj);
@@ -989,86 +989,6 @@ OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat
 	GL.glUniform1i(global_ogl_uniform->texture, 0);
 	
 	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-}
-
-internal void
-OpenGL_DrawLayer2D(const Engine_Renderer2DLayer* layer, const Engine_RendererCamera* camera)
-{
-	Trace();
-	
-	mat4 view;
-	Engine_CalcViewMatrix2D(camera, view);
-	
-	// NOTE(ljre): Render layers
-	uint32 vbo, vao;
-	uintsize count = layer->sprite_count;
-	uintsize size = count * sizeof(Engine_Renderer2DSprite);
-	
-	Assert(count <= INT32_MAX);
-	
-	// NOTE(ljre): Config OpenGL State
-	GL.glDisable(GL_DEPTH_TEST);
-	GL.glDisable(GL_CULL_FACE);
-	
-	//- NOTE(ljre): Build Batch
-	{
-		GL.glGenVertexArrays(1, &vao);
-		GL.glBindVertexArray(vao);
-		
-		GL.glBindBuffer(GL_ARRAY_BUFFER, global_ogl_quad_vbo);
-		GL.glEnableVertexAttribArray(0);
-		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, position));
-		GL.glEnableVertexAttribArray(1);
-		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, normal));
-		GL.glEnableVertexAttribArray(2);
-		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, texcoord));
-		
-		GL.glGenBuffers(1, &vbo);
-		
-		GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		GL.glBufferData(GL_ARRAY_BUFFER, size, layer->sprites, GL_STATIC_DRAW);
-		
-		GL.glEnableVertexAttribArray(4);
-		GL.glVertexAttribDivisor(4, 1);
-		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, color));
-		GL.glEnableVertexAttribArray(5);
-		GL.glVertexAttribDivisor(5, 1);
-		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, texcoords));
-		GL.glEnableVertexAttribArray(6);
-		GL.glVertexAttribDivisor(6, 1);
-		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[0]));
-		GL.glEnableVertexAttribArray(7);
-		GL.glVertexAttribDivisor(7, 1);
-		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[1]));
-		GL.glEnableVertexAttribArray(8);
-		GL.glVertexAttribDivisor(8, 1);
-		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[2]));
-		GL.glEnableVertexAttribArray(9);
-		GL.glVertexAttribDivisor(9, 1);
-		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(Engine_Renderer2DSprite), (void*)offsetof(Engine_Renderer2DSprite, transform[3]));
-	}
-	
-	//- NOTE(ljre): Render Batch
-	{
-		OpenGL_BindShader_(&global_ogl_default_spriteshader);
-		
-		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
-		GL.glUniform1i(global_ogl_uniform->texture, 0);
-		
-		GL.glActiveTexture(GL_TEXTURE0);
-		GL.glBindTexture(GL_TEXTURE_2D, layer->texture->id);
-		
-		GL.glBindVertexArray(vao);
-		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
-		
-		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, (int32)count);
-	}
-	
-	//- NOTE(ljre): Free Batch
-	{
-		GL.glDeleteBuffers(1, &vbo);
-		GL.glDeleteVertexArrays(1, &vao);
-	}
 }
 
 internal bool
@@ -1329,8 +1249,8 @@ OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 	
 	if (!scene->gbuffer)
 	{
-		int32 width = Platform_WindowWidth();
-		int32 height = Platform_WindowHeight();
+		int32 width = global_engine.platform->window_width;
+		int32 height = global_engine.platform->window_height;
 		
 		GL.glGenFramebuffers(1, &scene->gbuffer);
 		GL.glBindFramebuffer(GL_FRAMEBUFFER, scene->gbuffer);
@@ -1376,7 +1296,7 @@ OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 }
 
 internal void
-OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* camera)
+OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Render_Camera3D* camera)
 {
 	Trace();
 	
@@ -1386,8 +1306,8 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 	mat4 matrix;
 	mat4 inversed;
 	mat4 light_space_matrix;
-	int32 width = Platform_WindowWidth();
-	int32 height = Platform_WindowHeight();
+	int32 width = global_engine.platform->window_width;
+	int32 height = global_engine.platform->window_height;
 	
 	//~ NOTE(ljre): Setup
 	{
@@ -1642,11 +1562,118 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Engine_RendererCamera* c
 	}
 }
 
+//~ NOTE(ljre): NEW API
+internal void
+OpenGL_ClearColor(const vec4 color)
+{
+	GL.glClearColor(color[0], color[1], color[2], color[3]);
+	GL.glClear(GL_COLOR_BUFFER_BIT);
+}
+
+internal void
+OpenGL_Draw2D(const Render_Data2D* data)
+{
+	Trace();
+	
+	mat4 view;
+	Engine_CalcViewMatrix2D(&data->camera, view);
+	
+	uint32 vbo, vao;
+	uintsize count = data->instance_count;
+	uintsize size = count * sizeof(Render_Data2DInstance);
+	Assert(count <= INT32_MAX);
+	
+	uint32 texture_id = global_ogl_default_diffuse_texture;
+	if (data->texture)
+		texture_id = data->texture->id;
+	
+	// NOTE(ljre): Config OpenGL State
+	GL.glViewport(0, 0, global_engine.platform->window_width, global_engine.platform->window_height);
+	GL.glDisable(GL_DEPTH_TEST);
+	GL.glDisable(GL_CULL_FACE);
+	GL.glEnable(GL_BLEND);
+	
+	switch (data->blendmode)
+	{
+		case Render_BlendMode_Normal: GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
+		case Render_BlendMode_Add: GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE); break;
+		case Render_BlendMode_Subtract: GL.glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR); break;
+		
+		case Render_BlendMode_None: GL.glDisable(GL_BLEND); break;
+		default: Unreachable(); break;
+	}
+	
+	//- NOTE(ljre): Build Batch
+	{
+		GL.glGenVertexArrays(1, &vao);
+		GL.glBindVertexArray(vao);
+		
+		GL.glBindBuffer(GL_ARRAY_BUFFER, global_ogl_quad_vbo);
+		GL.glEnableVertexAttribArray(0);
+		GL.glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, position));
+		GL.glEnableVertexAttribArray(1);
+		GL.glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, normal));
+		GL.glEnableVertexAttribArray(2);
+		GL.glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(OpenGL_Vertex), (void*)offsetof(OpenGL_Vertex, texcoord));
+		
+		GL.glGenBuffers(1, &vbo);
+		
+		GL.glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		GL.glBufferData(GL_ARRAY_BUFFER, size, data->instances, GL_STATIC_DRAW);
+		
+		GL.glEnableVertexAttribArray(4);
+		GL.glVertexAttribDivisor(4, 1);
+		GL.glVertexAttribPointer(4, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, color));
+		GL.glEnableVertexAttribArray(5);
+		GL.glVertexAttribDivisor(5, 1);
+		GL.glVertexAttribPointer(5, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, texcoords));
+		GL.glEnableVertexAttribArray(6);
+		GL.glVertexAttribDivisor(6, 1);
+		GL.glVertexAttribPointer(6, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, transform[0]));
+		GL.glEnableVertexAttribArray(7);
+		GL.glVertexAttribDivisor(7, 1);
+		GL.glVertexAttribPointer(7, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, transform[1]));
+		GL.glEnableVertexAttribArray(8);
+		GL.glVertexAttribDivisor(8, 1);
+		GL.glVertexAttribPointer(8, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, transform[2]));
+		GL.glEnableVertexAttribArray(9);
+		GL.glVertexAttribDivisor(9, 1);
+		GL.glVertexAttribPointer(9, 4, GL_FLOAT, false, sizeof(Render_Data2DInstance), (void*)offsetof(Render_Data2DInstance, transform[3]));
+	}
+	
+	//- NOTE(ljre): Render Batch
+	{
+		OpenGL_BindShader_(&global_ogl_default_spriteshader);
+		
+		GL.glUniformMatrix4fv(global_ogl_uniform->view, 1, false, (float32*)view);
+		GL.glUniform1i(global_ogl_uniform->texture, 0);
+		
+		GL.glActiveTexture(GL_TEXTURE0);
+		GL.glBindTexture(GL_TEXTURE_2D, texture_id);
+		
+		GL.glBindVertexArray(vao);
+		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_ogl_quad_ebo);
+		
+		GL.glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, (int32)count);
+	}
+	
+	//- NOTE(ljre): Free Batch
+	{
+		GL.glDeleteBuffers(1, &vbo);
+		GL.glDeleteVertexArrays(1, &vao);
+	}
+}
+
 //~ Internal API
 internal bool
-OpenGL_Init(const Engine_RendererApi** out_api)
+OpenGL_Init(const Engine_RenderApi** out_api)
 {
-	static const Engine_RendererApi vtable = {
+	static const Engine_RenderApi vtable = {
+		// NOTE(ljre): NEW API
+		.clear_color = OpenGL_ClearColor,
+		.draw_2d = OpenGL_Draw2D,
+		
+		// NOTE(ljre): OLD API
 		.load_font_from_file = OpenGL_LoadFontFromFile,
 		.load_3dmodel_from_file = OpenGL_Load3DModelFromFile,
 		.load_texture_from_file = OpenGL_LoadTextureFromFile,
@@ -1659,13 +1686,12 @@ OpenGL_Init(const Engine_RendererApi** out_api)
 		.draw_text = OpenGL_DrawText,
 		
 		.draw_3dscene = OpenGL_Draw3DScene,
-		.draw_2dlayer = OpenGL_DrawLayer2D,
 	};
 	
 	*out_api = &vtable;
 	
-	int32 width = Platform_WindowWidth();
-	int32 height = Platform_WindowHeight();
+	int32 width = global_engine.platform->window_width;
+	int32 height = global_engine.platform->window_height;
 	
 #ifdef DEBUG
 	GL.glEnable(GL_DEBUG_OUTPUT);
