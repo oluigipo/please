@@ -141,7 +141,7 @@ internal bool32
 CollisionPointAabb(const vec2 point, const vec2 sqr, float32 size)
 {
 	return (point[0] > sqr[0] && sqr[0] + size > point[0] &&
-			point[1] > sqr[1] && sqr[1] + size > point[1]);
+		point[1] > sqr[1] && sqr[1] + size > point[1]);
 }
 
 internal float32
@@ -507,13 +507,36 @@ Game_Init(Game_Data* game)
 internal void
 ProcessDiscordEvents(void)
 {
-	if (0 && game->discord.connected)
+	void* temp_arena_save = Arena_End(engine->temp_arena);
+	
+	if (game->discord.connected)
 	{
-		if (!game->discord.lobby.id && !game->discord.connecting_to_lobby)
-			PlsDiscord_CreateLobby(&game->discord);
+		PlsDiscord_Event* event = NULL;
+		PlsDiscord_EarlyUpdate(&game->discord, engine->temp_arena, &event);
+		
+		for (; event; event = event->next)
+		{
+			switch (event->kind)
+			{
+				case PlsDiscord_EventKind_OnCurrentUserUpdate:
+				{
+					if (event->on_current_user_update.result != DiscordResult_Ok)
+					{
+						Platform_DebugLog("Discord: OnCurrentUserUpdate event failed.");
+						break;
+					}
+					
+					struct DiscordUser user = event->on_current_user_update.state;
+					
+					Platform_DebugLog("UserID: %lli\tUsername: %s#%.4s\n", user.id, user.username, user.discriminator);
+				} break;
+				
+				default: break;
+			}
+		}
 	}
 	
-	PlsDiscord_Update(&game->discord);
+	Arena_Pop(engine->temp_arena, temp_arena_save);
 }
 
 internal void
@@ -525,6 +548,8 @@ Game_UpdateAndRender(void)
 		engine->running = false;
 	
 	//~ NOTE(ljre): Update
+	ProcessDiscordEvents();
+	
 	Render_Camera2D camera = {
 		.pos = { game->camera_pos[0], game->camera_pos[1] },
 		.size = { engine->platform->window_width, engine->platform->window_height },
@@ -658,6 +683,14 @@ Game_UpdateAndRender(void)
 		}
 	}
 	
+	if (game->discord.connected && Engine_IsPressed(engine->input->keyboard, 'O'))
+	{
+		if (game->discord.lobby.id != 0)
+			PlsDiscord_DeleteLobby(&game->discord);
+		else
+			PlsDiscord_CreateLobby(&game->discord);
+	}
+	
 	//~ NOTE(ljre): Render
 	engine->render->begin();
 	engine->render->clear_background(0.1f, 0.1f, 0.1f, 1.0f);
@@ -788,7 +821,7 @@ Game_UpdateAndRender(void)
 	SPrintf(buff, sizeof(buff), "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
 	engine->render->draw_text(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
-	ProcessDiscordEvents();
+	PlsDiscord_LateUpdate(&game->discord);
 	Engine_FinishFrame();
 }
 

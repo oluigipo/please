@@ -4,7 +4,7 @@
 
 #if 0
 #   include "game_test2.c"
-#elif 0
+#elif 1
 #   include "game_test.c"
 #else
 // NOTE(ljre): This is set every frame.
@@ -80,21 +80,21 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 	// NOTE(ljre): Draw Axes
 	{
 		engine->render->draw_rectangle(black,
-									   (vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-									   (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
+			(vec3) { x + width / 2.0f - 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+			(vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
 		engine->render->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_LS)],
-									   (vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
-										   y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
-									   (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
+			(vec3) { x + width / 2.0f - 100.0f * xscale + gamepad->left[0] * 20.0f * xscale,
+				y + height / 2.0f + 100.0f * yscale + gamepad->left[1] * 20.0f * yscale },
+			(vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
 		
 		engine->render->draw_rectangle(black,
-									   (vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
-									   (vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
+			(vec3) { x + width / 2.0f + 100.0f * xscale, y + height / 2.0f + 100.0f * yscale },
+			(vec3) { 50.0f * xscale, 50.0f * yscale }, alignment);
 		
 		engine->render->draw_rectangle(colors[Engine_IsDown(*gamepad, Engine_GamepadButton_RS)],
-									   (vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
-									   (vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
+			(vec3) { x + width / 2.0f + 100.0f * xscale + gamepad->right[0] * 20.0f * xscale, y + height / 2.0f + 100.0f * yscale + gamepad->right[1] * 20.0f * yscale },
+			(vec3) { 20.0f * xscale, 20.0f * yscale }, alignment);
 	}
 	
 	// NOTE(ljre): Draw Buttons
@@ -138,13 +138,13 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 		
 		glm_vec4_lerp(colors[0], colors[1], gamepad->lt, color);
 		engine->render->draw_rectangle(color,
-									   (vec3) { x + width * 0.20f, y + height * 0.23f },
-									   (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
+			(vec3) { x + width * 0.20f, y + height * 0.23f },
+			(vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
 		
 		glm_vec4_lerp(colors[0], colors[1], gamepad->rt, color);
 		engine->render->draw_rectangle(color,
-									   (vec3) { x + width * 0.80f, y + height * 0.23f },
-									   (vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
+			(vec3) { x + width * 0.80f, y + height * 0.23f },
+			(vec3) { 60.0f * xscale, 30.0f * yscale }, alignment);
 	}
 }
 
@@ -466,7 +466,7 @@ internal bool32
 IsMouseOverButton(Engine_MouseState* mouse, Game_MenuButton* button)
 {
 	return ((mouse->pos[0] >= button->position[0] && mouse->pos[0] <= button->position[0] + button->size[0]) &&
-			(mouse->pos[1] >= button->position[1] && mouse->pos[1] <= button->position[1] + button->size[1]));
+		(mouse->pos[1] >= button->position[1] && mouse->pos[1] <= button->position[1] + button->size[1]));
 }
 
 internal void
