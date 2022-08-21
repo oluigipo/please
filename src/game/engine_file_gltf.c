@@ -221,17 +221,17 @@ ParseGltfDataAsset(const Json_Value* value, Engine_GltfJson* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("generator")))
+		if (String_Equals(field_name, Str("generator")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->asset.generator = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("version")))
+		else if (String_Equals(field_name, Str("version")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->asset.version = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("copyright")))
+		else if (String_Equals(field_name, Str("copyright")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->asset.version = Json_RawStringValue(&field_value);
@@ -239,7 +239,7 @@ ParseGltfDataAsset(const Json_Value* value, Engine_GltfJson* out)
 	}
 }
 
-internal bool32
+internal bool
 ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -248,7 +248,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 	out->name = StrNull;
 	out->mesh = -1;
 	
-	bool32 matrix = false;
+	bool matrix = false;
 	vec3 translation = { 0.0f, 0.0f, 0.0f };
 	versor rotation = GLM_QUAT_IDENTITY_INIT;
 	vec3 scale = { 1.0f, 1.0f, 1.0f };
@@ -259,17 +259,17 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("mesh")))
+		else if (String_Equals(field_name, Str("mesh")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->mesh = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("translation")))
+		else if (String_Equals(field_name, Str("translation")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -283,7 +283,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 				translation[i] = (float32)Json_NumberValueF64(&value);
 			}
 		}
-		else if (0 == String_Compare(field_name, Str("rotation")))
+		else if (String_Equals(field_name, Str("rotation")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -297,7 +297,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 				rotation[i] = (float32)Json_NumberValueF64(&value);
 			}
 		}
-		else if (0 == String_Compare(field_name, Str("scale")))
+		else if (String_Equals(field_name, Str("scale")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -311,7 +311,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 				scale[i] = (float32)Json_NumberValueF64(&value);
 			}
 		}
-		else if (0 == String_Compare(field_name, Str("matrix")))
+		else if (String_Equals(field_name, Str("matrix")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -344,7 +344,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataNodes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -370,7 +370,7 @@ ParseGltfDataNodes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -385,12 +385,12 @@ ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("nodes")))
+		else if (String_Equals(field_name, Str("nodes")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -416,7 +416,7 @@ ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataScenes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -442,7 +442,7 @@ ParseGltfDataScenes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataTextureInfo(const Json_Value* value, GltfJson_TextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -456,12 +456,12 @@ ParseGltfDataTextureInfo(const Json_Value* value, GltfJson_TextureInfo* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("index")))
+		if (String_Equals(field_name, Str("index")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->index = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("texcoord")))
+		else if (String_Equals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->texcoord = (int32)Json_NumberValueI64(&field_value);
@@ -471,7 +471,7 @@ ParseGltfDataTextureInfo(const Json_Value* value, GltfJson_TextureInfo* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataMetallicRoughness(const Json_Value* value, GltfJson_MetallicRoughness* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -485,22 +485,22 @@ ParseGltfDataMetallicRoughness(const Json_Value* value, GltfJson_MetallicRoughne
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("metallicFactor")))
+		if (String_Equals(field_name, Str("metallicFactor")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->metalic_factor = (float32)Json_NumberValueF64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("roughnessFactor")))
+		else if (String_Equals(field_name, Str("roughnessFactor")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->roughness_factor = (float32)Json_NumberValueF64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("baseColorTexture")))
+		else if (String_Equals(field_name, Str("baseColorTexture")))
 		{
 			if (!ParseGltfDataTextureInfo(&field_value, &out->base_color_texture))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("metallicRoughnessTexture")))
+		else if (String_Equals(field_name, Str("metallicRoughnessTexture")))
 		{
 			if (!ParseGltfDataTextureInfo(&field_value, &out->metallic_roughness_texture))
 				return false;
@@ -510,7 +510,7 @@ ParseGltfDataMetallicRoughness(const Json_Value* value, GltfJson_MetallicRoughne
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataNormalTextureInfo(const Json_Value* value, GltfJson_NormalTextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -524,17 +524,17 @@ ParseGltfDataNormalTextureInfo(const Json_Value* value, GltfJson_NormalTextureIn
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("index")))
+		if (String_Equals(field_name, Str("index")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->index = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("texcoord")))
+		else if (String_Equals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->texcoord = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("scale")))
+		else if (String_Equals(field_name, Str("scale")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->scale = (float32)Json_NumberValueF64(&field_value);
@@ -544,7 +544,7 @@ ParseGltfDataNormalTextureInfo(const Json_Value* value, GltfJson_NormalTextureIn
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataOcclusionTextureInfo(const Json_Value* value, GltfJson_OcclusionTextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -558,17 +558,17 @@ ParseGltfDataOcclusionTextureInfo(const Json_Value* value, GltfJson_OcclusionTex
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("index")))
+		if (String_Equals(field_name, Str("index")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->index = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("texcoord")))
+		else if (String_Equals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->texcoord = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("strength")))
+		else if (String_Equals(field_name, Str("strength")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->strength = (float32)Json_NumberValueF64(&field_value);
@@ -578,7 +578,7 @@ ParseGltfDataOcclusionTextureInfo(const Json_Value* value, GltfJson_OcclusionTex
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -621,32 +621,32 @@ ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("pbrMetallicRoughness")))
+		else if (String_Equals(field_name, Str("pbrMetallicRoughness")))
 		{
 			if (!ParseGltfDataMetallicRoughness(&field_value, &out->pbr_metallic_roughness))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("normalTexture")))
+		else if (String_Equals(field_name, Str("normalTexture")))
 		{
 			if (!ParseGltfDataNormalTextureInfo(&field_value, &out->normal_texture))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("occlusionTexture")))
+		else if (String_Equals(field_name, Str("occlusionTexture")))
 		{
 			if (!ParseGltfDataOcclusionTextureInfo(&field_value, &out->occlusion_texture))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("emissiveTexture")))
+		else if (String_Equals(field_name, Str("emissiveTexture")))
 		{
 			if (!ParseGltfDataTextureInfo(&field_value, &out->emissive_texture))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("emissiveFactor")))
+		else if (String_Equals(field_name, Str("emissiveFactor")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -663,17 +663,17 @@ ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 				out->emissive_factor[i] = (float32)Json_NumberValueF64(&value);
 			}
 		}
-		else if (0 == String_Compare(field_name, Str("alphaMode")))
+		else if (String_Equals(field_name, Str("alphaMode")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->alpha_mode = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("alphaCutoff")))
+		else if (String_Equals(field_name, Str("alphaCutoff")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->alpha_cutoff = (float32)Json_NumberValueF64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("doubleSided")))
+		else if (String_Equals(field_name, Str("doubleSided")))
 		{
 			if (field_value.kind == Json_ValueKind_Bool)
 				out->double_sided = Json_BoolValue(&field_value);
@@ -683,7 +683,7 @@ ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataMaterials(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -709,7 +709,7 @@ ParseGltfDataMaterials(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -727,17 +727,17 @@ ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("indices")))
+		if (String_Equals(field_name, Str("indices")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->indices = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("mode")))
+		else if (String_Equals(field_name, Str("mode")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->mode = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("attributes")))
+		else if (String_Equals(field_name, Str("attributes")))
 		{
 			if (field_value.kind != Json_ValueKind_Object)
 				return false;
@@ -748,22 +748,22 @@ ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 				Json_Value attrib_field_value;
 				Json_FieldValue(&attrib_field, &attrib_field_value);
 				
-				if (0 == String_Compare(attrib_field_name, Str("POSITION")))
+				if (String_Equals(attrib_field_name, Str("POSITION")))
 				{
 					if (attrib_field_value.kind == Json_ValueKind_Number)
 						out->attributes.position = (int32)Json_NumberValueI64(&attrib_field_value);
 				}
-				else if (0 == String_Compare(attrib_field_name, Str("NORMAL")))
+				else if (String_Equals(attrib_field_name, Str("NORMAL")))
 				{
 					if (attrib_field_value.kind == Json_ValueKind_Number)
 						out->attributes.normal = (int32)Json_NumberValueI64(&attrib_field_value);
 				}
-				else if (0 == String_Compare(attrib_field_name, Str("TANGENT")))
+				else if (String_Equals(attrib_field_name, Str("TANGENT")))
 				{
 					if (attrib_field_value.kind == Json_ValueKind_Number)
 						out->attributes.tangent = (int32)Json_NumberValueI64(&attrib_field_value);
 				}
-				else if (0 == String_Compare(attrib_field_name, Str("TEXCOORD_0")))
+				else if (String_Equals(attrib_field_name, Str("TEXCOORD_0")))
 				{
 					if (attrib_field_value.kind == Json_ValueKind_Number)
 						out->attributes.texcoord_0 = (int32)Json_NumberValueI64(&attrib_field_value);
@@ -775,7 +775,7 @@ ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -790,12 +790,12 @@ ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("primitives")))
+		else if (String_Equals(field_name, Str("primitives")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -819,7 +819,7 @@ ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataMeshes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -845,7 +845,7 @@ ParseGltfDataMeshes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -864,27 +864,27 @@ ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("type")))
+		if (String_Equals(field_name, Str("type")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->type = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("componentType")))
+		else if (String_Equals(field_name, Str("componentType")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->component_type = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("count")))
+		else if (String_Equals(field_name, Str("count")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->count = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("bufferView")))
+		else if (String_Equals(field_name, Str("bufferView")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->buffer_view = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("max")))
+		else if (String_Equals(field_name, Str("max")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -907,7 +907,7 @@ ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 				out->max[i] = (float32)Json_NumberValueF64(&index_value);
 			}
 		}
-		else if (0 == String_Compare(field_name, Str("min")))
+		else if (String_Equals(field_name, Str("min")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -935,7 +935,7 @@ ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataAccessors(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -961,7 +961,7 @@ ParseGltfDataAccessors(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataSampler(const Json_Value* value, GltfJson_Sampler* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -979,27 +979,27 @@ ParseGltfDataSampler(const Json_Value* value, GltfJson_Sampler* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("magFilter")))
+		else if (String_Equals(field_name, Str("magFilter")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->mag_filter = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("minFilter")))
+		else if (String_Equals(field_name, Str("minFilter")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->min_filter = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("wrapS")))
+		else if (String_Equals(field_name, Str("wrapS")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->wrap_s = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("wrapT")))
+		else if (String_Equals(field_name, Str("wrapT")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->wrap_t = (int32)Json_NumberValueI64(&field_value);
@@ -1009,7 +1009,7 @@ ParseGltfDataSampler(const Json_Value* value, GltfJson_Sampler* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataSamplers(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1035,7 +1035,7 @@ ParseGltfDataSamplers(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataImage(const Json_Value* value, GltfJson_Image* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1051,17 +1051,17 @@ ParseGltfDataImage(const Json_Value* value, GltfJson_Image* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("mimeType")))
+		else if (String_Equals(field_name, Str("mimeType")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->mime_type = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("bufferView")))
+		else if (String_Equals(field_name, Str("bufferView")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->buffer_view = (int32)Json_NumberValueI64(&field_value);
@@ -1071,7 +1071,7 @@ ParseGltfDataImage(const Json_Value* value, GltfJson_Image* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataImages(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1097,7 +1097,7 @@ ParseGltfDataImages(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataTexture(const Json_Value* value, GltfJson_Texture* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1113,17 +1113,17 @@ ParseGltfDataTexture(const Json_Value* value, GltfJson_Texture* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("name")))
+		if (String_Equals(field_name, Str("name")))
 		{
 			if (field_value.kind == Json_ValueKind_String)
 				out->name = Json_RawStringValue(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("sampler")))
+		else if (String_Equals(field_name, Str("sampler")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->sampler = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("source")))
+		else if (String_Equals(field_name, Str("source")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->source = (int32)Json_NumberValueI64(&field_value);
@@ -1133,7 +1133,7 @@ ParseGltfDataTexture(const Json_Value* value, GltfJson_Texture* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataTextures(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1159,7 +1159,7 @@ ParseGltfDataTextures(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataBufferView(const Json_Value* value, GltfJson_BufferView* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1175,17 +1175,17 @@ ParseGltfDataBufferView(const Json_Value* value, GltfJson_BufferView* out)
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("buffer")))
+		if (String_Equals(field_name, Str("buffer")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->buffer = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("byteOffset")))
+		else if (String_Equals(field_name, Str("byteOffset")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->byte_offset = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("byteLength")))
+		else if (String_Equals(field_name, Str("byteLength")))
 		{
 			if (field_value.kind == Json_ValueKind_Number)
 				out->byte_length = (int32)Json_NumberValueI64(&field_value);
@@ -1195,7 +1195,7 @@ ParseGltfDataBufferView(const Json_Value* value, GltfJson_BufferView* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfDataBufferViews(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1221,9 +1221,9 @@ ParseGltfDataBufferViews(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool32
+internal bool
 ParseGltfData(const uint8* json_begin, const uint8* json_end,
-			  const uint8* binary_begin, const uint8* binary_end, Engine_GltfJson* out)
+	const uint8* binary_begin, const uint8* binary_end, Engine_GltfJson* out)
 {
 	Json_Value json;
 	Json_InitFromBufferRange(json_begin, json_end, &json);
@@ -1245,63 +1245,63 @@ ParseGltfData(const uint8* json_begin, const uint8* json_end,
 		Json_Value field_value;
 		Json_FieldValue(&field, &field_value);
 		
-		if (0 == String_Compare(field_name, Str("asset")))
+		if (String_Equals(field_name, Str("asset")))
 		{
 			ParseGltfDataAsset(&field_value, out);
 		}
-		else if (0 == String_Compare(field_name, Str("scene")))
+		else if (String_Equals(field_name, Str("scene")))
 		{
 			if (field_value.kind != Json_ValueKind_Number)
 				out->scene = -1;
 			else
 				out->scene = (int32)Json_NumberValueI64(&field_value);
 		}
-		else if (0 == String_Compare(field_name, Str("scenes")))
+		else if (String_Equals(field_name, Str("scenes")))
 		{
 			if (!ParseGltfDataScenes(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("nodes")))
+		else if (String_Equals(field_name, Str("nodes")))
 		{
 			if (!ParseGltfDataNodes(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("materials")))
+		else if (String_Equals(field_name, Str("materials")))
 		{
 			if (!ParseGltfDataMaterials(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("meshes")))
+		else if (String_Equals(field_name, Str("meshes")))
 		{
 			if (!ParseGltfDataMeshes(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("accessors")))
+		else if (String_Equals(field_name, Str("accessors")))
 		{
 			if (!ParseGltfDataAccessors(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("samplers")))
+		else if (String_Equals(field_name, Str("samplers")))
 		{
 			if (!ParseGltfDataSamplers(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("images")))
+		else if (String_Equals(field_name, Str("images")))
 		{
 			if (!ParseGltfDataImages(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("textures")))
+		else if (String_Equals(field_name, Str("textures")))
 		{
 			if (!ParseGltfDataTextures(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("bufferViews")))
+		else if (String_Equals(field_name, Str("bufferViews")))
 		{
 			if (!ParseGltfDataBufferViews(&field_value, out))
 				return false;
 		}
-		else if (0 == String_Compare(field_name, Str("buffers")))
+		else if (String_Equals(field_name, Str("buffers")))
 		{
 			if (field_value.kind != Json_ValueKind_Array)
 				return false;
@@ -1341,7 +1341,7 @@ ParseGltfData(const uint8* json_begin, const uint8* json_end,
 }
 
 //~ Internal API
-internal bool32
+internal bool
 Engine_ParseGltf(const uint8* data, uintsize size, Engine_GltfJson* out)
 {
 	Trace();
@@ -1402,7 +1402,7 @@ Engine_ParseGltf(const uint8* data, uintsize size, Engine_GltfJson* out)
 	if (!json_begin)
 		return false;
 	
-	bool32 result = ParseGltfData(json_begin, json_end, binary_begin, binary_end, out);
+	bool result = ParseGltfData(json_begin, json_end, binary_begin, binary_end, out);
 	
 	return result;
 }

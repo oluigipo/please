@@ -19,10 +19,10 @@ typedef int64_t int64;
 typedef intptr_t intptr;
 typedef ptrdiff_t intsize;
 
-typedef int8_t bool8;
-typedef int16_t bool16;
-typedef int32_t bool32;
-typedef int64_t bool64;
+typedef uint8_t bool8;
+typedef uint16_t bool16;
+typedef uint32_t bool32;
+typedef uint64_t bool64;
 
 typedef float float32;
 typedef double float64;

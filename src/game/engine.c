@@ -39,10 +39,6 @@
 //~ Our Code
 internal Engine_Data global_engine;
 
-// NOTE(ljre): The reference FPS 'Engine_Data.delta_time' is going to be based of.
-//             60 FPS = 1.0 DT
-#define REFERENCE_FPS 60
-
 #include "engine_file_qoi.c"
 #include "engine_file_json.c"
 #include "engine_file_gltf.c"
