@@ -48,7 +48,6 @@ struct Asset_Texture
 {
 	uint32 id;
 	int32 width, height;
-	int32 depth; // >0 for texture arrays
 }
 typedef Asset_Texture;
 

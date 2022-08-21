@@ -56,7 +56,6 @@ struct Engine_RenderApi
 	bool (*load_font_from_file)(String path, Asset_Font* out_font);
 	bool (*load_3dmodel_from_file)(String path, Asset_3DModel* out_model);
 	bool (*load_texture_from_file)(String path, Asset_Texture* out_texture);
-	bool (*load_texture_array_from_file)(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height);
 	
 	void (*clear_background)(float32 r, float32 g, float32 b, float32 a);
 	void (*begin)(void);

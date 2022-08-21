@@ -90,7 +90,6 @@ struct OpenGL_InternalShader
 typedef OpenGL_InternalShader;
 
 //~ Globals
-
 internal const OpenGL_Vertex global_ogl_quad_vertices[] = {
 	// Positions         // Normals           // Texcoords
 	{ 0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, },
@@ -502,18 +501,14 @@ internal const char* const global_ogl_fragment_spriteshader =
 #ifdef DEBUG
 internal void APIENTRY
 OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
-							 GLsizei length, const GLchar* message, const void* userParam)
+	GLsizei length, const GLchar* message, const void* userParam)
 {
 	if (type == GL_DEBUG_TYPE_ERROR)
-	{
 		Platform_DebugMessageBox("OpenGL Error:\nType = 0x%x\nID = %u\nSeverity = 0x%x\nMessage= %s",
-								 type, id, severity, message);
-	}
+		type, id, severity, message);
 	else
-	{
 		Platform_DebugLog("OpenGL Debug Callback:\n\tType = 0x%x\n\tID = %u\n\tSeverity = 0x%x\n\tmessage = %s\n",
-						  type, id, severity, message);
-	}
+		type, id, severity, message);
 }
 #endif
 
@@ -804,7 +799,6 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	
 	out_texture->width = width;
 	out_texture->height = height;
-	out_texture->depth = 0;
 	
 	GL.glGenTextures(1, &out_texture->id);
 	GL.glBindTexture(GL_TEXTURE_2D, out_texture->id);
@@ -815,66 +809,6 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	
 	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
-	
-	stbi_image_free(texture_data);
-	
-	return true;
-}
-
-internal bool
-OpenGL_LoadTextureArrayFromFile(String path, Asset_Texture* out_texture, int32 cell_width, int32 cell_height)
-{
-	Trace(); TraceText(path);
-	
-	uintsize file_size;
-	void* file_data = Platform_ReadEntireFile(path, &file_size, global_engine.temp_arena);
-	if (!file_data)
-		return false;
-	
-	int32 width, height, channels;
-	void* texture_data;
-	{
-		Trace(); TraceName(Str("stbi_load_from_memory"));
-		texture_data = stbi_load_from_memory(file_data, (int32)file_size, &width, &height, &channels, 4);
-	}
-	
-	Arena_Pop(global_engine.temp_arena, file_data);
-	if (!texture_data)
-		return false;
-	
-	int32 row_count = width / cell_width;
-	int32 column_count = height / cell_height;
-	int32 cell_count = row_count * column_count;
-	
-	out_texture->width = cell_width;
-	out_texture->height = cell_height;
-	out_texture->depth = cell_count;
-	
-	GL.glGenTextures(1, &out_texture->id);
-	GL.glBindTexture(GL_TEXTURE_2D_ARRAY, out_texture->id);
-	
-	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	GL.glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	
-	GL.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-	
-	GL.glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, cell_width, cell_height, cell_count, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	
-	int32 depth = 0;
-	for (int32 row = 0; row < row_count; ++row)
-	{
-		for (int32 column = 0; column < column_count; ++column)
-		{
-			void* data = (uint32*)texture_data + (row * cell_height) * width + column * cell_width;
-			
-			GL.glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, depth, cell_width, cell_height, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
-			++depth;
-		}
-	}
-	
-	GL.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	
 	stbi_image_free(texture_data);
 	
@@ -909,7 +843,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 		int32 char_x1, char_y1;
 		int32 char_x2, char_y2;
 		stbtt_GetCodepointBitmapBox(&font->info, codepoint, scale, scale,
-									&char_x1, &char_y1, &char_x2, &char_y2);
+			&char_x1, &char_y1, &char_x2, &char_y2);
 		
 		int32 char_width = char_x2 - char_x1;
 		int32 char_height = char_y2 - char_y1;
@@ -1120,8 +1054,8 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				{
 					Trace(); TraceName(Str("stbi_load_from_memory"));
 					data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
-												 view->byte_length,
-												 &width, &height, &channels, 3);
+						view->byte_length,
+						&width, &height, &channels, 3);
 				}
 				
 				GL.glGenTextures(1, &out->material.diffuse);
@@ -1130,7 +1064,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				if (sampler->mag_filter != -1)
 				{
 					needs_mipmaps = needs_mipmaps || (sampler->mag_filter != GL_NEAREST &&
-													  sampler->mag_filter != GL_LINEAR);
+						sampler->mag_filter != GL_LINEAR);
 					GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter);
 				}
 				else
@@ -1141,7 +1075,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				if (sampler->min_filter != -1)
 				{
 					needs_mipmaps = needs_mipmaps || (sampler->min_filter != GL_NEAREST &&
-													  sampler->min_filter != GL_LINEAR);
+						sampler->min_filter != GL_LINEAR);
 					GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter);
 				}
 				else
@@ -1171,8 +1105,8 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				{
 					Trace(); TraceName(Str("stbi_load_from_memory"));
 					data = stbi_load_from_memory(model.buffers[view->buffer].data + view->byte_offset,
-												 view->byte_length,
-												 &width, &height, &channels, 3);
+						view->byte_length,
+						&width, &height, &channels, 3);
 				}
 				
 				GL.glGenTextures(1, &out->material.normal);
@@ -1181,7 +1115,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				if (sampler->mag_filter != -1)
 				{
 					needs_mipmaps = needs_mipmaps || (sampler->mag_filter != GL_NEAREST &&
-													  sampler->mag_filter != GL_LINEAR);
+						sampler->mag_filter != GL_LINEAR);
 					GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter);
 				}
 				else
@@ -1192,7 +1126,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 				if (sampler->min_filter != -1)
 				{
 					needs_mipmaps = needs_mipmaps || (sampler->min_filter != GL_NEAREST &&
-													  sampler->min_filter != GL_LINEAR);
+						sampler->min_filter != GL_LINEAR);
 					GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter);
 				}
 				else
@@ -1340,10 +1274,10 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Render_Camera3D* camera)
 			glm_ortho(-range, range, -range, range, 0.5f, 80.0f, proj);
 			
 			glm_lookat((vec3) { scene->dirlight[0] * umbrella,
-						   scene->dirlight[1] * umbrella,
-						   scene->dirlight[2] * umbrella },
-					   (vec3) { 0.0f, 0.0f, 0.0f },
-					   (vec3) { 0.0f, 1.0f, 0.0f }, light_space_matrix);
+					scene->dirlight[1] * umbrella,
+					scene->dirlight[2] * umbrella },
+				(vec3) { 0.0f, 0.0f, 0.0f },
+				(vec3) { 0.0f, 1.0f, 0.0f }, light_space_matrix);
 			glm_mat4_mul(proj, light_space_matrix, light_space_matrix);
 		}
 		
@@ -1677,7 +1611,6 @@ OpenGL_Init(const Engine_RenderApi** out_api)
 		.load_font_from_file = OpenGL_LoadFontFromFile,
 		.load_3dmodel_from_file = OpenGL_Load3DModelFromFile,
 		.load_texture_from_file = OpenGL_LoadTextureFromFile,
-		.load_texture_array_from_file = OpenGL_LoadTextureArrayFromFile,
 		
 		.clear_background = OpenGL_ClearBackground,
 		.begin = OpenGL_Begin,

@@ -35,15 +35,17 @@ PlsRandom_Init(PlsRandom_State* state)
 {
 	static const uint64 jump[] = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
 	
-	state->seed[0] = Platform_CurrentPosixTime();
-	state->seed[1] = Platform_CurrentPosixTime();
+	state->seed[0] = state->seed[1] = Platform_CurrentPosixTime();
 	
 	uint64 s0 = 0;
 	uint64 s1 = 0;
 	
-	for (int32  i = 0; i < ArrayLength(jump); ++i) {
-		for (int32  b = 0; b < 64; ++b) {
-			if (jump[i] & (uint64)1 << b) {
+	for (int32  i = 0; i < ArrayLength(jump); ++i)
+	{
+		for (int32  b = 0; b < 64; ++b)
+		{
+			if (jump[i] & (uint64)1 << b)
+			{
 				s0 ^= state->seed[0];
 				s1 ^= state->seed[1];
 			}
