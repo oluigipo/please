@@ -59,7 +59,7 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 	
 	union QoiColor* colors = Arena_PushAligned(arena, header.width * header.height * 4, 4);
 	uint32 color_index = 0;
-	bool32 err = false;
+	bool err = false;
 	
 	union QoiColor previous_pixel = { 0, 0, 0, 255 };
 	union QoiColor pixels[64] = { 0 };

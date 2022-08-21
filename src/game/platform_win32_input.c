@@ -144,7 +144,7 @@ internal const Engine_KeyboardKey global_keyboard_key_table[] = {
 //~ Functions
 #include "ext/guid_utils.h"
 
-internal inline bool32
+internal inline bool
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {
 	return MemCmp(a, b, sizeof (GUID)) == 0;
@@ -243,7 +243,7 @@ LoadDirectInput(void)
 {
 	static const char* const dll_names[] = { "dinput8.dll", /* "dinput.dll" */ };
 	
-	bool32 loaded = false;
+	bool loaded = false;
 	for (int32 i = 0; i < ArrayLength(dll_names); ++i)
 	{
 		HMODULE library = Win32_LoadLibrary(dll_names[i]);
@@ -267,15 +267,13 @@ LoadDirectInput(void)
 
 internal void
 TranslateController(Engine_GamepadState* out, const GamepadMappings* map,
-					const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
+	const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
 	Trace();
 	
 	//- Update Buttons
 	for (int32 i = 0; i < ArrayLength(out->buttons); ++i)
-	{
 		out->buttons[i].changes = 0;
-	}
 	
 	//- Translate Buttons
 	for (int32 i = 0; i < ArrayLength(map->buttons); ++i)
@@ -774,7 +772,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	// NOTE(ljre): Look for a mapping for this gamepad
 	char guid_str[64];
 	
-	if (ConvertGuidToSDLGuid(instance, guid_str, sizeof guid_str))
+	if (ConvertGuidToSDLGuid(instance, guid_str, sizeof(guid_str)))
 	{
 		for (int32 i = 0; i < ArrayLength(global_gamepadmap_database); ++i)
 		{
@@ -795,11 +793,11 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
 	Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
 	Platform_DebugLog("\tGUID Instance: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
-					  guid->Data1, guid->Data2, guid->Data3,
-					  *(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
+		guid->Data1, guid->Data2, guid->Data3,
+		*(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
 	Platform_DebugLog("\tGUID Product: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
-					  instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3,
-					  *(uint16*)instance->guidProduct.Data4, ((uint16*)instance->guidProduct.Data4)[1], *(uint32*)instance->guidProduct.Data4);
+		instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3,
+		*(uint16*)instance->guidProduct.Data4, ((uint16*)instance->guidProduct.Data4)[1], *(uint32*)instance->guidProduct.Data4);
 	
 	if (index_of_map_being_used == -1)
 		Platform_DebugLog("\tMappings: Default\n");
@@ -852,7 +850,7 @@ Win32_CheckForGamepads(void)
 	// XInput
 	for (DWORD i = 0; i < 4 && global_gamepad_free_count > 0; ++i)
 	{
-		bool32 already_exists = false;
+		bool already_exists = false;
 		
 		for (int32 index = 0; index < ArrayLength(global_gamepads); ++index)
 		{
@@ -890,9 +888,7 @@ Win32_InitInput(void)
 	// NOTE(ljre): Fill 'free spaces stack'
 	global_gamepad_free_count = ArrayLength(global_gamepads);
 	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
-	{
 		global_gamepad_free[(int32)ArrayLength(global_gamepads) - i - 1] = i;
-	}
 	
 	LoadXInput();
 	LoadDirectInput();
@@ -933,7 +929,7 @@ Win32_UpdateMouseButton(Engine_InputData* out_input_data, Engine_MouseButton but
 }
 
 internal inline void
-Win32_UpdateInputPre(Engine_InputData* out_input_data)
+Win32_UpdateInputEarly(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Update Keyboard
 	for (int32 i = 0; i < ArrayLength(out_input_data->keyboard.buttons); ++i)
@@ -949,7 +945,7 @@ Win32_UpdateInputPre(Engine_InputData* out_input_data)
 }
 
 internal inline void
-Win32_UpdateInputPos(Engine_InputData* out_input_data)
+Win32_UpdateInputLate(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Get mouse cursor
 	{

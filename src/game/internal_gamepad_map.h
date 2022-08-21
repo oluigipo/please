@@ -29,7 +29,7 @@ enum GamepadObject
 	GamepadObject_Axis_RightX = 19,
 	GamepadObject_Axis_RightY = 20,
 	
-	// The lower bits of this enum is one of those entries specified above.
+	// The lower bits of this enum is one of these entries specified above.
 	// The higher bits are used to store extra information about the object.
 	//
 	// Higher Bits: 0b7654_3210

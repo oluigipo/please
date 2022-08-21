@@ -344,7 +344,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 		result = Engine_Main(argc, argv);
 	}
 	__except (info.ExceptionPointers = GetExceptionInformation(),
-			  GetExceptionCode() == EXCEPTION_BREAKPOINT ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER)
+		GetExceptionCode() == EXCEPTION_BREAKPOINT ? EXCEPTION_CONTINUE_SEARCH : EXCEPTION_EXECUTE_HANDLER)
 	{
 		HANDLE file = CreateFileW(L"minidump.dmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 		
@@ -354,7 +354,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 			info.ClientPointers = FALSE;
 			
 			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file,
-							  MiniDumpNormal, &info, NULL, NULL);
+				MiniDumpNormal, &info, NULL, NULL);
 			
 			CloseHandle(file);
 		}
@@ -478,7 +478,7 @@ Platform_PollEvents(Platform_Data* inout_data, Engine_InputData* out_input_data)
 	
 	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)out_input_data);
 	
-	Win32_UpdateInputPre(out_input_data);
+	Win32_UpdateInputEarly(out_input_data);
 	Win32_UpdatePlatformConfigIfNeeded(inout_data);
 	
 	MSG message;
@@ -488,7 +488,7 @@ Platform_PollEvents(Platform_Data* inout_data, Engine_InputData* out_input_data)
 		DispatchMessageW(&message);
 	}
 	
-	Win32_UpdateInputPos(out_input_data);
+	Win32_UpdateInputLate(out_input_data);
 }
 
 API void
@@ -553,6 +553,13 @@ Platform_VirtualCommit(void* ptr, uintsize size)
 {
 	Trace();
 	VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+API void
+Platform_VirtualDecommit(void* ptr, uintsize size)
+{
+	Trace();
+	VirtualFree(ptr, size, MEM_DECOMMIT);
 }
 
 API void
@@ -767,7 +774,7 @@ Platform_DebugMessageBox(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	VSPrintf(buffer, sizeof buffer, format, args);
+	VSPrintf(buffer, sizeof(buffer), format, args);
 	MessageBoxA(NULL, buffer, "Debug", MB_OK | MB_TOPMOST);
 	va_end(args);
 }
@@ -779,7 +786,7 @@ Platform_DebugLog(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	VSPrintf(buffer, sizeof buffer, format, args);
+	VSPrintf(buffer, sizeof(buffer), format, args);
 	OutputDebugStringA(buffer);
 	va_end(args);
 }

@@ -2,9 +2,9 @@
 
 #include "system_random.c"
 
-#if 0
+#if 1
 #   include "game_test2.c"
-#elif 1
+#elif 0
 #   include "game_test.c"
 #else
 // NOTE(ljre): This is set every frame.
