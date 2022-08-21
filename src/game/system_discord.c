@@ -1,10 +1,20 @@
 // NOTE(ljre): If you want to use the 3.1.0 DLL for x86, you may want to change the calling convention
 //             of all the callbacks, managers, and PlsDiscord_CreateProc to __stdcall.
+//
+//             Newer versions still do use __stdcall, but the header is updated to use the correct callconv.
 #pragma pack(push, 8)
 #   include <discord_game_sdk.h>
 #pragma pack(pop)
 
-enum EDiscordResult typedef PlsDiscord_CreateProc_(DiscordVersion version, struct DiscordCreateParams* params, struct IDiscordCore** result);
+#ifndef DISCORD_CALLBACK
+#   define DISCORD_CALLBACK
+#endif
+
+#ifndef DISCORD_API
+#   define DISCORD_API
+#endif
+
+enum EDiscordResult typedef DISCORD_API PlsDiscord_CreateProc_(DiscordVersion version, struct DiscordCreateParams* params, struct IDiscordCore** result);
 
 enum PlsDiscord_EventKind
 {
@@ -14,6 +24,7 @@ enum PlsDiscord_EventKind
 	PlsDiscord_EventKind_UpdateActivity,
 	PlsDiscord_EventKind_CreateLobby,
 	PlsDiscord_EventKind_DeleteLobby,
+	PlsDiscord_EventKind_ConnectLobbyWithActivitySecret,
 	
 	// NOTE(ljre): From events
 	PlsDiscord_EventKind_OnLobbyUpdate,
@@ -48,8 +59,9 @@ struct PlsDiscord_Event
 		struct { enum EDiscordResult result; struct DiscordLobby lobby; } create_lobby;
 		struct { enum EDiscordResult result; } delete_lobby;
 		struct { enum EDiscordResult result; } update_activity;
+		struct { enum EDiscordResult result; struct DiscordLobby lobby; } connect_lobby_with_activity_secret;
 		
-		struct { int64 lobby_id; } on_lobby_update;
+		struct { int64 lobby_id; struct DiscordLobby lobby; } on_lobby_update;
 		struct { int64 lobby_id; uint32 reason; } on_lobby_delete;
 		struct { int64 lobby_id; int64 user_id; uint8* data; uint32 data_length; } on_lobby_message;
 		
@@ -61,8 +73,8 @@ struct PlsDiscord_Event
 		struct { int64 lobby_id; int64 user_id; uint8 channel; uint8* data; uint32 data_length; } on_network_message;
 		struct { const char* route_data; } on_route_update;
 		
-		struct { const char* secret; } on_activity_join;
-		struct { const char* secret; } on_activity_spectate;
+		struct { char* secret; } on_activity_join;
+		struct { char* secret; } on_activity_spectate;
 		struct { struct DiscordUser user; } on_activity_join_request;
 		struct { enum EDiscordActivityActionType type; struct DiscordUser user; struct DiscordActivity activity; } on_activity_invite;
 		
@@ -70,7 +82,6 @@ struct PlsDiscord_Event
 		struct { bool locked; } on_toggle;
 		struct { enum EDiscordResult result; struct DiscordUser state; } on_current_user_update;
 		struct { struct DiscordRelationship state; } on_relationship_update;
-		
 	};
 };
 
@@ -101,6 +112,8 @@ struct PlsDiscord_Client
 }
 typedef PlsDiscord_Client;
 
+enum EDiscordResult internal PlsDiscord_UpdateLobbyActivity(PlsDiscord_Client* discord);
+
 //~ NOTE(ljre): Helpers
 internal void
 PlsDiscord_PushEvent_(PlsDiscord_Client* discord, PlsDiscord_Event* event)
@@ -111,7 +124,7 @@ PlsDiscord_PushEvent_(PlsDiscord_Client* discord, PlsDiscord_Event* event)
 }
 
 //~ NOTE(ljre): Callbacks
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_CallbackUpdateActivity_(void* event_data, enum EDiscordResult result)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -123,7 +136,7 @@ PlsDiscord_CallbackUpdateActivity_(void* event_data, enum EDiscordResult result)
 	PlsDiscord_PushEvent_(discord, &event);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_CallbackCreateLobby_(void* event_data, enum EDiscordResult result, struct DiscordLobby* lobby)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -141,17 +154,11 @@ PlsDiscord_CallbackCreateLobby_(void* event_data, enum EDiscordResult result, st
 		return;
 	
 	discord->lobby = *lobby;
+	PlsDiscord_UpdateLobbyActivity(discord);
 	Platform_DebugLog("Created Lobby!\n");
-	
-	MemCopy(discord->activity.secrets.join, discord->lobby.secret, sizeof(discord->lobby.secret));
-	SPrintf(discord->activity.party.id, sizeof(discord->activity.party.id), "%lli", discord->lobby.id);
-	discord->activity.party.size.current_size = 1;
-	discord->activity.party.size.max_size = discord->lobby.capacity;
-	
-	discord->activities->update_activity(discord->activities, &discord->activity, discord, PlsDiscord_CallbackUpdateActivity_);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_CallbackDeleteLobby_(void* event_data, enum EDiscordResult result)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -168,8 +175,24 @@ PlsDiscord_CallbackDeleteLobby_(void* event_data, enum EDiscordResult result)
 		MemSet(&discord->lobby, 0, sizeof(discord->lobby));
 }
 
+internal DISCORD_CALLBACK void
+PlsDiscord_CallbackConnectLobbyWithActivitySecret_(void* event_data, enum EDiscordResult result, struct DiscordLobby* lobby)
+{
+	PlsDiscord_Client* discord = event_data;
+	PlsDiscord_Event event = {
+		.kind = PlsDiscord_EventKind_ConnectLobbyWithActivitySecret,
+		.connect_lobby_with_activity_secret = {
+			.result = result,
+			.lobby = *lobby,
+		},
+	};
+	
+	discord->lobby = *lobby;
+	PlsDiscord_PushEvent_(discord, &event);
+}
+
 //~ NOTE(ljre): Events
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnCurrentUserUpdate_(void* data)
 {
 	struct DiscordUser user = { 0 };
@@ -193,22 +216,33 @@ PlsDiscord_EventOnCurrentUserUpdate_(void* data)
 	//Platform_DebugLog("User ID: %lli\nUsername: %s\nDiscriminator: %s\n", discord->user.id, discord->user.username, discord->user.discriminator);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnLobbyUpdate_(void* event_data, int64 lobby_id)
 {
 	PlsDiscord_Client* discord = event_data;
-	PlsDiscord_Event event = {
-		.kind = PlsDiscord_EventKind_OnLobbyUpdate,
-		.on_lobby_update = {
-			.lobby_id = lobby_id,
-		},
-	};
+	struct DiscordLobby lobby;
+	enum EDiscordResult result = discord->lobbies->get_lobby(discord->lobbies, lobby_id, &lobby);
 	
-	PlsDiscord_PushEvent_(discord, &event);
+	if (result == DiscordResult_Ok)
+	{
+		PlsDiscord_Event event = {
+			.kind = PlsDiscord_EventKind_OnLobbyUpdate,
+			.on_lobby_update = {
+				.lobby_id = lobby_id,
+				.lobby = lobby,
+			},
+		};
+		
+		PlsDiscord_PushEvent_(discord, &event);
+		discord->lobby = lobby;
+	}
+	else
+		Platform_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
+	
 	//Platform_DebugLog("Discord: OnLobbyUpdate -- %lli\n", lobby_id);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -221,10 +255,11 @@ PlsDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
+	MemSet(&discord->lobby, 0, sizeof(discord->lobby));
 	//Platform_DebugLog("Discord: OnLobbyDelete -- %lli\t%u\n", lobby_id, reason);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnMemberConnect_(void* event_data, int64 lobby_id, int64 user_id)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -249,7 +284,7 @@ PlsDiscord_EventOnMemberConnect_(void* event_data, int64 lobby_id, int64 user_id
 		Platform_DebugLog("Discord: OnMemberConnect failed to fetch user data\n");
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnMemberUpdate_(void* event_data, int64 lobby_id, int64 user_id)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -274,7 +309,7 @@ PlsDiscord_EventOnMemberUpdate_(void* event_data, int64 lobby_id, int64 user_id)
 		Platform_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnMemberDisconnect_(void* event_data, int64 lobby_id, int64 user_id)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -290,7 +325,7 @@ PlsDiscord_EventOnMemberDisconnect_(void* event_data, int64 lobby_id, int64 user
 	//Platform_DebugLog("Discord: OnMemberDisconnect -- %lli\t%lli\n", lobby_id, user_id);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnLobbyMessage_(void* event_data, int64 lobby_id, int64 user_id, uint8* data, uint32 data_length)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -308,7 +343,7 @@ PlsDiscord_EventOnLobbyMessage_(void* event_data, int64 lobby_id, int64 user_id,
 	//Platform_DebugLog("Discord: OnLobbyMessage -- %lli\t%lli\t%p\t%u\n", lobby_id, user_id, data, data_length);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnSpeaking_(void* event_data, int64 lobby_id, int64 user_id, bool speaking)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -325,7 +360,7 @@ PlsDiscord_EventOnSpeaking_(void* event_data, int64 lobby_id, int64 user_id, boo
 	//Platform_DebugLog("Discord: OnSpeaking -- %lli\t%lli\t%i\n", lobby_id, user_id, speaking);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnNetworkMessage_(void* event_data, int64 lobby_id, int64 user_id, uint8 channel_id, uint8* data, uint32 data_length)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -344,7 +379,7 @@ PlsDiscord_EventOnNetworkMessage_(void* event_data, int64 lobby_id, int64 user_i
 	//Platform_DebugLog("Discord: OnNetworkMessage -- %lli\t%lli\t%i\t%p\t%u\n", lobby_id, user_id, channel_id, data, data_length);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnActivityJoin_(void* event_data, const char* secret)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -369,7 +404,7 @@ PlsDiscord_EventOnActivityJoin_(void* event_data, const char* secret)
 	//Platform_DebugLog("Discord: OnActivityJoin -- %s\n", secret);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnActivitySpectate_(void* event_data, const char* secret)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -394,7 +429,7 @@ PlsDiscord_EventOnActivitySpectate_(void* event_data, const char* secret)
 	//Platform_DebugLog("Discord: OnActivitySpectate -- %s\n", secret);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnActivityJoinRequest_(void* event_data, struct DiscordUser* user)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -409,7 +444,7 @@ PlsDiscord_EventOnActivityJoinRequest_(void* event_data, struct DiscordUser* use
 	//Platform_DebugLog("Discord: OnActivityJoinRequest -- %lli\n", user->id);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnActivityInvite_(void* event_data, enum EDiscordActivityActionType type, struct DiscordUser* user, struct DiscordActivity* activity)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -426,7 +461,7 @@ PlsDiscord_EventOnActivityInvite_(void* event_data, enum EDiscordActivityActionT
 	//Platform_DebugLog("Discord: OnActivityJoinRequest -- %i\t%lli\t%i\n", type, user->id, activity->type);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnRefresh_(void* event_data)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -438,7 +473,7 @@ PlsDiscord_EventOnRefresh_(void* event_data)
 	//Platform_DebugLog("Discord: OnRefresh -- \n");
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnRelationshipUpdate_(void* event_data, struct DiscordRelationship* relationship)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -453,7 +488,7 @@ PlsDiscord_EventOnRelationshipUpdate_(void* event_data, struct DiscordRelationsh
 	//Platform_DebugLog("Discord: OnRelationshipUpdate -- %p\n", relationship);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnMessage_(void* event_data, DiscordNetworkPeerId peer_id, uint8 channel_id, uint8* data, uint32 data_length)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -471,7 +506,7 @@ PlsDiscord_EventOnMessage_(void* event_data, DiscordNetworkPeerId peer_id, uint8
 	//Platform_DebugLog("Discord: OnMessage -- %llu\t%hhu\t%p\t%u\n", peer_id, channel_id, data, data_length);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnRouteUpdate_(void* event_data, const char* route_data)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -496,7 +531,7 @@ PlsDiscord_EventOnRouteUpdate_(void* event_data, const char* route_data)
 	//Platform_DebugLog("Discord: OnRouteUpdate -- %s\n", route_data);
 }
 
-internal void
+internal DISCORD_CALLBACK void
 PlsDiscord_EventOnToggle_(void* event_data, bool locked)
 {
 	PlsDiscord_Client* discord = event_data;
@@ -638,13 +673,29 @@ PlsDiscord_LateUpdate(PlsDiscord_Client* discord)
 	
 	if (discord->core)
 	{
-		if (discord->lobbies)
-			discord->lobbies->flush_network(discord->lobbies);
-		if (discord->network)
-			discord->network->flush(discord->network);
+		enum EDiscordResult result;
+		
+		result = discord->network->flush(discord->network);
+		if (result != DiscordResult_Ok)
+			Platform_DebugLog("Discord: discord->network->flush failed.");
+		
+		result = discord->lobbies->flush_network(discord->lobbies);
+		if (result != DiscordResult_Ok)
+			Platform_DebugLog("Discord: discord->lobbies->flush_network failed.");
 	}
 }
 
+internal void
+PlsDiscord_Deinit(PlsDiscord_Client* discord)
+{
+	if (discord->core)
+	{
+		discord->core->destroy(discord->core);
+		discord->core = NULL;
+	}
+}
+
+//~ NOTE(ljre): Lobbies
 internal bool
 PlsDiscord_CreateLobby(PlsDiscord_Client* discord)
 {
@@ -671,6 +722,31 @@ PlsDiscord_CreateLobby(PlsDiscord_Client* discord)
 	return true;
 }
 
+internal enum EDiscordResult
+PlsDiscord_UpdateLobbyActivity(PlsDiscord_Client* discord)
+{
+	DiscordLobbySecret secret;
+	int32 member_count;
+	enum EDiscordResult result;
+	
+	result = discord->lobbies->get_lobby_activity_secret(discord->lobbies, discord->lobby.id, &secret);
+	if (result != DiscordResult_Ok)
+		return result;
+	
+	result = discord->lobbies->member_count(discord->lobbies, discord->lobby.id, &member_count);
+	if (result != DiscordResult_Ok)
+		return result;
+	
+	MemCopy(discord->activity.secrets.join, secret, sizeof(discord->lobby.secret));
+	SPrintf(discord->activity.party.id, sizeof(discord->activity.party.id), "%lli", discord->lobby.id);
+	discord->activity.party.size.current_size = member_count;
+	discord->activity.party.size.max_size = discord->lobby.capacity;
+	
+	discord->activities->update_activity(discord->activities, &discord->activity, discord, PlsDiscord_CallbackUpdateActivity_);
+	
+	return DiscordResult_Ok;
+}
+
 internal void
 PlsDiscord_DeleteLobby(PlsDiscord_Client* discord)
 {
@@ -681,13 +757,58 @@ PlsDiscord_DeleteLobby(PlsDiscord_Client* discord)
 }
 
 internal void
-PlsDiscord_Deinit(PlsDiscord_Client* discord)
+PlsDiscord_JoinLobby(PlsDiscord_Client* discord, DiscordLobbySecret secret)
 {
-	if (discord->core)
-	{
-		discord->core->destroy(discord->core);
-		discord->core = NULL;
-	}
+	Assert(discord->core);
+	
+	discord->lobbies->connect_lobby_with_activity_secret(discord->lobbies, secret, discord, PlsDiscord_CallbackConnectLobbyWithActivitySecret_);
 }
 
-#undef AssertResult
+//~ NOTE(ljre): Lobby networking
+enum EDiscordResult internal
+PlsDiscord_ConnectNetwork(PlsDiscord_Client* discord)
+{
+	Assert(discord->core);
+	Assert(discord->lobby.id);
+	enum EDiscordResult result;
+	
+	result = discord->lobbies->connect_network(discord->lobbies, discord->lobby.id);
+	if (result != DiscordResult_Ok)
+		return result;
+	
+	result = discord->lobbies->open_network_channel(discord->lobbies, discord->lobby.id, 0, false);
+	if (result != DiscordResult_Ok)
+	{
+		discord->lobbies->disconnect_network(discord->lobbies, discord->lobby.id);
+		return result;
+	}
+	
+	result = discord->lobbies->open_network_channel(discord->lobbies, discord->lobby.id, 1, true);
+	if (result != DiscordResult_Ok)
+	{
+		discord->lobbies->disconnect_network(discord->lobbies, discord->lobby.id);
+		return result;
+	}
+	
+	return DiscordResult_Ok;
+}
+
+enum EDiscordResult internal
+PlsDiscord_DisconnectNetwork(PlsDiscord_Client* discord)
+{
+	Assert(discord->core);
+	
+	return discord->lobbies->disconnect_network(discord->lobbies, discord->lobby.id);
+}
+
+enum EDiscordResult internal
+PlsDiscord_SendNetworkMessage(PlsDiscord_Client* discord, int64 user_id, bool reliable, String memory)
+{
+	Assert(discord->core);
+	Assert(memory.size <= UINT32_MAX);
+	
+	uint8 channel = (uint8)reliable;
+	Assert(channel == 0 || channel == 1);
+	
+	return discord->lobbies->send_network_message(discord->lobbies, discord->lobby.id, user_id, channel, (void*)memory.data, (uint32)memory.size);
+}

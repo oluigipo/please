@@ -1,3 +1,5 @@
+#include "system_discord.c"
+
 internal Engine_Data* engine;
 internal Game_Data* game;
 
@@ -38,6 +40,8 @@ struct Game_Data
 	Game_Player player;
 	Game_Bullet friendly_bullets[100];
 	int32 friendly_bullet_count;
+	
+	PlsDiscord_Client discord;
 };
 
 internal void
@@ -52,7 +56,7 @@ internal bool
 Game_Aabb(const vec4 a, const vec4 b)
 {
 	return ((a[0] + a[2] >= b[0] && b[0] + b[2] >= a[0]) &&
-			(a[1] + a[3] >= b[1] && b[1] + b[3] >= a[1]));
+		(a[1] + a[3] >= b[1] && b[1] + b[3] >= a[1]));
 }
 
 internal void
@@ -85,6 +89,110 @@ Game_Init(void)
 		.pos = { 100.0f, 100.0f },
 		.life = 5,
 	};
+	
+	// Discord
+	const int64 appid = 778719957956689922LL;
+	
+	game->discord.activity = (struct DiscordActivity) {
+		.assets = {
+			.large_image = "eredin",
+			.large_text = "cat",
+			.small_image = "preto",
+			.small_text = "white",
+		},
+		
+		.application_id = appid,
+		.type = DiscordActivityType_Playing,
+		.name = "Name",
+		.state = "State",
+		.details = "Details",
+	};
+	
+	if (PlsDiscord_Init(appid, &game->discord))
+		PlsDiscord_UpdateActivity(&game->discord);
+}
+
+internal void
+Game_UpdateDiscordEarly(void)
+{
+	void* temp_arena_save = Arena_End(engine->temp_arena);
+	
+	if (game->discord.connected)
+	{
+		PlsDiscord_Client* discord = &game->discord;
+		PlsDiscord_Event* event = NULL;
+		PlsDiscord_EarlyUpdate(discord, engine->temp_arena, &event);
+		
+		for (; event; event = event->next)
+		{
+			enum EDiscordResult result = 0;
+			
+			switch (event->kind)
+			{
+				case PlsDiscord_EventKind_OnCurrentUserUpdate:
+				{
+					if (event->on_current_user_update.result != DiscordResult_Ok)
+					{
+						Platform_DebugLog("Discord: OnCurrentUserUpdate event failed.");
+						break;
+					}
+					
+					struct DiscordUser user = event->on_current_user_update.state;
+					
+					Platform_DebugLog("UserID: %lli\tUsername: %s#%.4s\n", user.id, user.username, user.discriminator);
+				} break;
+				
+				case PlsDiscord_EventKind_CreateLobby:
+				{
+					if (event->create_lobby.result != DiscordResult_Ok)
+					{
+						Platform_DebugLog("Discord: CreateLobby event failed.");
+						break;
+					}
+					
+					result |= PlsDiscord_UpdateLobbyActivity(discord);
+					result |= PlsDiscord_ConnectNetwork(discord);
+				} break;
+				
+				case PlsDiscord_EventKind_ConnectLobbyWithActivitySecret:
+				{
+					if (event->connect_lobby_with_activity_secret.result != DiscordResult_Ok)
+					{
+						Platform_DebugLog("Discord: ConnectLobbyWithActivitySecret event failed.");
+						break;
+					}
+					
+					result |= PlsDiscord_UpdateLobbyActivity(discord);
+					result |= PlsDiscord_ConnectNetwork(discord);
+				} break;
+				
+				case PlsDiscord_EventKind_OnLobbyUpdate:
+				{
+					result |= PlsDiscord_UpdateLobbyActivity(discord);
+				} break;
+				
+				case PlsDiscord_EventKind_OnActivityJoin:
+				{
+					PlsDiscord_JoinLobby(discord, event->on_activity_join.secret);
+				} break;
+				
+				case PlsDiscord_EventKind_OnNetworkMessage:
+				{
+					String data = StrMake(event->on_network_message.data_length, event->on_network_message.data);
+					Platform_DebugMessageBox("Message: %.*s", StrFmt(data));
+				} break;
+				
+				default:
+				{
+					Platform_DebugLog("Discord: Event %i\n", event->kind);
+				} break;
+			}
+			
+			Assert(result == 0);
+		}
+	}
+	
+	Arena_Pop(engine->temp_arena, temp_arena_save);
 }
 
 internal void
@@ -95,6 +203,38 @@ Game_UpdateAndRender(void)
 	//- Update
 	if (engine->platform->window_should_close)
 		engine->running = false;
+	
+	Game_UpdateDiscordEarly();
+	
+	if (Engine_IsPressed(engine->input->keyboard, 'O'))
+		PlsDiscord_CreateLobby(&game->discord);
+	if (Engine_IsPressed(engine->input->keyboard, 'P'))
+		PlsDiscord_ConnectNetwork(&game->discord);
+	if (Engine_IsPressed(engine->input->keyboard, 'I'))
+	{
+		int64 userid = 0;
+		
+		for (int32 i = 0; i < 2; ++i)
+		{
+			int64 id;
+			if (game->discord.lobbies->get_member_user_id(game->discord.lobbies, game->discord.lobby.id, i, &id) != DiscordResult_Ok)
+				break;
+			
+			if (id != game->discord.user.id)
+			{
+				userid = id;
+				break;
+			}
+		}
+		
+		Platform_DebugMessageBox("%lli", userid);
+		
+		if (userid)
+		{
+			int32 r = PlsDiscord_SendNetworkMessage(&game->discord, userid, true, Str("oi."));
+			Platform_DebugMessageBox("%i", r);
+		}
+	}
 	
 	vec2 mouse_pos;
 	vec4 camera_bbox;
@@ -243,10 +383,11 @@ Game_UpdateAndRender(void)
 	}
 	
 	String text = SPrintfLocal(128, "mouse (%.2f, %.2f)\ncamera (%.2f, %.2f, %.2f, %.2f)\n",
-							   mouse_pos[0], mouse_pos[1],
-							   camera_bbox[0], camera_bbox[1], camera_bbox[2], camera_bbox[3]);
+		mouse_pos[0], mouse_pos[1],
+		camera_bbox[0], camera_bbox[1], camera_bbox[2], camera_bbox[3]);
 	engine->render->draw_text(&game->font, text, (vec3) { 10.0f, 10.0f }, 32.0f, GLM_VEC4_ONE, (vec3) { 0 });
 	
+	PlsDiscord_LateUpdate(&game->discord);
 	Engine_FinishFrame();
 }
 
