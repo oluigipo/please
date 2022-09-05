@@ -10,14 +10,14 @@
 internal inline uint64
 SimpleMap_DefaultHashFunc_(String memory)
 {
-	uint64 result = 0;
+	uint64 result = 14695981039346656037u;
 	
 	for (uintsize i = 0; i < memory.size; ++i)
 	{
 		uint64 value = (uint64)memory.data[i];
 		
 		result ^= value;
-		result *= (uint64)16777619ull;
+		result *= 1099511628211u;
 	}
 	
 	return result;
@@ -118,8 +118,8 @@ SimpleMap_Iterate(SimpleMap* map, uint64 hash, int32 index)
 {
 	uint32 exp = map->log2_of_cap;
 	uint32 mask = (1u << exp) - 1;
-    uint32 step = (uint32)(hash >> (64 - exp)) | 1;
-    return (index + step) & mask;
+	uint32 step = (uint32)(hash >> (64 - exp)) | 1;
+	return (index + step) & mask;
 }
 
 internal SimpleMap_Entry*
@@ -130,15 +130,15 @@ SimpleMap_Find(SimpleMap* map, uint64 hash)
 	
 	for (int32 i = (int32)hash;;)
 	{
-        i = SimpleMap_Iterate(map, hash, i);
+		i = SimpleMap_Iterate(map, hash, i);
 		
-        if (map->entries[i].hash == hash)
-            return &map->entries[i];
+		if (map->entries[i].hash == hash)
+			return &map->entries[i];
 		if (!map->entries[i].hash)
 			return NULL;
 		if (++security_counter > map->len)
 			return NULL;
-    }
+	}
 }
 
 internal SimpleMap_Entry*
@@ -154,9 +154,9 @@ SimpleMap_Insert(SimpleMap* map, uint64 hash, void* data)
 	
 	for (int32 i = (int32)hash;;)
 	{
-        i = SimpleMap_Iterate(map, hash, i);
+		i = SimpleMap_Iterate(map, hash, i);
 		
-        if (map->entries[i].hash == hash || !map->entries[i].hash)
+		if (map->entries[i].hash == hash || !map->entries[i].hash)
 		{
 			entry = &map->entries[i];
 			break;
@@ -164,7 +164,7 @@ SimpleMap_Insert(SimpleMap* map, uint64 hash, void* data)
 		
 		if (++security_counter > cap)
 			return NULL;
-    }
+	}
 	
 	entry->hash = hash;
 	entry->data = data;

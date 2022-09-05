@@ -49,18 +49,18 @@ internal inline int32
 PopCnt64(uint64 x)
 {
 	x -= (x >> 1) & 0x5555555555555555ull;
-    x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
-    x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
-    return (x * 0x0101010101010101ull) >> 56;
+	x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
+	x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
+	return (x * 0x0101010101010101ull) >> 56;
 }
 
 internal inline int32
 PopCnt32(uint32 x)
 {
 	x -= (x >> 1) & 0x55555555u;
-    x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
-    x = (x + (x >> 4)) & 0x0f0f0f0fu;
-    return (x * 0x01010101u) >> 24;
+	x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+	x = (x + (x >> 4)) & 0x0f0f0f0fu;
+	return (x * 0x01010101u) >> 24;
 }
 
 internal inline int32
@@ -113,10 +113,10 @@ ByteSwap64(uint64 x)
 	r = { .v = x };
 	uint8 tmp;
 	
-    tmp = r.arr[0]; r.arr[0] = r.arr[7]; r.arr[7] = tmp;
-    tmp = r.arr[1]; r.arr[1] = r.arr[6]; r.arr[6] = tmp;
-    tmp = r.arr[2]; r.arr[2] = r.arr[5]; r.arr[5] = tmp;
-    tmp = r.arr[3]; r.arr[3] = r.arr[4]; r.arr[4] = tmp;
+	tmp = r.arr[0]; r.arr[0] = r.arr[7]; r.arr[7] = tmp;
+	tmp = r.arr[1]; r.arr[1] = r.arr[6]; r.arr[6] = tmp;
+	tmp = r.arr[2]; r.arr[2] = r.arr[5]; r.arr[5] = tmp;
+	tmp = r.arr[3]; r.arr[3] = r.arr[4]; r.arr[4] = tmp;
 	
 	result = r.v;
 #endif
@@ -131,8 +131,8 @@ MemCopy(void* restrict dst, const void* restrict src, uintsize size)
 #if defined(__clang__) || defined(__GNUC__)
 	void* d = dst;
 	__asm__ __volatile__("rep movsb"
-						 :"+D"(d), "+S"(src), "+c"(size)
-						 :: "memory");
+		:"+D"(d), "+S"(src), "+c"(size)
+		:: "memory");
 #elif defined(_MSC_VER)
 	__movsb(dst, src, size);
 #else
@@ -151,8 +151,8 @@ MemSet(void* restrict dst, uint8 byte, uintsize size)
 #if defined(__clang__) || defined(__GNUC__)
 	void* d = dst;
 	__asm__ __volatile__("rep stosb"
-						 :"+D"(d), "+a"(byte), "+c"(size)
-						 :: "memory");
+		:"+D"(d), "+a"(byte), "+c"(size)
+		:: "memory");
 #elif defined(_MSC_VER)
 	__stosb(dst, byte, size);
 #else
@@ -175,8 +175,8 @@ MemMove(void* dst, const void* src, uintsize size)
 		// NOTE(ljre): Good news: 'rep movsb' allows overlapping memory :)
 #if defined(__clang__) || defined(__GNUC__)
 		__asm__ __volatile__("rep movsb"
-							 :"+D"(d), "+S"(src), "+c"(size)
-							 :: "memory");
+			:"+D"(d), "+S"(src), "+c"(size)
+			:: "memory");
 #elif defined(_MSC_VER)
 		__movsb(dst, src, size);
 #else
@@ -200,45 +200,45 @@ MemMove(void* dst, const void* src, uintsize size)
 internal inline int32
 MemCmp(const void* left_, const void* right_, uintsize size)
 {
-    const uint8* left = (const uint8*)left_;
-    const uint8* right = (const uint8*)right_;
+	const uint8* left = (const uint8*)left_;
+	const uint8* right = (const uint8*)right_;
 	
-    while (size >= 16)
-    {
-        __m128i ldata, rdata;
+	while (size >= 16)
+	{
+		__m128i ldata, rdata;
 		
-        ldata = _mm_loadu_si128((const __m128i_u*)left);
-        rdata = _mm_loadu_si128((const __m128i_u*)right);
+		ldata = _mm_loadu_si128((const __m128i_u*)left);
+		rdata = _mm_loadu_si128((const __m128i_u*)right);
 		
-        int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(ldata, rdata));
-        cmp = ~cmp & 0xffff;
+		int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(ldata, rdata));
+		cmp = ~cmp & 0xffff;
 		
-        if (Unlikely(cmp != 0))
-        {
-            union
-            {
-                __m128i reg;
-                int8 bytes[16];
-            } diff = { _mm_sub_epi8(ldata, rdata) };
+		if (Unlikely(cmp != 0))
+		{
+			union
+			{
+				__m128i reg;
+				int8 bytes[16];
+			} diff = { _mm_sub_epi8(ldata, rdata) };
 			
-            return diff.bytes[BitCtz(cmp)] < 0 ? -1 : 1;
-        }
+			return diff.bytes[BitCtz(cmp)] < 0 ? -1 : 1;
+		}
 		
-        size -= 16;
-        left += 16;
-        right += 16;
-    }
+		size -= 16;
+		left += 16;
+		right += 16;
+	}
 	
-    while (size --> 0)
-    {
-        if (Unlikely(*left != *right))
-            return (*left - *right < 0) ? -1 : 1;
+	while (size --> 0)
+	{
+		if (Unlikely(*left != *right))
+			return (*left - *right < 0) ? -1 : 1;
 		
-        ++left;
-        ++right;
-    }
+		++left;
+		++right;
+	}
 	
-    return 0;
+	return 0;
 }
 
 #else // COMMON_DONT_USE_CRT

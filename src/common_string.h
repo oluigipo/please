@@ -8,13 +8,20 @@ struct String
 }
 typedef String;
 
-#define Str(x) (String) StrInit(x)
+#ifndef __cplusplus
+#   define Str(x) (String) StrInit(x)
+#   define StrNull (String) { 0 }
+#   define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
+#else
+#   define Str(x) String StrInit(x)
+#   define StrNull String {}
+#   define StrMake(size, data) String { (uintsize)(size), (const uint8*)(data) }
+#endif
+
 #define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }
 #define StrFmt(x) (x).size, (char*)(x).data
-#define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
-#define StrNull (String) { 0 }
 
 internal int32
 String_Decode(String str, int32* index)
@@ -84,7 +91,7 @@ String_Compare(String a, String b)
 	return result;
 }
 
-internal inline int32
+internal inline bool
 String_Equals(String a, String b)
 {
 	if (a.size != b.size)
@@ -93,7 +100,7 @@ String_Equals(String a, String b)
 	return MemCmp(a.data, b.data, a.size) == 0;
 }
 
-internal inline bool32
+internal inline bool
 String_EndsWith(String check, String s)
 {
 	if (s.size > check.size)

@@ -787,6 +787,8 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		}
 	}
 	
+	(void)index_of_map_being_used;
+#ifdef DEBUG
 	Platform_DebugLog("[info-win32] Device Connected:\n");
 	Platform_DebugLog("\tIndex: %i\n", index);
 	Platform_DebugLog("\tDriver: DirectInput\n");
@@ -818,6 +820,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	for (int32 i = 0; i < gamepad->dinput.pov_count; ++i)
 		Platform_DebugLog("%02x, ", (uint32)gamepad->dinput.povs[i]);
 	Platform_DebugLog("}\n");
+#endif
 	
 	return DIENUM_CONTINUE;
 	

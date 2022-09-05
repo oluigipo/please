@@ -61,17 +61,21 @@ PlsRandom_Init(PlsRandom_State* state)
 internal float64
 PlsRandom_F64(PlsRandom_State* state)
 {
-	return (float64)PlsRandom_U64(state) / (float64)UINT64_MAX;
+	uint64 frac = PlsRandom_U64(state) >> 12;
+	uint64 div = UINT64_MAX >> 12;
+	
+	return (float64)frac / (float64)div;
 }
 
 internal float32
 PlsRandom_F32Range(PlsRandom_State* state, float32 start, float32 end)
 {
-	float64 s = (float64)start;
-	float64 e = (float64)end;
-	float64 r = PlsRandom_F64(state);
+	uint64 frac = PlsRandom_F64(state) >> 41;
+	uint64 div = UINT64_MAX >> 41;
 	
-	return (float32)(r * (e - s) + s);
+	float32 result = (float32)frac / (float32)div;
+	
+	return (float32)(result * (end - start) + start);
 }
 
 internal uint32

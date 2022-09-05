@@ -571,13 +571,13 @@ PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 	
 	static struct IDiscordLobbyEvents lobby_events = {
 		.on_lobby_update = PlsDiscord_EventOnLobbyUpdate_,
-        .on_lobby_delete = PlsDiscord_EventOnLobbyDelete_,
-        .on_member_connect = PlsDiscord_EventOnMemberConnect_,
-        .on_member_update = PlsDiscord_EventOnMemberUpdate_,
-        .on_member_disconnect = PlsDiscord_EventOnMemberDisconnect_,
-        .on_lobby_message = PlsDiscord_EventOnLobbyMessage_,
-        .on_speaking = PlsDiscord_EventOnSpeaking_,
-        .on_network_message = PlsDiscord_EventOnNetworkMessage_,
+		.on_lobby_delete = PlsDiscord_EventOnLobbyDelete_,
+		.on_member_connect = PlsDiscord_EventOnMemberConnect_,
+		.on_member_update = PlsDiscord_EventOnMemberUpdate_,
+		.on_member_disconnect = PlsDiscord_EventOnMemberDisconnect_,
+		.on_lobby_message = PlsDiscord_EventOnLobbyMessage_,
+		.on_speaking = PlsDiscord_EventOnSpeaking_,
+		.on_network_message = PlsDiscord_EventOnNetworkMessage_,
 	};
 	
 	static struct IDiscordNetworkEvents network_events = {
