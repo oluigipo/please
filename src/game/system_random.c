@@ -70,7 +70,7 @@ PlsRandom_F64(PlsRandom_State* state)
 internal float32
 PlsRandom_F32Range(PlsRandom_State* state, float32 start, float32 end)
 {
-	uint64 frac = PlsRandom_F64(state) >> 41;
+	uint64 frac = PlsRandom_U64(state) >> 41;
 	uint64 div = UINT64_MAX >> 41;
 	
 	float32 result = (float32)frac / (float32)div;

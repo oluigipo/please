@@ -42,7 +42,8 @@ struct Asset_3DModel
 	uint32 prim_mode;
 	
 	int32 index_count;
-} typedef Asset_3DModel;
+}
+typedef Asset_3DModel;
 
 struct Asset_Texture
 {

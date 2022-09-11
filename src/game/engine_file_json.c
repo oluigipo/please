@@ -108,8 +108,10 @@ FindEndOfValue(const uint8* begin, const uint8* end)
 			
 			while (nested > 0 && it < end)
 			{
-				if (it[0] == '{') ++nested;
-				else if (it[0] == '}') --nested;
+				if (it[0] == '{')
+					++nested;
+				else if (it[0] == '}')
+					--nested;
 				
 				++it;
 			}
@@ -124,8 +126,10 @@ FindEndOfValue(const uint8* begin, const uint8* end)
 			
 			while (nested > 0 && it < end)
 			{
-				if (it[0] == '[') ++nested;
-				else if (it[0] == ']') --nested;
+				if (it[0] == '[')
+					++nested;
+				else if (it[0] == ']')
+					--nested;
 				
 				++it;
 			}
@@ -216,7 +220,7 @@ Json_BoolValue(const Json_Value* value)
 	Assert(value->begin);
 	Assert(value->kind == Json_ValueKind_Bool);
 	
-	return String_Compare(StrMake(value->end - value->begin, value->begin), Str("true")) == 0;
+	return String_Equals(StrMake(value->end - value->begin, value->begin), Str("true"));
 }
 
 internal String
@@ -301,8 +305,8 @@ Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
 		{
 			uintsize len = (uintsize)(value->end - value->begin);
 			
-			if (String_Compare(StrMake(len, value->begin), Str("true")) == 0 ||
-				String_Compare(StrMake(len, value->begin), Str("false")) == 0)
+			if (String_Equals(StrMake(len, value->begin), Str("true")) ||
+				String_Equals(StrMake(len, value->begin), Str("false")))
 			{
 				value->kind = Json_ValueKind_Bool;
 			}
@@ -423,8 +427,8 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
 		{
 			uintsize len = (uintsize)(value->end - value->begin);
 			
-			if (String_Compare(StrMake(len, value->begin), Str("true")) == 0 ||
-				String_Compare(StrMake(len, value->begin), Str("false")) == 0)
+			if (String_Equals(StrMake(len, value->begin), Str("true")) ||
+				String_Equals(StrMake(len, value->begin), Str("false")))
 			{
 				value->kind = Json_ValueKind_Bool;
 			}
@@ -445,7 +449,7 @@ Json_FindField(const Json_Value* object, String name, Json_Field* out)
 	Json_Field field = { object };
 	while (Json_NextField(&field))
 	{
-		if (String_Compare(Json_RawFieldName(&field), name) == 0)
+		if (String_Equals(Json_RawFieldName(&field), name))
 		{
 			*out = field;
 			return true;
@@ -527,8 +531,8 @@ Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_s
 				{
 					uintsize len = (uintsize)(out_state->end - out_state->begin);
 					
-					if (String_Compare(StrMake(len, out_state->begin), Str("true")) == 0 ||
-						String_Compare(StrMake(len, out_state->begin), Str("false")) == 0)
+					if (String_Equals(StrMake(len, out_state->begin), Str("true")) ||
+						String_Equals(StrMake(len, out_state->begin), Str("false")))
 					{
 						out_state->kind = Json_ValueKind_Bool;
 					}

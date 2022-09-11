@@ -2,7 +2,7 @@
 
 #include "system_random.c"
 
-#if 1
+#if 0
 #   include "game_test2.c"
 #elif 0
 #   include "game_test.c"

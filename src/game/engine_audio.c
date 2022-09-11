@@ -8,8 +8,8 @@ InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, cons
 	if ((frame_index+1) * channels < sample_count)
 	{
 		result = glm_lerp(result,
-						  samples[((int32)frame_index + 1) * channels + channel_index],
-						  frame_index - floorf(frame_index));
+			samples[((int32)frame_index + 1) * channels + channel_index],
+			frame_index - floorf(frame_index));
 	}
 	
 	return result;
@@ -113,11 +113,11 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 			float32 left, right;
 			
 			left = InterpolateSample(index_to_use, playing->sound->channels, 0,
-									 playing->sound->samples, playing->sound->sample_count);
+				playing->sound->samples, playing->sound->sample_count);
 			
 			if (playing->sound->channels > 1)
 				right = InterpolateSample(index_to_use, playing->sound->channels, 1,
-										  playing->sound->samples, playing->sound->sample_count);
+				playing->sound->samples, playing->sound->sample_count);
 			else
 				right = left;
 			
