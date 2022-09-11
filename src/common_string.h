@@ -95,7 +95,7 @@ internal inline bool
 String_Equals(String a, String b)
 {
 	if (a.size != b.size)
-		return (int32)(a.size - b.size);
+		return false;
 	
 	return MemCmp(a.data, b.data, a.size) == 0;
 }

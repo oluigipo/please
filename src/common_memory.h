@@ -48,10 +48,10 @@ BitClz(int32 i)
 internal inline int32
 PopCnt64(uint64 x)
 {
-	x -= (x >> 1) & 0x5555555555555555ull;
-	x = (x & 0x3333333333333333ull) + ((x >> 2) & 0x3333333333333333ull);
-	x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0full;
-	return (x * 0x0101010101010101ull) >> 56;
+	x -= (x >> 1) & 0x5555555555555555u;
+	x = (x & 0x3333333333333333u) + ((x >> 2) & 0x3333333333333333u);
+	x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0fu;
+	return (x * 0x0101010101010101u) >> 56;
 }
 
 internal inline int32
@@ -125,22 +125,80 @@ ByteSwap64(uint64 x)
 }
 
 #ifdef COMMON_DONT_USE_CRT
+
 internal inline void*
 MemCopy(void* restrict dst, const void* restrict src, uintsize size)
 {
-#if defined(__clang__) || defined(__GNUC__)
-	void* d = dst;
-	__asm__ __volatile__("rep movsb"
-		:"+D"(d), "+S"(src), "+c"(size)
-		:: "memory");
-#elif defined(_MSC_VER)
-	__movsb(dst, src, size);
-#else
+    // NOTE(ljre): Loop vectorization when using clang is disabled.
+	//             this thing is already vectorized, though it likes to vectorize the 1-by-1 bits still.
+	//
+	//             GCC only does this at -O3, which we don't care about. MSVC is ok.
+	
 	uint8* restrict d = (uint8*)dst;
-	const uint8* restrict s = (const uint8*)src;
-	while (size--)
-		*d++ = *s++;
+    const uint8* restrict s = (const uint8*)src;
+	
+	if (Unlikely(size == 0))
+        return dst;
+    if (size < 8)
+        goto one_by_one;
+    if (size < 32)
+        goto qword_by_qword;
+    if (size < 128)
+        goto xmm2_by_xmm2;
+	
+#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
+    if (Unlikely(size >= 2048)) {
+#   if defined(__clang__) || defined(__GNUC__)
+        __asm__ __volatile__ (
+            "rep movsb"
+            : "+D"(d), "+S"(s), "+c"(size)
+            :: "memory");
+#   else
+		__movsb(d, s, size);
+#   endif
+        return dst;
+    }
 #endif
+	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+    do {
+        size -= 128;
+        _mm_storeu_si128((__m128i*)(d+size+  0), _mm_loadu_si128((__m128i*)(s+size+  0)));
+        _mm_storeu_si128((__m128i*)(d+size+ 16), _mm_loadu_si128((__m128i*)(s+size+ 16)));
+        _mm_storeu_si128((__m128i*)(d+size+ 32), _mm_loadu_si128((__m128i*)(s+size+ 32)));
+        _mm_storeu_si128((__m128i*)(d+size+ 48), _mm_loadu_si128((__m128i*)(s+size+ 48)));
+        _mm_storeu_si128((__m128i*)(d+size+ 64), _mm_loadu_si128((__m128i*)(s+size+ 64)));
+        _mm_storeu_si128((__m128i*)(d+size+ 80), _mm_loadu_si128((__m128i*)(s+size+ 80)));
+        _mm_storeu_si128((__m128i*)(d+size+ 96), _mm_loadu_si128((__m128i*)(s+size+ 96)));
+        _mm_storeu_si128((__m128i*)(d+size+112), _mm_loadu_si128((__m128i*)(s+size+112)));
+    } while (size >= 128);
+	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+	while (size >= 32) xmm2_by_xmm2: {
+        size -= 32;
+        _mm_storeu_si128((__m128i*)(d+size+ 0), _mm_loadu_si128((__m128i*)(s+size+ 0)));
+        _mm_storeu_si128((__m128i*)(d+size+16), _mm_loadu_si128((__m128i*)(s+size+16)));
+    }
+	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+	while (size >= 8) qword_by_qword: {
+        size -= 8;
+        *(uint64*)(d+size) = *(uint64*)(s+size);
+    }
+	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+	while (size) one_by_one: {
+        size -= 1;
+        d[size] = s[size];
+    }
 	
 	return dst;
 }
@@ -172,10 +230,9 @@ MemMove(void* dst, const void* src, uintsize size)
 	
 	if (d <= s)
 	{
-		// NOTE(ljre): Good news: 'rep movsb' allows overlapping memory :)
 #if defined(__clang__) || defined(__GNUC__)
 		__asm__ __volatile__("rep movsb"
-			:"+D"(d), "+S"(src), "+c"(size)
+			:"+D"(d), "+S"(s), "+c"(size)
 			:: "memory");
 #elif defined(_MSC_VER)
 		__movsb(dst, src, size);
@@ -190,8 +247,20 @@ MemMove(void* dst, const void* src, uintsize size)
 		d += size;
 		s += size;
 		
+#if defined(__clang__) || defined(__GNUC__)
+		__asm__ __volatile__("std\n"
+			"rep movsb\n"
+			"cld"
+			:"+D"(d), "+S"(s), "+c"(size)
+			:: "memory");
+#elif defined(_MSC_VER)
+		__writeeflags(__readeflags() | 0x0400);
+		__movsb(dst, src, size);
+		__writeeflags(__readeflags() & ~(uint64)0x0400);
+#else
 		while (size--)
 			*--d = *--s;
+#endif
 	}
 	
 	return dst;

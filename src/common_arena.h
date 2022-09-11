@@ -1,7 +1,6 @@
 #ifndef COMMON_ARENA_H
 #define COMMON_ARENA_H
 
-#define Arena_Scope(arena) for (void* end__ = Arena_End(arena); end__; Arena_Pop(arena, end__), end__ = 0)
 #define Arena_PushStruct(arena, Type) Arena_PushAligned(arena, sizeof(Type), alignof(Type))
 #define Arena_PushStructArray(arena, Type, count) Arena_PushAligned(arena, sizeof(Type)*(count), alignof(Type))
 #define Arena_PushStructData(arena, Type, data) MemCopy(Arena_PushStruct(arena, Type), data, sizeof(Type))
