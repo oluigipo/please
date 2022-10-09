@@ -34,42 +34,42 @@ RWLock_Deinit(RWLock* lock)
 internal inline void
 RWLock_LockRead(RWLock* lock)
 {
-	void __stdcall AcquireSRWLockShared(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) void __stdcall AcquireSRWLockShared(struct _RTL_SRWLOCK* lock);
 	AcquireSRWLockShared((struct _RTL_SRWLOCK*)lock);
 }
 
 internal inline void
 RWLock_LockWrite(RWLock* lock)
 {
-	void __stdcall AcquireSRWLockExclusive(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) void __stdcall AcquireSRWLockExclusive(struct _RTL_SRWLOCK* lock);
 	AcquireSRWLockExclusive((struct _RTL_SRWLOCK*)lock);
 }
 
 internal inline bool
 RWLock_TryLockRead(RWLock* lock)
 {
-	unsigned char __stdcall TryAcquireSRWLockShared(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) unsigned char __stdcall TryAcquireSRWLockShared(struct _RTL_SRWLOCK* lock);
 	return TryAcquireSRWLockShared((struct _RTL_SRWLOCK*)lock);
 }
 
 internal inline bool
 RWLock_TryLockWrite(RWLock* lock)
 {
-	unsigned char __stdcall TryAcquireSRWLockExclusive(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) unsigned char __stdcall TryAcquireSRWLockExclusive(struct _RTL_SRWLOCK* lock);
 	return TryAcquireSRWLockExclusive((struct _RTL_SRWLOCK*)lock);
 }
 
 internal inline void
 RWLock_UnlockRead(RWLock* lock)
 {
-	void __stdcall ReleaseSRWLockShared(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) void __stdcall ReleaseSRWLockShared(struct _RTL_SRWLOCK* lock);
 	ReleaseSRWLockShared((struct _RTL_SRWLOCK*)lock);
 }
 
 internal inline void
 RWLock_UnlockWrite(RWLock* lock)
 {
-	void __stdcall ReleaseSRWLockExclusive(struct _RTL_SRWLOCK* lock);
+	__declspec(dllimport) void __stdcall ReleaseSRWLockExclusive(struct _RTL_SRWLOCK* lock);
 	ReleaseSRWLockExclusive((struct _RTL_SRWLOCK*)lock);
 }
 

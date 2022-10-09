@@ -419,8 +419,8 @@ MemCmp(const void* left_, const void* right_, uintsize size)
 	{
 		__m128i ldata, rdata;
 		
-		ldata = _mm_loadu_si128((const __m128i_u*)left);
-		rdata = _mm_loadu_si128((const __m128i_u*)right);
+		ldata = _mm_loadu_si128((const __m128i*)left);
+		rdata = _mm_loadu_si128((const __m128i*)right);
 		
 		int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(ldata, rdata));
 		cmp = ~cmp & 0xffff;
