@@ -453,7 +453,7 @@ Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** ou
 		config->window_should_close = false;
 		global_platform_data = *config;
 		
-		MemSet(input_data, 0, sizeof(*input_data));
+		Mem_Set(input_data, 0, sizeof(*input_data));
 		Platform_PollEvents(config, input_data);
 		
 		*out_graphics = &global_graphics_context;

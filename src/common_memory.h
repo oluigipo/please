@@ -1,10 +1,57 @@
 #ifndef COMMON_MEMORY_H
 #define COMMON_MEMORY_H
 
+//~ NOTE(ljre): Functions
+internal inline int32 Mem_BitCtz64(uint64 i);
+internal inline int32 Mem_BitCtz32(uint32 i);
+internal inline int32 Mem_BitCtz16(uint16 i);
+internal inline int32 Mem_BitCtz8(uint8 i);
+
+internal inline int32 Mem_BitClz64(uint64 i);
+internal inline int32 Mem_BitClz32(uint32 i);
+internal inline int32 Mem_BitClz16(uint16 i);
+internal inline int32 Mem_BitClz8(uint8 i);
+
+internal inline int32 Mem_PopCnt64(uint64 x);
+internal inline int32 Mem_PopCnt32(uint32 x);
+internal inline int32 Mem_PopCnt16(uint16 x);
+internal inline int32 Mem_PopCnt8(uint8 x);
+
+internal inline uint64 Mem_ByteSwap64(uint64 x);
+internal inline uint32 Mem_ByteSwap32(uint32 x);
+internal inline uint16 Mem_ByteSwap16(uint16 x);
+
+internal inline void* Mem_Copy(void* restrict dst, const void* restrict src, uintsize size);
+internal inline void* Mem_Move(void* dst, const void* src, uintsize size);
+internal inline void* Mem_Set(void* restrict dst, uint8 byte, uintsize size);
+internal inline int32 Mem_Compare(const void* left_, const void* right_, uintsize size);
+
+//~ NOTE(ljre): amd64 implementation (currently the single one we care about)
 #include <immintrin.h>
 
+//- Mem_BitCtz
 internal inline int32
-BitCtz(int32 i)
+Mem_BitCtz64(uint64 i)
+{
+	Assume(i != 0);
+	int32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_ctzll(i);
+#elif defined(_MSC_VER)
+	_BitScanForward64(&result, i);
+#else
+	result = 0;
+	
+	while ((i & 1<<result) == 0)
+		++result;
+#endif
+	
+	return result;
+}
+
+internal inline int32
+Mem_BitCtz32(uint32 i)
 {
 	Assume(i != 0);
 	int32 result;
@@ -24,7 +71,37 @@ BitCtz(int32 i)
 }
 
 internal inline int32
-BitClz(int32 i)
+Mem_BitCtz16(uint16 i)
+{ return Mem_BitCtz32(i); }
+
+internal inline int32
+Mem_BitCtz8(uint8 i)
+{ return Mem_BitCtz32(i); }
+
+//- Mem_BitClz
+internal inline int32
+Mem_BitClz64(uint64 i)
+{
+	Assume(i != 0);
+	int32 result;
+	
+#if defined(__GNUC__) || defined(__clang__)
+	result = __builtin_clzll(i);
+#elif defined(_MSC_VER)
+	_BitScanReverse(&result, i);
+	result = 63 - result;
+#else
+	result = 0;
+	
+	while ((i & 1<<(63-result)) == 0)
+		++result;
+#endif
+	
+	return result;
+}
+
+internal inline int32
+Mem_BitClz32(uint32 i)
 {
 	Assume(i != 0);
 	int32 result;
@@ -44,9 +121,18 @@ BitClz(int32 i)
 	return result;
 }
 
+internal inline int32
+Mem_BitClz16(uint16 i)
+{ return Mem_BitClz32(i) - 16; }
+
+internal inline int32
+Mem_BitClz8(uint8 i)
+{ return Mem_BitClz32(i) - 24; }
+
+//- Mem_PopCnt
 // NOTE(ljre): https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 internal inline int32
-PopCnt64(uint64 x)
+Mem_PopCnt64(uint64 x)
 {
 	x -= (x >> 1) & 0x5555555555555555u;
 	x = (x & 0x3333333333333333u) + ((x >> 2) & 0x3333333333333333u);
@@ -55,7 +141,7 @@ PopCnt64(uint64 x)
 }
 
 internal inline int32
-PopCnt32(uint32 x)
+Mem_PopCnt32(uint32 x)
 {
 	x -= (x >> 1) & 0x55555555u;
 	x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
@@ -64,19 +150,22 @@ PopCnt32(uint32 x)
 }
 
 internal inline int32
-PopCnt16(uint16 x)
-{
-	return PopCnt32(x);
-}
+Mem_PopCnt16(uint16 x)
+{ return Mem_PopCnt32(x); }
 
+internal inline int32
+Mem_PopCnt8(uint8 x)
+{ return Mem_PopCnt32(x); }
+
+//- Mem_ByteSwap
 internal inline uint16
-ByteSwap16(uint16 x)
+Mem_ByteSwap16(uint16 x)
 {
 	return (uint16)((x >> 8) | (x << 8));
 }
 
 internal inline uint32
-ByteSwap32(uint32 x)
+Mem_ByteSwap32(uint32 x)
 {
 	uint32 result;
 	
@@ -94,7 +183,7 @@ ByteSwap32(uint32 x)
 }
 
 internal inline uint64
-ByteSwap64(uint64 x)
+Mem_ByteSwap64(uint64 x)
 {
 	uint64 result;
 	
@@ -124,6 +213,7 @@ ByteSwap64(uint64 x)
 	return result;
 }
 
+//- CRT memcpy, memmove, memset & memcmp functions
 #ifdef COMMON_DONT_USE_CRT
 
 // NOTE(ljre): Loop vectorization when using clang is disabled.
@@ -135,7 +225,7 @@ ByteSwap64(uint64 x)
 //             already be met.
 
 internal inline void*
-MemCopy(void* restrict dst, const void* restrict src, uintsize size)
+Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 {
 	uint8* restrict d = (uint8*)dst;
 	const uint8* restrict s = (const uint8*)src;
@@ -215,7 +305,7 @@ MemCopy(void* restrict dst, const void* restrict src, uintsize size)
 }
 
 internal inline void*
-MemMove(void* dst, const void* src, uintsize size)
+Mem_Move(void* dst, const void* src, uintsize size)
 {
 	uint8* d = (uint8*)dst;
 	const uint8* s = (const uint8*)src;
@@ -229,7 +319,7 @@ MemMove(void* dst, const void* src, uintsize size)
 		return dst;
 	
 	if (diff > size)
-		return MemCopy(dst, src, size);
+		return Mem_Copy(dst, src, size);
 	
 	if (d <= s)
 	{
@@ -391,7 +481,7 @@ MemMove(void* dst, const void* src, uintsize size)
 }
 
 internal inline void*
-MemSet(void* restrict dst, uint8 byte, uintsize size)
+Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 {
 	uint8* restrict d = (uint8*)dst;
 	
@@ -410,7 +500,7 @@ MemSet(void* restrict dst, uint8 byte, uintsize size)
 }
 
 internal inline int32
-MemCmp(const void* left_, const void* right_, uintsize size)
+Mem_Compare(const void* left_, const void* right_, uintsize size)
 {
 	const uint8* left = (const uint8*)left_;
 	const uint8* right = (const uint8*)right_;
@@ -433,7 +523,7 @@ MemCmp(const void* left_, const void* right_, uintsize size)
 				int8 bytes[16];
 			} diff = { _mm_sub_epi8(ldata, rdata) };
 			
-			return diff.bytes[BitCtz(cmp)] < 0 ? -1 : 1;
+			return diff.bytes[Mem_BitCtz32(cmp)] < 0 ? -1 : 1;
 		}
 		
 		size -= 16;
@@ -458,19 +548,19 @@ MemCmp(const void* left_, const void* right_, uintsize size)
 #include <string.h>
 
 internal inline void*
-MemCopy(void* restrict dst, const void* restrict src, uintsize size)
+Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 { return memcpy(dst, src, size); }
 
 internal inline void*
-MemMove(void* dst, const void* src, uintsize size)
+Mem_Move(void* dst, const void* src, uintsize size)
 { return memmove(dst, src, size); }
 
 internal inline void*
-MemSet(void* restrict dst, uint8 byte, uintsize size)
+Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 { return memset(dst, byte, size); }
 
 internal inline int32
-MemCmp(const void* left_, const void* right_, uintsize size)
+Mem_Compare(const void* left_, const void* right_, uintsize size)
 { return memcmp(left_, right_, size); }
 
 #endif

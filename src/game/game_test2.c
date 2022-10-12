@@ -78,7 +78,7 @@ Game_Init(void)
 {
 	Trace();
 	
-	MemSet(game, 0, sizeof(*game));
+	Mem_Set(game, 0, sizeof(*game));
 	
 	if (!engine->render->load_font_from_file(Str("./assets/FalstinRegular-XOr2.ttf"), &game->font))
 		Platform_ExitWithErrorMessage(Str("Could not load font './assets/FalstinRegular-XOr2.ttf'."));

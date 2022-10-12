@@ -151,7 +151,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 		{
 			int32 remaining = *audio_count - i;
 			if (remaining > 0)
-				MemMove(audios + i, audios + i + 1, sizeof(*audios) * (uintsize)remaining);
+				Mem_Move(audios + i, audios + i + 1, sizeof(*audios) * (uintsize)remaining);
 			
 			--*audio_count;
 		}

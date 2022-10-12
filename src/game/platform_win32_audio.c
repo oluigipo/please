@@ -96,7 +96,7 @@ AudioThreadProc(void* data)
 		(void)errcode;
 		
 		if (dest)
-			MemCopy(dest, source, (uintsize)(frame_count * global_channels) * sizeof(int16));
+			Mem_Copy(dest, source, (uintsize)(frame_count * global_channels) * sizeof(int16));
 		
 		IAudioRenderClient_ReleaseBuffer(global_audio_render_client, frame_count, 0);
 	}
@@ -159,12 +159,12 @@ Win32_InitAudio(void)
 	};
 	
 	result = IAudioClient_Initialize(global_audio_client,
-									 AUDCLNT_SHAREMODE_SHARED,
-									 AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_RATEADJUST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-									 requested_sound_duration,
-									 0,
-									 &new_wave_format,
-									 NULL);
+		AUDCLNT_SHAREMODE_SHARED,
+		AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_RATEADJUST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+		requested_sound_duration,
+		0,
+		&new_wave_format,
+		NULL);
 	if (result != S_OK)
 		goto error3;
 	
@@ -219,7 +219,7 @@ Win32_InitAudio(void)
 	global_audio_buffer = Platform_HeapAlloc(size * 2);
 	global_audio_buffer_hot = global_audio_buffer;
 	global_audio_buffer_cold = global_audio_buffer_hot + size;
-	MemSet(global_audio_buffer, 0, size * 2);
+	Mem_Set(global_audio_buffer, 0, size * 2);
 	
 	global_audio_thread = CreateThread(NULL, 0, AudioThreadProc, NULL, 0, NULL);
 	if (!global_audio_thread)
@@ -265,7 +265,7 @@ Platform_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32*
 		}
 		RWLock_UnlockWrite(&global_audio_mutex);
 		
-		MemSet(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
+		Mem_Set(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
 		return (int16*)global_audio_buffer_cold;
 	}
 	else

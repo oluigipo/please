@@ -3,7 +3,7 @@
 
 #define Arena_PushStruct(arena, Type) Arena_PushAligned(arena, sizeof(Type), alignof(Type))
 #define Arena_PushStructArray(arena, Type, count) Arena_PushAligned(arena, sizeof(Type)*(count), alignof(Type))
-#define Arena_PushStructData(arena, Type, data) MemCopy(Arena_PushStruct(arena, Type), data, sizeof(Type))
+#define Arena_PushStructData(arena, Type, data) Mem_Copy(Arena_PushStruct(arena, Type), data, sizeof(Type))
 
 struct Arena
 {
@@ -133,19 +133,19 @@ Arena_PushDirty(Arena* arena, uintsize size)
 
 internal inline void*
 Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment)
-{ return MemSet(Arena_PushDirtyAligned(arena, size, alignment), 0, size); }
+{ return Mem_Set(Arena_PushDirtyAligned(arena, size, alignment), 0, size); }
 
 internal inline void*
 Arena_Push(Arena* arena, uintsize size)
-{ return MemSet(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), 0, size); }
+{ return Mem_Set(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), 0, size); }
 
 internal inline void*
 Arena_PushMemory(Arena* arena, const void* buf, uintsize size)
-{ return MemCopy(Arena_PushDirtyAligned(arena, size, 1), buf, size); }
+{ return Mem_Copy(Arena_PushDirtyAligned(arena, size, 1), buf, size); }
 
 internal inline void*
 Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment)
-{ return MemCopy(Arena_PushDirtyAligned(arena, size, alignment), buf, size); }
+{ return Mem_Copy(Arena_PushDirtyAligned(arena, size, alignment), buf, size); }
 
 internal inline void
 Arena_Clear(Arena* arena)

@@ -27,7 +27,7 @@ Engine_IsGamepadConnected(uint32 index)
 API int32
 Engine_ConnectedGamepadCount(void)
 {
-	return PopCnt64(global_engine.input->connected_gamepads);
+	return Mem_PopCnt64(global_engine.input->connected_gamepads);
 }
 
 API int32
@@ -38,7 +38,7 @@ Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT])
 	
 	while (c)
 	{
-		out_indices[len++] = BitCtz((int32)c);
+		out_indices[len++] = Mem_BitCtz32((uint32)c);
 		
 		c &= c-1; // NOTE(ljre): Clear last bit
 	}

@@ -35,7 +35,7 @@ String_Decode(String str, int32* index)
 	
 	if (byte & 0b10000000)
 	{
-		int32 size = BitClz(~byte);
+		int32 size = Mem_BitClz8(~byte);
 		
 		if (size == 1)
 		{
@@ -83,7 +83,7 @@ String_DecodedLength(String str)
 internal inline int32
 String_Compare(String a, String b)
 {
-	int32 result = MemCmp(a.data, b.data, Min(a.size, b.size));
+	int32 result = Mem_Compare(a.data, b.data, Min(a.size, b.size));
 	
 	if (result == 0 && a.size != b.size)
 		return (a.size > b.size) ? 1 : -1;
@@ -97,7 +97,7 @@ String_Equals(String a, String b)
 	if (a.size != b.size)
 		return false;
 	
-	return MemCmp(a.data, b.data, a.size) == 0;
+	return Mem_Compare(a.data, b.data, a.size) == 0;
 }
 
 internal inline bool
@@ -111,7 +111,7 @@ String_EndsWith(String check, String s)
 		.data = check.data + (check.size - s.size),
 	};
 	
-	return MemCmp(substr.data, s.data, substr.size) == 0;
+	return Mem_Compare(substr.data, s.data, substr.size) == 0;
 }
 
 #endif // COMMON_STRING_H

@@ -70,13 +70,13 @@ IsXInputDevice(const GUID* guid)
 internal bool32
 ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize guid_str_size)
 {
-    if (MemCmp(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
+    if (Mem_Compare(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
     {
         SPrintf(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
-				(uint8) instance->guidProduct.Data1,
-				(uint8) (instance->guidProduct.Data1 >> 8),
-				(uint8) (instance->guidProduct.Data1 >> 16),
-				(uint8) (instance->guidProduct.Data1 >> 24));
+			(uint8) instance->guidProduct.Data1,
+			(uint8) (instance->guidProduct.Data1 >> 8),
+			(uint8) (instance->guidProduct.Data1 >> 16),
+			(uint8) (instance->guidProduct.Data1 >> 24));
     }
     else
     {
@@ -87,9 +87,9 @@ ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize
 			return false;
 		
 		SPrintf(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
-				name[0], name[1], name[2], name[3],
-				name[4], name[5], name[6], name[7],
-				name[8], name[9], name[10]);
+			name[0], name[1], name[2], name[3],
+			name[4], name[5], name[6], name[7],
+			name[8], name[9], name[10]);
     }
     
     return true;

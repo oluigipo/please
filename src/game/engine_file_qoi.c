@@ -43,10 +43,10 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 		return NULL;
 	
 	struct QoiHeader header = *(const struct QoiHeader*)data;
-	header.width = ByteSwap32(header.width);
-	header.height = ByteSwap32(header.height);
+	header.width = Mem_ByteSwap32(header.width);
+	header.height = Mem_ByteSwap32(header.height);
 	
-	if (MemCmp(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
+	if (Mem_Compare(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
 		header.channels < 3 || header.channels > 4 || header.colorspace > 1 || // NOTE(ljre): Format limitations.
 		header.colorspace != 1 || header.width > INT32_MAX || header.height > INT32_MAX) // NOTE(ljre): Our limitations.
 	{
@@ -197,7 +197,7 @@ Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width
 	{
 		const uint8 end_marker[8] = { 0,0,0,0, 0,0,0,1 };
 		
-		if (MemCmp(head, end_marker, 8) != 0)
+		if (Mem_Compare(head, end_marker, 8) != 0)
 			err = true;
 	}
 	

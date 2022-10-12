@@ -189,7 +189,7 @@ Json_NumberValueF64(const Json_Value* value)
 	Assert(len < 127);
 	
 	char buf[128];
-	MemCopy(buf, value->begin, len);
+	Mem_Copy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtod(buf, NULL);
@@ -207,7 +207,7 @@ Json_NumberValueI64(const Json_Value* value)
 	Assert(len < 127);
 	
 	char buf[128];
-	MemCopy(buf, value->begin, len);
+	Mem_Copy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtoll(buf, NULL, 10);

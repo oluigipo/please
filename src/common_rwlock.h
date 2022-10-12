@@ -25,7 +25,7 @@ typedef RWLock;
 // NOTE(ljre): Definition compatible with Win32's RTL_SRWLOCK_INIT in <winnt.h>
 internal inline void
 RWLock_Init(RWLock* lock)
-{ MemSet(lock, 0, sizeof(*lock)); }
+{ Mem_Set(lock, 0, sizeof(*lock)); }
 
 internal inline void
 RWLock_Deinit(RWLock* lock)

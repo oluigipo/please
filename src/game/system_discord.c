@@ -172,7 +172,7 @@ PlsDiscord_CallbackDeleteLobby_(void* event_data, enum EDiscordResult result)
 	PlsDiscord_PushEvent_(discord, &event);
 	
 	if (result != DiscordResult_Ok)
-		MemSet(&discord->lobby, 0, sizeof(discord->lobby));
+		Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
 }
 
 internal DISCORD_CALLBACK void
@@ -255,7 +255,7 @@ PlsDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	MemSet(&discord->lobby, 0, sizeof(discord->lobby));
+	Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
 	//Platform_DebugLog("Discord: OnLobbyDelete -- %lli\t%u\n", lobby_id, reason);
 }
 
@@ -634,7 +634,7 @@ PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 	
 	discord->appid = appid;
 	discord->connected = true;
-	MemSet(&discord->lobby, 0, sizeof(discord->lobby));
+	Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
 	
 	discord->activities->update_activity(discord->activities, &discord->activity, discord, PlsDiscord_CallbackUpdateActivity_);
 	
@@ -737,7 +737,7 @@ PlsDiscord_UpdateLobbyActivity(PlsDiscord_Client* discord)
 	if (result != DiscordResult_Ok)
 		return result;
 	
-	MemCopy(discord->activity.secrets.join, secret, sizeof(discord->lobby.secret));
+	Mem_Copy(discord->activity.secrets.join, secret, sizeof(discord->lobby.secret));
 	SPrintf(discord->activity.party.id, sizeof(discord->activity.party.id), "%lli", discord->lobby.id);
 	discord->activity.party.size.current_size = member_count;
 	discord->activity.party.size.max_size = discord->lobby.capacity;
