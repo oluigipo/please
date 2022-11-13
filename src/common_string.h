@@ -23,47 +23,39 @@ typedef String;
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
 
-internal int32
+internal uint32
 String_Decode(String str, int32* index)
 {
-	int32 result = 0;
-	const uint8* p = str.data + *index;
-	if (p >= str.data + str.size || !*p)
+	const uint8* head = str.data + *index;
+	const uint8* const end = str.data + str.size;
+	
+	if (head >= end)
 		return 0;
 	
-	uint8 byte = (uint8)*p++;
+	uint8 byte = *head++;
+	if (!byte || byte == 0xff)
+		return 0;
 	
-	if (byte & 0b10000000)
-	{
-		int32 size = Mem_BitClz8(~byte);
-		
-		if (size == 1)
-		{
-			// NOTE(ljre): Continuation byte. Something is wrong.
-			result = 0;
-		}
-		else
-		{
-			Assert(size < 5);
-			
-			result |= byte & ((1 << (8-size)) - 1);
-			while (size > 1)
-			{
-				result <<= 6;
-				byte = (uint8)*p++;
-				result |= byte & 0b00111111;
-				
-				--size;
-			}
-		}
-	}
+	int32 size =  Mem_BitClz8(~byte);
+	if (Unlikely(size == 1 || size > 4 || head + size >= end))
+		return 0;
+	
+	uint32 result = 0;
+	if (size == 0)
+		result = byte;
 	else
 	{
-		result |= byte;
+		result |= (byte << size & 0xff) >> size;
+		
+		switch (size)
+		{
+			case 4: result = (result << 6) | (*head++ & 0x3f);
+			case 3: result = (result << 6) | (*head++ & 0x3f);
+			case 2: result = (result << 6) | (*head++ & 0x3f);
+		}
 	}
 	
-	// Return
-	*index = (int32)(p - str.data);
+	*index = (int32)(head - str.data);
 	return result;
 }
 

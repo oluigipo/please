@@ -130,7 +130,10 @@ Mem_BitClz8(uint8 i)
 { return Mem_BitClz32(i) - 24; }
 
 //- Mem_PopCnt
-// NOTE(ljre): https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
+// NOTE(ljre): The 'popcnt' instruction is not actually guaranteed to be supported on all amd64 CPUs, so
+//             we'll use this implementation found on wikipedia.
+//
+//             https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 internal inline int32
 Mem_PopCnt64(uint64 x)
 {
@@ -160,9 +163,7 @@ Mem_PopCnt8(uint8 x)
 //- Mem_ByteSwap
 internal inline uint16
 Mem_ByteSwap16(uint16 x)
-{
-	return (uint16)((x >> 8) | (x << 8));
-}
+{ return (uint16)((x >> 8) | (x << 8)); }
 
 internal inline uint32
 Mem_ByteSwap32(uint32 x)
