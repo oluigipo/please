@@ -198,7 +198,7 @@ struct Engine_GltfJson
 typedef Engine_GltfJson;
 
 //~ Functions
-internal inline const uint8*
+static inline const uint8*
 ReadUint32(const uint8* begin, const uint8* end, uint32* out_value)
 {
 	if (begin + sizeof(uint32) > end)
@@ -208,7 +208,7 @@ ReadUint32(const uint8* begin, const uint8* end, uint32* out_value)
 	return begin + sizeof(uint32);
 }
 
-internal void
+static void
 ParseGltfDataAsset(const Json_Value* value, Engine_GltfJson* out)
 {
 	out->asset.generator = StrNull;
@@ -239,7 +239,7 @@ ParseGltfDataAsset(const Json_Value* value, Engine_GltfJson* out)
 	}
 }
 
-internal bool
+static bool
 ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -344,7 +344,7 @@ ParseGltfDataNode(const Json_Value* value, GltfJson_Node* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataNodes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -370,7 +370,7 @@ ParseGltfDataNodes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -416,7 +416,7 @@ ParseGltfDataScene(const Json_Value* value, GltfJson_Scene* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataScenes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -442,7 +442,7 @@ ParseGltfDataScenes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataTextureInfo(const Json_Value* value, GltfJson_TextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -471,7 +471,7 @@ ParseGltfDataTextureInfo(const Json_Value* value, GltfJson_TextureInfo* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataMetallicRoughness(const Json_Value* value, GltfJson_MetallicRoughness* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -510,7 +510,7 @@ ParseGltfDataMetallicRoughness(const Json_Value* value, GltfJson_MetallicRoughne
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataNormalTextureInfo(const Json_Value* value, GltfJson_NormalTextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -544,7 +544,7 @@ ParseGltfDataNormalTextureInfo(const Json_Value* value, GltfJson_NormalTextureIn
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataOcclusionTextureInfo(const Json_Value* value, GltfJson_OcclusionTextureInfo* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -578,7 +578,7 @@ ParseGltfDataOcclusionTextureInfo(const Json_Value* value, GltfJson_OcclusionTex
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -683,7 +683,7 @@ ParseGltfDataMaterial(const Json_Value* value, GltfJson_Material* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataMaterials(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -709,7 +709,7 @@ ParseGltfDataMaterials(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -775,7 +775,7 @@ ParseGltfDataPrimitive(const Json_Value* value, GltfJson_Primitive* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -819,7 +819,7 @@ ParseGltfDataMesh(const Json_Value* value, GltfJson_Mesh* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataMeshes(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -845,7 +845,7 @@ ParseGltfDataMeshes(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -935,7 +935,7 @@ ParseGltfDataAccessor(const Json_Value* value, GltfJson_Accessor* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataAccessors(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -961,7 +961,7 @@ ParseGltfDataAccessors(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataSampler(const Json_Value* value, GltfJson_Sampler* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1009,7 +1009,7 @@ ParseGltfDataSampler(const Json_Value* value, GltfJson_Sampler* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataSamplers(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1035,7 +1035,7 @@ ParseGltfDataSamplers(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataImage(const Json_Value* value, GltfJson_Image* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1071,7 +1071,7 @@ ParseGltfDataImage(const Json_Value* value, GltfJson_Image* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataImages(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1097,7 +1097,7 @@ ParseGltfDataImages(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataTexture(const Json_Value* value, GltfJson_Texture* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1133,7 +1133,7 @@ ParseGltfDataTexture(const Json_Value* value, GltfJson_Texture* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataTextures(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1159,7 +1159,7 @@ ParseGltfDataTextures(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataBufferView(const Json_Value* value, GltfJson_BufferView* out)
 {
 	if (value->kind != Json_ValueKind_Object)
@@ -1195,7 +1195,7 @@ ParseGltfDataBufferView(const Json_Value* value, GltfJson_BufferView* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfDataBufferViews(const Json_Value* value, Engine_GltfJson* out)
 {
 	if (value->kind != Json_ValueKind_Array)
@@ -1221,7 +1221,7 @@ ParseGltfDataBufferViews(const Json_Value* value, Engine_GltfJson* out)
 	return true;
 }
 
-internal bool
+static bool
 ParseGltfData(const uint8* json_begin, const uint8* json_end,
 	const uint8* binary_begin, const uint8* binary_end, Engine_GltfJson* out)
 {
@@ -1341,7 +1341,7 @@ ParseGltfData(const uint8* json_begin, const uint8* json_end,
 }
 
 //~ Internal API
-internal bool
+static bool
 Engine_ParseGltf(const uint8* data, uintsize size, Engine_GltfJson* out)
 {
 	Trace();

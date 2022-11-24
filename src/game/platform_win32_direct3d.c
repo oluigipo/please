@@ -13,28 +13,28 @@
 #define D3D11CreateDeviceAndSwapChain global_proc_D3D11CreateDeviceAndSwapChain
 typedef HRESULT WINAPI
 ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
-								  D3D_DRIVER_TYPE DriverType,
-								  HMODULE Software,
-								  UINT Flags,
-								  const D3D_FEATURE_LEVEL* pFeatureLevels,
-								  UINT FeatureLevels,
-								  UINT SDKVersion,
-								  const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-								  IDXGISwapChain** ppSwapChain,
-								  ID3D11Device** ppDevice,
-								  D3D_FEATURE_LEVEL* pFeatureLevel,
-								  ID3D11DeviceContext** ppImmediateContext);
+	D3D_DRIVER_TYPE DriverType,
+	HMODULE Software,
+	UINT Flags,
+	const D3D_FEATURE_LEVEL* pFeatureLevels,
+	UINT FeatureLevels,
+	UINT SDKVersion,
+	const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+	IDXGISwapChain** ppSwapChain,
+	ID3D11Device** ppDevice,
+	D3D_FEATURE_LEVEL* pFeatureLevel,
+	ID3D11DeviceContext** ppImmediateContext);
 
 //~ Globals
-internal Platform_Direct3DGraphicsContext global_direct3d;
-internal ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
+static Platform_Direct3DGraphicsContext global_direct3d;
+static ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
 #if defined(DEBUG)
-internal IDXGIInfoQueue* global_direct3d_info_queue;
+static IDXGIInfoQueue* global_direct3d_info_queue;
 #endif
 
 //~ Internal API
-internal void
+static void
 Win32_DestroyDirect3DWindow(void)
 {
 	if (global_direct3d.context)
@@ -47,7 +47,7 @@ Win32_DestroyDirect3DWindow(void)
 	DestroyWindow(global_window);
 }
 
-internal void
+static void
 Win32_Direct3DSwapBuffers(void)
 {
 	IDXGISwapChain_Present(global_direct3d.swapchain, 1, 0);
@@ -77,16 +77,16 @@ Win32_Direct3DSwapBuffers(void)
 #endif
 }
 
-internal bool32
+static bool32
 Win32_CreateDirect3DWindow(const Platform_Data* config, const wchar_t* title)
 {
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-								  config->window_x, config->window_y,
-								  config->window_width, config->window_height,
-								  NULL, NULL, global_instance, NULL);
+		config->window_x, config->window_y,
+		config->window_width, config->window_height,
+		NULL, NULL, global_instance, NULL);
 	
 	if (!window)
 		return false;
@@ -138,12 +138,12 @@ Win32_CreateDirect3DWindow(const Platform_Data* config, const wchar_t* title)
 #endif
 	
 	HRESULT result = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
-												   flags, NULL, 0,
-												   D3D11_SDK_VERSION, &swapchain_desc,
-												   &global_direct3d.swapchain,
-												   &global_direct3d.device,
-												   NULL,
-												   &global_direct3d.context);
+		flags, NULL, 0,
+		D3D11_SDK_VERSION, &swapchain_desc,
+		&global_direct3d.swapchain,
+		&global_direct3d.device,
+		NULL,
+		&global_direct3d.context);
 	
 	if (FAILED(result))
 	{

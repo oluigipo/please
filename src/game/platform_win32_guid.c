@@ -1,37 +1,37 @@
 //~ NOTE(ljre): needed by 'platform_win32_input.c'
 #define IID_IDirectInput8W _def_IID_IDirectInput8W
-internal const GUID IID_IDirectInput8W =
+static const GUID IID_IDirectInput8W =
 {0xBF798031,0x483A,0x4DA2,{0xAA,0x99,0x5D,0x64,0xED,0x36,0x97,0x00}};
 
 //~ NOTE(ljre): needed by 'platform_win32_audio.c'
 #define CLSID_MMDeviceEnumerator _def_CLSID_MMDeviceEnumerator
-internal const CLSID CLSID_MMDeviceEnumerator =
+static const CLSID CLSID_MMDeviceEnumerator =
 {0xBCDE0395,0xE52F,0x467C,{0x8E,0x3D,0xC4,0x57,0x92,0x91,0x69,0x2E}};
 
 #define IID_IMMDeviceEnumerator _def_IID_IMMDeviceEnumerator
-internal const IID IID_IMMDeviceEnumerator =
+static const IID IID_IMMDeviceEnumerator =
 {0xA95664D2,0x9614,0x4F35,{0xA7,0x46,0xDE,0x8D,0xB6,0x36,0x17,0xE6}};
 
 #define IID_IAudioClient _def_IID_IAudioClient
-internal const IID IID_IAudioClient =
+static const IID IID_IAudioClient =
 {0x1CB9AD4C,0xDBFA,0x4c32,{0xB1,0x78,0xC2,0xF5,0x68,0xA7,0x03,0xB2}};
 
 #define IID_IAudioRenderClient _def_IID_IAudioRenderClient
-internal const IID IID_IAudioRenderClient =
+static const IID IID_IAudioRenderClient =
 {0xF294ACFC,0x3146,0x4483,{0xA7,0xBF,0xAD,0xDC,0xA7,0xC2,0x60,0xE2}};
 
 //~ NOTE(ljre): needed by 'platform_win32_direct3d.h'
 #define IID_ID3D11Resource _def_IID_ID3D11Resource
-internal const IID IID_ID3D11Resource =
+static const IID IID_ID3D11Resource =
 {0xdc8e63f3,0xd12b,0x4952,{0xb4,0x7b,0x5e,0x45,0x02,0x6a,0x86,0x2d}};
 
 #define IID_IDXGIInfoQueue _def_IID_IDXGIInfoQueue
-internal const IID IID_IDXGIInfoQueue =
+static const IID IID_IDXGIInfoQueue =
 {0xD67441C7,0x672A,0x476f,{0x9E,0x82,0xCD,0x55,0xB4,0x49,0x49,0xCE}};
 
 // NOTE(ljre): This should not be const
 #define DXGI_DEBUG_ALL _def_DXGI_DEBUG_ALL
-internal const GUID DXGI_DEBUG_ALL =
+static const GUID DXGI_DEBUG_ALL =
 {0xe48ae283,0xda80,0x490b,{0x87,0xe6,0x43,0xe9,0xa9,0xcf,0xda,0x08}};
 
 //~ NOTE(ljre): needed by 'c_dfDIJoystick'
@@ -43,14 +43,14 @@ internal const GUID DXGI_DEBUG_ALL =
 #define GUID_RzAxis _def_GUID_RzAxis
 #define GUID_Slider _def_GUID_Slider
 #define GUID_POV _def_GUID_POV
-internal const GUID GUID_XAxis = {0xA36D02E0,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_YAxis = {0xA36D02E1,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_ZAxis = {0xA36D02E2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_RxAxis = {0xA36D02F4,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_RyAxis = {0xA36D02F5,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_RzAxis = {0xA36D02E3,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_Slider = {0xA36D02E4,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-internal const GUID GUID_POV = {0xA36D02F2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_XAxis = {0xA36D02E0,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_YAxis = {0xA36D02E1,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_ZAxis = {0xA36D02E2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_RxAxis = {0xA36D02F4,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_RyAxis = {0xA36D02F5,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_RzAxis = {0xA36D02E3,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_Slider = {0xA36D02E4,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+static const GUID GUID_POV = {0xA36D02F2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 
 // NOTE(ljre): because CLANG
 #ifndef DIDFT_OPTIONAL
@@ -62,7 +62,7 @@ internal const GUID GUID_POV = {0xA36D02F2,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x
 //             clang is too dumb to compile it - GCC worked for me:
 //                 gcc c_dfDIJoystick2.c -o test.exe -ldinput8 -lrpcrt4
 //
-internal DIOBJECTDATAFORMAT c_dfDIJoystick_data_format[] = {
+static DIOBJECTDATAFORMAT c_dfDIJoystick_data_format[] = {
 	{ &GUID_XAxis,DIJOFS_X,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
 	{ &GUID_YAxis,DIJOFS_Y,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
 	{ &GUID_ZAxis,DIJOFS_Z,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
@@ -109,7 +109,7 @@ internal DIOBJECTDATAFORMAT c_dfDIJoystick_data_format[] = {
 	{ NULL,DIJOFS_BUTTON(31),DIDFT_BUTTON|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,0 },
 };
 
-internal DIOBJECTDATAFORMAT c_dfDIJoystick2_data_format[] = {
+static DIOBJECTDATAFORMAT c_dfDIJoystick2_data_format[] = {
 	{ &GUID_XAxis,DIJOFS_X,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
 	{ &GUID_YAxis,DIJOFS_Y,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
 	{ &GUID_ZAxis,DIJOFS_Z,DIDFT_AXIS|DIDFT_OPTIONAL|DIDFT_ANYINSTANCE,DIDOI_ASPECTPOSITION },
@@ -277,7 +277,7 @@ internal DIOBJECTDATAFORMAT c_dfDIJoystick2_data_format[] = {
 };
 
 #define c_dfDIJoystick _def_c_dfDIJoystick
-internal const DIDATAFORMAT c_dfDIJoystick = {
+static const DIDATAFORMAT c_dfDIJoystick = {
 	sizeof(DIDATAFORMAT), sizeof(DIOBJECTDATAFORMAT),
 	DIDFT_ABSAXIS, sizeof(DIJOYSTATE),
 	sizeof(c_dfDIJoystick_data_format) / sizeof(DIOBJECTDATAFORMAT),
@@ -285,7 +285,7 @@ internal const DIDATAFORMAT c_dfDIJoystick = {
 };
 
 #define c_dfDIJoystick2 _def_c_dfDIJoystick2
-internal const DIDATAFORMAT c_dfDIJoystick2 = {
+static const DIDATAFORMAT c_dfDIJoystick2 = {
 	sizeof(DIDATAFORMAT), sizeof(DIOBJECTDATAFORMAT),
 	DIDFT_ABSAXIS, sizeof(DIJOYSTATE2),
 	sizeof(c_dfDIJoystick2_data_format) / sizeof(DIOBJECTDATAFORMAT),

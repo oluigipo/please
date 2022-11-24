@@ -55,7 +55,7 @@ struct GamepadMappings
 }
 typedef GamepadMappings;
 
-internal GamepadMappings global_gamepadmap_default = {
+static GamepadMappings global_gamepadmap_default = {
 	.buttons = {
 		GamepadObject_Button_Y,
 		GamepadObject_Button_B,

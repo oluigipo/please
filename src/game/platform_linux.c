@@ -1,8 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "internal.h"
 
-#undef internal
-
 #define __USE_MISC
 #include <stdio.h>
 #include <time.h>
@@ -16,20 +14,18 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#define internal static
-
 //~ Types
 
 //~ Globals
-internal Display* global_display;
-internal Window global_window;
+static Display* global_display;
+static Window global_window;
 
-internal bool32 global_window_should_close;
-internal int32 global_window_width;
-internal int32 global_window_height;
-internal GraphicsContext global_graphics_context;
-internal struct timespec global_time_begin;
-internal Platform_Config global_config;
+static bool32 global_window_should_close;
+static int32 global_window_width;
+static int32 global_window_height;
+static GraphicsContext global_graphics_context;
+static struct timespec global_time_begin;
+static Platform_Config global_config;
 
 //~ Functions
 #include "platform_linux_input.c"
@@ -86,7 +82,7 @@ API bool32
 Platform_CreateWindow(const Platform_Config* config, const GraphicsContext** out_graphics)
 {
 	Trace("Platform_CreateWindow");
-	char local_buffer[Kilobytes(1)];
+	char local_buffer[1 << 10];
 	const char* title;
 	
 	if (config->window_title.len > 0 && config->window_title.data[config->window_title.len-1] == 0)
@@ -267,7 +263,7 @@ Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 {
 	Trace("Platform_ReadEntireFile");
 	
-	char local_buffer[Kilobytes(1)];
+	char local_buffer[1 << 10];
 	const char* buffer;
 	
 	if (path.len > 0 && path.data[path.len-1] == 0)
@@ -306,7 +302,7 @@ Platform_WriteEntireFile(String path, const void* data, uintsize size)
 {
 	Trace("Platform_WriteEntireFile");
 	
-	char local_buffer[Kilobytes(1)];
+	char local_buffer[1 << 10];
 	const char* buffer;
 	
 	if (path.len > 0 && path.data[path.len-1] == 0)
@@ -359,11 +355,11 @@ Platform_DebugError(const char* msg)
 API void
 Platform_DebugMessageBox(const char* restrict format, ...)
 {
-	char buffer[Kilobytes(16)];
+	char buffer[16 << 10];
 	
 	va_list args;
 	va_start(args, format);
-	vsnprintf(buffer, sizeof buffer, format, args);
+	vsnprintf(buffer, sizeof(buffer), format, args);
 	puts(buffer); // TODO
 	va_end(args);
 }

@@ -15,30 +15,30 @@ typedef HRESULT WINAPI ProcCoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
 #endif
 
 //~ Globals
-internal ProcCoCreateInstance* CoCreateInstance;
-internal ProcCoInitializeEx* CoInitializeEx;
-internal bool32 global_audio_is_initialized = false;
-internal int32 global_channels = 2;
-internal int32 global_samples_per_second = 48000;
-internal int32 global_latency_frame_count;
+static ProcCoCreateInstance* CoCreateInstance;
+static ProcCoInitializeEx* CoInitializeEx;
+static bool32 global_audio_is_initialized = false;
+static int32 global_channels = 2;
+static int32 global_samples_per_second = 48000;
+static int32 global_latency_frame_count;
 
-internal uint8* volatile global_audio_buffer_cold;
-internal uint8* volatile global_audio_buffer_hot;
-internal uint8* global_audio_buffer;
-internal int32 global_audio_buffer_sample_count;
-internal int32 volatile global_audio_elapsed_frames;
-internal int32 global_audio_to_override;
+static uint8* volatile global_audio_buffer_cold;
+static uint8* volatile global_audio_buffer_hot;
+static uint8* global_audio_buffer;
+static int32 global_audio_buffer_sample_count;
+static int32 volatile global_audio_elapsed_frames;
+static int32 global_audio_to_override;
 
-internal IMMDeviceEnumerator* global_audio_device_enumerator;
-internal IMMDevice* global_audio_device;
-internal IAudioClient* global_audio_client;
-internal IAudioRenderClient* global_audio_render_client;
-internal HANDLE global_audio_event;
-internal HANDLE global_audio_thread;
-internal RWLock global_audio_mutex;
+static IMMDeviceEnumerator* global_audio_device_enumerator;
+static IMMDevice* global_audio_device;
+static IAudioClient* global_audio_client;
+static IAudioRenderClient* global_audio_render_client;
+static HANDLE global_audio_event;
+static HANDLE global_audio_thread;
+static RWLock global_audio_mutex;
 
 //~ Functions
-internal bool
+static bool
 LoadComLibrary(void)
 {
 	HMODULE library = Win32_LoadLibrary("ole32.dll");
@@ -61,7 +61,7 @@ LoadComLibrary(void)
 //#include <avrt.h>
 //#pragma comment(lib, "avrt.lib")
 
-internal DWORD WINAPI
+static DWORD WINAPI
 AudioThreadProc(void* data)
 {
 	//DWORD task_index;
@@ -103,7 +103,7 @@ AudioThreadProc(void* data)
 }
 
 //~ Internal API
-internal void
+static void
 Win32_InitAudio(void)
 {
 	Trace();
@@ -188,7 +188,7 @@ Win32_InitAudio(void)
 	global_latency_frame_count = (int32)(reftime * (int64)(global_samples_per_second / global_channels) / (int64)10000000);
 	global_latency_frame_count *= 2;
 	
-	Platform_DebugLog("%i\t%lli\n", global_latency_frame_count, reftime);
+	Platform_DebugLog("%i\t%I\n", global_latency_frame_count, reftime);
 	
 	RWLock_Init(&global_audio_mutex);
 	
@@ -228,7 +228,7 @@ Win32_InitAudio(void)
 	global_audio_is_initialized = true;
 }
 
-internal void
+static void
 Win32_DeinitAudio(void)
 {
 	Trace();

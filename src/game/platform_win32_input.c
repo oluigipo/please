@@ -79,18 +79,18 @@ typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, 
 #endif
 
 //~ Globals
-internal Win32_Gamepad   global_gamepads[Engine_MAX_GAMEPAD_COUNT];
-internal int32           global_gamepad_free[Engine_MAX_GAMEPAD_COUNT];
-internal int32           global_gamepad_free_count;
-internal IDirectInput8W* global_dinput;
-internal bool32          global_dinput_enabled;
+static Win32_Gamepad   global_gamepads[Engine_MAX_GAMEPAD_COUNT];
+static int32           global_gamepad_free[Engine_MAX_GAMEPAD_COUNT];
+static int32           global_gamepad_free_count;
+static IDirectInput8W* global_dinput;
+static bool32          global_dinput_enabled;
 
-internal ProcXInputGetState*        XInputGetState;
-internal ProcXInputSetState*        XInputSetState;
-internal ProcXInputGetCapabilities* XInputGetCapabilities;
-internal ProcDirectInput8Create*    DirectInput8Create;
+static ProcXInputGetState*        XInputGetState;
+static ProcXInputSetState*        XInputSetState;
+static ProcXInputGetCapabilities* XInputGetCapabilities;
+static ProcDirectInput8Create*    DirectInput8Create;
 
-internal const Engine_KeyboardKey global_keyboard_key_table[] = {
+static const Engine_KeyboardKey global_keyboard_key_table[] = {
 	[0] = Engine_KeyboardKey_Any,
 	
 	[VK_ESCAPE] = Engine_KeyboardKey_Escape,
@@ -144,25 +144,25 @@ internal const Engine_KeyboardKey global_keyboard_key_table[] = {
 //~ Functions
 #include "ext/guid_utils.h"
 
-internal inline bool
+static inline bool
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {
 	return Mem_Compare(a, b, sizeof (GUID)) == 0;
 }
 
-internal inline int32
+static inline int32
 GenGamepadIndex(void)
 {
 	return global_gamepad_free[--global_gamepad_free_count];
 }
 
-internal inline void
+static inline void
 ReleaseGamepadIndex(int32 index)
 {
 	global_gamepad_free[global_gamepad_free_count++] = index;
 }
 
-internal inline void
+static inline void
 NormalizeAxis(float32 axis[2])
 {
 	float32 len2 = axis[0]*axis[0] + axis[1]*axis[1];
@@ -188,14 +188,14 @@ NormalizeAxis(float32 axis[2])
 	}
 }
 
-internal DWORD WINAPI
+static DWORD WINAPI
 XInputGetStateStub(DWORD index, XINPUT_STATE* state) { return ERROR_DEVICE_NOT_CONNECTED; }
-internal DWORD WINAPI
+static DWORD WINAPI
 XInputSetStateStub(DWORD index, XINPUT_VIBRATION* state) { return ERROR_DEVICE_NOT_CONNECTED; }
-internal DWORD WINAPI
+static DWORD WINAPI
 XInputGetCapabilitiesStub(DWORD index, DWORD flags, XINPUT_CAPABILITIES* state){ return ERROR_DEVICE_NOT_CONNECTED; }
 
-internal void
+static void
 LoadXInput(void)
 {
 	static const char* const dll_names[] = { "xinput1_4.dll", "xinput9_1_0.dll", "xinput1_3.dll" };
@@ -218,7 +218,7 @@ LoadXInput(void)
 	}
 }
 
-internal const char*
+static const char*
 GetXInputSubTypeString(uint8 subtype)
 {
 	switch (subtype)
@@ -238,7 +238,7 @@ GetXInputSubTypeString(uint8 subtype)
 	}
 }
 
-internal void
+static void
 LoadDirectInput(void)
 {
 	static const char* const dll_names[] = { "dinput8.dll", /* "dinput.dll" */ };
@@ -265,7 +265,7 @@ LoadDirectInput(void)
 	}
 }
 
-internal void
+static void
 TranslateController(Engine_GamepadState* out, const GamepadMappings* map,
 	const bool8 buttons[32], const float32 axes[16], const int32 povs[8])
 {
@@ -453,7 +453,7 @@ TranslateController(Engine_GamepadState* out, const GamepadMappings* map,
 	NormalizeAxis(out->right);
 }
 
-internal void
+static void
 UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 {
 	Trace();
@@ -616,7 +616,7 @@ UpdateConnectedGamepad(Win32_Gamepad* gamepad)
 	}
 }
 
-internal BOOL CALLBACK
+static BOOL CALLBACK
 DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* userdata)
 {
 	Win32_Gamepad* gamepad = userdata;
@@ -671,7 +671,7 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 	return DIENUM_CONTINUE;
 }
 
-internal int32
+static int32
 SortGamepadCompare(const void* a, const void* b)
 {
 	int32 left  = *(const int32*)a;
@@ -680,7 +680,7 @@ SortGamepadCompare(const void* a, const void* b)
 	return left - right;
 }
 
-internal void
+static void
 SortGamepadObjects(Win32_Gamepad* gamepad)
 {
 	qsort(gamepad->dinput.buttons, (uintsize)gamepad->dinput.button_count, sizeof(int32), SortGamepadCompare);
@@ -694,7 +694,7 @@ SortGamepadObjects(Win32_Gamepad* gamepad)
 	}
 }
 
-internal BOOL CALLBACK
+static BOOL CALLBACK
 DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata)
 {
 	Trace();
@@ -792,12 +792,12 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	Platform_DebugLog("[info-win32] Device Connected:\n");
 	Platform_DebugLog("\tIndex: %i\n", index);
 	Platform_DebugLog("\tDriver: DirectInput\n");
-	Platform_DebugLog("\tName: %ls\n", instance->tszInstanceName);
-	Platform_DebugLog("\tProduct Name: %ls\n", instance->tszProductName);
-	Platform_DebugLog("\tGUID Instance: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
+	Platform_DebugLog("\tName: %w\n", instance->tszInstanceName);
+	Platform_DebugLog("\tProduct Name: %w\n", instance->tszProductName);
+	Platform_DebugLog("\tGUID Instance: %08x-%04x-%04x-%04x-%04x-%08x\n",
 		guid->Data1, guid->Data2, guid->Data3,
 		*(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
-	Platform_DebugLog("\tGUID Product: %08lx-%04hx-%04hx-%04hx-%04hx-%08lx\n",
+	Platform_DebugLog("\tGUID Product: %08x-%04x-%04x-%04x-%04x-%08x\n",
 		instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3,
 		*(uint16*)instance->guidProduct.Data4, ((uint16*)instance->guidProduct.Data4)[1], *(uint32*)instance->guidProduct.Data4);
 	
@@ -837,7 +837,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 }
 
 //~ Internal API
-internal void
+static void
 Win32_CheckForGamepads(void)
 {
 	Trace();
@@ -883,7 +883,7 @@ Win32_CheckForGamepads(void)
 	}
 }
 
-internal void
+static void
 Win32_InitInput(void)
 {
 	Trace();
@@ -899,7 +899,7 @@ Win32_InitInput(void)
 	Win32_CheckForGamepads();
 }
 
-internal void
+static void
 Win32_UpdateKeyboardKey(Engine_InputData* out_input_data, uint32 vkcode, bool is_down)
 {
 	Engine_KeyboardKey key = global_keyboard_key_table[vkcode];
@@ -924,14 +924,14 @@ Win32_UpdateKeyboardKey(Engine_InputData* out_input_data, uint32 vkcode, bool is
 	}
 }
 
-internal void
+static void
 Win32_UpdateMouseButton(Engine_InputData* out_input_data, Engine_MouseButton button, bool is_down)
 {
 	out_input_data->mouse.buttons[button].changes += 1;
 	out_input_data->mouse.buttons[button].is_down = is_down;
 }
 
-internal inline void
+static inline void
 Win32_UpdateInputEarly(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Update Keyboard
@@ -947,7 +947,7 @@ Win32_UpdateInputEarly(Engine_InputData* out_input_data)
 	out_input_data->mouse.scroll = 0;
 }
 
-internal inline void
+static inline void
 Win32_UpdateInputLate(Engine_InputData* out_input_data)
 {
 	// NOTE(ljre): Get mouse cursor

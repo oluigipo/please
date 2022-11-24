@@ -37,7 +37,7 @@
 #include "ext/stb_vorbis.h"
 
 //~ Our Code
-internal Engine_Data global_engine;
+static Engine_Data global_engine;
 
 #include "engine_file_qoi.c"
 #include "engine_file_json.c"

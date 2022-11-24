@@ -62,8 +62,8 @@ Engine_Main(int32 argc, char** argv)
 	config.graphics_api = Platform_GraphicsApi_OpenGL;
 	
 	global_engine.platform = &config;
-	global_engine.persistent_arena = Arena_Create(Megabytes(512), Megabytes(32));
-	global_engine.temp_arena = Arena_Create(Megabytes(128), Megabytes(8));
+	global_engine.persistent_arena = Arena_Create(512 << 20, 32 << 20);
+	global_engine.temp_arena = Arena_Create(128 << 20, 8 << 20);
 	global_engine.delta_time = 1.0f;
 	global_engine.running = true;
 	global_engine.input = Arena_Push(global_engine.persistent_arena, sizeof(*global_engine.input));

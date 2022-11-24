@@ -4,8 +4,8 @@
 
 // NOTE(ljre): These globals are set every frame by 'Game_Main'!
 //             They exist just for less typing...
-internal Engine_Data* engine;
-internal Game_Data* game;
+static Engine_Data* engine;
+static Game_Data* game;
 
 //~ NOTE(ljre): Types
 enum Game_TroopKind
@@ -137,14 +137,14 @@ struct Game_Data
 };
 
 //~ NOTE(ljre): Functions
-internal bool32
+static bool32
 CollisionPointAabb(const vec2 point, const vec2 sqr, float32 size)
 {
 	return (point[0] > sqr[0] && sqr[0] + size > point[0] &&
 		point[1] > sqr[1] && sqr[1] + size > point[1]);
 }
 
-internal float32
+static float32
 Approach(float32 current, float32 target, float32 step)
 {
 	if (current < target)
@@ -153,7 +153,7 @@ Approach(float32 current, float32 target, float32 step)
 	return glm_max(current - step, target);
 }
 
-internal int32
+static int32
 CompareDistance(const vec2 a, const vec2 b, float32 cmp)
 {
 	vec2 diff;
@@ -169,7 +169,7 @@ CompareDistance(const vec2 a, const vec2 b, float32 cmp)
 	return (int32)glm_signf(diff[0] + diff[1] - cmp);
 }
 
-internal inline Game_TroopHandle
+static inline Game_TroopHandle
 MakeTroopHandle(uint32 player_index, uint32 troop_index)
 {
 	Assert(player_index < ArrayLength(game->players));
@@ -182,7 +182,7 @@ MakeTroopHandle(uint32 player_index, uint32 troop_index)
 	};
 }
 
-internal void
+static void
 Game_PushAudio(const Asset_SoundBuffer* sound)
 {
 	if (game->playing_audio_count < Game_MAX_PLAYING_AUDIOS)
@@ -198,7 +198,7 @@ Game_PushAudio(const Asset_SoundBuffer* sound)
 	}
 }
 
-internal Game_TroopHandle
+static Game_TroopHandle
 Game_FindTroopAt(const vec2 pos, Game_TroopData** out_data)
 {
 	Game_TroopHandle result = { 0 };
@@ -236,7 +236,7 @@ Game_FindTroopAt(const vec2 pos, Game_TroopData** out_data)
 	return result;
 }
 
-internal inline Game_TroopData*
+static inline Game_TroopData*
 Game_FetchTroopData(Game_TroopHandle handle)
 {
 	if (!handle.valid)
@@ -253,7 +253,7 @@ Game_FetchTroopData(Game_TroopHandle handle)
 	return &troop->data;
 }
 
-internal void
+static void
 Game_KillTroop(Game_TroopHandle handle)
 {
 	if (!handle.valid)
@@ -273,7 +273,7 @@ Game_KillTroop(Game_TroopHandle handle)
 	player->free_troop = handle.index;
 }
 
-internal Game_TroopHandle
+static Game_TroopHandle
 Game_CreateTroop(uint32 player_index, Game_TroopData** out_data)
 {
 	Assert(player_index < ArrayLength(game->players));
@@ -307,21 +307,21 @@ Game_CreateTroop(uint32 player_index, Game_TroopData** out_data)
 }
 
 //- NOTE(ljre): Event Functions
-internal Game_Event*
+static Game_Event*
 Game_PushEvent(void)
 {
 	Assert(game->event_count < ArrayLength(game->events));
 	return Mem_Set(&game->events[game->event_count++], 0, sizeof(Game_Event));
 }
 
-internal void
+static void
 Game_NextEvent(void)
 {
 	Assert(game->event_count > 0);
 	Mem_Move(&game->events[0], &game->events[1], --game->event_count * sizeof(Game_Event));
 }
 
-internal Game_Event*
+static Game_Event*
 Game_PushImmediateEvent(void)
 {
 	if (game->event_count <= 0)
@@ -329,7 +329,7 @@ Game_PushImmediateEvent(void)
 	return Mem_Set(&game->events[0], 0, sizeof(Game_Event));
 }
 
-internal void
+static void
 Game_ProcessEvent(void)
 {
 	Assert(game->event_count > 0);
@@ -422,7 +422,7 @@ Game_ProcessEvent(void)
 }
 
 //- NOTE(ljre): Init Game Function
-internal void
+static void
 Game_Init(Game_Data* game)
 {
 	*game = (Game_Data) {
@@ -504,7 +504,7 @@ Game_Init(Game_Data* game)
 }
 
 //- NOTE(ljre): Update Game Function
-internal void
+static void
 ProcessDiscordEvents(void)
 {
 	void* temp_arena_save = Arena_End(engine->temp_arena);
@@ -528,7 +528,7 @@ ProcessDiscordEvents(void)
 					
 					struct DiscordUser user = event->on_current_user_update.state;
 					
-					Platform_DebugLog("UserID: %lli\tUsername: %s#%.4s\n", user.id, user.username, user.discriminator);
+					Platform_DebugLog("UserID: %I\tUsername: %s#%.*s\n", user.id, user.username, 4, user.discriminator);
 				} break;
 				
 				default: break;
@@ -539,7 +539,7 @@ ProcessDiscordEvents(void)
 	Arena_Pop(engine->temp_arena, temp_arena_save);
 }
 
-internal void
+static void
 Game_UpdateAndRender(void)
 {
 	Engine_MouseState mouse = engine->input->mouse;
@@ -818,7 +818,7 @@ Game_UpdateAndRender(void)
 	Render_Draw2D(engine, &render_data);
 	
 	char buff[256];
-	SPrintf(buff, sizeof(buff), "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
+	String_PrintfBuffer(buff, sizeof(buff), "%f\n%f\n", mouse_pos[0], mouse_pos[1]);
 	engine->render->draw_text(&game->font, Str(buff), (vec3) { 5.0f, 5.0f }, 30.0f, GLM_VEC4_ONE, (vec3) { 0.0f });
 	
 	PlsDiscord_LateUpdate(&game->discord);

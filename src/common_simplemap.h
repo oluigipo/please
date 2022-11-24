@@ -7,7 +7,7 @@
 #ifndef SimpleMap_HashFunc
 #   define SimpleMap_HashFunc SimpleMap_DefaultHashFunc_
 
-internal inline uint64
+static inline uint64
 SimpleMap_DefaultHashFunc_(String memory)
 {
 	uint64 result = 14695981039346656037u;
@@ -38,21 +38,21 @@ struct SimpleMap
 }
 typedef SimpleMap;
 
-internal SimpleMap* SimpleMap_CreateFromArena(Arena* arena, uint32 log2_of_cap);
-internal SimpleMap* SimpleMap_CreateFromMemory(void* memory, uint32 log2_of_cap);
-internal SimpleMap* SimpleMap_RehashToArena(Arena* arena, uint32 log2_of_cap, SimpleMap* other);
-internal SimpleMap* SimpleMap_RehashToMemory(void* memory, uint32 log2_of_cap, SimpleMap* other);
-internal SimpleMap_Entry* SimpleMap_Find(SimpleMap* map, uint64 hash);
-internal SimpleMap_Entry* SimpleMap_Insert(SimpleMap* map, uint64 hash, void* data);
-internal int32 SimpleMap_Iterate(SimpleMap* map, uint64 hash, int32 index);
+static SimpleMap* SimpleMap_CreateFromArena(Arena* arena, uint32 log2_of_cap);
+static SimpleMap* SimpleMap_CreateFromMemory(void* memory, uint32 log2_of_cap);
+static SimpleMap* SimpleMap_RehashToArena(Arena* arena, uint32 log2_of_cap, SimpleMap* other);
+static SimpleMap* SimpleMap_RehashToMemory(void* memory, uint32 log2_of_cap, SimpleMap* other);
+static SimpleMap_Entry* SimpleMap_Find(SimpleMap* map, uint64 hash);
+static SimpleMap_Entry* SimpleMap_Insert(SimpleMap* map, uint64 hash, void* data);
+static int32 SimpleMap_Iterate(SimpleMap* map, uint64 hash, int32 index);
 
-internal SimpleMap*
+static SimpleMap*
 SimpleMap_CreateFromArena(Arena* arena, uint32 log2_of_cap)
 {
 	Assert(log2_of_cap < 32);
 	
 	uint32 cap = 1 << log2_of_cap;
-	SimpleMap* map = Arena_PushAligned(arena, sizeof(SimpleMap) + sizeof(SimpleMap_Entry) * cap, alignof(SimpleMap));
+	SimpleMap* map = (SimpleMap*)Arena_PushAligned(arena, sizeof(SimpleMap) + sizeof(SimpleMap_Entry) * cap, alignof(SimpleMap));
 	
 	map->len = 0;
 	map->log2_of_cap = log2_of_cap;
@@ -60,7 +60,7 @@ SimpleMap_CreateFromArena(Arena* arena, uint32 log2_of_cap)
 	return map;
 }
 
-internal SimpleMap*
+static SimpleMap*
 SimpleMap_CreateFromMemory(void* memory, uint32 log2_of_cap)
 {
 	Assert(log2_of_cap < 32);
@@ -73,7 +73,7 @@ SimpleMap_CreateFromMemory(void* memory, uint32 log2_of_cap)
 	return map;
 }
 
-internal SimpleMap*
+static SimpleMap*
 SimpleMap_RehashToArena(Arena* arena, uint32 log2_of_cap, SimpleMap* other)
 {
 	Assert(other->log2_of_cap < log2_of_cap);
@@ -93,7 +93,7 @@ SimpleMap_RehashToArena(Arena* arena, uint32 log2_of_cap, SimpleMap* other)
 	return result;
 }
 
-internal SimpleMap*
+static SimpleMap*
 SimpleMap_RehashToMemory(void* memory, uint32 log2_of_cap, SimpleMap* other)
 {
 	Assert(other->log2_of_cap < log2_of_cap);
@@ -113,7 +113,7 @@ SimpleMap_RehashToMemory(void* memory, uint32 log2_of_cap, SimpleMap* other)
 	return result;
 }
 
-internal int32
+static int32
 SimpleMap_Iterate(SimpleMap* map, uint64 hash, int32 index)
 {
 	uint32 exp = map->log2_of_cap;
@@ -122,7 +122,7 @@ SimpleMap_Iterate(SimpleMap* map, uint64 hash, int32 index)
 	return (index + step) & mask;
 }
 
-internal SimpleMap_Entry*
+static SimpleMap_Entry*
 SimpleMap_Find(SimpleMap* map, uint64 hash)
 {
 	Assert(hash != 0);
@@ -141,7 +141,7 @@ SimpleMap_Find(SimpleMap* map, uint64 hash)
 	}
 }
 
-internal SimpleMap_Entry*
+static SimpleMap_Entry*
 SimpleMap_Insert(SimpleMap* map, uint64 hash, void* data)
 {
 	Assert(hash != 0);

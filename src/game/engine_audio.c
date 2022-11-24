@@ -1,6 +1,6 @@
 //~ Functions
 // TODO(ljre): Better interpolation method!
-internal inline float32
+static inline float32
 InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, const int16* samples, int32 sample_count)
 {
 	float32 result = samples[(int32)frame_index * channels + channel_index];

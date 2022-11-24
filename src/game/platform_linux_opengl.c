@@ -21,7 +21,7 @@ struct Linux_OpenGL
 	void (*glXSwapBuffers)(Display *dpy, GLXDrawable drawable);
 	void* (*glXGetProcAddressARB)(const GLubyte* procName);
 	GLXContext (*glXCreateContextAttribsARB)(Display *dpy, GLXFBConfig config, GLXContext share_context,
-											 Bool direct, const int *attrib_list);
+		Bool direct, const int *attrib_list);
 	GLXFBConfig* (*glXChooseFBConfig)(Display* dpy, int screen, const int* attrib_list, int* nelements);
 	GLXDrawable (*glXGetCurrentDrawable)(void);
 	void (*glXSwapIntervalEXT)(Display* dpy, GLXDrawable drawable, int interval);
@@ -31,10 +31,10 @@ struct Linux_OpenGL
 typedef Linux_OpenGL;
 
 //~ Globals
-internal Linux_OpenGL global_opengl;
+static Linux_OpenGL global_opengl;
 
 //~ Functions
-internal void*
+static void*
 GetOpenGLProcAddress(const char* name)
 {
 	void* result = NULL;
@@ -51,7 +51,7 @@ GetOpenGLProcAddress(const char* name)
 	return result;
 }
 
-internal bool32
+static bool32
 LoadOpenGLFunctions(void)
 {
 	GraphicsContext_OpenGL* const opengl = &global_opengl.vtable;
@@ -453,13 +453,13 @@ LoadOpenGLFunctions(void)
 }
 
 //~ Internal API
-internal void
+static void
 Linux_OpenGLSwapBuffers(void)
 {
 	global_opengl.glXSwapBuffers(global_display, global_window);
 }
 
-internal void
+static void
 Linux_DestroyOpenGLWindow(void)
 {
 	global_opengl.glXMakeCurrent(global_display, global_window, NULL);
@@ -470,7 +470,7 @@ Linux_DestroyOpenGLWindow(void)
 	XDestroyWindow(global_display, global_window);
 }
 
-internal bool32
+static bool32
 Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
 {
 	static const char* const so_names[] = { "libGL.so", "libGL.so.1" };
@@ -548,8 +548,8 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
 	};
 	
 	global_window = XCreateWindow(global_display, root_window, 0, 0, (uint32)width, (uint32)height, 0,
-								  visual_info->depth, InputOutput, visual_info->visual,
-								  CWColormap | CWEventMask, &window_attributes);
+		visual_info->depth, InputOutput, visual_info->visual,
+		CWColormap | CWEventMask, &window_attributes);
 	
 	XMapWindow(global_display, global_window);
 	Xutf8SetWMProperties(global_display, global_window, title, NULL, NULL, 0, NULL, NULL, NULL);
@@ -573,7 +573,7 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
 	
 	int32 framebuffer_config_count;
 	GLXFBConfig* framebuffer_config = global_opengl.glXChooseFBConfig(global_display, 0, framebuffer_attribs,
-																	  &framebuffer_config_count);
+		&framebuffer_config_count);
 	if (!framebuffer_config || framebuffer_config_count < 1)
 	{
 		global_opengl.glXMakeCurrent(global_display, global_window, NULL);
@@ -593,7 +593,7 @@ Linux_CreateOpenGLWindow(int32 width, int32 height, const char* title)
 	};
 	
 	global_opengl.context = global_opengl.glXCreateContextAttribsARB(global_display, *framebuffer_config,
-																	 NULL, True, context_attributes);
+		NULL, True, context_attributes);
 	XFree(framebuffer_config);
 	
 	if (!global_opengl.context)

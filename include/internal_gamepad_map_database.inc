@@ -25,7 +25,7 @@
 // Source: https://github.com/gabomdq/SDL_GameControllerDB
 
 // Windows
-internal const GamepadMappings global_gamepadmap_database[] = {
+static const GamepadMappings global_gamepadmap_database[] = {
 // 3DRUDDER
 {.guid={'0','3','0','0','0','0','0','0','f','a','2','d','0','0','0','0','0','1','0','0','0','0','0','0','0','0','0','0','0','0','0','0',},.axes[0]=(uint16)GamepadObject_Axis_LeftX|0,.axes[1]=(uint16)GamepadObject_Axis_LeftY|0,.axes[5]=(uint16)GamepadObject_Axis_RightX|0,.axes[2]=(uint16)GamepadObject_Axis_RightY|0,},
 // 8bitdo

@@ -8,7 +8,7 @@ struct PlsRandom_State
 typedef PlsRandom_State;
 
 //~ Functions
-internal inline uint64
+static inline uint64
 BitRotateLeft(const uint64 x, int32 k)
 {
 	return (x << k) | (x >> (64 - k));
@@ -16,7 +16,7 @@ BitRotateLeft(const uint64 x, int32 k)
 
 //~ Internal API
 // Generates a random number between 0 and UINT64_MAX
-internal uint64
+static uint64
 PlsRandom_U64(PlsRandom_State* state)
 {
 	const uint64 s0 = state->seed[0];
@@ -30,7 +30,7 @@ PlsRandom_U64(PlsRandom_State* state)
 	return result;
 }
 
-internal void
+static void
 PlsRandom_Init(PlsRandom_State* state)
 {
 	static const uint64 jump[] = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
@@ -58,7 +58,7 @@ PlsRandom_Init(PlsRandom_State* state)
 }
 
 // NOTE(ljre): good enough
-internal float64
+static float64
 PlsRandom_F64(PlsRandom_State* state)
 {
 	uint64 roll = PlsRandom_U64(state);
@@ -74,7 +74,7 @@ PlsRandom_F64(PlsRandom_State* state)
 	return cvt.f - 1.0;
 }
 
-internal float32
+static float32
 PlsRandom_F32Range(PlsRandom_State* state, float32 start, float32 end)
 {
 	uint64 roll = PlsRandom_U64(state);
@@ -90,7 +90,7 @@ PlsRandom_F32Range(PlsRandom_State* state, float32 start, float32 end)
 	return (cvt.f - 1.0f) * (end - start) + start;
 }
 
-internal uint32
+static uint32
 PlsRandom_U32(PlsRandom_State* state)
 {
 	uint64 result = PlsRandom_U64(state);

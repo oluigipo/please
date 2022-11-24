@@ -2,35 +2,38 @@
 #define COMMON_MEMORY_H
 
 //~ NOTE(ljre): Functions
-internal inline int32 Mem_BitCtz64(uint64 i);
-internal inline int32 Mem_BitCtz32(uint32 i);
-internal inline int32 Mem_BitCtz16(uint16 i);
-internal inline int32 Mem_BitCtz8(uint8 i);
+static inline int32 Mem_BitCtz64(uint64 i);
+static inline int32 Mem_BitCtz32(uint32 i);
+static inline int32 Mem_BitCtz16(uint16 i);
+static inline int32 Mem_BitCtz8(uint8 i);
 
-internal inline int32 Mem_BitClz64(uint64 i);
-internal inline int32 Mem_BitClz32(uint32 i);
-internal inline int32 Mem_BitClz16(uint16 i);
-internal inline int32 Mem_BitClz8(uint8 i);
+static inline int32 Mem_BitClz64(uint64 i);
+static inline int32 Mem_BitClz32(uint32 i);
+static inline int32 Mem_BitClz16(uint16 i);
+static inline int32 Mem_BitClz8(uint8 i);
 
-internal inline int32 Mem_PopCnt64(uint64 x);
-internal inline int32 Mem_PopCnt32(uint32 x);
-internal inline int32 Mem_PopCnt16(uint16 x);
-internal inline int32 Mem_PopCnt8(uint8 x);
+static inline int32 Mem_PopCnt64(uint64 x);
+static inline int32 Mem_PopCnt32(uint32 x);
+static inline int32 Mem_PopCnt16(uint16 x);
+static inline int32 Mem_PopCnt8(uint8 x);
 
-internal inline uint64 Mem_ByteSwap64(uint64 x);
-internal inline uint32 Mem_ByteSwap32(uint32 x);
-internal inline uint16 Mem_ByteSwap16(uint16 x);
+static inline uint64 Mem_ByteSwap64(uint64 x);
+static inline uint32 Mem_ByteSwap32(uint32 x);
+static inline uint16 Mem_ByteSwap16(uint16 x);
 
-internal inline void* Mem_Copy(void* restrict dst, const void* restrict src, uintsize size);
-internal inline void* Mem_Move(void* dst, const void* src, uintsize size);
-internal inline void* Mem_Set(void* restrict dst, uint8 byte, uintsize size);
-internal inline int32 Mem_Compare(const void* left_, const void* right_, uintsize size);
+static inline uintsize Mem_Strlen(const char* restrict cstr);
+static inline const void* Mem_FindByte(const void* buffer, uint8 byte, uintsize size);
+
+static inline void* Mem_Copy(void* restrict dst, const void* restrict src, uintsize size);
+static inline void* Mem_Move(void* dst, const void* src, uintsize size);
+static inline void* Mem_Set(void* restrict dst, uint8 byte, uintsize size);
+static inline int32 Mem_Compare(const void* left_, const void* right_, uintsize size);
 
 //~ NOTE(ljre): amd64 implementation (currently the single one we care about)
 #include <immintrin.h>
 
 //- Mem_BitCtz
-internal inline int32
+static inline int32
 Mem_BitCtz64(uint64 i)
 {
 	Assume(i != 0);
@@ -50,7 +53,7 @@ Mem_BitCtz64(uint64 i)
 	return result;
 }
 
-internal inline int32
+static inline int32
 Mem_BitCtz32(uint32 i)
 {
 	Assume(i != 0);
@@ -70,16 +73,16 @@ Mem_BitCtz32(uint32 i)
 	return result;
 }
 
-internal inline int32
+static inline int32
 Mem_BitCtz16(uint16 i)
 { return Mem_BitCtz32(i); }
 
-internal inline int32
+static inline int32
 Mem_BitCtz8(uint8 i)
 { return Mem_BitCtz32(i); }
 
 //- Mem_BitClz
-internal inline int32
+static inline int32
 Mem_BitClz64(uint64 i)
 {
 	Assume(i != 0);
@@ -100,7 +103,7 @@ Mem_BitClz64(uint64 i)
 	return result;
 }
 
-internal inline int32
+static inline int32
 Mem_BitClz32(uint32 i)
 {
 	Assume(i != 0);
@@ -121,20 +124,40 @@ Mem_BitClz32(uint32 i)
 	return result;
 }
 
-internal inline int32
+static inline int32
 Mem_BitClz16(uint16 i)
 { return Mem_BitClz32(i) - 16; }
 
-internal inline int32
+static inline int32
 Mem_BitClz8(uint8 i)
 { return Mem_BitClz32(i) - 24; }
 
 //- Mem_PopCnt
+#ifdef __POPCNT__
+
+static inline int32
+Mem_PopCnt64(uint64 x)
+{ return _mm_popcnt_u64(x); }
+
+static inline int32
+Mem_PopCnt32(uint32 x)
+{ return _mm_popcnt_u32(x); }
+
+static inline int32
+Mem_PopCnt16(uint16 x)
+{ return _mm_popcnt_u32(x); }
+
+static inline int32
+Mem_PopCnt8(uint8 x)
+{ return _mm_popcnt_u32(x); }
+
+#else
+
 // NOTE(ljre): The 'popcnt' instruction is not actually guaranteed to be supported on all amd64 CPUs, so
 //             we'll use this implementation found on wikipedia.
 //
 //             https://en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
-internal inline int32
+static inline int32
 Mem_PopCnt64(uint64 x)
 {
 	x -= (x >> 1) & 0x5555555555555555u;
@@ -143,7 +166,7 @@ Mem_PopCnt64(uint64 x)
 	return (x * 0x0101010101010101u) >> 56;
 }
 
-internal inline int32
+static inline int32
 Mem_PopCnt32(uint32 x)
 {
 	x -= (x >> 1) & 0x55555555u;
@@ -152,20 +175,22 @@ Mem_PopCnt32(uint32 x)
 	return (x * 0x01010101u) >> 24;
 }
 
-internal inline int32
+static inline int32
 Mem_PopCnt16(uint16 x)
 { return Mem_PopCnt32(x); }
 
-internal inline int32
+static inline int32
 Mem_PopCnt8(uint8 x)
 { return Mem_PopCnt32(x); }
 
+#endif
+
 //- Mem_ByteSwap
-internal inline uint16
+static inline uint16
 Mem_ByteSwap16(uint16 x)
 { return (uint16)((x >> 8) | (x << 8)); }
 
-internal inline uint32
+static inline uint32
 Mem_ByteSwap32(uint32 x)
 {
 	uint32 result;
@@ -183,7 +208,7 @@ Mem_ByteSwap32(uint32 x)
 	return result;
 }
 
-internal inline uint64
+static inline uint64
 Mem_ByteSwap64(uint64 x)
 {
 	uint64 result;
@@ -225,7 +250,7 @@ Mem_ByteSwap64(uint64 x)
 // NOTE(ljre): the *_by_* labels lead directly inside the loop since the (size >= N) condition should
 //             already be met.
 
-internal inline void*
+static inline void*
 Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 {
 	uint8* restrict d = (uint8*)dst;
@@ -305,7 +330,7 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	return dst;
 }
 
-internal inline void*
+static inline void*
 Mem_Move(void* dst, const void* src, uintsize size)
 {
 	uint8* d = (uint8*)dst;
@@ -481,7 +506,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 	return dst;
 }
 
-internal inline void*
+static inline void*
 Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 {
 	uint8* restrict d = (uint8*)dst;
@@ -500,12 +525,15 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 	return dst;
 }
 
-internal inline int32
+static inline int32
 Mem_Compare(const void* left_, const void* right_, uintsize size)
 {
 	const uint8* left = (const uint8*)left_;
 	const uint8* right = (const uint8*)right_;
 	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
 	while (size >= 16)
 	{
 		__m128i ldata, rdata;
@@ -532,6 +560,9 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 		right += 16;
 	}
 	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
 	while (size --> 0)
 	{
 		if (Unlikely(*left != *right))
@@ -544,25 +575,88 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 	return 0;
 }
 
+static inline uintsize
+Mem_Strlen(const char* restrict cstr)
+{
+	const char* begin = cstr;
+	
+	while (*cstr)
+		++cstr;
+	
+	return cstr - begin;
+}
+
+static inline const void*
+Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
+{
+	const uint8* buf = (const uint8*)buffer;
+	const uint8* const end = buf + size;
+	
+	if (Unlikely(size == 0))
+		return NULL;
+	if (size < 16)
+		goto by_byte;
+	
+	// NOTE(ljre): XMM by XMM
+	__m128i mask = _mm_set1_epi8(byte);
+	
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+	while (buf + 16 < end)
+	{
+		__m128i data = _mm_loadu_si128((const __m128i*)buf);
+		int32 cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(data, mask));
+		
+		if (Unlikely(cmp != 0))
+			return buf + Mem_BitCtz16((uint16)cmp);
+		
+		buf += 16;
+	}
+	
+	// NOTE(ljre): Byte by byte
+#ifdef __clang__
+#   pragma clang loop vectorize(disable)
+#endif
+	while (buf < end) by_byte:
+	{
+		if (Unlikely(*buf == byte))
+			return buf;
+		
+		++buf;
+	}
+	
+	// NOTE(ljre): byte wasn't found.
+	return NULL;
+}
+
 #else // COMMON_DONT_USE_CRT
 
 #include <string.h>
 
-internal inline void*
+static inline void*
 Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 { return memcpy(dst, src, size); }
 
-internal inline void*
+static inline void*
 Mem_Move(void* dst, const void* src, uintsize size)
 { return memmove(dst, src, size); }
 
-internal inline void*
+static inline void*
 Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 { return memset(dst, byte, size); }
 
-internal inline int32
+static inline int32
 Mem_Compare(const void* left_, const void* right_, uintsize size)
 { return memcmp(left_, right_, size); }
+
+static inline uintsize
+Mem_Strlen(const char* restrict cstr)
+{ return strlen(cstr); }
+
+static inline const void*
+Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
+{ return memchr(buffer, byte, size); }
 
 #endif
 

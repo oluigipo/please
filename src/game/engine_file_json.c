@@ -71,13 +71,13 @@ struct Json_ArrayIndex
 typedef Json_ArrayIndex;
 
 //~ Functions
-internal inline bool32
+static inline bool
 IsWhiteSpace(uint8 c)
 {
 	return (c == ' ') | (c == '\t') | (c == '\n') | (c == '\r');
 }
 
-internal inline const uint8*
+static inline const uint8*
 IgnoreWhiteSpacesLeft(const uint8* begin, const uint8* end)
 {
 	while (begin < end && IsWhiteSpace(*begin))
@@ -86,7 +86,7 @@ IgnoreWhiteSpacesLeft(const uint8* begin, const uint8* end)
 	return begin;
 }
 
-internal inline const uint8*
+static inline const uint8*
 IgnoreWhiteSpacesRight(const uint8* begin, const uint8* end)
 {
 	while (begin + 1 < end && IsWhiteSpace(end[-1]))
@@ -95,7 +95,7 @@ IgnoreWhiteSpacesRight(const uint8* begin, const uint8* end)
 	return end;
 }
 
-internal const uint8*
+static const uint8*
 FindEndOfValue(const uint8* begin, const uint8* end)
 {
 	const uint8* it = begin;
@@ -171,13 +171,13 @@ FindEndOfValue(const uint8* begin, const uint8* end)
 }
 
 //~ Internal API
-internal String
+static String
 Json_RawFieldName(const Json_Field* field)
 {
 	return StrMake(field->name_end - (field->begin + 1), field->begin + 1);
 }
 
-internal float64
+static float64
 Json_NumberValueF64(const Json_Value* value)
 {
 	Assert(value);
@@ -195,7 +195,7 @@ Json_NumberValueF64(const Json_Value* value)
 	return strtod(buf, NULL);
 }
 
-internal int64
+static int64
 Json_NumberValueI64(const Json_Value* value)
 {
 	Assert(value);
@@ -213,7 +213,7 @@ Json_NumberValueI64(const Json_Value* value)
 	return strtoll(buf, NULL, 10);
 }
 
-internal bool32
+static bool
 Json_BoolValue(const Json_Value* value)
 {
 	Assert(value);
@@ -223,7 +223,7 @@ Json_BoolValue(const Json_Value* value)
 	return String_Equals(StrMake(value->end - value->begin, value->begin), Str("true"));
 }
 
-internal String
+static String
 Json_RawStringValue(const Json_Value* value)
 {
 	Assert(value);
@@ -238,7 +238,7 @@ Json_RawStringValue(const Json_Value* value)
 	return result;
 }
 
-internal bool32
+static bool
 Json_NextIndex(Json_ArrayIndex* index)
 {
 	if (!index)
@@ -280,7 +280,7 @@ Json_NextIndex(Json_ArrayIndex* index)
 	return true;
 }
 
-internal void
+static void
 Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
 {
 	Assert(index);
@@ -318,7 +318,7 @@ Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
 	}
 }
 
-internal uintsize
+static uintsize
 Json_ArrayLength(const Json_Value* value)
 {
 	Assert(value);
@@ -331,7 +331,7 @@ Json_ArrayLength(const Json_Value* value)
 	return len;
 }
 
-internal bool32
+static bool
 Json_NextField(Json_Field* field)
 {
 	if (!field)
@@ -402,7 +402,7 @@ Json_NextField(Json_Field* field)
 	return true;
 }
 
-internal void
+static void
 Json_FieldValue(const Json_Field* field, Json_Value* value)
 {
 	Assert(field);
@@ -440,7 +440,7 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
 	}
 }
 
-internal bool32
+static bool
 Json_FindField(const Json_Value* object, String name, Json_Field* out)
 {
 	Assert(object);
@@ -459,7 +459,7 @@ Json_FindField(const Json_Value* object, String name, Json_Field* out)
 	return false;
 }
 
-internal bool32
+static bool
 Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
 {
 	Assert(array);
@@ -479,7 +479,7 @@ Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
 	return false;
 }
 
-internal bool32
+static bool
 Json_FindFieldValue(const Json_Value* object, String name, Json_Value* out)
 {
 	Json_Field field;
@@ -490,7 +490,7 @@ Json_FindFieldValue(const Json_Value* object, String name, Json_Value* out)
 	return true;
 }
 
-internal bool32
+static bool
 Json_FindIndexValue(const Json_Value* array, int32 i, Json_Value* out)
 {
 	Json_ArrayIndex index;
@@ -501,7 +501,7 @@ Json_FindIndexValue(const Json_Value* array, int32 i, Json_Value* out)
 	return true;
 }
 
-internal void
+static void
 Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_state)
 {
 	if (begin + 1 < end)
@@ -550,7 +550,7 @@ Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_s
 	}
 }
 
-internal inline void
+static inline void
 Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
 {
 	Json_InitFromBufferRange(data, data + size, out_state);

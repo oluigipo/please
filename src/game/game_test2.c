@@ -1,9 +1,9 @@
 #include "system_discord.c"
 
-internal Engine_Data* engine;
-internal Game_Data* game;
+static Engine_Data* engine;
+static Game_Data* game;
 
-internal const float32 global_camera_zoom = 4.0f;
+static const float32 global_camera_zoom = 4.0f;
 
 struct Game_Player
 {
@@ -44,7 +44,7 @@ struct Game_Data
 	PlsDiscord_Client discord;
 };
 
-internal void
+static void
 Game_PushFriendlyBullet(const Game_Bullet* bullet)
 {
 	Assert(game->friendly_bullet_count < ArrayLength(game->friendly_bullets));
@@ -52,14 +52,14 @@ Game_PushFriendlyBullet(const Game_Bullet* bullet)
 	game->friendly_bullets[game->friendly_bullet_count++] = *bullet;
 }
 
-internal bool
+static bool
 Game_Aabb(const vec4 a, const vec4 b)
 {
 	return ((a[0] + a[2] >= b[0] && b[0] + b[2] >= a[0]) &&
 		(a[1] + a[3] >= b[1] && b[1] + b[3] >= a[1]));
 }
 
-internal void
+static void
 Game_CameraBoundingBox(vec4 out_bbox)
 {
 	float32 width = engine->platform->window_width;
@@ -73,7 +73,7 @@ Game_CameraBoundingBox(vec4 out_bbox)
 }
 
 //~ Main
-internal void
+static void
 Game_Init(void)
 {
 	Trace();
@@ -112,7 +112,7 @@ Game_Init(void)
 		PlsDiscord_UpdateActivity(&game->discord);
 }
 
-internal void
+static void
 Game_UpdateDiscordEarly(void)
 {
 	void* temp_arena_save = Arena_End(engine->temp_arena);
@@ -139,7 +139,7 @@ Game_UpdateDiscordEarly(void)
 					
 					struct DiscordUser user = event->on_current_user_update.state;
 					
-					Platform_DebugLog("UserID: %lli\tUsername: %s#%.4s\n", user.id, user.username, user.discriminator);
+					Platform_DebugLog("UserID: %I\tUsername: %s#%.*s\n", user.id, user.username, 4, user.discriminator);
 				} break;
 				
 				case PlsDiscord_EventKind_CreateLobby:
@@ -195,7 +195,7 @@ Game_UpdateDiscordEarly(void)
 	Arena_Pop(engine->temp_arena, temp_arena_save);
 }
 
-internal void
+static void
 Game_UpdateAndRender(void)
 {
 	Trace();
@@ -227,7 +227,7 @@ Game_UpdateAndRender(void)
 			}
 		}
 		
-		Platform_DebugMessageBox("%lli", userid);
+		Platform_DebugMessageBox("%I", userid);
 		
 		if (userid)
 		{
@@ -382,7 +382,7 @@ Game_UpdateAndRender(void)
 		Arena_Pop(arena, saved_state);
 	}
 	
-	String text = SPrintfLocal(128, "mouse (%.2f, %.2f)\ncamera (%.2f, %.2f, %.2f, %.2f)\n",
+	String text = String_PrintfLocal(128, "mouse (%.2f, %.2f)\ncamera (%.2f, %.2f, %.2f, %.2f)\n",
 		mouse_pos[0], mouse_pos[1],
 		camera_bbox[0], camera_bbox[1], camera_bbox[2], camera_bbox[3]);
 	engine->render->draw_text(&game->font, text, (vec3) { 10.0f, 10.0f }, 32.0f, GLM_VEC4_ONE, (vec3) { 0 });
@@ -395,6 +395,9 @@ API void
 Game_Main(Engine_Data* data)
 {
 	Trace();
+	
+	char buf[128];
+	String_PrintfBuffer(buf, sizeof(buf), "0x%8x", 0xEFEFEu);
 	
 	engine = data;
 	game = data->game;

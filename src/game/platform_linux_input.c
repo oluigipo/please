@@ -17,12 +17,12 @@ struct Linux_Gamepad
 typedef Linux_Gamepad;
 
 //~ Globals
-internal Input_Mouse global_mouse;
-internal bool8 global_keyboard_keys[Input_KeyboardKey_Count];
-internal bool32 global_already_updated_control;
-internal bool32 global_already_updated_shift;
+static Input_Mouse global_mouse;
+static bool8 global_keyboard_keys[Input_KeyboardKey_Count];
+static bool32 global_already_updated_control;
+static bool32 global_already_updated_shift;
 
-internal const Input_KeyboardKey global_keyboard_key_table[] = {
+static const Input_KeyboardKey global_keyboard_key_table[] = {
 	[0] = Input_KeyboardKey_Any,
 	[1] = Input_KeyboardKey_Control,
 	[2] = Input_KeyboardKey_Shift,
@@ -74,7 +74,7 @@ internal const Input_KeyboardKey global_keyboard_key_table[] = {
 };
 
 //~ Functions
-internal bool32
+static bool32
 EntryNameIsGamepad(const char* restrict entry_name)
 {
 	const char* const restrict gamepads_suffix = "-event-joystick";
@@ -94,7 +94,7 @@ EntryNameIsGamepad(const char* restrict entry_name)
 	return !*b;
 }
 
-internal void
+static void
 CheckForNewGamepads(void)
 {
 	DIR* directory = opendir("/dev/input/by-id");
@@ -127,14 +127,14 @@ CheckForNewGamepads(void)
 }
 
 //~ Private API
-internal void
+static void
 Linux_InitInput(void)
 {
 	// TODO(ljre):
 	//CheckForNewGamepads();
 }
 
-internal void
+static void
 Linux_ProcessKeyboardEvent(KeySym key, bool32 pressed, uint32 state)
 {
 	// NOTE(ljre): convert to capital letters if needed
@@ -176,7 +176,7 @@ Linux_ProcessKeyboardEvent(KeySym key, bool32 pressed, uint32 state)
 	}
 }
 
-internal void
+static void
 Linux_ProcessMouseEvent(uint32 button, bool32 pressed)
 {
 	static const Input_MouseButton button_table[] = {
@@ -200,7 +200,7 @@ Linux_ProcessMouseEvent(uint32 button, bool32 pressed)
 	}
 }
 
-internal void
+static void
 Linux_UpdateInputPre(void)
 {
 	// NOTE(ljre): Update Keyboard Input
@@ -226,7 +226,7 @@ Linux_UpdateInputPre(void)
 	}
 }
 
-internal void
+static void
 Linux_UpdateInputPos(void)
 {
 	// NOTE(ljre): Update Cursor Position

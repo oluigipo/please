@@ -23,7 +23,7 @@ typedef String;
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
 
-internal uint32
+static int32
 String_Decode(String str, int32* index)
 {
 	const uint8* head = str.data + *index;
@@ -60,7 +60,7 @@ String_Decode(String str, int32* index)
 }
 
 // TODO(ljre): make this better (?)
-internal uintsize
+static uintsize
 String_DecodedLength(String str)
 {
 	uintsize len = 0;
@@ -72,7 +72,7 @@ String_DecodedLength(String str)
 	return len;
 }
 
-internal inline int32
+static inline int32
 String_Compare(String a, String b)
 {
 	int32 result = Mem_Compare(a.data, b.data, Min(a.size, b.size));
@@ -83,7 +83,7 @@ String_Compare(String a, String b)
 	return result;
 }
 
-internal inline bool
+static inline bool
 String_Equals(String a, String b)
 {
 	if (a.size != b.size)
@@ -92,7 +92,7 @@ String_Equals(String a, String b)
 	return Mem_Compare(a.data, b.data, a.size) == 0;
 }
 
-internal inline bool
+static inline bool
 String_EndsWith(String check, String s)
 {
 	if (s.size > check.size)

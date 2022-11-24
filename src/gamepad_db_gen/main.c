@@ -2,26 +2,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-internal void
+static void
 PrintHelp(const char* self)
 {
 	fprintf(stderr, "usage: %s path/to/gamecontrollerdb.txt path/to/output.h\n", self);
 }
 
-internal void
+static void
 MoveUntilEol(const char** phead)
 {
 	while (**phead && **phead != '\n')
 		++*phead;
 }
 
-internal bool
+static bool
 IsHexChar(char c)
 {
 	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
 }
 
-internal int32
+static int32
 AsHexChar(char c)
 {
 	if (c >= 'a')
@@ -39,7 +39,7 @@ struct Writing
 }
 typedef Writing;
 
-internal Writing
+static Writing
 BeginWriting(Arena* arena)
 {
 	return (Writing) {
@@ -49,7 +49,7 @@ BeginWriting(Arena* arena)
 	};
 }
 
-internal void
+static void
 Write(Writing* w, const char* fmt, ...)
 {
 	va_list args;
@@ -71,17 +71,17 @@ Write(Writing* w, const char* fmt, ...)
 	va_end(args);
 }
 
-internal void
+static void
 DoneWriting(Writing* w, FILE* file)
 {
 	fwrite(w->buf, 1, w->len, file);
 }
 
-internal void
+static void
 Process(Arena* arena, const char* input_data, const char* input_name, FILE* outfile)
 {
 	fprintf(outfile, "// This file was generated from \"%s\"", input_name);
-	fputs("internal const GamepadMappings global_gamepad_database[] = {\n", outfile);
+	fputs("static const GamepadMappings global_gamepad_database[] = {\n", outfile);
 	
 	const char* head = input_data;
 	
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
 	const char* input_fname = argv[1];
 	const char* output_fname = argv[2];
 	
-	Arena* arena = Arena_Create(Megabytes(32), Megabytes(8));
+	Arena* arena = Arena_Create(32 << 20, 8 << 20);
 	const char* input_data;
 	FILE* outfile;
 	

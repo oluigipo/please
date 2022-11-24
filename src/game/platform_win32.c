@@ -54,20 +54,20 @@ ReenableWarnings();
 #endif
 
 //~ Globals
-internal HANDLE global_heap;
-internal const wchar_t* global_class_name;
-internal HINSTANCE global_instance;
-internal int64 global_time_frequency;
-internal int64 global_process_started_time;
-internal HWND global_window;
-internal HDC global_hdc;
-internal bool global_lock_cursor;
-internal Platform_GraphicsContext global_graphics_context;
-internal Platform_Data global_platform_data = { 0 };
-internal RECT global_monitor;
+static HANDLE global_heap;
+static const wchar_t* global_class_name;
+static HINSTANCE global_instance;
+static int64 global_time_frequency;
+static int64 global_process_started_time;
+static HWND global_window;
+static HDC global_hdc;
+static bool global_lock_cursor;
+static Platform_GraphicsContext global_graphics_context;
+static Platform_Data global_platform_data = { 0 };
+static RECT global_monitor;
 
 //~ Internal API
-internal int64
+static int64
 Win32_GetTimer(void)
 {
 	LARGE_INTEGER value;
@@ -75,26 +75,26 @@ Win32_GetTimer(void)
 	return value.QuadPart;
 }
 
-internal void
+static void
 Win32_CheckForErrors(void)
 {
 	DWORD error = GetLastError();
 	if (error != ERROR_SUCCESS)
 	{
 		char buffer[512];
-		SPrintf(buffer, sizeof(buffer), "%llu", (uint64)error);
+		String_PrintfBuffer(buffer, sizeof(buffer), "%U", (uint64)error);
 		MessageBoxA(NULL, buffer, "Error Code", MB_OK);
 	}
 }
 
-internal void
+static void
 Win32_ExitWithErrorMessage(const wchar_t* message)
 {
 	MessageBoxW(NULL, message, L"Error", MB_OK);
 	exit(1);
 }
 
-internal wchar_t*
+static wchar_t*
 Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 {
 	if (!buffer)
@@ -109,7 +109,7 @@ Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
 	return buffer;
 }
 
-internal inline HMODULE
+static inline HMODULE
 Win32_LoadLibrary(const char* name)
 {
 	HMODULE result = LoadLibraryA(name);
@@ -120,7 +120,7 @@ Win32_LoadLibrary(const char* name)
 	return result;
 }
 
-internal void
+static void
 Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 {
 	// TODO(ljre): Update Graphics API at runtime
@@ -196,7 +196,7 @@ Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 #include "platform_win32_direct3d.c"
 
 //~ Functions
-internal LRESULT CALLBACK
+static LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	LRESULT result = 0;
@@ -677,7 +677,7 @@ Platform_LoadDiscordLibrary(void)
 }
 
 #ifdef INTERNAL_ENABLE_HOT
-internal uint64
+static uint64
 GetFileLastWriteTime(const char* filename)
 {
 	FILETIME last_write_time = { 0 };
@@ -770,11 +770,11 @@ Platform_DebugError(const char* msg)
 API void
 Platform_DebugMessageBox(const char* restrict format, ...)
 {
-	char buffer[Kilobytes(16)];
+	char buffer[16 << 10];
 	
 	va_list args;
 	va_start(args, format);
-	VSPrintf(buffer, sizeof(buffer), format, args);
+	String_VPrintfBuffer(buffer, sizeof(buffer), format, args);
 	MessageBoxA(NULL, buffer, "Debug", MB_OK | MB_TOPMOST);
 	va_end(args);
 }
@@ -782,11 +782,11 @@ Platform_DebugMessageBox(const char* restrict format, ...)
 API void
 Platform_DebugLog(const char* restrict format, ...)
 {
-	char buffer[Kilobytes(16)];
+	char buffer[16 << 10];
 	
 	va_list args;
 	va_start(args, format);
-	VSPrintf(buffer, sizeof(buffer), format, args);
+	String_VPrintfBuffer(buffer, sizeof(buffer), format, args);
 	OutputDebugStringA(buffer);
 	va_end(args);
 }

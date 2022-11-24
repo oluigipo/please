@@ -5,15 +5,9 @@
 #   define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#define internal static
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
 #define IsPowerOf2(x) ( ((x) & (x)-1) == 0 )
-#define Kilobytes(n) ((uintsize)(n) * 1024)
-#define Megabytes(n) (1024*Kilobytes(n))
-#define Gigabytes(n) (1024*Megabytes(n))
 #define ArrayLength(x) (sizeof(x) / sizeof(*(x)))
-#define PI64 3.141592653589793238462643383279
-#define PI32 ((float32)PI64)
 #define Min(x,y) ((x) < (y) ? (x) : (y))
 #define Max(x,y) ((x) > (y) ? (x) : (y))
 
@@ -33,7 +27,7 @@ _Pragma("clang diagnostic pop")
 #   define Debugbreak() __debugbreak()
 #   define Likely(...) (__VA_ARGS__)
 #   define Unlikely(...) (__VA_ARGS__)
-#   define Unreachable() do { Assume(0); } while (0)
+#   define Unreachable() __assume(0)
 #   define DisableWarnings() \
 __pragma(warning(push, 0))
 #   define ReenableWarnings() \

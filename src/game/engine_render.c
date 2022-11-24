@@ -1,5 +1,5 @@
 //~ Internal API
-internal bool
+static bool
 Engine_InitRender(const Engine_RenderApi** out_api)
 {
 	Trace();
@@ -19,7 +19,7 @@ Engine_InitRender(const Engine_RenderApi** out_api)
 	return false;
 }
 
-internal void
+static void
 Engine_DeinitRender(void)
 {
 	Trace();

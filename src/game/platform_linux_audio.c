@@ -3,19 +3,19 @@
 #define SOUND_LATENCY_FPS 10
 
 //~ Globals
-internal bool32 global_audio_is_initialized = false;
-internal int32 global_channels = 2;
-internal int32 global_samples_per_second = 44100;
-internal int32 global_latency_frame_count;
+static bool32 global_audio_is_initialized = false;
+static int32 global_channels = 2;
+static int32 global_samples_per_second = 44100;
+static int32 global_latency_frame_count;
 
-internal int32 global_elapsed_frames;
-internal int16* global_audio_buffer;
-internal int32 global_audio_buffer_sample_count;
+static int32 global_elapsed_frames;
+static int16* global_audio_buffer;
+static int32 global_audio_buffer_sample_count;
 
-internal snd_pcm_t* global_playback_handle;
+static snd_pcm_t* global_playback_handle;
 
 //~ Internal API
-internal void
+static void
 Linux_InitAudio(void)
 {
 	snd_pcm_hw_params_t* params;
@@ -46,7 +46,7 @@ Linux_InitAudio(void)
 	global_audio_is_initialized = true;
 }
 
-internal void
+static void
 Linux_DeinitAudio(void)
 {
 	if (global_audio_is_initialized)

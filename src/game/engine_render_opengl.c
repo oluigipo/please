@@ -90,7 +90,7 @@ struct OpenGL_InternalShader
 typedef OpenGL_InternalShader;
 
 //~ Globals
-internal const OpenGL_Vertex global_ogl_quad_vertices[] = {
+static const OpenGL_Vertex global_ogl_quad_vertices[] = {
 	// Positions         // Normals           // Texcoords
 	{ 0.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, },
 	{ 1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f, },
@@ -98,27 +98,27 @@ internal const OpenGL_Vertex global_ogl_quad_vertices[] = {
 	{ 0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 1.0f, },
 };
 
-internal const uint32 global_ogl_quad_indices[] = {
+static const uint32 global_ogl_quad_indices[] = {
 	0, 1, 2,
 	2, 3, 0
 };
 
-internal uint32 global_ogl_quad_vbo, global_ogl_quad_ebo, global_ogl_quad_vao;
-internal uint32 global_ogl_default_diffuse_texture;
-internal uint32 global_ogl_default_normal_texture;
-internal uint32 global_ogl_default_specular_texture;
+static uint32 global_ogl_quad_vbo, global_ogl_quad_ebo, global_ogl_quad_vao;
+static uint32 global_ogl_default_diffuse_texture;
+static uint32 global_ogl_default_normal_texture;
+static uint32 global_ogl_default_specular_texture;
 
-internal OpenGL_InternalShader global_ogl_default_shader;
-internal OpenGL_InternalShader global_ogl_default_3dshader;
-internal OpenGL_InternalShader global_ogl_default_shadowshader;
-internal OpenGL_InternalShader global_ogl_default_gbuffershader;
-internal OpenGL_InternalShader global_ogl_default_finalpassshader;
-internal OpenGL_InternalShader global_ogl_default_spriteshader;
+static OpenGL_InternalShader global_ogl_default_shader;
+static OpenGL_InternalShader global_ogl_default_3dshader;
+static OpenGL_InternalShader global_ogl_default_shadowshader;
+static OpenGL_InternalShader global_ogl_default_gbuffershader;
+static OpenGL_InternalShader global_ogl_default_finalpassshader;
+static OpenGL_InternalShader global_ogl_default_spriteshader;
 
-internal OpenGL_InternalShaderUniforms* global_ogl_uniform;
+static OpenGL_InternalShaderUniforms* global_ogl_uniform;
 
 //~ Shaders
-internal const char* const global_ogl_vertex_shader =
+static const char* const global_ogl_vertex_shader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -135,7 +135,7 @@ internal const char* const global_ogl_vertex_shader =
 "}"
 ;
 
-internal const char* const global_ogl_fragment_shader =
+static const char* const global_ogl_fragment_shader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -167,7 +167,7 @@ internal const char* const global_ogl_fragment_shader =
 "}"
 ;
 
-internal const char* const global_ogl_vertex_shadowshader =
+static const char* const global_ogl_vertex_shadowshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 
@@ -179,14 +179,14 @@ internal const char* const global_ogl_vertex_shadowshader =
 "}"
 ;
 
-internal const char* const global_ogl_fragment_shadowshader =
+static const char* const global_ogl_fragment_shadowshader =
 "#version 330 core\n"
 
 "void main() {"
 "}"
 ;
 
-internal const char* const global_ogl_vertex_gbuffershader =
+static const char* const global_ogl_vertex_gbuffershader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -215,7 +215,7 @@ internal const char* const global_ogl_vertex_gbuffershader =
 "}"
 ;
 
-internal const char* const global_ogl_fragment_gbuffershader =
+static const char* const global_ogl_fragment_gbuffershader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -246,7 +246,7 @@ internal const char* const global_ogl_fragment_gbuffershader =
 "}"
 ;
 
-internal const char* const global_ogl_vertex_finalpassshader =
+static const char* const global_ogl_vertex_finalpassshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 2) in vec2 aTexCoord;\n"
@@ -261,7 +261,7 @@ internal const char* const global_ogl_vertex_finalpassshader =
 "}"
 ;
 
-internal const char* const global_ogl_fragment_finalpassshader =
+static const char* const global_ogl_fragment_finalpassshader =
 "#version 330 core\n"
 "#define PI 3.141592653589793238462643383279\n"
 
@@ -459,7 +459,7 @@ internal const char* const global_ogl_fragment_finalpassshader =
 "}\n"
 ;
 
-internal const char* const global_ogl_vertex_spriteshader =
+static const char* const global_ogl_vertex_spriteshader =
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec3 aNormal;\n"
@@ -482,7 +482,7 @@ internal const char* const global_ogl_vertex_spriteshader =
 "}"
 ;
 
-internal const char* const global_ogl_fragment_spriteshader =
+static const char* const global_ogl_fragment_spriteshader =
 "#version 330 core\n"
 
 "in vec2 vTexCoord;"
@@ -499,7 +499,7 @@ internal const char* const global_ogl_fragment_spriteshader =
 
 //~ Functions
 #ifdef DEBUG
-internal void APIENTRY
+static void APIENTRY
 OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
 	GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -512,7 +512,7 @@ OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sever
 }
 #endif
 
-internal uint32
+static uint32
 OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 {
 	Trace();
@@ -571,7 +571,7 @@ OpenGL_CompileShader_(const char* vertex_source, const char* fragment_source)
 	return program;
 }
 
-internal void
+static void
 OpenGL_CalcBitmapSizeForText_(const Asset_Font* font, float32 scale, String text, int32* out_width, int32* out_height)
 {
 	Trace();
@@ -605,7 +605,7 @@ OpenGL_CalcBitmapSizeForText_(const Asset_Font* font, float32 scale, String text
 	*out_height = height + 2;
 }
 
-internal void
+static void
 OpenGL_GetShaderUniforms_(OpenGL_InternalShader* shader)
 {
 	Trace();
@@ -644,20 +644,20 @@ OpenGL_GetShaderUniforms_(OpenGL_InternalShader* shader)
 	{
 		char buf[128];
 		
-		SPrintf(buf, sizeof buf, "uPointLights[%i].constant", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].constant", i);
 		shader->uniform.pointlights[i].constant = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uPointLights[%i].linear", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].linear", i);
 		shader->uniform.pointlights[i].linear = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uPointLights[%i].quadratic", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].quadratic", i);
 		shader->uniform.pointlights[i].quadratic = GL.glGetUniformLocation(id, buf);
 		
-		SPrintf(buf, sizeof buf, "uPointLights[%i].position", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].position", i);
 		shader->uniform.pointlights[i].position = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uPointLights[%i].ambient", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].ambient", i);
 		shader->uniform.pointlights[i].ambient = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uPointLights[%i].diffuse", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].diffuse", i);
 		shader->uniform.pointlights[i].diffuse = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uPointLights[%i].specular", i);
+		String_PrintfBuffer(buf, sizeof buf, "uPointLights[%i].specular", i);
 		shader->uniform.pointlights[i].specular = GL.glGetUniformLocation(id, buf);
 	}
 	
@@ -666,28 +666,28 @@ OpenGL_GetShaderUniforms_(OpenGL_InternalShader* shader)
 	{
 		char buf[128];
 		
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].position", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].position", i);
 		shader->uniform.flashlights[i].position = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].direction", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].direction", i);
 		shader->uniform.flashlights[i].direction = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].color", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].color", i);
 		shader->uniform.flashlights[i].color = GL.glGetUniformLocation(id, buf);
 		
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].innerCutoff", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].innerCutoff", i);
 		shader->uniform.flashlights[i].inner_cutoff = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].outerCutoff", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].outerCutoff", i);
 		shader->uniform.flashlights[i].outer_cutoff = GL.glGetUniformLocation(id, buf);
 		
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].constant", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].constant", i);
 		shader->uniform.flashlights[i].constant = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].linear", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].linear", i);
 		shader->uniform.flashlights[i].linear = GL.glGetUniformLocation(id, buf);
-		SPrintf(buf, sizeof buf, "uFlashlights[%i].quadratic", i);
+		String_PrintfBuffer(buf, sizeof buf, "uFlashlights[%i].quadratic", i);
 		shader->uniform.flashlights[i].quadratic = GL.glGetUniformLocation(id, buf);
 	}
 }
 
-internal void
+static void
 OpenGL_BindShader_(OpenGL_InternalShader* shader)
 {
 	GL.glUseProgram(shader->id);
@@ -695,14 +695,14 @@ OpenGL_BindShader_(OpenGL_InternalShader* shader)
 }
 
 //~ Renerer API
-internal void
+static void
 OpenGL_ClearBackground(float32 r, float32 g, float32 b, float32 a)
 {
 	GL.glClearColor(r, g, b, a);
 	GL.glClear(GL_COLOR_BUFFER_BIT);
 }
 
-internal void
+static void
 OpenGL_Begin(void)
 {
 	int32 width = global_engine.platform->window_width;
@@ -711,7 +711,7 @@ OpenGL_Begin(void)
 	GL.glViewport(0, 0, width, height);
 }
 
-internal void
+static void
 OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 {
 	Trace();
@@ -752,7 +752,7 @@ OpenGL_DrawRectangle(vec4 color, vec3 pos, vec3 size, vec3 alignment)
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-internal bool
+static bool
 OpenGL_LoadFontFromFile(String path, Asset_Font* out_font)
 {
 	Trace(); TraceText(path);
@@ -776,7 +776,7 @@ OpenGL_LoadFontFromFile(String path, Asset_Font* out_font)
 	return result;
 }
 
-internal bool
+static bool
 OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 {
 	Trace(); TraceText(path);
@@ -815,7 +815,7 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	return true;
 }
 
-internal void
+static void
 OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment)
 {
 	Trace();
@@ -904,7 +904,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	Arena_Pop(global_engine.temp_arena, bitmap);
 }
 
-internal void
+static void
 OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color)
 {
 	Trace();
@@ -925,7 +925,7 @@ OpenGL_DrawTexture(const Asset_Texture* texture, const mat4 transform, const mat
 	GL.glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-internal bool
+static bool
 OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
 	Trace(); TraceText(path);
@@ -1155,7 +1155,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 	return result;
 }
 
-internal void
+static void
 OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 {
 	Trace();
@@ -1229,7 +1229,7 @@ OpenGL_ProperlySetup3DScene(Engine_Renderer3DScene* scene)
 	}
 }
 
-internal void
+static void
 OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Render_Camera3D* camera)
 {
 	Trace();
@@ -1497,14 +1497,14 @@ OpenGL_Draw3DScene(Engine_Renderer3DScene* scene, const Render_Camera3D* camera)
 }
 
 //~ NOTE(ljre): NEW API
-internal void
+static void
 OpenGL_ClearColor(const vec4 color)
 {
 	GL.glClearColor(color[0], color[1], color[2], color[3]);
 	GL.glClear(GL_COLOR_BUFFER_BIT);
 }
 
-internal void
+static void
 OpenGL_Draw2D(const Render_Data2D* data)
 {
 	Trace();
@@ -1599,7 +1599,7 @@ OpenGL_Draw2D(const Render_Data2D* data)
 }
 
 //~ Internal API
-internal bool
+static bool
 OpenGL_Init(const Engine_RenderApi** out_api)
 {
 	static const Engine_RenderApi vtable = {
@@ -1711,7 +1711,7 @@ OpenGL_Init(const Engine_RenderApi** out_api)
 	return true;
 }
 
-internal void
+static void
 OpenGL_Deinit(void)
 {
 	

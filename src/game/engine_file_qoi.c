@@ -1,4 +1,4 @@
-internal int32
+static int32
 HashOfQoiPixel(uint32 color)
 {
 	uint8 r = (color >> 0 ) & 0xff;
@@ -10,7 +10,7 @@ HashOfQoiPixel(uint32 color)
 }
 
 //~ Internal API
-internal uint32*
+static uint32*
 Engine_ParseQoi(const uint8* data, uintsize size, Arena* arena, int32* out_width, int32* out_height)
 {
 	Trace();

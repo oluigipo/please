@@ -53,14 +53,14 @@ struct Win32_OpenGL
 typedef Win32_OpenGL;
 
 //~ Globals
-internal Win32_OpenGL global_opengl;
-internal bool32 global_should_flush_dwm;
-internal int32 global_swap_interval;
-internal PFNDWMISCOMPOSITIONENABLEDPROC DwmIsCompositionEnabled;
-internal PFNDWMFLUSHPROC DwmFlush;
+static Win32_OpenGL global_opengl;
+static bool32 global_should_flush_dwm;
+static int32 global_swap_interval;
+static PFNDWMISCOMPOSITIONENABLEDPROC DwmIsCompositionEnabled;
+static PFNDWMFLUSHPROC DwmFlush;
 
 //~ Functions
-internal void*
+static void*
 OpenGLGetProc(const char* name)
 {
 	void* result = NULL;
@@ -78,7 +78,7 @@ OpenGLGetProc(const char* name)
 	return result;
 }
 
-internal bool32
+static bool32
 LoadOpenGLFunctions(void)
 {
 	Trace();
@@ -482,7 +482,7 @@ LoadOpenGLFunctions(void)
 }
 
 //~ Internal API
-internal void
+static void
 Win32_DestroyOpenGLWindow(void)
 {
 	global_opengl.wglMakeCurrent(global_hdc, NULL);
@@ -490,7 +490,7 @@ Win32_DestroyOpenGLWindow(void)
 	DestroyWindow(global_window);
 }
 
-internal void
+static void
 Win32_OpenGLSwapBuffers(void)
 {
 	//global_opengl.vtable.glFlush();
@@ -506,16 +506,16 @@ Win32_OpenGLSwapBuffers(void)
 	}
 }
 
-internal bool32
+static bool32
 Win32_CreateOpenGLWindow(const Platform_Data* config, const wchar_t* title)
 {
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-								  config->window_x, config->window_y,
-								  config->window_width, config->window_height,
-								  NULL, NULL, global_instance, NULL);
+		config->window_x, config->window_y,
+		config->window_width, config->window_height,
+		NULL, NULL, global_instance, NULL);
 	
 	if (!window)
 		return false;

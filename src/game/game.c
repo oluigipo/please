@@ -2,13 +2,13 @@
 
 #include "system_random.c"
 
-#if 0
+#if 1
 #   include "game_test2.c"
 #elif 0
 #   include "game_test.c"
 #else
 // NOTE(ljre): This is set every frame.
-internal Engine_Data* engine;
+static Engine_Data* engine;
 
 enum Game_State
 {
@@ -55,7 +55,7 @@ struct Game_Data
 	Engine_Renderer3DScene render_scene;
 };
 
-internal void
+static void
 ColorToVec4(uint32 color, vec4 out)
 {
 	out[0] = (color>>16 & 0xFF) / 255.0f;
@@ -64,7 +64,7 @@ ColorToVec4(uint32 color, vec4 out)
 	out[3] = (color>>24 & 0xFF) / 255.0f;
 }
 
-internal void
+static void
 DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, float32 width, float32 height)
 {
 	vec3 alignment = { -0.5f, -0.5f };
@@ -148,7 +148,7 @@ DrawGamepadLayout(const Engine_GamepadState* gamepad, float32 x, float32 y, floa
 	}
 }
 
-internal void
+static void
 Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 {
 	if (needs_init)
@@ -358,13 +358,13 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 		if (gamepad.right[0] != 0.0f)
 		{
 			g->game->camera_yaw += gamepad.right[0] * g->game->sensitivity * dt;
-			g->game->camera_yaw = fmodf(g->game->camera_yaw, PI32 * 2.0f);
+			g->game->camera_yaw = fmodf(g->game->camera_yaw, Math_PI * 2.0f);
 		}
 		
 		if (gamepad.right[1] != 0.0f)
 		{
 			g->game->camera_pitch += -gamepad.right[1] * g->game->sensitivity * dt;
-			g->game->camera_pitch = glm_clamp(g->game->camera_pitch, -PI32 * 0.49f, PI32 * 0.49f);
+			g->game->camera_pitch = glm_clamp(g->game->camera_pitch, -Math_PI * 0.49f, Math_PI * 0.49f);
 		}
 		
 		float32 pitched = cosf(g->game->camera_pitch);
@@ -439,7 +439,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	const vec4 white = { 1.0f, 1.0f, 1.0f, 1.0f };
 	
 	char buf[128];
-	SPrintf(buf, sizeof buf, "Controller Index: %i", g->game->controller_index);
+	String_PrintfBuffer(buf, sizeof(buf), "Controller Index: %i", g->game->controller_index);
 	engine->render->draw_text(&g->game->font, Str(buf), (vec3) { 10.0f, 10.0f }, 32.0f, white, (vec3) { 0 });
 	
 	engine->render->draw_text(&g->game->font, Str("Press X, A, or B!"), (vec3) { 30.0f, 500.0f }, 24.0f, white, (vec3) { 0 });
@@ -462,14 +462,14 @@ struct Game_MenuButton
 }
 typedef Game_MenuButton;
 
-internal bool32
+static bool32
 IsMouseOverButton(Engine_MouseState* mouse, Game_MenuButton* button)
 {
 	return ((mouse->pos[0] >= button->position[0] && mouse->pos[0] <= button->position[0] + button->size[0]) &&
 		(mouse->pos[1] >= button->position[1] && mouse->pos[1] <= button->position[1] + button->size[1]));
 }
 
-internal void
+static void
 DrawMenuButton(Game_Data* game, Game_MenuButton* button, Engine_MouseState* mouse)
 {
 	vec4 highlight_none = { 0.1f, 0.1f, 0.1f, 1.0f };

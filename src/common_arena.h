@@ -40,7 +40,7 @@ extern int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type
 #   define Arena_DEFAULT_ALIGNMENT 16
 #endif
 
-internal Arena*
+static Arena*
 Arena_Create(uintsize reserved, uintsize page_size)
 {
 	Assert(IsPowerOf2(page_size));
@@ -61,7 +61,7 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	return result;
 }
 
-internal Arena*
+static Arena*
 Arena_FromMemory(void* memory, uintsize size)
 {
 	Assert(size > sizeof(Arena));
@@ -78,18 +78,18 @@ Arena_FromMemory(void* memory, uintsize size)
 	return result;
 }
 
-internal void
+static void
 Arena_Destroy(Arena* arena)
 { Arena_OsFree_(arena, arena->reserved + sizeof(Arena)); }
 
-internal void*
+static void*
 Arena_EndAligned(Arena* arena, uintsize alignment)
 {
 	arena->offset = AlignUp(arena->offset, alignment-1);
 	return arena->memory + arena->offset;
 }
 
-internal void*
+static void*
 Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 {
 	Assert(IsPowerOf2(alignment));
@@ -117,7 +117,7 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 	return result;
 }
 
-internal void
+static void
 Arena_Pop(Arena* arena, void* ptr)
 {
 	uint8* p = (uint8*)ptr;
@@ -127,31 +127,63 @@ Arena_Pop(Arena* arena, void* ptr)
 	arena->offset = new_offset;
 }
 
-internal inline void*
+static String
+Arena_VPrintf(Arena* arena, const char* fmt, va_list args)
+{
+	va_list args2;
+	va_copy(args2, args);
+	
+	uintsize size = String_VPrintfSize(fmt, args2);
+	uint8* data = (uint8*)Arena_PushDirtyAligned(arena, size, 1);
+	
+	size = String_VPrintfBuffer((char*)data, size, fmt, args);
+	
+	String result = {
+		.size = size,
+		.data = data,
+	};
+	
+	va_end(args2);
+	
+	return result;
+}
+
+static String
+Arena_Printf(Arena* arena, const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	String result = Arena_VPrintf(arena, fmt, args);
+	va_end(args);
+	
+	return result;
+}
+
+static inline void*
 Arena_PushDirty(Arena* arena, uintsize size)
 { return Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT); }
 
-internal inline void*
+static inline void*
 Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment)
 { return Mem_Set(Arena_PushDirtyAligned(arena, size, alignment), 0, size); }
 
-internal inline void*
+static inline void*
 Arena_Push(Arena* arena, uintsize size)
 { return Mem_Set(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), 0, size); }
 
-internal inline void*
+static inline void*
 Arena_PushMemory(Arena* arena, const void* buf, uintsize size)
 { return Mem_Copy(Arena_PushDirtyAligned(arena, size, 1), buf, size); }
 
-internal inline void*
+static inline void*
 Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment)
 { return Mem_Copy(Arena_PushDirtyAligned(arena, size, alignment), buf, size); }
 
-internal inline void
+static inline void
 Arena_Clear(Arena* arena)
 { arena->offset = 0; }
 
-internal inline void*
+static inline void*
 Arena_End(Arena* arena)
 { return arena->memory + arena->offset; }
 

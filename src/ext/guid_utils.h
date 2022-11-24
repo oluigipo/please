@@ -31,7 +31,7 @@
 //
 
 // Original: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L193
-internal bool32
+static bool
 IsXInputDevice(const GUID* guid)
 {
     RAWINPUTDEVICELIST ridl[512];
@@ -43,7 +43,7 @@ IsXInputDevice(const GUID* guid)
     
     for (UINT i = 0; i < count; i++)
     {
-        RID_DEVICE_INFO rdi = { .cbSize = sizeof rdi, };
+        RID_DEVICE_INFO rdi = { .cbSize = sizeof(rdi), };
         char name[256] = { 0 };
         UINT rdi_size = sizeof rdi;
         UINT name_size = sizeof name;
@@ -67,12 +67,12 @@ IsXInputDevice(const GUID* guid)
 }
 
 // Original: https://github.com/glfw/glfw/blob/6876cf8d7e0e70dc3e4d7b0224d08312c9f78099/src/win32_joystick.c#L452
-internal bool32
+static bool
 ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize guid_str_size)
 {
     if (Mem_Compare(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
     {
-        SPrintf(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
+        String_PrintfBuffer(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
 			(uint8) instance->guidProduct.Data1,
 			(uint8) (instance->guidProduct.Data1 >> 8),
 			(uint8) (instance->guidProduct.Data1 >> 16),
@@ -86,7 +86,7 @@ ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize
 		if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof(name), NULL, NULL))
 			return false;
 		
-		SPrintf(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
+		String_PrintfBuffer(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
 			name[0], name[1], name[2], name[3],
 			name[4], name[5], name[6], name[7],
 			name[8], name[9], name[10]);
