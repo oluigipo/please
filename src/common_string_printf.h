@@ -164,8 +164,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 			switch (*fmt++)
 			{
 				default: ++count; Assert(false); break;
-				case '%': ++count; break;
-				case '0': ++count; break;
+				case 'c': case '%': case '0': ++count; break;
 				
 				case 'i':
 				{
@@ -390,6 +389,11 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				default: *p++ = fmt[-1]; Assert(false); break;
 				case '%': *p++ = '%'; break;
 				case '0': *p++ = 0;   break;
+				case 'c':
+				{
+					int32 arg = va_arg(args, int32);
+					*p++ = (uint8)arg;
+				} break;
 				
 				//- NOTE(ljre): Signed decimal int.
 				case 'i':
