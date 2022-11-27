@@ -204,7 +204,7 @@ struct Render_Font
 	
 	struct
 	{
-		
+		uint8 dummy;
 	}
 	opengl;
 }
@@ -342,7 +342,7 @@ Render_FreeShader(Engine_Data* engine, Render_Shader* shader)
 
 static inline void
 Render_FreeFramebuffer(Engine_Data* engine, Render_Framebuffer* fb)
-{ return engine->render->free_framebuffer(fb); }
+{ engine->render->free_framebuffer(fb); }
 
 static inline void
 Render_ClearColor(Engine_Data* engine, const vec4 color)
