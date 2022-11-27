@@ -1,6 +1,8 @@
-#include "internal.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "file_formats/sdl_gamecontrollerdb.h"
 
 static void
 PrintHelp(const char* self)
@@ -8,21 +10,8 @@ PrintHelp(const char* self)
 	fprintf(stderr, "usage: %s path/to/gamecontrollerdb.txt path/to/output.h\n", self);
 }
 
-static void
-MoveUntilEol(const char** phead)
-{
-	while (**phead && **phead != '\n')
-		++*phead;
-}
-
-static bool
-IsHexChar(char c)
-{
-	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
-}
-
 static int32
-AsHexChar(char c)
+AsHexChar(uint8 c)
 {
 	if (c >= 'a')
 		return c - 'a' + 10;
@@ -55,18 +44,8 @@ Write(Writing* w, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	
-	uintsize len;
-	{
-		va_list args2;
-		va_copy(args2, args);
-		len = vsnprintf(NULL, 0, fmt, args2);
-		va_end(args2);
-	}
-	
-	char* buf = Arena_PushAligned(w->arena, len, 1);
-	len = vsnprintf(buf, len, fmt, args);
-	
-	w->len += len;
+	String str = Arena_VPrintf(w->arena, fmt, args);
+	w->len += str.size;
 	
 	va_end(args);
 }
@@ -75,65 +54,127 @@ static void
 DoneWriting(Writing* w, FILE* file)
 {
 	fwrite(w->buf, 1, w->len, file);
+	Arena_Pop(w->arena, w->buf);
+	w->len = 0;
 }
 
 static void
-Process(Arena* arena, const char* input_data, const char* input_name, FILE* outfile)
+Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 {
-	fprintf(outfile, "// This file was generated from \"%s\"", input_name);
-	fputs("static const GamepadMappings global_gamepad_database[] = {\n", outfile);
+	static const String objects_table[] = {
+		[SdlDb_Button_A] = StrInit("GamepadObject_Button_A"),
+		[SdlDb_Button_B] = StrInit("GamepadObject_Button_B"),
+		[SdlDb_Button_X] = StrInit("GamepadObject_Button_X"),
+		[SdlDb_Button_Y] = StrInit("GamepadObject_Button_Y"),
+		[SdlDb_Button_Left] = StrInit("GamepadObject_Button_Left"),
+		[SdlDb_Button_Right] = StrInit("GamepadObject_Button_Right"),
+		[SdlDb_Button_Up] = StrInit("GamepadObject_Button_Up"),
+		[SdlDb_Button_Down] = StrInit("GamepadObject_Button_Down"),
+		[SdlDb_Button_LeftShoulder] = StrInit("GamepadObject_Button_LeftShoulder"),
+		[SdlDb_Button_RightShoulder] = StrInit("GamepadObject_Button_RightShoulder"),
+		[SdlDb_Button_LeftStick] = StrInit("GamepadObject_Button_LeftStick"),
+		[SdlDb_Button_RightStick] = StrInit("GamepadObject_Button_RightStick"),
+		[SdlDb_Button_Start] = StrInit("GamepadObject_Button_Start"),
+		[SdlDb_Button_Back] = StrInit("GamepadObject_Button_Back"),
+		
+		[SdlDb_Pressure_LeftTrigger] = StrInit("GamepadObject_Pressure_LeftTrigger"),
+		[SdlDb_Pressure_RightTrigger] = StrInit("GamepadObject_Pressure_RightTrigger"),
+		
+		[SdlDb_Axis_LeftX] = StrInit("GamepadObject_Axis_LeftX"),
+		[SdlDb_Axis_LeftY] = StrInit("GamepadObject_Axis_LeftY"),
+		[SdlDb_Axis_RightX] = StrInit("GamepadObject_Axis_RightX"),
+		[SdlDb_Axis_RightY] = StrInit("GamepadObject_Axis_RightY"),
+	};
 	
-	const char* head = input_data;
+	Writing* w = &(Writing) { 0 };
+	*w = BeginWriting(arena);
 	
-#define AssertCond(cond) do { if (!(cond)) goto done_parsing_line; } while (0)
+	Write(w, "// This file was generated from \"%s\"\n\n", input_name);
+	Write(w, "static const GamepadMappings global_gamepadmap_database[] = {\n");
 	
-	for (;;)
+	const uint8* head = input_data.data;
+	const uint8* const end = input_data.data + input_data.size;
+	
+	while (head < end)
 	{
 		while (*head == '\n')
 			++head;
-		if (*head == '#')
-			goto done_parsing_line;
 		if (!*head)
 			break;
-		
-		//- NOTE(ljre): Parse GUID
-		char guid[32];
-		for (int32 index = 0; index < ArrayLength(guid); ++index)
+		if (*head == '#')
 		{
-			char ch = *head++;
-			AssertCond(IsHexChar(ch));
-			guid[index] = ch;
+			const uint8* found = Mem_FindByte(head, '\n', end - head);
+			if (!found)
+				break;
+			
+			head = found + 1;
+			continue;
 		}
 		
-		//- NOTE(ljre): Parse Name
-		String name;
+		const uint8* eol = Mem_FindByte(head, '\n', end - head);
+		if (!eol)
+			eol = end - 1;
 		
-		//- NOTE(ljre): Write Entry. This part is reached when all data is good.
+		String line = {
+			.size = eol - head,
+			.data = head,
+		};
+		
+		SdlDb_Controller con;
+		if (SdlDb_ParseEntry(line, &con))
 		{
-			Writing w = BeginWriting(arena);
-			Write(&w, "//%.*s\n", StrFmt(name));
+			Write(w, "\t//%S\n\t{", con.name);
 			
-			// GUID
-			Write(&w, "{.guid={");
-			for (int32 i = 0; i < ArrayLength(guid); ++i)
-				Write(&w, "'%c',", guid[i]);
-			Write(&w, "},");
+			// Print GUID
+			Write(w, ".guid={");
+			for (int32 i = 0; i < ArrayLength(con.guid); ++i)
+			{
+				Write(w, "'%c',", con.guid[i]);
+			}
+			Write(w, "},");
 			
-			//
+			// Print buttons
+			for (int32 i = 0; i < ArrayLength(con.buttons); ++i)
+			{
+				SdlDb_Object obj = con.buttons[i];
+				
+				if (obj != 0)
+					Write(w, ".buttons[%i]=%S,", i, objects_table[obj]);
+			}
 			
-			Write(&w, "},");
-			DoneWriting(&w, outfile);
+			// Print axes
+			for (int32 i = 0; i < ArrayLength(con.axes); ++i)
+			{
+				SdlDb_Object obj = con.axes[i];
+				
+				if (obj != 0)
+					Write(w, ".axes[%i]=%S|%i,", i, objects_table[obj & 0xff], obj & 0xff00);
+			}
+			
+			// Print povs
+			for (int32 i = 0; i < ArrayLength(con.povs); ++i)
+			{
+				for (int32 k = 0; k < ArrayLength(con.povs[i]); ++k)
+				{
+					SdlDb_Object obj = con.povs[i][k];
+					
+					if (obj != 0)
+						Write(w, ".povs[%i][%i]=%S,", i, k, objects_table[obj]);
+				}
+			}
+			
+			Write(w, "},\n");
 		}
 		
-		done_parsing_line: MoveUntilEol(&head);
+		head = eol + 1;
 	}
 	
-#undef AssertCond
-	
-	fputs("};\n");
+	Write(w, "};\n");
+	DoneWriting(w, outfile);
 }
 
-int main(int argc, char* argv[])
+int
+main(int argc, char* argv[])
 {
 	if (argc < 3)
 	{
@@ -145,7 +186,7 @@ int main(int argc, char* argv[])
 	const char* output_fname = argv[2];
 	
 	Arena* arena = Arena_Create(32 << 20, 8 << 20);
-	const char* input_data;
+	String input_data;
 	FILE* outfile;
 	
 	// NOTE(ljre): Try to read whole input file.
@@ -171,7 +212,7 @@ int main(int argc, char* argv[])
 		buf[size] = 0;
 		fclose(file);
 		
-		input_data = buf;
+		input_data = StrMake(size+1, buf);
 	}
 	
 	// NOTE(ljre): Try to open output file.
