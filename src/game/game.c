@@ -1,12 +1,15 @@
 #include "internal.h"
 
-#include "system_random.c"
-
-#if 1
+#ifdef INTERNAL_TEST_OPENGL_NEWREN
+#   include "game_newren.c"
+#elif 1
 #   include "game_test2.c"
 #elif 0
 #   include "game_test.c"
 #else
+
+#include "system_random.c"
+
 // NOTE(ljre): This is set every frame.
 static Engine_Data* engine;
 
@@ -321,7 +324,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	
 	//~ NOTE(ljre): 3D Scene
 	Trace(); TraceName(Str("Game Loop"));
-	void* memory_state = Arena_End(g->temp_arena);
+	void* memory_state = Arena_End(g->scratch_arena);
 	
 	if (engine->platform->window_should_close || Engine_IsPressed(g->input->keyboard, Engine_KeyboardKey_Escape))
 		g->running = false;
@@ -451,7 +454,7 @@ Game_3DDemoScene(Engine_Data* g, bool32 needs_init)
 	Engine_PlayAudios(g->game->playing_audios, &g->game->playing_audio_count, 0.075f);
 	Engine_FinishFrame();
 	
-	Arena_Pop(g->temp_arena, memory_state);
+	Arena_Pop(g->scratch_arena, memory_state);
 }
 
 struct Game_MenuButton
@@ -533,7 +536,7 @@ Game_Main(Engine_Data* g)
 			};
 			
 			//~ NOTE(ljre): Update
-			void* memory_state = Arena_End(g->temp_arena);
+			void* memory_state = Arena_End(g->scratch_arena);
 			
 			Engine_MouseState mouse = g->input->mouse;
 			
@@ -564,7 +567,7 @@ Game_Main(Engine_Data* g)
 			}
 			
 			//~ NOTE(ljre): Finish Frame
-			Arena_Pop(g->temp_arena, memory_state);
+			Arena_Pop(g->scratch_arena, memory_state);
 			Engine_FinishFrame();
 		} break;
 		

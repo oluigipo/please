@@ -38,7 +38,7 @@ Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT])
 	
 	while (c)
 	{
-		out_indices[len++] = Mem_BitCtz32((uint32)c);
+		out_indices[len++] = Mem_BitCtz64(c);
 		
 		c &= c-1; // NOTE(ljre): Clear last bit
 	}
@@ -63,7 +63,7 @@ Engine_Main(int32 argc, char** argv)
 	
 	global_engine.platform = &config;
 	global_engine.persistent_arena = Arena_Create(512 << 20, 32 << 20);
-	global_engine.temp_arena = Arena_Create(128 << 20, 8 << 20);
+	global_engine.scratch_arena = Arena_Create(128 << 20, 8 << 20);
 	global_engine.delta_time = 1.0f;
 	global_engine.running = true;
 	global_engine.input = Arena_Push(global_engine.persistent_arena, sizeof(*global_engine.input));
@@ -94,6 +94,6 @@ Engine_Main(int32 argc, char** argv)
 	Engine_DeinitRender();
 	
 	Arena_Destroy(global_engine.persistent_arena);
-	Arena_Destroy(global_engine.temp_arena);
+	Arena_Destroy(global_engine.scratch_arena);
 	return 0;
 }

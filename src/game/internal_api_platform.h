@@ -29,10 +29,10 @@ typedef Platform_GraphicsContext;
 struct Platform_Data
 {
 	// NOTE(ljre): Platform state data. Just change it and we'll update once 'Platform_PollEvents' is called.
-	bool8 show_cursor; // if false, hide cursor when in window
-	bool8 lock_cursor; // lock cursor in the middle of the window
-	bool8 center_window; // if true, we ignore 'window_x/y'
-	bool8 fullscreen; // if true, we ignore 'center_window' and 'window_x/y'
+	bool show_cursor; // if false, hide cursor when in window
+	bool lock_cursor; // lock cursor in the middle of the window
+	bool center_window; // if true, we ignore 'window_x/y'
+	bool fullscreen; // if true, we ignore 'center_window' and 'window_x/y'
 	
 	int32 window_x, window_y, window_width, window_height;
 	String window_title;
@@ -40,8 +40,8 @@ struct Platform_Data
 	Platform_GraphicsApi graphics_api;
 	
 	// NOTE(ljre): Immutable. Changing them does nothing.
-	bool8 window_should_close;
-	bool8 user_resized_window; // if true, the user just resized the window. thus window_width/height will be ignored.
+	bool window_should_close;
+	bool user_resized_window; // if true, the user just resized the window. thus window_width/height will be ignored.
 }
 typedef Platform_Data;
 

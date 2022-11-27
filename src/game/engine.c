@@ -39,12 +39,17 @@
 //~ Our Code
 static Engine_Data global_engine;
 
-#include "engine_file_qoi.c"
-#include "engine_file_json.c"
-#include "engine_file_gltf.c"
+#include "file_formats/json.h"
+#include "file_formats/qoi.h"
+#include "file_formats/gltf.h"
+
 #include "engine_audio.c"
 #ifdef INTERNAL_ENABLE_OPENGL
-#   include "engine_render_opengl.c"
+#   ifdef INTERNAL_TEST_OPENGL_NEWREN
+#       include "engine_render_opengl.new.c"
+#   else
+#       include "engine_render_opengl.c"
+#   endif
 #endif
 #ifdef INTERNAL_ENABLE_D3D11
 #   include "engine_render_d3d11.c"

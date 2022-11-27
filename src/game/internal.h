@@ -1,6 +1,8 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
+#define INTERNAL_TEST_OPENGL_NEWREN
+
 #include "internal_config.h"
 
 //~ Common

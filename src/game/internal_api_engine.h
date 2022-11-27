@@ -14,7 +14,7 @@ struct Platform_Data typedef Platform_Data;
 struct Engine_Data
 {
 	Arena* persistent_arena;
-	Arena* temp_arena;
+	Arena* scratch_arena;
 	Game_Data* game;
 	Platform_Data* platform;
 	
@@ -25,8 +25,8 @@ struct Engine_Data
 	float32 delta_time;
 	float64 last_frame_time;
 	
-	bool8 outputed_sound_this_frame;
-	bool8 running;
+	bool outputed_sound_this_frame;
+	bool running;
 };
 
 // Engine entry point. It shall be called by the platform layer.
@@ -197,66 +197,14 @@ API bool Engine_IsGamepadConnected(uint32 index);
 API int32 Engine_ConnectedGamepadCount(void);
 API int32 Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT]);
 
-//~ OLD Renderer
-struct Engine_Renderer3DPointLight
-{
-	vec3 position;
-	
-	float32 constant, linear, quadratic;
-	
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
-}
-typedef Engine_Renderer3DPointLight;
-
-struct Engine_Renderer3DFlashlight
-{
-	vec3 position;
-	vec3 direction;
-	vec3 color;
-	
-	float32 constant, linear, quadratic;
-	
-	float32 inner_cutoff;
-	float32 outer_cutoff;
-}
-typedef Engine_Renderer3DFlashlight;
-
-struct Engine_Renderer3DModel
-{
-	mat4 transform;
-	Asset_3DModel* asset;
-	vec4 color;
-}
-typedef Engine_Renderer3DModel;
-
-struct Engine_Renderer3DScene
-{
-	Asset_3DModel* light_model;
-	vec3 dirlight;
-	vec3 dirlight_color;
-	
-	uint32 shadow_fbo, shadow_depthmap;
-	uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
-	
-	int32 model_count;
-	int32 point_light_count;
-	int32 flashlights_count;
-	
-	Engine_Renderer3DModel* models;
-	Engine_Renderer3DPointLight* point_lights;
-	Engine_Renderer3DFlashlight* flashlights;
-}
-typedef Engine_Renderer3DScene;
-
+//~ Basic renderer funcs
 struct Render_Camera2D typedef Render_Camera2D;
 struct Render_Camera3D typedef Render_Camera3D;
 
 API void Engine_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view);
 API void Engine_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect);
-API void Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view);
-API void Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view);
+API void Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model);
+API void Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model);
 API void Engine_CalcPointInCamera2DSpace(const Render_Camera2D* camera, const vec2 pos, vec2 out_pos);
 
 #endif //INTERNAL_API_ENGINE_H

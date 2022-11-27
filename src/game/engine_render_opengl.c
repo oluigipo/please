@@ -782,7 +782,7 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 	Trace(); TraceText(path);
 	
 	uintsize size;
-	void* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
+	void* data = Platform_ReadEntireFile(path, &size, global_engine.scratch_arena);
 	if (!data)
 		return false;
 	
@@ -793,7 +793,7 @@ OpenGL_LoadTextureFromFile(String path, Asset_Texture* out_texture)
 		texture_data = stbi_load_from_memory(data, (int32)size, &width, &height, &channels, 4);
 	}
 	
-	Arena_Pop(global_engine.temp_arena, data);
+	Arena_Pop(global_engine.scratch_arena, data);
 	if (!texture_data)
 		return false;
 	
@@ -824,7 +824,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	int32 bitmap_width, bitmap_height;
 	OpenGL_CalcBitmapSizeForText_(font, scale, text, &bitmap_width, &bitmap_height);
 	
-	uint8* bitmap = Arena_Push(global_engine.temp_arena, (uintsize)bitmap_width * bitmap_height);
+	uint8* bitmap = Arena_Push(global_engine.scratch_arena, (uintsize)bitmap_width * bitmap_height);
 	
 	float32 xx = 0, yy = 0;
 	int32 codepoint, it = 0;
@@ -901,7 +901,7 @@ OpenGL_DrawText(const Asset_Font* font, String text, const vec3 pos, float32 cha
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
 	GL.glDeleteTextures(1, &texture);
 	
-	Arena_Pop(global_engine.temp_arena, bitmap);
+	Arena_Pop(global_engine.scratch_arena, bitmap);
 }
 
 static void
@@ -930,17 +930,17 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 {
 	Trace(); TraceText(path);
 	uintsize size;
-	void* state = Arena_End(global_engine.temp_arena);
+	void* state = Arena_End(global_engine.scratch_arena);
 	
-	uint8* data = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
+	uint8* data = Platform_ReadEntireFile(path, &size, global_engine.scratch_arena);
 	if (!data)
 		return false;
 	
-	Engine_GltfJson model;
+	GltfJson_Root model;
 	bool32 result;
 	
 	{
-		result = Engine_ParseGltf(data, size, &model);
+		result = Gltf_Parse(data, size, global_engine.scratch_arena, &model);
 	}
 	
 	// TODO(ljre): Checking
@@ -1150,7 +1150,7 @@ OpenGL_Load3DModelFromFile(String path, Asset_3DModel* out)
 		GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 	
-	Arena_Pop(global_engine.temp_arena, state);
+	Arena_Pop(global_engine.scratch_arena, state);
 	
 	return result;
 }

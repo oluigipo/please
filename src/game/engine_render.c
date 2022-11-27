@@ -42,16 +42,18 @@ API void
 Engine_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view)
 {
 	vec3 size = {
-		camera->zoom / camera->size[0],
-		-camera->zoom / camera->size[1],
+		camera->zoom * 2.0f / camera->size[0],
+		-camera->zoom * 2.0f / camera->size[1],
 		1.0f,
 	};
 	
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (vec3) { -camera->pos[0] * size[0], -camera->pos[1] * size[1] });
-	glm_rotate(out_view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
-	glm_scale(out_view, size);
-	glm_translate(out_view, (vec3) { -0.5f, -0.5f });
+	mat4 view;
+	glm_mat4_identity(view);
+	glm_translate(view, (vec3) { -camera->pos[0] * size[0], -camera->pos[1] * size[1] });
+	glm_rotate(view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_scale(view, size);
+	glm_translate(view, (vec3) { -0.5f, -0.5f });
+	glm_mat4_copy(view, out_view);
 }
 
 API void
@@ -66,23 +68,27 @@ Engine_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fo
 }
 
 API void
-Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_view)
+Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model)
 {
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (vec3) { pos[0], pos[1] });
-	glm_scale(out_view, (vec3) { scale[0], scale[1], 1.0f });
-	glm_rotate(out_view, angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	mat4 model;
+	glm_mat4_identity(model);
+	glm_translate(model, (vec3) { pos[0], pos[1] });
+	glm_scale(model, (vec3) { scale[0], scale[1], 1.0f });
+	glm_rotate(model, angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_mat4_copy(model, out_model);
 }
 
 API void
-Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_view)
+Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model)
 {
-	glm_mat4_identity(out_view);
-	glm_translate(out_view, (float32*)pos);
-	glm_scale(out_view, (float32*)scale);
-	glm_rotate(out_view, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
-	glm_rotate(out_view, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
-	glm_rotate(out_view, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+	mat4 model;
+	glm_mat4_identity(model);
+	glm_translate(model, (float32*)pos);
+	glm_scale(model, (float32*)scale);
+	glm_rotate(model, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
+	glm_rotate(model, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
+	glm_rotate(model, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_mat4_copy(model, out_model);
 }
 
 API void

@@ -507,12 +507,12 @@ Game_Init(Game_Data* game)
 static void
 ProcessDiscordEvents(void)
 {
-	void* temp_arena_save = Arena_End(engine->temp_arena);
+	void* scratch_arena_save = Arena_End(engine->scratch_arena);
 	
 	if (game->discord.connected)
 	{
 		PlsDiscord_Event* event = NULL;
-		PlsDiscord_EarlyUpdate(&game->discord, engine->temp_arena, &event);
+		PlsDiscord_EarlyUpdate(&game->discord, engine->scratch_arena, &event);
 		
 		for (; event; event = event->next)
 		{
@@ -536,7 +536,7 @@ ProcessDiscordEvents(void)
 		}
 	}
 	
-	Arena_Pop(engine->temp_arena, temp_arena_save);
+	Arena_Pop(engine->scratch_arena, scratch_arena_save);
 }
 
 static void
@@ -701,7 +701,7 @@ Game_UpdateAndRender(void)
 		+ ArrayLength(game->players[0].troops) * ArrayLength(game->players)
 		+ 1 + (game->selected_troop_index != -1);
 	
-	Render_Data2DInstance* sprites = Arena_Push(engine->temp_arena, sizeof(*sprites) * sprite_count);
+	Render_Data2DInstance* sprites = Arena_Push(engine->scratch_arena, sizeof(*sprites) * sprite_count);
 	Render_Data2DInstance* spr = sprites;
 	
 	for (int32 y = 0; y < table_size; ++y)
@@ -839,7 +839,7 @@ Game_Main(Engine_Data* g)
 	
 	game = g->game;
 	
-	Arena_Clear(engine->temp_arena);
+	Arena_Clear(engine->scratch_arena);
 	Game_UpdateAndRender();
 	
 	if (!g->running)

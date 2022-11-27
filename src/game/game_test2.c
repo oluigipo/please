@@ -115,13 +115,13 @@ Game_Init(void)
 static void
 Game_UpdateDiscordEarly(void)
 {
-	void* temp_arena_save = Arena_End(engine->temp_arena);
+	void* scratch_arena_save = Arena_End(engine->scratch_arena);
 	
 	if (game->discord.connected)
 	{
 		PlsDiscord_Client* discord = &game->discord;
 		PlsDiscord_Event* event = NULL;
-		PlsDiscord_EarlyUpdate(discord, engine->temp_arena, &event);
+		PlsDiscord_EarlyUpdate(discord, engine->scratch_arena, &event);
 		
 		for (; event; event = event->next)
 		{
@@ -192,7 +192,7 @@ Game_UpdateDiscordEarly(void)
 		}
 	}
 	
-	Arena_Pop(engine->temp_arena, temp_arena_save);
+	Arena_Pop(engine->scratch_arena, scratch_arena_save);
 }
 
 static void
@@ -316,7 +316,7 @@ Game_UpdateAndRender(void)
 	
 	// NOTE(ljre): Draw Sprites
 	{
-		Arena* arena = engine->temp_arena;
+		Arena* arena = engine->scratch_arena;
 		void* saved_state = Arena_End(arena);
 		Render_Data2DInstance* sprites = Arena_EndAligned(arena, 16);
 		Render_Data2DInstance* spr;
@@ -401,7 +401,7 @@ Game_Main(Engine_Data* data)
 	
 	engine = data;
 	game = data->game;
-	Arena_Clear(engine->temp_arena);
+	Arena_Clear(engine->scratch_arena);
 	
 	if (!engine->game)
 	{

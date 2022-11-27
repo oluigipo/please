@@ -22,7 +22,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	Trace(); TraceText(path);
 	
 	uintsize size;
-	void* memory = Platform_ReadEntireFile(path, &size, global_engine.temp_arena);
+	void* memory = Platform_ReadEntireFile(path, &size, global_engine.scratch_arena);
 	
 	if (!memory)
 		return false;
@@ -33,7 +33,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels, &out_sound->sample_rate, &out_sound->samples);
 	}
 	
-	Arena_Pop(global_engine.temp_arena, memory);
+	Arena_Pop(global_engine.scratch_arena, memory);
 	
 	if (out_sound->sample_count == -1)
 		return false;
