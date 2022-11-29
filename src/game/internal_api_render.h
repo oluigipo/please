@@ -24,7 +24,8 @@ enum Render_BlendMode
 	Render_BlendMode_None,
 	Render_BlendMode_Add,
 	Render_BlendMode_Subtract,
-};
+}
+typedef Render_BlendMode;
 
 struct Render_Camera2D
 {
@@ -40,7 +41,7 @@ typedef Render_Camera2D;
 struct Render_Data2D
 {
 	const Asset_Texture* texture;
-	enum Render_BlendMode blendmode;
+	Render_BlendMode blendmode;
 	Render_Camera2D camera;
 	
 	const Render_Data2DInstance* instances;
@@ -146,11 +147,16 @@ typedef Render_ShaderDesc;
 
 struct Render_FontDesc
 {
+	Arena* arena;
+	
 	const void* ttf_data;
 	uintsize ttf_data_size;
 	
 	float32 char_height;
-	int32 glyph_cache_size;
+	int32 glyph_cache_size; // NOTE(ljre): This must be the log2(sqrt()) of the size!
+	
+	bool mag_linear;
+	bool min_linear;
 }
 typedef Render_FontDesc;
 
@@ -199,12 +205,39 @@ struct Render_Shader
 }
 typedef Render_Shader;
 
+struct Render_GlyphInfo
+{
+	uint32 codepoint;
+	int32 index;
+	
+	int16 xoff, yoff;
+	uint16 width, height;
+	uint16 advance_width, left_side_bearing;
+}
+typedef Render_GlyphInfo;
+
 struct Render_Font
 {
+	const void* ttf_data;
+	uintsize ttf_data_size;
+	
+	stbtt_fontinfo info;
+	int32 ascent, descent, line_gap, space_char_advance;
+	float32 char_scale;
+	
+	int32 max_glyph_width, max_glyph_height;
+	uint8* cache_bitmap;
+	int32 cache_bitmap_size; // NOTE(ljre): Square bitmap, size = width/max_glyph_width and height/max_glyph_height.
+	
+	Render_GlyphInfo* cache_hashtable;
+	uint32 cache_hashtable_log2_cap;
+	uint32 cache_hashtable_size;
+	
+	Render_Texture2D cache_tex;
 	
 	struct
 	{
-		uint8 dummy;
+		uint32 cache_tex_id;
 	}
 	opengl;
 }
@@ -229,25 +262,13 @@ struct Render_Framebuffer
 }
 typedef Render_Framebuffer;
 
-struct Render_DrawTextData
-{
-	const Render_Font* font;
-	String text;
-	vec4 color;
-	
-	vec2 pos;
-	vec2 alignment; // xy = [0 ... 1]
-	vec2 scale;
-}
-typedef Render_DrawTextData;
-
 struct Render_Data2D
 {
 	const Render_Texture2D* texture;
 	const Render_Shader* shader;
 	const Render_Framebuffer* framebuffer;
 	
-	enum Render_BlendMode blendmode;
+	Render_BlendMode blendmode;
 	Render_Camera2D camera;
 	
 	const Render_Data2DInstance* instances;
@@ -292,7 +313,7 @@ struct Engine_RenderApi
 	void (*clear_framebuffer)(Render_Framebuffer* fb, const vec4 color);
 	
 	void (*draw_2d)(const Render_Data2D* data);
-	void (*draw_text)(const Render_DrawTextData* data);
+	void (*batch_text)(Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data);
 	
 	void (*calc_text_size)(const Render_Font* font, String text, vec2* out_size);
 #endif //INTERNAL_TEST_OPENGL_NEWREN
@@ -357,8 +378,8 @@ Render_Draw2D(Engine_Data* engine, const Render_Data2D* data)
 { engine->render->draw_2d(data); }
 
 static inline void
-Render_DrawText(Engine_Data* engine, const Render_DrawTextData* data)
-{ engine->render->draw_text(data); }
+Render_BatchText(Engine_Data* engine, Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data)
+{ engine->render->batch_text(font, text, color, pos, alignment, scale, arena, out_data); }
 
 static inline void
 Render_CalcTextSize(Engine_Data* engine, const Render_Font* font, String text, vec2* out_size)

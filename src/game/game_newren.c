@@ -4,6 +4,7 @@ static Game_Data* game;
 struct Game_Data
 {
 	Render_Texture2D texture;
+	Render_Font font;
 };
 
 static void
@@ -11,19 +12,43 @@ Game_Init(void)
 {
 	game = engine->game = Arena_Push(engine->persistent_arena, sizeof(*game));
 	
-	uintsize size;
-	void* data = Platform_ReadEntireFile(Str("assets/base_texture.png"), &size, engine->scratch_arena);
+	// NOTE(ljre): Load texture
+	{
+		uintsize size;
+		void* data = Platform_ReadEntireFile(Str("assets/base_texture.png"), &size, engine->scratch_arena);
+		
+		Render_Texture2DDesc desc = {
+			.encoded_image = data,
+			.encoded_image_size = size,
+		};
+		
+		Render_MakeTexture2D(engine, &desc, &game->texture);
+		
+		Arena_Pop(engine->scratch_arena, data);
+	}
 	
-	Render_Texture2DDesc desc = {
-		.encoded_image = data,
-		.encoded_image_size = size,
-	};
-	
-	bool ok = Render_MakeTexture2D(engine, &desc, &game->texture);
-	
-	Arena_Pop(engine->scratch_arena, data);
-	
-	Assert(ok);
+	// NOTE(ljre): Load font
+	{
+		uintsize size;
+		void* data = Platform_ReadEntireFile(Str("assets/FalstinRegular-XOr2.ttf"), &size, engine->scratch_arena);
+		
+		Render_FontDesc desc = {
+			.arena = engine->persistent_arena,
+			
+			.ttf_data = data,
+			.ttf_data_size = size,
+			
+			.char_height = 24.0f * 2,
+			.glyph_cache_size = 5,
+			
+			.mag_linear = true,
+			.min_linear = true,
+		};
+		
+		Render_MakeFont(engine, &desc, &game->font);
+		
+		Arena_Pop(engine->scratch_arena, data);
+	}
 }
 
 static void
@@ -54,6 +79,9 @@ Game_UpdateAndRender(void)
 			.instance_count = 1,
 		};
 		
+		Render_Draw2D(engine, &data2d);
+		
+		Render_BatchText(engine, &game->font, Str("hello, world!"), GLM_VEC4_ONE, (vec2) { -200.0f, 100.0f }, GLM_VEC2_ZERO, (vec2) { 2.0f, 2.0f }, engine->scratch_arena, &data2d);
 		Render_Draw2D(engine, &data2d);
 	}
 	
