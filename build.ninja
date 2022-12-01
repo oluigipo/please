@@ -20,8 +20,6 @@ rule cc_link
   command = clang -fuse-ld=lld $in -o $out $cflags $ldflags -MMD -MF $out.d
   deps = gcc
   depfile = $out.d
-rule gamepad_db_gen
-  command = $builddir\gamepad_db_gen $in $out
 rule make_empty_tu
   command = cmd /c echo ; > $out
 
@@ -32,11 +30,11 @@ build $builddir/game.obj: cc src/game/game.c
   cflags = $cflags -g -DDEBUG
 build $builddir/engine.obj: cc src/game/engine.c
   cflags = $cflags -g -DDEBUG
-build $builddir/platform_win32.obj: cc src/game/platform_win32.c | $builddir/internal_gamepad_map_database.inc
+build $builddir/platform_win32.obj: cc src/game/platform_win32.c
   cflags = $cflags -g -DDEBUG
 
 # Game - Release
-build $builddir/game-release.exe: cc_link src/game/unity_build.c | $builddir/internal_gamepad_map_database.inc
+build $builddir/game-release.exe: cc_link src/game/unity_build.c
   cflags = $cflags -static -O2 -ffast-math
   ldflags = $ldflags_exe
 
@@ -51,18 +49,13 @@ build $builddir/engine.dll | $builddir/engine.lib: link $builddir/engine-hot.obj
   ldflags = $ldflags_hot
 build $builddir/engine-hot.obj: cc src/game/engine.c
   cflags = $cflags_hot
-build $builddir/platform_win32-hot.obj: cc src/game/platform_win32.c | $builddir/internal_gamepad_map_database.inc
+build $builddir/platform_win32-hot.obj: cc src/game/platform_win32.c
   cflags = $cflags_hot
 
 # Game - Tracy
-build $builddir/game-tracy.exe: cc_link src/game/unity_build.c TracyClient.obj | $builddir/internal_gamepad_map_database.inc
+build $builddir/game-tracy.exe: cc_link src/game/unity_build.c TracyClient.obj
   cflags = $cflags -static -O2 -ffast-math -DTRACY_ENABLE
   ldflags = $ldflags_exe
-
-# gamecontrollerdb.txt
-build $builddir/internal_gamepad_map_database.inc: gamepad_db_gen src/ext/gamecontrollerdb.txt | $builddir/gamepad_db_gen.exe
-build $builddir/gamepad_db_gen.exe: cc_link src/gamepad_db_gen/main.c
-  cflags = $cflags -g -DDEBUG
 
 # phony
 build debug: phony $builddir/game-debug.exe

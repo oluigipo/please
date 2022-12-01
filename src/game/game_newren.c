@@ -29,8 +29,12 @@ Game_Init(void)
 	
 	// NOTE(ljre): Load font
 	{
+		//String path = StrInit("assets/FalstinRegular-XOr2.ttf");
+		String path = StrInit("c:/windows/fonts/arial.ttf");
+		
 		uintsize size;
-		void* data = Platform_ReadEntireFile(Str("assets/FalstinRegular-XOr2.ttf"), &size, engine->scratch_arena);
+		void* data = Platform_ReadEntireFile(path, &size, engine->scratch_arena);
+		Assert(data);
 		
 		Render_FontDesc desc = {
 			.arena = engine->persistent_arena,
@@ -39,7 +43,7 @@ Game_Init(void)
 			.ttf_data_size = size,
 			
 			.char_height = 24.0f * 2,
-			.glyph_cache_size = 5,
+			.glyph_cache_size = 4,
 			
 			.mag_linear = true,
 			.min_linear = true,
@@ -81,7 +85,8 @@ Game_UpdateAndRender(void)
 		
 		Render_Draw2D(engine, &data2d);
 		
-		Render_BatchText(engine, &game->font, Str("hello, world!"), GLM_VEC4_ONE, (vec2) { -200.0f, 100.0f }, GLM_VEC2_ZERO, (vec2) { 2.0f, 2.0f }, engine->scratch_arena, &data2d);
+		String text = String_PrintfLocal(256, "mouse: (%f, %f)", engine->input->mouse.pos[0], engine->input->mouse.pos[1]);
+		Render_BatchText(engine, &game->font, text, GLM_VEC4_ONE, (vec2) { -200.0f, 100.0f }, GLM_VEC2_ZERO, (vec2) { 1.0f, 1.0f }, engine->scratch_arena, &data2d);
 		Render_Draw2D(engine, &data2d);
 	}
 	

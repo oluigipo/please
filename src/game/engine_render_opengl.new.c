@@ -33,6 +33,7 @@ OpenGL_DebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sever
 static bool
 OpenGL_MakeDepthStencilTexture_(const Render_Texture2DDesc* desc, Render_Texture2D* out_texture, uint8 flags)
 {
+	Trace();
 	Assert(desc->width && desc->height);
 	Assert(flags != 0 && flags <= 3);
 	
@@ -86,6 +87,7 @@ OpenGL_MakeDepthStencilTexture_(const Render_Texture2DDesc* desc, Render_Texture
 static void
 OpenGL_BakeGlyphsToFontCache_(Render_Font* font, const uint32* codepoints, uint32 codepoints_count, bool upload_texture_if_changed)
 {
+	Trace();
 	Assert(font->cache_hashtable_size/2 + codepoints_count < font->cache_bitmap_size*font->cache_bitmap_size);
 	
 	const float32 scale = font->char_scale;
@@ -156,6 +158,8 @@ OpenGL_BakeGlyphsToFontCache_(Render_Font* font, const uint32* codepoints, uint3
 static bool
 OpenGL_MakeTexture2D(const Render_Texture2DDesc* desc, Render_Texture2D* out_texture)
 {
+	Trace();
+	
 	int32 width, height, channels;
 	const void* pixels;
 	
@@ -219,6 +223,8 @@ OpenGL_MakeTexture2D(const Render_Texture2DDesc* desc, Render_Texture2D* out_tex
 static bool
 OpenGL_MakeShader(const Render_ShaderDesc* desc, Render_Shader* out_shader)
 {
+	Trace();
+	
 	char info[512];
 	int32 success = true;
 	
@@ -307,13 +313,15 @@ OpenGL_MakeShader(const Render_ShaderDesc* desc, Render_Shader* out_shader)
 static bool
 OpenGL_MakeFont(const Render_FontDesc* desc, Render_Font* out_font)
 {
+	Trace();
+	
 	void* saved_arena = Arena_End(desc->arena);
 	Render_Font font = { 0 };
 	
 	font.ttf_data_size = desc->ttf_data_size;
 	font.ttf_data = Arena_PushMemoryAligned(desc->arena, desc->ttf_data, desc->ttf_data_size, 8);
 	
-	if (!stbtt_InitFont(&font.info, desc->ttf_data, 0))
+	if (!stbtt_InitFont(&font.info, font.ttf_data, 0))
 	{
 		Arena_Pop(desc->arena, saved_arena);
 		return false;
@@ -345,6 +353,7 @@ OpenGL_MakeFont(const Render_FontDesc* desc, Render_Font* out_font)
 	
 	uint32 codepoints[26*2 + 10] = {
 		'!', ',', '.', '(', ')', '?', ':', ';', '&', '%',
+		//'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 	};
 	
 	for (uint32 i = 0; i <= 'Z'-'A'; ++i)
@@ -372,6 +381,8 @@ OpenGL_MakeFont(const Render_FontDesc* desc, Render_Font* out_font)
 static bool
 OpenGL_MakeFramebuffer(const Render_FramebufferDesc* desc, Render_Framebuffer* out_fb)
 {
+	Trace();
+	
 	bool ok = true;
 	int32 width = desc->width;
 	int32 height = desc->height;
@@ -429,6 +440,8 @@ OpenGL_MakeFramebuffer(const Render_FramebufferDesc* desc, Render_Framebuffer* o
 static void
 OpenGL_ClearColor(const vec4 color)
 {
+	Trace();
+	
 	GL.glClearColor(color[0], color[1], color[2], color[3]);
 	GL.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
@@ -436,6 +449,8 @@ OpenGL_ClearColor(const vec4 color)
 static void
 OpenGL_ClearFramebuffer(Render_Framebuffer* fb, const vec4 color)
 {
+	Trace();
+	
 	GL.glBindFramebuffer(GL_FRAMEBUFFER, fb->opengl.id);
 	
 	uint32 bits = 0;
@@ -605,6 +620,10 @@ OpenGL_Draw2D(const Render_Data2D* data)
 static void
 OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data)
 {
+	Trace();
+	
+	// TODO(ljre): use 'alignment'.
+	
 	// NOTE(ljre): Get all new codepoints to bake into texture
 	{
 		uint32* codepoints = Arena_EndAligned(arena, alignof(uint32));
@@ -620,7 +639,7 @@ OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 po
 			bool needs_to_bake = true;
 			
 			// NOTE(ljre): Check if it is in the cache
-			uint64 hash = Hash_IntHash32(codepoint);
+			uint64 hash = Hash_IntHash64(codepoint);
 			int32 cache_index = (int32)hash;
 			
 			for (;;)
@@ -751,7 +770,9 @@ OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 po
 static void
 OpenGL_CalcTextSize(const Render_Font* font, String text, vec2* out_size)
 {
+	Trace();
 	
+	// TODO(ljre): this is needed for 'alignment' argument in OpenGL_BatchText
 }
 
 //~ NOTE(ljre): Resource deallocation
@@ -765,7 +786,7 @@ OpenGL_FreeTexture2D(Render_Texture2D* texture)
 static void
 OpenGL_FreeFont(Render_Font* font)
 {
-	// ...
+	GL.glDeleteTextures(1, &font->opengl.cache_tex_id);
 	Mem_Set(font, 0, sizeof(*font));
 }
 
@@ -796,6 +817,8 @@ OpenGL_FreeFramebuffer(Render_Framebuffer* fb)
 static bool
 OpenGL_Init(const Engine_RenderApi** out_api)
 {
+	Trace();
+	
 	static const Engine_RenderApi api = {
 		.make_texture_2d = OpenGL_MakeTexture2D,
 		.make_font = OpenGL_MakeFont,
@@ -924,6 +947,8 @@ OpenGL_Init(const Engine_RenderApi** out_api)
 static void
 OpenGL_Deinit(void)
 {
+	Trace();
+	
 	// TODO
 }
 

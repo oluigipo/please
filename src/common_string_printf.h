@@ -676,6 +676,9 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				{
 					float64 arg = va_arg(args, float64);
 					
+					if (trailling_padding == -1)
+						trailling_padding = 8;
+					
 					const char* start;
 					uint32 length;
 					char tmpbuf[64];
@@ -702,6 +705,15 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 						count = Min(end - p, length);
 						Mem_Copy(p, start, count);
 						p += count;
+						
+						count = Min(end - p, decimal_pos - length);
+						while (count --> 0)
+							*p++ = '0';
+						
+						const char* mem = ".00";
+						count = Min(end - p, 3);
+						while (count --> 0)
+							*p++ = *mem++;
 					}
 					else
 					{
@@ -728,12 +740,10 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 }
 
 //~ NOTE(ljre): All this code is derived from stb_sprint! Licensed under Unlicense.
-static inline uint64
-String__stbsp__copyfp(const void* f)
+static inline void
+String__stbsp__copyfp(void* to, const void* f)
 {
-	uint64 result = *(uint64*)f;
-	
-	return result;
+	*(uint64*)to = *(uint64*)f;
 }
 
 static inline void
@@ -743,13 +753,13 @@ String__stbsp__ddmulthi(float64* restrict oh, float64* restrict ol, float64 xh, 
 	int64 bt;
 	
 	*oh = xh * yh;
-	bt = String__stbsp__copyfp(&xh);
+	String__stbsp__copyfp(&bt, &xh);
 	bt &= ((~(uint64)0) << 27);
-	ahi = String__stbsp__copyfp(&bt);
+	String__stbsp__copyfp(&ahi, &bt);
 	alo = xh - ahi;
-	bt = String__stbsp__copyfp(&yh);
+	String__stbsp__copyfp(&bt, &yh);
 	bt &= ((~(uint64)0) << 27);
-	bhi = String__stbsp__copyfp(&bt);
+	String__stbsp__copyfp(&bhi, &bt);
 	blo = yh - bhi;
 	*ol = ((ahi * bhi - *oh) + ahi * blo + alo * bhi) + alo * blo;
 }
@@ -776,7 +786,7 @@ String__stbsp__ddrenorm(float64* restrict oh, float64* restrict ol)
 }
 
 static inline void
-String__stbsp__ddtoS64(float64* restrict ob, float64 xh, float64 xl)
+String__stbsp__ddtoS64(int64* restrict ob, float64 xh, float64 xl)
 {
 	float64 ahi = 0, alo, vh, t;
 	*ob = (int64)xh;
@@ -936,7 +946,7 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 	int32 expo, e, ng, tens;
 	
 	d = value;
-	bits = String__stbsp__copyfp(&d);
+	String__stbsp__copyfp(&bits, &d);
 	
 	expo = (int32)((bits >> 52) & 2047);
 	ng = (int32)((uint64) bits >> 63);
@@ -983,15 +993,7 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 		String__stbsp__raise_to_power10(&ph, &pl, d, 18 - tens);
 		
 		// get full as much precision from double-double as possible
-		{
-			float64 ahi = 0, alo, vh, t;
-			bits = (int64)ph;
-			vh = (float64)bits;
-			ahi = (ph - vh);
-			t = (ahi - ph);
-			alo = (ph - (ahi - t)) - (vh + t);
-			bits += (int64)(ahi + alo + pl);
-		}
+		String__stbsp__ddtoS64(&bits, ph, pl);
 		
 		// check if we undershot
 		if (((uint64)bits) >= 1000000000000000000ULL/*stbsp__tento19th*/)
