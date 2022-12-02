@@ -6,6 +6,7 @@
 #endif
 
 #define AlignUp(x, mask) (((x) + (mask)) & ~(mask))
+#define AlignDown(x, mask) ((x) & ~(mask))
 #define IsPowerOf2(x) ( ((x) & (x)-1) == 0 )
 #define ArrayLength(x) (sizeof(x) / sizeof(*(x)))
 #define Min(x,y) ((x) < (y) ? (x) : (y))

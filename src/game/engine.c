@@ -43,6 +43,7 @@ static Engine_Data global_engine;
 #include "file_formats/qoi.h"
 #include "file_formats/gltf.h"
 
+#include "engine_audio.new.c"
 #include "engine_audio.c"
 #ifdef INTERNAL_ENABLE_OPENGL
 #   ifdef INTERNAL_TEST_OPENGL_NEWREN

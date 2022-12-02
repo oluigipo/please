@@ -959,19 +959,19 @@ Win32_UpdateInputLate(Engine_InputData* out_input_data)
 		GetCursorPos(&mouse);
 		ScreenToClient(global_window, &mouse);
 		
-		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_platform_data.window_width);
-		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_platform_data.window_height);
+		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_platform_state.window_width);
+		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_platform_state.window_height);
 		
 		if (global_lock_cursor && GetActiveWindow())
 		{
-			mouse.x = global_platform_data.window_width/2;
-			mouse.y = global_platform_data.window_height/2;
+			mouse.x = global_platform_state.window_width/2;
+			mouse.y = global_platform_state.window_height/2;
 			
 			ClientToScreen(global_window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
 			
-			out_input_data->mouse.old_pos[0] = (float32)(global_platform_data.window_width/2);
-			out_input_data->mouse.old_pos[1] = (float32)(global_platform_data.window_height/2);
+			out_input_data->mouse.old_pos[0] = (float32)(global_platform_state.window_width/2);
+			out_input_data->mouse.old_pos[1] = (float32)(global_platform_state.window_height/2);
 		}
 	}
 	

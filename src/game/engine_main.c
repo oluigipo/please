@@ -20,15 +20,11 @@ Engine_FinishFrame(void)
 
 API bool
 Engine_IsGamepadConnected(uint32 index)
-{
-	return global_engine.input->connected_gamepads & (1 << index);
-}
+{ return global_engine.input->connected_gamepads & (1 << index); }
 
 API int32
 Engine_ConnectedGamepadCount(void)
-{
-	return Mem_PopCnt64(global_engine.input->connected_gamepads);
-}
+{ return Mem_PopCnt64(global_engine.input->connected_gamepads); }
 
 API int32
 Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT])
@@ -52,30 +48,73 @@ Engine_Main(int32 argc, char** argv)
 {
 	Trace();
 	
-	Platform_Data config = { 0 };
-	Platform_DefaultData(&config);
+	// NOTE(ljre): Desired initial state
+	Engine_PlatformData config = { 0 };
+	Platform_DefaultState(&config);
 	
 	config.window_width = 1280;
 	config.window_height = 720;
 	config.window_title = Str("Title");
 	config.center_window = true;
-	config.graphics_api = Platform_GraphicsApi_OpenGL;
+	config.graphics_api = Engine_GraphicsApi_OpenGL;
 	
-	global_engine.platform = &config;
-	global_engine.persistent_arena = Arena_Create(512 << 20, 32 << 20);
-	global_engine.scratch_arena = Arena_Create(128 << 20, 8 << 20);
-	global_engine.delta_time = 1.0f;
-	global_engine.running = true;
-	global_engine.input = Arena_Push(global_engine.persistent_arena, sizeof(*global_engine.input));
+	// NOTE(ljre): Init basic stuff
+	{
+		uintsize game_memory_size = 512ull << 20;
+		void* game_memory = Platform_VirtualReserve(game_memory_size); // 512 MiB
+		
+		global_engine.game_memory = game_memory;
+		global_engine.game_memory_size = game_memory_size;
+		global_engine.delta_time = 1.0f;
+		global_engine.running = true;
+		
+		// NOTE(ljre): Reserving pieces of the game memory to different arenas
+		{
+			uint8* memory_head = (uint8*)game_memory;
+			uint8* memory_end = (uint8*)game_memory + game_memory_size;
+			
+			// NOTE(ljre): 64MiB of scratch_arena
+			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, 64 << 20, 8 << 20);
+			memory_head += 64 << 20;
+			
+			// NOTE(ljre): 16MiB of audio memory
+			global_engine.audio_arena = Arena_FromUncommitedMemory(memory_head, 16 << 20, 16 << 20);
+			memory_head += 16 << 20;
+			
+			// NOTE(ljre): All the rest of persistent_arena
+			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, memory_end - memory_head, 32 << 20);
+		}
+		
+		// NOTE(ljre): Allocate structs
+		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, Engine_InputData);
+		global_engine.platform = Arena_PushStructData(global_engine.persistent_arena, Engine_PlatformData, &config);
+		global_engine.audio = Arena_PushStruct(global_engine.audio_arena, Engine_AudioData);
+		
+		global_engine.audio->arena = global_engine.audio_arena;
+	}
 	
-	// NOTE(ljre): Window width & height
-	if (!Platform_CreateWindow(&config, &global_engine.graphics_context, global_engine.input))
-		Platform_ExitWithErrorMessage(Str("Your computer doesn't seem to support OpenGL 3.3.\nFailed to open."));
+	Platform_InitDesc init_desc = {
+		.engine = &global_engine,
+		
+		.audio_thread_proc = Engine_AudioThreadProc_,
+		.audio_thread_data = global_engine.audio,
+		
+		.inout_state = global_engine.platform,
+		.out_graphics = &global_engine.graphics_context,
+	};
 	
+	if (!Platform_Init(&init_desc))
+		Platform_ExitWithErrorMessage(Str("Failed to initialize platform layer."));
+	
+	// NOTE(ljre): Init global_engine structure
+	Platform_PollEvents(global_engine.platform, global_engine.input);
+	
+	// NOTE(ljre): Init everything else
 	Engine_InitRender(&global_engine.render);
-	global_engine.last_frame_time = Platform_GetTime();
 	
 	// NOTE(ljre): Run
+	global_engine.last_frame_time = Platform_GetTime();
+	
 #ifdef INTERNAL_ENABLE_HOT
 	do
 	{
@@ -93,7 +132,5 @@ Engine_Main(int32 argc, char** argv)
 	// NOTE(ljre): Deinit
 	Engine_DeinitRender();
 	
-	Arena_Destroy(global_engine.persistent_arena);
-	Arena_Destroy(global_engine.scratch_arena);
 	return 0;
 }

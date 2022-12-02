@@ -2,37 +2,68 @@
 #define INTERNAL_API_ENGINE_H
 
 //~ Main Data
-struct Engine_Data typedef Engine_Data;
-struct Engine_RenderApi typedef Engine_RenderApi;
-struct Engine_InputData typedef Engine_InputData;
-
 struct Game_Data typedef Game_Data;
 
-struct Platform_GraphicsContext typedef Platform_GraphicsContext;
-struct Platform_Data typedef Platform_Data;
+struct Engine_GraphicsContext typedef Engine_GraphicsContext;
+struct Engine_RenderApi typedef Engine_RenderApi;
+struct Engine_PlatformData typedef Engine_PlatformData;
+struct Engine_InputData typedef Engine_InputData;
+struct Engine_AudioData typedef Engine_AudioData;
 
 struct Engine_Data
 {
 	Arena* persistent_arena;
 	Arena* scratch_arena;
+	Arena* audio_arena;
 	Game_Data* game;
-	Platform_Data* platform;
 	
-	const Platform_GraphicsContext* graphics_context;
+	const Engine_GraphicsContext* graphics_context;
 	const Engine_RenderApi* render;
+	Engine_PlatformData* platform;
 	Engine_InputData* input;
+	Engine_AudioData* audio;
+	
+	void* game_memory;
+	uintsize game_memory_size;
 	
 	float32 delta_time;
 	float64 last_frame_time;
 	
 	bool outputed_sound_this_frame;
 	bool running;
-};
+}
+typedef Engine_Data;
 
 // Engine entry point. It shall be called by the platform layer.
 API int32 Engine_Main(int32 argc, char** argv);
 API void Engine_FinishFrame(void);
 API void Game_Main(Engine_Data* data);
+
+//~ Graphics
+enum Engine_GraphicsApi
+{
+	Engine_GraphicsApi_None = 0,
+	
+	Engine_GraphicsApi_OpenGL = 1,
+	Engine_GraphicsApi_Direct3D = 2, // NOTE(ljre): not implemented yet :(
+	
+	Engine_GraphicsApi_Any = Engine_GraphicsApi_OpenGL | Engine_GraphicsApi_Direct3D,
+}
+typedef Engine_GraphicsApi;
+
+struct Engine_OpenGLGraphicsContext typedef Engine_OpenGLGraphicsContext;
+struct Engine_Direct3DGraphicsContext typedef Engine_Direct3DGraphicsContext;
+
+struct Engine_GraphicsContext
+{
+	Engine_GraphicsApi api;
+	union
+	{
+		const Engine_OpenGLGraphicsContext* opengl;
+		const Engine_Direct3DGraphicsContext* d3d;
+	};
+}
+typedef Engine_GraphicsContext;
 
 //~ Audio
 struct Engine_PlayingAudio

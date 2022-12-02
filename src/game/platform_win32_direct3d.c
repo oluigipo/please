@@ -26,7 +26,7 @@ ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
 	ID3D11DeviceContext** ppImmediateContext);
 
 //~ Globals
-static Platform_Direct3DGraphicsContext global_direct3d;
+static Engine_Direct3DGraphicsContext global_direct3d;
 static ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
 #if defined(DEBUG)
@@ -78,7 +78,7 @@ Win32_Direct3DSwapBuffers(void)
 }
 
 static bool32
-Win32_CreateDirect3DWindow(const Platform_Data* config, const wchar_t* title)
+Win32_CreateDirect3DWindow(const Engine_PlatformData* config, const wchar_t* title)
 {
 	Trace();
 	
@@ -190,7 +190,7 @@ Win32_CreateDirect3DWindow(const Platform_Data* config, const wchar_t* title)
 	global_window = window;
 	global_hdc = hdc;
 	global_graphics_context.d3d = &global_direct3d;
-	global_graphics_context.api = Platform_GraphicsApi_Direct3D;
+	global_graphics_context.api = Engine_GraphicsApi_Direct3D;
 	
 	return true;
 }

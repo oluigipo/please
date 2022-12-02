@@ -65,6 +65,7 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 
 #include "internal_api_engine.h"
 #include "internal_api_render.h"
+#include "internal_api_audio.h"
 #include "internal_api_platform.h"
 
 #endif //INTERNAL_H

@@ -1259,7 +1259,7 @@ typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIPROC)(GLenum type, GLuint color);
 typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIVPROC)(GLenum type, const GLuint *color);
 typedef void (APIENTRYP PFNGLDEBUGMESSAGECALLBACKPROC)(GLDEBUGPROC callback, const void* userParam);
 
-struct Platform_OpenGLGraphicsContext
+struct Engine_OpenGLGraphicsContext
 {
 #ifdef DEBUG
 	PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;

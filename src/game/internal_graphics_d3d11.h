@@ -17,11 +17,11 @@
 #include <d3d11.h>
 
 typedef HRESULT WINAPI ProcD3DCompile(LPCVOID pSrcData, SIZE_T SrcDataSize, LPCSTR pSourceName,
-									  const D3D_SHADER_MACRO* pDefines, ID3DInclude* pInclude,
-									  LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1,
-									  UINT Flags2, ID3DBlob** ppCode, ID3DBlob** ppErrorMsgs);
+	const D3D_SHADER_MACRO* pDefines, ID3DInclude* pInclude,
+	LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1,
+	UINT Flags2, ID3DBlob** ppCode, ID3DBlob** ppErrorMsgs);
 
-struct Platform_Direct3DGraphicsContext
+struct Engine_Direct3DGraphicsContext
 {
 	ID3D11Device* device;
 	ID3D11DeviceContext* context;
@@ -31,7 +31,7 @@ struct Platform_Direct3DGraphicsContext
 	// Optional
 	ProcD3DCompile* compile_shader;
 }
-typedef Platform_Direct3DGraphicsContext;
+typedef Engine_Direct3DGraphicsContext;
 //-
 
 #pragma pop_macro("far")

@@ -1,5 +1,5 @@
 builddir = build
-cflags = -std=c11 -Iinclude -Isrc -I. -Wall -Werror-implicit-function-declaration -Wno-unused-function $
+cflags = -std=c11 -Iinclude -Isrc -I. -Wall -march=x86-64-v2 -Werror-implicit-function-declaration -Wno-unused-function $
          -Wconversion -Wno-format -Wno-missing-braces -Wno-sign-conversion -Wno-implicit-int-float-conversion $
 		 -Wsizeof-array-decay -Wno-assume
 ldflags = -Llib -Wl,/INCREMENTAL:no

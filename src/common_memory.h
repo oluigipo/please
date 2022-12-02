@@ -137,19 +137,19 @@ Mem_BitClz8(uint8 i)
 
 static inline int32
 Mem_PopCnt64(uint64 x)
-{ return _mm_popcnt_u64(x); }
+{ return (int32)_mm_popcnt_u64(x); }
 
 static inline int32
 Mem_PopCnt32(uint32 x)
-{ return _mm_popcnt_u32(x); }
+{ return (int32)_mm_popcnt_u32(x); }
 
 static inline int32
 Mem_PopCnt16(uint16 x)
-{ return _mm_popcnt_u32(x); }
+{ return (int32)_mm_popcnt_u32(x); }
 
 static inline int32
 Mem_PopCnt8(uint8 x)
-{ return _mm_popcnt_u32(x); }
+{ return (int32)_mm_popcnt_u32(x); }
 
 #else
 

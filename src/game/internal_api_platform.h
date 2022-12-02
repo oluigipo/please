@@ -1,32 +1,9 @@
 #ifndef INTERNAL_API_PLATFORM_H
 #define INTERNAL_API_PLATFORM_H
 
-enum Platform_GraphicsApi
-{
-	Platform_GraphicsApi_None = 0,
-	
-	Platform_GraphicsApi_OpenGL = 1,
-	Platform_GraphicsApi_Direct3D = 2, // NOTE(ljre): not implemented yet :(
-	
-	Platform_GraphicsApi_Any = Platform_GraphicsApi_OpenGL | Platform_GraphicsApi_Direct3D,
-}
-typedef Platform_GraphicsApi;
+void typedef Platform_AudioThreadProc(void* user_data, int16* out_buffer, int32 frame_count);
 
-struct Platform_OpenGLGraphicsContext typedef Platform_OpenGLGraphicsContext;
-struct Platform_Direct3DGraphicsContext typedef Platform_Direct3DGraphicsContext;
-
-struct Platform_GraphicsContext
-{
-	Platform_GraphicsApi api;
-	union
-	{
-		const Platform_OpenGLGraphicsContext* opengl;
-		const Platform_Direct3DGraphicsContext* d3d;
-	};
-}
-typedef Platform_GraphicsContext;
-
-struct Platform_Data
+struct Engine_PlatformData
 {
 	// NOTE(ljre): Platform state data. Just change it and we'll update once 'Platform_PollEvents' is called.
 	bool show_cursor; // if false, hide cursor when in window
@@ -37,24 +14,34 @@ struct Platform_Data
 	int32 window_x, window_y, window_width, window_height;
 	String window_title;
 	
-	Platform_GraphicsApi graphics_api;
+	Engine_GraphicsApi graphics_api;
 	
 	// NOTE(ljre): Immutable. Changing them does nothing.
 	bool window_should_close;
 	bool user_resized_window; // if true, the user just resized the window. thus window_width/height will be ignored.
 }
-typedef Platform_Data;
+typedef Engine_PlatformData;
 
-// NOTE(ljre): This function also does general initialization
-API bool Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** out_graphics, Engine_InputData* out_input_data);
+struct Platform_InitDesc
+{
+	Engine_Data* engine;
+	Platform_AudioThreadProc* audio_thread_proc;
+	void* audio_thread_data;
+	
+	Engine_PlatformData* inout_state;
+	const Engine_GraphicsContext** out_graphics;
+}
+typedef Platform_InitDesc;
 
-API void Platform_DefaultData(Platform_Data* out_data);
+API bool Platform_Init(const Platform_InitDesc* desc);
+API void Platform_DefaultState(Engine_PlatformData* out_state);
+API void Platform_PollEvents(Engine_PlatformData* inout_state, Engine_InputData* out_input_data);
+API void Platform_FinishFrame(void);
+
 API void Platform_ExitWithErrorMessage(String message);
 API void Platform_MessageBox(String title, String message);
 API float64 Platform_GetTime(void);
 API uint64 Platform_CurrentPosixTime(void);
-API void Platform_PollEvents(Platform_Data* inout_data, Engine_InputData* out_input_data);
-API void Platform_FinishFrame(void);
 
 // Optional Libraries
 API void* Platform_LoadDiscordLibrary(void);

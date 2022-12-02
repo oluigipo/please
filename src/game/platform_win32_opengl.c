@@ -48,7 +48,7 @@ struct Win32_OpenGL
 	PFNWGLMAKECONTEXTCURRENTARBPROC wglMakeContextCurrentARB;
 	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 	
-	Platform_OpenGLGraphicsContext vtable;
+	Engine_OpenGLGraphicsContext vtable;
 }
 typedef Win32_OpenGL;
 
@@ -78,12 +78,12 @@ OpenGLGetProc(const char* name)
 	return result;
 }
 
-static bool32
+static bool
 LoadOpenGLFunctions(void)
 {
 	Trace();
 	
-	Platform_OpenGLGraphicsContext* opengl = &global_opengl.vtable;
+	Engine_OpenGLGraphicsContext* opengl = &global_opengl.vtable;
 	void* (*loader)(const char*) = OpenGLGetProc;
 	
 	opengl->glGetString = loader("glGetString");
@@ -506,8 +506,8 @@ Win32_OpenGLSwapBuffers(void)
 	}
 }
 
-static bool32
-Win32_CreateOpenGLWindow(const Platform_Data* config, const wchar_t* title)
+static bool
+Win32_CreateOpenGLWindow(const Engine_PlatformData* config, const wchar_t* title)
 {
 	Trace();
 	
@@ -675,7 +675,7 @@ Win32_CreateOpenGLWindow(const Platform_Data* config, const wchar_t* title)
 	// Globals
 	global_window = window;
 	global_hdc = hdc;
-	global_graphics_context.api = Platform_GraphicsApi_OpenGL;
+	global_graphics_context.api = Engine_GraphicsApi_OpenGL;
 	global_graphics_context.opengl = &global_opengl.vtable;
 	
 	return true;

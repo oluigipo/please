@@ -23,7 +23,7 @@ typedef String;
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)
 
-static int32
+static uint32
 String_Decode(String str, int32* index)
 {
 	const uint8* head = str.data + *index;

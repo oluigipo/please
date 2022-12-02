@@ -43,14 +43,14 @@ extern int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type
 static Arena*
 Arena_Create(uintsize reserved, uintsize page_size)
 {
-	Assert(IsPowerOf2(page_size));
+	Assert(page_size && IsPowerOf2(page_size));
 	Assert(reserved > 0);
 	
 	reserved = AlignUp(reserved, page_size-1);
-	Arena* result = (Arena*)Arena_OsReserve_(reserved + sizeof(Arena));
+	Arena* result = (Arena*)Arena_OsReserve_(reserved);
 	if (result)
 	{
-		Arena_OsCommit_(result, sizeof(Arena) + page_size);
+		Arena_OsCommit_(result, page_size);
 		
 		result->reserved = reserved;
 		result->commited = page_size;
@@ -78,14 +78,32 @@ Arena_FromMemory(void* memory, uintsize size)
 	return result;
 }
 
+static Arena*
+Arena_FromUncommitedMemory(void* memory, uintsize reserved, uintsize page_size)
+{
+	Assert(page_size && IsPowerOf2(page_size));
+	Assert(reserved >= page_size);
+	
+	reserved = AlignDown(reserved, page_size-1);
+	Arena_OsCommit_(memory, page_size);
+	
+	Arena* result = (Arena*)memory;
+	result->reserved = reserved;
+	result->commited = page_size;
+	result->offset = 0;
+	result->page_size = page_size;
+	
+	return result;
+}
+
 static void
 Arena_Destroy(Arena* arena)
-{ Arena_OsFree_(arena, arena->reserved + sizeof(Arena)); }
+{ Arena_OsFree_(arena, arena->reserved); }
 
 static void*
 Arena_EndAligned(Arena* arena, uintsize alignment)
 {
-	arena->offset = AlignUp(arena->offset, alignment-1);
+	arena->offset = AlignUp(arena->offset + sizeof(Arena), alignment-1) - sizeof(Arena);
 	return arena->memory + arena->offset;
 }
 
@@ -94,8 +112,8 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 {
 	Assert(IsPowerOf2(alignment));
 	
-	arena->offset = AlignUp(arena->offset, alignment-1);
-	uintsize needed = arena->offset + size;
+	Arena_EndAligned(arena, alignment);
+	uintsize needed = arena->offset + size + sizeof(Arena);
 	
 	if (Unlikely(needed > arena->commited))
 	{
@@ -107,7 +125,7 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 		uintsize size_to_commit = AlignUp(needed - arena->commited, arena->page_size-1);
 		Assert(size_to_commit + arena->commited <= arena->reserved);
 		
-		Arena_OsCommit_(arena->memory + arena->commited, size_to_commit);
+		Arena_OsCommit_((uint8*)arena + arena->commited, size_to_commit);
 		arena->commited += size_to_commit;
 	}
 	

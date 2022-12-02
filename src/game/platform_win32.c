@@ -62,8 +62,8 @@ static int64 global_process_started_time;
 static HWND global_window;
 static HDC global_hdc;
 static bool global_lock_cursor;
-static Platform_GraphicsContext global_graphics_context;
-static Platform_Data global_platform_data = { 0 };
+static Engine_GraphicsContext global_graphics_context;
+static Engine_PlatformData global_platform_state = { 0 };
 static RECT global_monitor;
 
 //~ Internal API
@@ -121,20 +121,20 @@ Win32_LoadLibrary(const char* name)
 }
 
 static void
-Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
+Win32_UpdatePlatformConfigIfNeeded(Engine_PlatformData* inout_state)
 {
 	// TODO(ljre): Update Graphics API at runtime
-	Assert(inout_data->graphics_api == global_platform_data.graphics_api);
+	Assert(inout_state->graphics_api == global_platform_state.graphics_api);
 	
 	//- NOTE(ljre): Simple-idk-how-to-call-it data.
 	{
-		inout_data->window_should_close = global_platform_data.window_should_close;
-		inout_data->user_resized_window = global_platform_data.user_resized_window;
+		inout_state->window_should_close = global_platform_state.window_should_close;
+		inout_state->user_resized_window = global_platform_state.user_resized_window;
 		
-		if (global_platform_data.user_resized_window)
+		if (global_platform_state.user_resized_window)
 		{
-			inout_data->window_width = global_platform_data.window_width;
-			inout_data->window_height = global_platform_data.window_height;
+			inout_state->window_width = global_platform_state.window_width;
+			inout_state->window_height = global_platform_state.window_height;
 		}
 	}
 	
@@ -142,23 +142,23 @@ Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 	{
 		UINT flags = SWP_NOSIZE | SWP_NOMOVE;
 		
-		int32 x = inout_data->window_x;
-		int32 y = inout_data->window_y;
-		int32 width = inout_data->window_width;
-		int32 height = inout_data->window_height;
+		int32 x = inout_state->window_x;
+		int32 y = inout_state->window_y;
+		int32 width = inout_state->window_width;
+		int32 height = inout_state->window_height;
 		
-		if (width != global_platform_data.window_width || height != global_platform_data.window_height)
+		if (width != global_platform_state.window_width || height != global_platform_state.window_height)
 			flags &= ~(UINT)SWP_NOSIZE;
 		
-		if (inout_data->center_window)
+		if (inout_state->center_window)
 		{
-			inout_data->window_x = x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
-			inout_data->window_y = y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
-			inout_data->center_window = false;
+			inout_state->window_x = x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
+			inout_state->window_y = y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
+			inout_state->center_window = false;
 			
 			flags &= ~(UINT)SWP_NOMOVE;
 		}
-		else if (x != global_platform_data.window_x || y != global_platform_data.window_y)
+		else if (x != global_platform_state.window_x || y != global_platform_state.window_y)
 			flags &= ~(UINT)SWP_NOMOVE;
 		
 		if (flags)
@@ -167,9 +167,9 @@ Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 	
 	//- NOTE(ljre): Window Title
 	{
-		if (!String_Equals(inout_data->window_title, global_platform_data.window_title))
+		if (!String_Equals(inout_state->window_title, global_platform_state.window_title))
 		{
-			wchar_t* name = Win32_ConvertStringToWSTR(inout_data->window_title, NULL, 0);
+			wchar_t* name = Win32_ConvertStringToWSTR(inout_state->window_title, NULL, 0);
 			SetWindowTextW(global_window, name);
 			HeapFree(global_heap, 0, name);
 		}
@@ -177,16 +177,16 @@ Win32_UpdatePlatformConfigIfNeeded(Platform_Data* inout_data)
 	
 	//- NOTE(ljre): Cursor
 	{
-		if (inout_data->show_cursor != global_platform_data.show_cursor)
-			ShowCursor(inout_data->show_cursor);
+		if (inout_state->show_cursor != global_platform_state.show_cursor)
+			ShowCursor(inout_state->show_cursor);
 		
-		global_lock_cursor = inout_data->lock_cursor;
+		global_lock_cursor = inout_state->lock_cursor;
 	}
 	
 	//- NOTE(ljre): Sync
-	global_platform_data = *inout_data;
-	global_platform_data.user_resized_window = false;
-	//global_platform_data.window_should_close = false;
+	global_platform_state = *inout_state;
+	global_platform_state.user_resized_window = false;
+	//global_platform_state.window_should_close = false;
 }
 
 //~ Entry Point
@@ -209,15 +209,15 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_QUIT:
 		{
 			if (global_window == window)
-				global_platform_data.window_should_close = true;
+				global_platform_state.window_should_close = true;
 		} break;
 		
 		case WM_SIZE:
 		{
-			global_platform_data.window_width = LOWORD(lparam);
-			global_platform_data.window_height = HIWORD(lparam);
+			global_platform_state.window_width = LOWORD(lparam);
+			global_platform_state.window_height = HIWORD(lparam);
 			
-			global_platform_data.user_resized_window = true;
+			global_platform_state.user_resized_window = true;
 		} break;
 		
 		case WM_SYSKEYDOWN:
@@ -251,7 +251,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
-				global_platform_data.window_should_close = true;
+				global_platform_state.window_should_close = true;
 		} break;
 		
 		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, Engine_MouseButton_Left, false); break;
@@ -393,9 +393,9 @@ Platform_MessageBox(String title, String message)
 }
 
 API void
-Platform_DefaultData(Platform_Data* out_data)
+Platform_DefaultState(Engine_PlatformData* out_state)
 {
-	*out_data = (Platform_Data) {
+	*out_state = (Engine_PlatformData) {
 		.show_cursor = true,
 		.lock_cursor = false,
 		.center_window = true,
@@ -408,14 +408,16 @@ Platform_DefaultData(Platform_Data* out_data)
 		.window_height = 600,
 		.window_title = StrInit(""),
 		
-		.graphics_api = Platform_GraphicsApi_OpenGL,
+		.graphics_api = Engine_GraphicsApi_OpenGL,
 	};
 }
 
 API bool
-Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** out_graphics, Engine_InputData* input_data)
+Platform_Init(const Platform_InitDesc* desc)
 {
 	Trace();
+	
+	Engine_PlatformData* const config = desc->inout_state;
 	
 	if (config->center_window)
 	{
@@ -430,9 +432,9 @@ Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** ou
 	
 	bool ok = false;
 	
-	if (config->graphics_api & Platform_GraphicsApi_OpenGL)
+	if (config->graphics_api & Engine_GraphicsApi_OpenGL)
 		ok = ok || Win32_CreateOpenGLWindow(config, window_name);
-	if (config->graphics_api & Platform_GraphicsApi_Direct3D)
+	if (config->graphics_api & Engine_GraphicsApi_Direct3D)
 		ok = ok || Win32_CreateDirect3DWindow(config, window_name);
 	
 	if (ok)
@@ -451,12 +453,9 @@ Platform_CreateWindow(Platform_Data* config, const Platform_GraphicsContext** ou
 		Win32_InitAudio();
 		config->user_resized_window = false;
 		config->window_should_close = false;
-		global_platform_data = *config;
+		global_platform_state = *config;
 		
-		Mem_Set(input_data, 0, sizeof(*input_data));
-		Platform_PollEvents(config, input_data);
-		
-		*out_graphics = &global_graphics_context;
+		*desc->out_graphics = &global_graphics_context;
 		
 		ShowWindow(global_window, SW_SHOWDEFAULT);
 	}
@@ -472,14 +471,14 @@ Platform_GetTime(void)
 }
 
 API void
-Platform_PollEvents(Platform_Data* inout_data, Engine_InputData* out_input_data)
+Platform_PollEvents(Engine_PlatformData* inout_state, Engine_InputData* out_input_data)
 {
 	Trace();
 	
 	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)out_input_data);
 	
 	Win32_UpdateInputEarly(out_input_data);
-	Win32_UpdatePlatformConfigIfNeeded(inout_data);
+	Win32_UpdatePlatformConfigIfNeeded(inout_state);
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -498,8 +497,8 @@ Platform_FinishFrame(void)
 	
 	switch (global_graphics_context.api)
 	{
-		case Platform_GraphicsApi_OpenGL: Win32_OpenGLSwapBuffers(); break;
-		case Platform_GraphicsApi_Direct3D: Win32_Direct3DSwapBuffers(); break;
+		case Engine_GraphicsApi_OpenGL: Win32_OpenGLSwapBuffers(); break;
+		case Engine_GraphicsApi_Direct3D: Win32_Direct3DSwapBuffers(); break;
 		default: {} break;
 	}
 }
