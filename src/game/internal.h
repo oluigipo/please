@@ -22,11 +22,18 @@ API void Platform_VirtualFree(void* ptr, uintsize size);
 
 //~ Debug
 #if defined(DEBUG)
-API void Platform_DebugError(const char* msg);
+API void Platform_DebugError(const char* fmt, ...);
+
+#   ifdef _WIN32
+extern int32 __stdcall IsDebuggerPresent(void);
+#       undef Debugbreak
+#       define Debugbreak() do { if (IsDebuggerPresent()) __debugbreak(); } while (0)
+#   endif
+
 #   undef Unreachable
 #   undef Assert
-#   define Unreachable() do { Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__)); } while (0)
-#   define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nExpression: " #__VA_ARGS__); } } while (0)
+#   define Unreachable() do { Debugbreak(); Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nFunction: %s", __func__); } while (0)
+#   define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Platform_DebugError("Assertion Failure!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nFunction: %s\nExpression: " #__VA_ARGS__, __func__); } } while (0)
 #else
 #   undef Assert
 #   undef Debugbreak
