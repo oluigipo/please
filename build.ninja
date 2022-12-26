@@ -9,6 +9,8 @@ ldflags_hot = $ldflags -g -Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -llibucrt
 
 ldflags_exe = $ldflags -Wl,/subsystem:windows
 
+project = engine_test
+
 # Rules
 rule cc
   command = clang $in -c -o $out $cflags -MMD -MF $out.d
@@ -26,15 +28,15 @@ rule make_empty_tu
 # Game - Debug
 build $builddir/game-debug.exe: link $builddir/game.obj $builddir/engine.obj $builddir/platform_win32.obj
   ldflags = $ldflags_exe -g
-build $builddir/game.obj: cc src/game/game.c
+build $builddir/game.obj: cc src/$project/game.c
   cflags = $cflags -g -DDEBUG
-build $builddir/engine.obj: cc src/game/engine.c
+build $builddir/engine.obj: cc src/engine/engine.c
   cflags = $cflags -g -DDEBUG
-build $builddir/platform_win32.obj: cc src/game/platform_win32.c
+build $builddir/platform_win32.obj: cc src/engine/platform_win32.c
   cflags = $cflags -g -DDEBUG
 
 # Game - Release
-build $builddir/game-release.exe: cc_link src/game/unity_build.c
+build $builddir/game-release.exe: cc_link src/$project/unity_build.c
   cflags = $cflags -static -O2 -ffast-math
   ldflags = $ldflags_exe
 
@@ -42,18 +44,18 @@ build $builddir/game-release.exe: cc_link src/game/unity_build.c
 build $builddir/empty.c: make_empty_tu
 build $builddir/game-hot.exe: cc_link $builddir/empty.c $builddir/engine.lib
   ldflags = $ldflags_exe
-build $builddir/game.dll: cc_link src/game/game.c $builddir/engine.lib
+build $builddir/game.dll: cc_link src/$project/game.c $builddir/engine.lib
   cflags = $cflags_hot
   ldflags = $ldflags_hot
 build $builddir/engine.dll | $builddir/engine.lib: link $builddir/engine-hot.obj $builddir/platform_win32-hot.obj
   ldflags = $ldflags_hot
-build $builddir/engine-hot.obj: cc src/game/engine.c
+build $builddir/engine-hot.obj: cc src/engine/engine.c
   cflags = $cflags_hot
-build $builddir/platform_win32-hot.obj: cc src/game/platform_win32.c
+build $builddir/platform_win32-hot.obj: cc src/engine/platform_win32.c
   cflags = $cflags_hot
 
 # Game - Tracy
-build $builddir/game-tracy.exe: cc_link src/game/unity_build.c TracyClient.obj
+build $builddir/game-tracy.exe: cc_link src/$project/unity_build.c TracyClient.obj
   cflags = $cflags -static -O2 -ffast-math -DTRACY_ENABLE
   ldflags = $ldflags_exe
 

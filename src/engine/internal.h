@@ -29,7 +29,6 @@ extern int32 __stdcall IsDebuggerPresent(void);
 #       undef Debugbreak
 #       define Debugbreak() do { if (IsDebuggerPresent()) __debugbreak(); } while (0)
 #   endif
-
 #   undef Unreachable
 #   undef Assert
 #   define Unreachable() do { Debugbreak(); Platform_DebugError("Unreachable code reached!\nFile: " __FILE__ "\nLine: " StrMacro(__LINE__) "\nFunction: %s", __func__); } while (0)

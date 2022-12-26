@@ -3,7 +3,13 @@ setlocal
 if not exist build mkdir build
 pushd build
 
-cl /nologo %* "../src/game/engine.c" "../src/game/game.c" "../src/game/platform_win32.c"^
+if "%1" equ "" (
+	set project=engine_test
+) else (
+	set project=%1
+)
+
+cl /nologo %* "../src/engine/engine.c" "../src/engine/platform_win32.c" "../src/%project%/game.c"^
 	/I"../include" /I"../src" /Zi /DDEBUG /std:c11^
 	/link /OUT:game.exe /PDB:game.pdb /DEBUG
 

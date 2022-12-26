@@ -8,7 +8,6 @@
 
 #include "internal.h"
 
-#include "game.c"
 #include "engine.c"
 
 #if defined(_WIN32)
