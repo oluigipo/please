@@ -11,11 +11,13 @@ typedef String;
 #ifndef __cplusplus
 #   define Str(x) (String) StrInit(x)
 #   define StrNull (String) { 0 }
-#   define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
+#   define StrMake(size, data) (String) { (uintsize)(size), (const uint8*)(data) }
+#   define StrRange(begin, end) (String) { (uintsize)((end) - (begin)), (const uint8*)(begin) }
 #else
 #   define Str(x) String StrInit(x)
 #   define StrNull String {}
 #   define StrMake(size, data) String { (uintsize)(size), (const uint8*)(data) }
+#   define StrRange(begin, end) String { (uintsize)((end) - (begin)), (const uint8*)(begin) }
 #endif
 
 #define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }
@@ -57,6 +59,56 @@ String_Decode(String str, int32* index)
 	
 	*index = (int32)(head - str.data);
 	return result;
+}
+
+static inline uint32
+String_EncodedCodepointSize(uint32 codepoint)
+{
+	if (codepoint < 128)
+		return 1;
+	if (codepoint < 128+1920)
+		return 2;
+	if (codepoint < 128+1920+61440)
+		return 3;
+	return 4;
+}
+
+static uintsize
+String_Encode(uint8* buffer, uintsize size, uint32 codepoint)
+{
+	uint32 needed = String_EncodedCodepointSize(codepoint);
+	if (size < needed)
+		return 0;
+	
+	switch (needed)
+	{
+		case 1: buffer[0] = codepoint & 0x7f; break;
+		
+		case 2:
+		{
+			buffer[0] = (codepoint>>6 & 0x1f) | 0xc0;
+			buffer[1] = (codepoint>>0 & 0x3f) | 0x80;
+		} break;
+		
+		case 3:
+		{
+			buffer[0] = (codepoint>>12 & 0x0f) | 0xe0;
+			buffer[1] = (codepoint>>6  & 0x3f) | 0x80;
+			buffer[2] = (codepoint>>0  & 0x3f) | 0x80;
+		} break;
+		
+		case 4:
+		{
+			buffer[0] = (codepoint>>18 & 0x07) | 0xf0;
+			buffer[1] = (codepoint>>12 & 0x3f) | 0x80;
+			buffer[2] = (codepoint>>6  & 0x3f) | 0x80;
+			buffer[3] = (codepoint>>0  & 0x3f) | 0x80;
+		} break;
+		
+		default: Unreachable(); break;
+	}
+	
+	return needed;
 }
 
 // TODO(ljre): make this better (?)

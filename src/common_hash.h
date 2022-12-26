@@ -32,7 +32,7 @@ Hash_IntHash32(uint32 x)
     return x;
 }
 
-// NOTE(ljre): Perfect hash of 32bit integer permitation.
+// NOTE(ljre): Perfect hash of 64bit integer permitation.
 //             Name: SplittableRandom / SplitMix64
 //             https://xoshiro.di.unimi.it/splitmix64.c
 static inline uint64
