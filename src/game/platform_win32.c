@@ -29,10 +29,6 @@ DisableWarnings();
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
 
-// NOTE(ljre): MinGW decls
-void WINAPI AcquireSRWLockExclusive(PSRWLOCK SRWLock);
-void WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
-
 #undef near
 #undef far
 
@@ -65,6 +61,7 @@ static bool global_lock_cursor;
 static Engine_GraphicsContext global_graphics_context;
 static Engine_PlatformData global_platform_state = { 0 };
 static RECT global_monitor;
+static Arena* global_scratch_arena;
 
 //~ Internal API
 static int64
@@ -81,8 +78,8 @@ Win32_CheckForErrors(void)
 	DWORD error = GetLastError();
 	if (error != ERROR_SUCCESS)
 	{
-		char buffer[512];
-		String_PrintfBuffer(buffer, sizeof(buffer), "%U", (uint64)error);
+		char buffer[64];
+		String_PrintfBuffer(buffer, sizeof(buffer), "%U%0", (uint64)error);
 		MessageBoxA(NULL, buffer, "Error Code", MB_OK);
 	}
 }
@@ -95,15 +92,14 @@ Win32_ExitWithErrorMessage(const wchar_t* message)
 }
 
 static wchar_t*
-Win32_ConvertStringToWSTR(String str, wchar_t* buffer, uintsize size)
+Win32_ConvertStringToWSTR(String str, Arena* arena)
 {
-	if (!buffer)
-	{
-		size = 1 + (uintsize)MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, NULL, 0);
-		buffer = HeapAlloc(global_heap, 0, size * sizeof(wchar_t));
-	}
+	Assert(str.size <= INT32_MAX);
 	
-	size = MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, buffer, (int32)size - 1);
+	uintsize size = (uintsize)MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, NULL, 0);
+	wchar_t* buffer = Arena_PushDirtyAligned(arena, (size + 1) * sizeof(wchar_t), 2);
+	
+	size = MultiByteToWideChar(CP_UTF8, 0, (char*)str.data, (int32)str.size, buffer, (int32)size);
 	buffer[size] = 0;
 	
 	return buffer;
@@ -123,6 +119,8 @@ Win32_LoadLibrary(const char* name)
 static void
 Win32_UpdatePlatformConfigIfNeeded(Engine_PlatformData* inout_state)
 {
+	Trace();
+	
 	// TODO(ljre): Update Graphics API at runtime
 	Assert(inout_state->graphics_api == global_platform_state.graphics_api);
 	
@@ -169,9 +167,9 @@ Win32_UpdatePlatformConfigIfNeeded(Engine_PlatformData* inout_state)
 	{
 		if (!String_Equals(inout_state->window_title, global_platform_state.window_title))
 		{
-			wchar_t* name = Win32_ConvertStringToWSTR(inout_state->window_title, NULL, 0);
+			wchar_t* name = Win32_ConvertStringToWSTR(inout_state->window_title, global_scratch_arena);
 			SetWindowTextW(global_window, name);
-			HeapFree(global_heap, 0, name);
+			Arena_Clear(global_scratch_arena);
 		}
 	}
 	
@@ -199,6 +197,8 @@ Win32_UpdatePlatformConfigIfNeeded(Engine_PlatformData* inout_state)
 static LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
+	Trace();
+	
 	LRESULT result = 0;
 	Engine_InputData* input = (void*)GetWindowLongPtrW(window, GWLP_USERDATA);
 	
@@ -304,6 +304,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	global_heap = GetProcessHeap();
 	global_instance = instance;
 	global_class_name = L"GameClassName";
+	global_scratch_arena = Arena_Create(256 << 10, 8 << 10);
 	
 	// NOTE(ljre): Register window class
 	{
@@ -323,7 +324,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	{
 		HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
 		MONITORINFO info;
-		info.cbSize = sizeof info;
+		info.cbSize = sizeof(info);
 		
 		if (GetMonitorInfoA(monitor, &info))
 		{
@@ -373,7 +374,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 API void
 Platform_ExitWithErrorMessage(String message)
 {
-	wchar_t* msg = Win32_ConvertStringToWSTR(message, NULL, 0);
+	wchar_t* msg = Win32_ConvertStringToWSTR(message, global_scratch_arena);
 	Win32_ExitWithErrorMessage(msg);
 	/* no return */
 }
@@ -383,13 +384,12 @@ Platform_MessageBox(String title, String message)
 {
 	Trace();
 	
-	wchar_t* wtitle = Win32_ConvertStringToWSTR(title, NULL, 0);
-	wchar_t* wmessage = Win32_ConvertStringToWSTR(message, NULL, 0);
+	wchar_t* wtitle = Win32_ConvertStringToWSTR(title, global_scratch_arena);
+	wchar_t* wmessage = Win32_ConvertStringToWSTR(message, global_scratch_arena);
 	
 	MessageBoxW(NULL, wmessage, wtitle, MB_OK);
 	
-	Platform_HeapFree(wtitle);
-	Platform_HeapFree(wmessage);
+	Arena_Clear(global_scratch_arena);
 }
 
 API void
@@ -427,15 +427,15 @@ Platform_Init(const Platform_InitDesc* desc)
 		config->center_window = false;
 	}
 	
-	wchar_t window_name[1024];
-	Win32_ConvertStringToWSTR(config->window_title, window_name, ArrayLength(window_name));
-	
+	wchar_t* window_name = Win32_ConvertStringToWSTR(config->window_title, global_scratch_arena);
 	bool ok = false;
 	
 	if (config->graphics_api & Engine_GraphicsApi_OpenGL)
 		ok = ok || Win32_CreateOpenGLWindow(config, window_name);
 	if (config->graphics_api & Engine_GraphicsApi_Direct3D)
 		ok = ok || Win32_CreateDirect3DWindow(config, window_name);
+	
+	Arena_Clear(global_scratch_arena);
 	
 	if (ok)
 	{
@@ -506,17 +506,16 @@ Platform_FinishFrame(void)
 API void*
 Platform_HeapAlloc(uintsize size)
 {
-	Trace(); TraceF(64, "%fKiB", (float64)size / 1024.0);
+	Trace();
 	
 	void* result = HeapAlloc(global_heap, HEAP_ZERO_MEMORY, size);
-	
 	return result;
 }
 
 API void*
 Platform_HeapRealloc(void* ptr, uintsize size)
 {
-	Trace(); TraceF(64, "%fKiB", (float64)size / 1024.0);
+	Trace();
 	
 	void* result;
 	
@@ -532,10 +531,9 @@ API void
 Platform_HeapFree(void* ptr)
 {
 	Trace();
-	if (!ptr)
-		return;
 	
-	HeapFree(global_heap, 0, ptr);
+	if (ptr)
+		HeapFree(global_heap, 0, ptr);
 }
 
 API void*
@@ -551,32 +549,39 @@ API void
 Platform_VirtualCommit(void* ptr, uintsize size)
 {
 	Trace();
-	VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+	
+	void* ok = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+	Assert(ok);
 }
 
 API void
 Platform_VirtualDecommit(void* ptr, uintsize size)
 {
 	Trace();
-	VirtualFree(ptr, size, MEM_DECOMMIT);
+	
+	BOOL ok = VirtualFree(ptr, size, MEM_DECOMMIT);
+	Assert(ok);
 }
 
 API void
 Platform_VirtualFree(void* ptr, uintsize size)
 {
 	Trace();
-	VirtualFree(ptr, 0, MEM_RELEASE);
 	(void)size;
+	
+	BOOL ok = VirtualFree(ptr, 0, MEM_RELEASE);
+	Assert(ok);
 }
 
 API void*
 Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 {
 	Trace(); TraceText(path);
-	wchar_t wpath[1024];
-	Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
 	
+	wchar_t* wpath = Win32_ConvertStringToWSTR(path, global_scratch_arena);
 	HANDLE handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	Arena_Clear(global_scratch_arena);
+	
 	if (handle == INVALID_HANDLE_VALUE)
 		return NULL;
 	
@@ -617,18 +622,17 @@ Platform_WriteEntireFile(String path, const void* data, uintsize size)
 {
 	Trace(); TraceText(path);
 	
-	wchar_t wpath[1024];
-	Win32_ConvertStringToWSTR(path, wpath, ArrayLength(wpath));
+	wchar_t* wpath = Win32_ConvertStringToWSTR(path, global_scratch_arena);
+	HANDLE handle = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	Arena_Clear(global_scratch_arena);
 	
 	bool32 result = true;
 	DWORD bytes_written;
 	
-	HANDLE handle = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 		return false;
 	
-	if (!WriteFile(handle, data, (DWORD)size, &bytes_written, 0) ||
-		bytes_written != size)
+	if (!WriteFile(handle, data, (DWORD)size, &bytes_written, 0) || bytes_written != size)
 	{
 		result = false;
 	}
@@ -650,11 +654,29 @@ Platform_FreeFileMemory(void* ptr, uintsize size)
 API uint64
 Platform_CurrentPosixTime(void)
 {
-	time_t result = time(NULL);
-	if (result == -1)
-		result = 0;
+	SYSTEMTIME system_time;
+	FILETIME file_time;
+	GetSystemTime(&system_time);
+	SystemTimeToFileTime(&system_time, &file_time);
 	
-	return (uint64)result;
+	FILETIME posix_time;
+	SYSTEMTIME posix_system_time = {
+		.wYear = 1970,
+		.wMonth = 1,
+		.wDayOfWeek = 4,
+		.wDay = 1,
+		.wHour = 0,
+		.wMinute = 0,
+		.wSecond = 0,
+		.wMilliseconds = 0,
+	};
+	SystemTimeToFileTime(&posix_system_time, &posix_time);
+	
+	uint64 result = 0;
+	result +=  file_time.dwLowDateTime | (uint64) file_time.dwHighDateTime << 32;
+	result -= posix_time.dwLowDateTime | (uint64)posix_time.dwHighDateTime << 32;
+	
+	return result;
 }
 
 API void*
@@ -759,8 +781,16 @@ Platform_LoadGameLibrary(void)
 //- Debug
 #ifdef DEBUG
 API void
-Platform_DebugError(const char* msg)
+Platform_DebugError(const char* msg, ...)
 {
+	char buffer[16 << 10];
+	
+	va_list args;
+	va_start(args, msg);
+	uintsize size = String_VPrintfBuffer(buffer, sizeof(buffer)-1, msg, args);
+	buffer[size] = 0;
+	va_end(args);
+	
 	MessageBoxA(NULL, msg, "Debug Error", MB_OK);
 	exit(1);
 	/* no return */
@@ -773,7 +803,8 @@ Platform_DebugMessageBox(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	String_VPrintfBuffer(buffer, sizeof(buffer), format, args);
+	uintsize size = String_VPrintfBuffer(buffer, sizeof(buffer)-1, format, args);
+	buffer[size] = 0;
 	MessageBoxA(NULL, buffer, "Debug", MB_OK | MB_TOPMOST);
 	va_end(args);
 }
@@ -785,7 +816,8 @@ Platform_DebugLog(const char* restrict format, ...)
 	
 	va_list args;
 	va_start(args, format);
-	String_VPrintfBuffer(buffer, sizeof(buffer), format, args);
+	uintsize size = String_VPrintfBuffer(buffer, sizeof(buffer)-1, format, args);
+	buffer[size] = 0;
 	OutputDebugStringA(buffer);
 	va_end(args);
 }

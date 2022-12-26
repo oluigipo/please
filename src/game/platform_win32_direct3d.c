@@ -65,12 +65,12 @@ Win32_Direct3DSwapBuffers(void)
 			if (S_OK == IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, NULL, &message_length))
 			{
 				
-				DXGI_INFO_QUEUE_MESSAGE* message = Platform_HeapAlloc(message_length);
+				DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(global_scratch_arena, message_length);
 				
 				IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, message, &message_length);
 				Platform_DebugMessageBox("%.*s", message->DescriptionByteLength, message->pDescription);
 				
-				Platform_HeapFree(message);
+				Arena_Clear(global_scratch_arena);
 			}
 		}
 	}
