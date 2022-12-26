@@ -140,7 +140,11 @@ OpenGL_BakeGlyphsToFontCache_(Render_Font* font, const uint32* codepoints, uint3
 		glyph_info->left_side_bearing = (uint16)left_side_bearing;
 		
 		int32 offset = base_x + base_y * font->cache_bitmap_size * font->max_glyph_width;
-		stbtt_MakeGlyphBitmap(&font->info, font->cache_bitmap + offset, glyph_info->width, glyph_info->height, font->cache_bitmap_size * font->max_glyph_width, scale, scale, glyph_font_index);
+		
+		{
+			Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
+			stbtt_MakeGlyphBitmap(&font->info, font->cache_bitmap + offset, glyph_info->width, glyph_info->height, font->cache_bitmap_size * font->max_glyph_width, scale, scale, glyph_font_index);
+		}
 		
 		// NOTE(ljre): Done
 		already_baked:;
@@ -149,9 +153,12 @@ OpenGL_BakeGlyphsToFontCache_(Render_Font* font, const uint32* codepoints, uint3
 	if (!upload_texture_if_changed || !changed_texture)
 		return;
 	
-	GL.glBindTexture(GL_TEXTURE_2D, font->opengl.cache_tex_id);
-	GL.glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, font->cache_tex.width, font->cache_tex.height, GL_RED, GL_UNSIGNED_BYTE, font->cache_bitmap);
-	GL.glBindTexture(GL_TEXTURE_2D, 0);
+	{
+		Trace(); TraceName(Str("glTexSubImage2D"));
+		GL.glBindTexture(GL_TEXTURE_2D, font->opengl.cache_tex_id);
+		GL.glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, font->cache_tex.width, font->cache_tex.height, GL_RED, GL_UNSIGNED_BYTE, font->cache_bitmap);
+		GL.glBindTexture(GL_TEXTURE_2D, 0);
+	}
 }
 
 //~ NOTE(ljre): Resource allocation
@@ -184,7 +191,10 @@ OpenGL_MakeTexture2D(const Render_Texture2DDesc* desc, Render_Texture2D* out_tex
 		
 		Assert(desc->encoded_image_size <= INT32_MAX); // NOTE(ljre): stb_image limitation
 		
-		pixels = stbi_load_from_memory(desc->encoded_image, (int32)desc->encoded_image_size, &width, &height, &channels, 0);
+		{
+			Trace(); TraceName(Str("stbi_load_from_memory"));
+			pixels = stbi_load_from_memory(desc->encoded_image, (int32)desc->encoded_image_size, &width, &height, &channels, 0);
+		}
 		
 		if (!pixels)
 			return false;
@@ -205,7 +215,11 @@ OpenGL_MakeTexture2D(const Render_Texture2DDesc* desc, Render_Texture2D* out_tex
 	int32 format = (desc->float_components) ? float_formats[channels - 1] : int_formats[channels - 1];
 	int32 load_format = int_formats[channels - 1];
 	
-	GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, load_format, GL_UNSIGNED_BYTE, pixels);
+	{
+		Trace(); TraceName(Str("glTexImage2D"));
+		GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, load_format, GL_UNSIGNED_BYTE, pixels);
+	}
+	
 	GL.glBindTexture(GL_TEXTURE_2D, 0);
 	
 	if (desc->encoded_image)
@@ -350,27 +364,30 @@ OpenGL_MakeFont(const Render_FontDesc* desc, Render_Font* out_font)
 	font.cache_hashtable_size = 0;
 	font.cache_hashtable = Arena_PushAligned(desc->arena, sizeof(*font.cache_hashtable) * (1 << font.cache_hashtable_log2_cap), 4);
 	
-	
-	uint32 codepoints[26*2 + 10] = {
+	uint32 codepoints[26*2 + 20] = {
 		'!', ',', '.', '(', ')', '?', ':', ';', '&', '%',
-		//'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 	};
 	
 	for (uint32 i = 0; i <= 'Z'-'A'; ++i)
 	{
-		codepoints[i + 10] = 'A' + i;
-		codepoints[i + 36] = 'a' + i;
+		codepoints[i + 20] = 'A' + i;
+		codepoints[i + 46] = 'a' + i;
 	}
 	
 	OpenGL_BakeGlyphsToFontCache_(&font, codepoints, ArrayLength(codepoints), false);
 	
-	GL.glGenTextures(1, &font.opengl.cache_tex_id);
-	GL.glBindTexture(GL_TEXTURE_2D, font.opengl.cache_tex_id);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, desc->mag_linear ? GL_LINEAR : GL_NEAREST);
-	GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, desc->min_linear ? GL_LINEAR : GL_NEAREST);
-	GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
-	//GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_RED, GL_RED, GL_RED, GL_ONE });
-	GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font.cache_tex.width, font.cache_tex.height, 0, GL_RED, GL_UNSIGNED_BYTE, font.cache_bitmap);
+	{
+		Trace(); TraceName(Str("glTexImage2D"));
+		
+		GL.glGenTextures(1, &font.opengl.cache_tex_id);
+		GL.glBindTexture(GL_TEXTURE_2D, font.opengl.cache_tex_id);
+		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, desc->mag_linear ? GL_LINEAR : GL_NEAREST);
+		GL.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, desc->min_linear ? GL_LINEAR : GL_NEAREST);
+		GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_ONE, GL_ONE, GL_ONE, GL_RED });
+		//GL.glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, (int32[]) { GL_RED, GL_RED, GL_RED, GL_ONE });
+		GL.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font.cache_tex.width, font.cache_tex.height, 0, GL_RED, GL_UNSIGNED_BYTE, font.cache_bitmap);
+	}
 	
 	font.cache_tex.opengl.id = font.opengl.cache_tex_id;
 	
@@ -690,9 +707,6 @@ OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 po
 		.instances = instances,
 	};
 	
-	uint32 codepoint;
-	int32 index = 0;
-	
 	const float32 base_x = pos[0];
 	const float32 base_y = pos[1];
 	const float32 scale_x = scale[0];
@@ -701,6 +715,8 @@ OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 po
 	float32 curr_x = base_x;
 	float32 curr_y = base_y;
 	
+	uint32 codepoint;
+	int32 index = 0;
 	while (codepoint = String_Decode(text, &index), codepoint)
 	{
 		if (codepoint == '\n')
@@ -732,8 +748,8 @@ OpenGL_BatchText(Render_Font* font, String text, const vec4 color, const vec2 po
 			
 			if (info->codepoint == codepoint)
 				break;
-			if (!info->codepoint)
-				Assert(false);
+			
+			Assert(info->codepoint);
 		}
 		
 		Assert(info);

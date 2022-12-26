@@ -1,11 +1,10 @@
 #define D3D (*global_engine.graphics_context->d3d)
 
 #ifdef DEBUG
-#   define D3DCall(...) do{HRESULT r=(__VA_ARGS__);if(FAILED(r)){Platform_DebugMessageBox("D3DCall Failed\nFile: " __FILE__ "\nLine: %i\nError code: %x",__LINE__,r);exit(1);}}while(0)
+#   define D3DCall(...) do { HRESULT r=(__VA_ARGS__); Assert(!FAILED(r)); } while (0)
 #else
 #   define D3DCall(...) (__VA_ARGS__)
 #endif
-
 
 static bool
 D3D11_Init(const Engine_RenderApi** out_api)
