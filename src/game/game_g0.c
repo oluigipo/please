@@ -3,9 +3,7 @@ static Engine_Data* engine;
 
 struct Game_Data
 {
-	Render_Texture2D atlas;
-	
-	vec2 player_pos;
+	Render_Texture2D texture;
 };
 
 static void
@@ -20,6 +18,8 @@ static void
 Game_UpdateAndRender(void)
 {
 	
+	
+	Engine_FinishFrame();
 }
 
 API void

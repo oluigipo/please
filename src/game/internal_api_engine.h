@@ -8,20 +8,18 @@ struct Engine_GraphicsContext typedef Engine_GraphicsContext;
 struct Engine_RenderApi typedef Engine_RenderApi;
 struct Engine_PlatformData typedef Engine_PlatformData;
 struct Engine_InputData typedef Engine_InputData;
-struct Engine_AudioData typedef Engine_AudioData;
 
 struct Engine_Data
 {
 	Arena* persistent_arena;
 	Arena* scratch_arena;
-	Arena* audio_arena;
+	Arena* audio_thread_arena;
 	Game_Data* game;
 	
 	const Engine_GraphicsContext* graphics_context;
 	const Engine_RenderApi* render;
 	Engine_PlatformData* platform;
 	Engine_InputData* input;
-	Engine_AudioData* audio;
 	
 	void* game_memory;
 	uintsize game_memory_size;

@@ -77,10 +77,6 @@ Engine_Main(int32 argc, char** argv)
 			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, 64 << 20, 8 << 20);
 			memory_head += 64 << 20;
 			
-			// NOTE(ljre): 16MiB of audio memory
-			global_engine.audio_thread_arena = Arena_FromUncommitedMemory(memory_head, 16 << 20, 16 << 20);
-			memory_head += 16 << 20;
-			
 			// NOTE(ljre): All the rest of persistent_arena
 			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, memory_end - memory_head, 32 << 20);
 		}
@@ -88,16 +84,10 @@ Engine_Main(int32 argc, char** argv)
 		// NOTE(ljre): Allocate structs
 		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, Engine_InputData);
 		global_engine.platform = Arena_PushStructData(global_engine.persistent_arena, Engine_PlatformData, &config);
-		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, Engine_AudioData);
-		
-		global_engine.audio->arena = global_engine.audio_thread_arena;
 	}
 	
 	Platform_InitDesc init_desc = {
 		.engine = &global_engine,
-		
-		.audio_thread_proc = Engine_AudioThreadProc_,
-		.audio_thread_data = global_engine.audio,
 		
 		.inout_state = global_engine.platform,
 		.out_graphics = &global_engine.graphics_context,

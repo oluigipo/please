@@ -1,7 +1,7 @@
 #ifndef INTERNAL_API_PLATFORM_H
 #define INTERNAL_API_PLATFORM_H
 
-void typedef Platform_AudioThreadProc(void* user_data, int16* out_buffer, int32 frame_count);
+void typedef Platform_AudioThreadProc(void* user_data, int16* out_buffer, uint32 sample_count, int32 channels, uint32 sample_rate, uint32 elapsed_frames);
 
 struct Engine_PlatformData
 {
