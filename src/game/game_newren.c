@@ -10,6 +10,8 @@ struct Game_Data
 static void
 Game_Init(void)
 {
+	Trace();
+	
 	game = engine->game = Arena_Push(engine->persistent_arena, sizeof(*game));
 	
 	// NOTE(ljre): Load texture
@@ -58,6 +60,8 @@ Game_Init(void)
 static void
 Game_UpdateAndRender(void)
 {
+	Trace();
+	
 	void* saved_arena = Arena_End(engine->scratch_arena);
 	
 	{
