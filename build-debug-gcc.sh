@@ -1,1 +1,0 @@
-gcc -o game src/game/engine.c src/game/game.c src/game/platform_linux.c -Iinclude -Igame -DDEBUG -g -lm -lX11 -ldl -lasound -w

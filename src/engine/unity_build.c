@@ -1,7 +1,3 @@
-#ifndef UNITY_BUILD
-#   define UNITY_BUILD
-#endif
-
 #ifndef _CRT_SECURE_NO_WARNINGS
 #   define _CRT_SECURE_NO_WARNINGS
 #endif

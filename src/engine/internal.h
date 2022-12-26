@@ -25,7 +25,7 @@ API void Platform_VirtualFree(void* ptr, uintsize size);
 API void Platform_DebugError(const char* fmt, ...);
 
 #   ifdef _WIN32
-extern int32 __stdcall IsDebuggerPresent(void);
+extern __declspec(dllimport) int32 __stdcall IsDebuggerPresent(void);
 #       undef Debugbreak
 #       define Debugbreak() do { if (IsDebuggerPresent()) __debugbreak(); } while (0)
 #   endif
@@ -47,7 +47,7 @@ ReenableWarnings();
 
 //~ Tracy
 #if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
-#    include "../../../ext/tracy/TracyC.h"
+#    include "B:/ext/tracy/public/tracy/TracyC.h"
 static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
 #    define TraceCat__(x,y) x ## y
 #    define TraceCat_(x,y) TraceCat__(x,y)

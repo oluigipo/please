@@ -1,9 +1,7 @@
 #ifndef INTERNAL_CONFIG_H
 #define INTERNAL_CONFIG_H
 
-#if defined(UNITY_BUILD)
-#   define API static
-#elif defined(__cplusplus)
+#if defined(__cplusplus)
 #   define API extern "C"
 #elif defined(INTERNAL_ENABLE_HOT)
 #   ifndef _WIN32

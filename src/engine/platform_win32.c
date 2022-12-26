@@ -728,19 +728,20 @@ Platform_LoadGameLibrary(void)
 	static uint64 saved_last_update;
 	static void* saved_result;
 	
+	const char* const dll_name = "./build/hot-game.dll";
 	void* result = saved_result;
 	
 	if (!library)
 	{
-		const char* target_dll_path = "./build/game_.dll";
-		if (!CopyFileA("./build/game.dll", target_dll_path, false))
+		const char* target_dll_path = "./build/hot-game_.dll";
+		if (!CopyFileA(dll_name, target_dll_path, false))
 		{
 			// NOTE(ljre): fallback to the original file
-			target_dll_path = "./build/game.dll";
+			target_dll_path = dll_name;
 			Platform_DebugLog("%x\n", (uint32)GetLastError());
 		}
 		else
-			saved_last_update = GetFileLastWriteTime("./build/game.dll");
+			saved_last_update = GetFileLastWriteTime(dll_name);
 		
 		library = Win32_LoadLibrary(target_dll_path);
 		Assert(library);
@@ -749,16 +750,16 @@ Platform_LoadGameLibrary(void)
 	}
 	else
 	{
-		uint64 last_update = GetFileLastWriteTime("./build/game.dll");
+		uint64 last_update = GetFileLastWriteTime(dll_name);
 		
 		if (last_update > saved_last_update)
 		{
 			FreeLibrary(library);
 			
-			const char* target_dll_path = "./build/game_.dll";
-			if (!CopyFileA("./build/game.dll", target_dll_path, false))
+			const char* target_dll_path = "./build/hot-game_.dll";
+			if (!CopyFileA(dll_name, target_dll_path, false))
 				// NOTE(ljre): fallback to the original file
-				target_dll_path = "./build/game.dll";
+				target_dll_path = dll_name;
 			else
 				saved_last_update = last_update;
 			
