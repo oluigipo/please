@@ -2,16 +2,28 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #define ArrayLength(x) (sizeof(x)/sizeof*(x))
 
+typedef const char* Cstr;
+
+struct Build_Shader
+{
+	Cstr name;
+	Cstr output;
+	Cstr profile;
+	Cstr entry_point;
+};
+
 struct Build_Project
 {
-	const char* name;
-	const char* outname;
+	Cstr name;
+	Cstr outname;
 	bool is_executable;
 	bool is_graphic_program;
-	const char** deps;
+	Cstr* deps;
+	struct Build_Shader* shaders;
 }
 static g_projects[] = {
 	{
@@ -19,19 +31,23 @@ static g_projects[] = {
 		.outname = "game",
 		.is_executable = true,
 		.is_graphic_program = true,
-		.deps = (const char*[]) { "engine", NULL },
+		.deps = (Cstr[]) { "engine", NULL },
 	},
 	{
 		.name = "engine",
 		.outname = "engine",
-		.is_executable = false,
-		.deps = (const char*[]) { NULL },
+		.deps = (Cstr[]) { NULL },
+		.shaders = (struct Build_Shader[]) {
+			{ "shader_default.hlsl", "internal_d3d11_shader_default_vs.inc", "vs_4_0", "Shader_DefaultVertex" },
+			{ "shader_default.hlsl", "internal_d3d11_shader_default_ps.inc", "ps_4_0", "Shader_DefaultPixel" },
+			{ NULL },
+		},
 	},
 	{
 		.name = "gamepad_db_gen",
 		.outname = "gamepad_db_gen",
 		.is_executable = true,
-		.deps = (const char*[]) { NULL },
+		.deps = (Cstr[]) { NULL },
 	},
 };
 
@@ -46,6 +62,7 @@ struct
 	bool tracy;
 	bool hot;
 	bool force_rebuild;
+	bool analyze;
 }
 static g_opts = {
 	.project = &g_projects[0],
@@ -53,65 +70,85 @@ static g_opts = {
 };
 
 #ifdef __clang__
-static const char* f_cc = "clang";
-static const char* f_cflags = "-std=c11 -Isrc -Iinclude -march=x86-64-v2";
-static const char* f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
-static const char* f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static" };
-static const char* f_warnings =
+static Cstr f_cc = "clang";
+static Cstr f_cflags = "-std=c11 -Isrc -Iinclude -march=x86-64-v2";
+static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static" };
+static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
 "-Wno-assume -Wno-unused-command-line-argument";
-static const char* f_debuginfo = "-g";
-static const char* f_define = "-D";
-static const char* f_verbose = "-v";
-static const char* f_output = "-o";
-static const char* f_output_obj = "-c -o";
+static Cstr f_debuginfo = "-g";
+static Cstr f_define = "-D";
+static Cstr f_verbose = "-v";
+static Cstr f_output = "-o";
+static Cstr f_output_obj = "-c -o";
+static Cstr f_analyze = "--analyze";
 
-static const char* f_ldflags_graphic = "-Wl,/subsystem:windows";
+static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
-static const char* f_hotcflags = "-DINTERNAL_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
-static const char* f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -llibucrt";
+static Cstr f_hotcflags = "-DINTERNAL_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
+static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -llibucrt";
 
 #elif defined(_MSC_VER)
-static const char* f_cc = "cl /nologo";
-static const char* f_cflags = "/std:c11 /Isrc /Iinclude";
-static const char* f_ldflags = "/link /incremental:no";
-static const char* f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
-static const char* f_warnings = "/w";
-static const char* f_debuginfo = "/Zi";
-static const char* f_define = "/D";
-static const char* f_verbose = "";
-static const char* f_output = "/Fe";
-static const char* f_output_obj = "/c /Fo";
+static Cstr f_cc = "cl /nologo";
+static Cstr f_cflags = "/std:c11 /Isrc /Iinclude";
+static Cstr f_ldflags = "/link /incremental:no";
+static Cstr f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
+static Cstr f_warnings = "/w";
+static Cstr f_debuginfo = "/Zi";
+static Cstr f_define = "/D";
+static Cstr f_verbose = "";
+static Cstr f_output = "/Fe";
+static Cstr f_output_obj = "/c /Fo";
+static Cstr f_analyze = "";
 
-static const char* f_ldflags_graphic = "/subsystem:windows";
+static Cstr f_ldflags_graphic = "/subsystem:windows";
 
-static const char* f_hotcflags = "/DINTERNAL_ENABLE_HOT";
-static const char* f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
+static Cstr f_hotcflags = "/DINTERNAL_ENABLE_HOT";
+static Cstr f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
 
 #elif defined(__GNUC__)
-static const char* f_cc = "gcc";
-static const char* f_cflags = "-std=c11 -Isrc -march=x86-64-v2 -static";
-static const char* f_ldflags = "-mwindows";
-static const char* f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math" };
-static const char* f_warnings = "-w";
-static const char* f_debuginfo = "-g";
-static const char* f_define = "-D";
-static const char* f_verbose = "-v";
-static const char* f_output = "-o";
+static Cstr f_cc = "gcc";
+static Cstr f_cflags = "-std=c11 -Isrc -march=x86-64-v2 -static";
+static Cstr f_ldflags = "-mwindows";
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math" };
+static Cstr f_warnings = "-w";
+static Cstr f_debuginfo = "-g";
+static Cstr f_define = "-D";
+static Cstr f_verbose = "-v";
+static Cstr f_output = "-o";
+static Cstr f_analyze = "";
 #error TODO
 
 #endif
 
+static void
+Append(char** head, char* end, Cstr fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	int amount = vsnprintf(*head, end-*head, fmt, args);
+	va_end(args);
+	
+	if (*head + amount >= end)
+	{
+		fprintf(stderr, "[error] command buffer too small for required project!\n");
+		exit(1);
+	}
+	
+	*head += amount;
+}
+
 static int
-RunCommand(const char* cmd)
+RunCommand(Cstr cmd)
 {
 	fprintf(stderr, "[cmd] %s\n", cmd);
 	return system(cmd);
 }
 
 static struct Build_Project*
-FindProject(const char* name)
+FindProject(Cstr name)
 {
 	struct Build_Project* result = NULL;
 	
@@ -125,7 +162,7 @@ FindProject(const char* name)
 	}
 	
 	if (!result)
-		fprintf(stderr, "warning: unknown project '%s'\n", name);
+		fprintf(stderr, "[warning] unknown project '%s'\n", name);
 	
 	return result;
 }
@@ -137,52 +174,70 @@ Build(struct Build_Project* project)
 	char* end = cmd+sizeof(cmd);
 	char* head = cmd;
 	
-	head += snprintf(head, end-head, "%s src/%s/unity_build.c", f_cc, project->name);
-	head += snprintf(head, end-head, " %s %s", f_cflags, f_warnings);
+	if (project->shaders)
+	{
+		for (struct Build_Shader* it = project->shaders; it->name; ++it)
+		{
+			Append(&head, end, "dxc -nologo src/%s/%s", project->name, it->name);
+			Append(&head, end, " -Fhsrc/%s/%s", project->name, it->output);
+			Append(&head, end, " -T%s -E%s", it->profile, it->entry_point);
+			
+			int result = RunCommand(cmd);
+			if (result)
+				return result;
+			
+			head = cmd;
+		}
+	}
+	
+	Append(&head, end, "%s src/%s/unity_build.c", f_cc, project->name);
+	Append(&head, end, " %s %s", f_cflags, f_warnings);
+	if (g_opts.analyze)
+		Append(&head, end, " %s", f_analyze);
 	if (g_opts.optimize)
-		head += snprintf(head, end-head, " %s", f_optimize[g_opts.optimize]);
+		Append(&head, end, " %s", f_optimize[g_opts.optimize]);
 	if (g_opts.asan)
-		head += snprintf(head, end-head, " -fsanitize=address");
+		Append(&head, end, " -fsanitize=address");
 	if (g_opts.debug_info)
-		head += snprintf(head, end-head, " %s", f_debuginfo);
+		Append(&head, end, " %s", f_debuginfo);
 	if (g_opts.debug_mode)
-		head += snprintf(head, end-head, " %s%s", f_define, "DEBUG");
+		Append(&head, end, " %s%s", f_define, "DEBUG");
 	if (g_opts.verbose)
-		head += snprintf(head, end-head, " %s", f_verbose);
+		Append(&head, end, " %s", f_verbose);
 	if (g_opts.tracy)
-		head += snprintf(head, end-head, " %sTRACY_ENABLE TracyClient.obj", f_define);
+		Append(&head, end, " %sTRACY_ENABLE TracyClient.obj", f_define);
 	
 	if (g_opts.hot)
 	{
-		head += snprintf(head, end-head, " %sbuild/hot-%s.dll", f_output, project->outname);
-		head += snprintf(head, end-head, " %s %s %s", f_hotcflags, f_ldflags, f_hotldflags);
+		Append(&head, end, " %sbuild/hot-%s.dll", f_output, project->outname);
+		Append(&head, end, " %s %s %s", f_hotcflags, f_ldflags, f_hotldflags);
 		
-		for (const char** it = project->deps; *it; ++it)
+		for (Cstr* it = project->deps; *it; ++it)
 		{
 			struct Build_Project* dep = FindProject(*it);
 			
-			head += snprintf(head, end-head, " build/hot-%s.lib", dep->outname);
+			Append(&head, end, " build/hot-%s.lib", dep->outname);
 		}
 	}
 	else
 	{
 		if (project->is_executable)
-			head += snprintf(head, end-head, " %sbuild/%s.exe", f_output, project->outname);
+			Append(&head, end, " %sbuild/%s.exe", f_output, project->outname);
 		else
-			head += snprintf(head, end-head, " %sbuild/%s.obj", f_output_obj, project->outname);
+			Append(&head, end, " %sbuild/%s.obj", f_output_obj, project->outname);
 		
-		head += snprintf(head, end-head, " %s", f_ldflags);
+		Append(&head, end, " %s", f_ldflags);
 		if (project->is_graphic_program)
-			head += snprintf(head, end-head, " %s", f_ldflags_graphic);
+			Append(&head, end, " %s", f_ldflags_graphic);
 		
-		for (const char** it = project->deps; *it; ++it)
+		for (Cstr* it = project->deps; *it; ++it)
 		{
 			struct Build_Project* dep = FindProject(*it);
 			
 			if (dep->is_executable)
-				head += snprintf(head, end-head, " build/%s.lib", dep->outname);
+				Append(&head, end, " build/%s.lib", dep->outname);
 			else
-				head += snprintf(head, end-head, " build/%s.obj", dep->outname);
+				Append(&head, end, " build/%s.obj", dep->outname);
 		}
 	}
 	
@@ -205,7 +260,21 @@ main(int argc, char** argv)
 		else if (strcmp(argv[i], "-tracy") == 0)
 			g_opts.tracy = true;
 		else if (strcmp(argv[i], "-hot") == 0)
+		{
+#ifdef __clang__
 			g_opts.hot = true;
+#else
+			fprintf(stderr, "[warning] hot reloading only supported with clang for now.\n");
+#endif
+		}
+		else if (strcmp(argv[i], "-analyze") == 0)
+		{
+#ifdef __clang__
+			g_opts.analyze = true;
+#else
+			fprintf(stderr, "[warning] static analyzer only supported with clang for now.\n");
+#endif
+		}
 		else if (strncmp(argv[i], "-O", 2) == 0)
 		{
 			char* end;
@@ -213,6 +282,8 @@ main(int argc, char** argv)
 			
 			if (end == argv[i]+strlen(argv[i]))
 				g_opts.optimize = opt;
+			else
+				fprintf(stderr, "[warning] invalid optimization flag '%s'.\n", argv[i]);
 		}
 		else
 		{
@@ -224,7 +295,7 @@ main(int argc, char** argv)
 	}
 	
 	bool ok = true;
-	for (const char** it = g_opts.project->deps; *it; ++it)
+	for (Cstr* it = g_opts.project->deps; *it; ++it)
 		ok = ok && !Build(FindProject(*it));
 	
 	ok = ok && !Build(g_opts.project);

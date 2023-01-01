@@ -17,7 +17,10 @@ Game_Init(void)
 static void
 Game_UpdateAndRender(void)
 {
+	if (engine->platform->window_should_close || Engine_IsPressed(engine->input->keyboard, Engine_KeyboardKey_Escape))
+		engine->running = false;
 	
+	Render_ClearColor(engine, (vec4) { 0.2f, 0.0f, 0.4f, 1.0f });
 	
 	Engine_FinishFrame();
 }

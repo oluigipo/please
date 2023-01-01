@@ -127,6 +127,15 @@ struct Render_ShaderDesc
 {
 	struct
 	{
+		const void* ps_blob_data;
+		uintsize ps_blob_size;
+		const void* vs_blob_data;
+		uintsize vs_blob_size;
+	}
+	d3d11;
+	
+	struct
+	{
 		const char* fragment_shader_source;
 		const char* vertex_shader_source;
 		
@@ -177,31 +186,41 @@ struct Render_Texture2D
 {
 	int32 width, height;
 	
-	struct
+	union
 	{
-		uint32 id;
-	}
-	opengl;
+		struct { uint32 id;    } opengl;
+		struct { void* handle; } d3d11;
+	};
 }
 typedef Render_Texture2D;
 
 struct Render_Shader
 {
-	struct
+	union
 	{
-		uint32 id;
-		int32 uniform_view_matrix_loc;
-		int32 uniform_texture_sampler_loc;
+		struct
+		{
+			uint32 id;
+			int32 uniform_view_matrix_loc;
+			int32 uniform_texture_sampler_loc;
+			
+			uint8 attrib_vertex_position;
+			uint8 attrib_vertex_normal;
+			uint8 attrib_vertex_texcoord;
+			
+			uint8 attrib_color;
+			uint8 attrib_texcoords;
+			uint8 attrib_transform;
+		}
+		opengl;
 		
-		uint8 attrib_vertex_position;
-		uint8 attrib_vertex_normal;
-		uint8 attrib_vertex_texcoord;
-		
-		uint8 attrib_color;
-		uint8 attrib_texcoords;
-		uint8 attrib_transform;
-	}
-	opengl;
+		struct
+		{
+			void* vs_handle;
+			void* ps_handle;
+		}
+		d3d11;
+	};
 }
 typedef Render_Shader;
 

@@ -56,7 +56,7 @@ Engine_Main(int32 argc, char** argv)
 	config.window_height = 720;
 	config.window_title = Str("Title");
 	config.center_window = true;
-	config.graphics_api = Engine_GraphicsApi_OpenGL;
+	config.graphics_api = Engine_GraphicsApi_OpenGL | Engine_GraphicsApi_Direct3D;
 	
 	// NOTE(ljre): Init basic stuff
 	{
