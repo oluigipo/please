@@ -172,7 +172,7 @@ UtilDiscord_CallbackDeleteLobby_(void* event_data, enum EDiscordResult result)
 	UtilDiscord_PushEvent_(discord, &event);
 	
 	if (result != DiscordResult_Ok)
-		Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
+		Mem_Zero(&discord->lobby, sizeof(discord->lobby));
 }
 
 static DISCORD_CALLBACK void
@@ -255,7 +255,7 @@ UtilDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 	};
 	
 	UtilDiscord_PushEvent_(discord, &event);
-	Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
+	Mem_Zero(&discord->lobby, sizeof(discord->lobby));
 	//OS_DebugLog("Discord: OnLobbyDelete -- %I\t%u\n", lobby_id, reason);
 }
 
@@ -632,9 +632,13 @@ UtilDiscord_Init(int64 appid, UtilDiscord_Client* discord)
 	discord->overlays = discord->core->get_overlay_manager(discord->core);
 	discord->images = discord->core->get_image_manager(discord->core);
 	
+	SafeAssert(discord->users && discord->achievements && discord->activities && discord->application &&
+		discord->lobbies && discord->relationships && discord->network && discord->overlays &&
+		discord->images);
+	
 	discord->appid = appid;
 	discord->connected = true;
-	Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
+	Mem_Zero(&discord->lobby, sizeof(discord->lobby));
 	
 	discord->activities->update_activity(discord->activities, &discord->activity, discord, UtilDiscord_CallbackUpdateActivity_);
 	
@@ -699,7 +703,7 @@ UtilDiscord_Deinit(UtilDiscord_Client* discord)
 static bool
 UtilDiscord_CreateLobby(UtilDiscord_Client* discord)
 {
-	Assert(discord->core);
+	SafeAssert(discord->core);
 	
 	struct IDiscordLobbyTransaction* transaction = NULL;
 	enum EDiscordResult result;
@@ -725,6 +729,8 @@ UtilDiscord_CreateLobby(UtilDiscord_Client* discord)
 static enum EDiscordResult
 UtilDiscord_UpdateLobbyActivity(UtilDiscord_Client* discord)
 {
+	SafeAssert(discord->core);
+	
 	DiscordLobbySecret secret;
 	int32 member_count;
 	enum EDiscordResult result;
@@ -750,7 +756,7 @@ UtilDiscord_UpdateLobbyActivity(UtilDiscord_Client* discord)
 static void
 UtilDiscord_DeleteLobby(UtilDiscord_Client* discord)
 {
-	Assert(discord->core);
+	SafeAssert(discord->core);
 	
 	if (discord->lobby.id)
 		discord->lobbies->delete_lobby(discord->lobbies, discord->lobby.id, discord, UtilDiscord_CallbackDeleteLobby_);
@@ -759,7 +765,7 @@ UtilDiscord_DeleteLobby(UtilDiscord_Client* discord)
 static void
 UtilDiscord_JoinLobby(UtilDiscord_Client* discord, DiscordLobbySecret secret)
 {
-	Assert(discord->core);
+	SafeAssert(discord->core);
 	
 	discord->lobbies->connect_lobby_with_activity_secret(discord->lobbies, secret, discord, UtilDiscord_CallbackConnectLobbyWithActivitySecret_);
 }
@@ -768,8 +774,8 @@ UtilDiscord_JoinLobby(UtilDiscord_Client* discord, DiscordLobbySecret secret)
 enum EDiscordResult static
 UtilDiscord_ConnectNetwork(UtilDiscord_Client* discord)
 {
-	Assert(discord->core);
-	Assert(discord->lobby.id);
+	SafeAssert(discord->core);
+	SafeAssert(discord->lobby.id);
 	enum EDiscordResult result;
 	
 	result = discord->lobbies->connect_network(discord->lobbies, discord->lobby.id);
@@ -796,7 +802,7 @@ UtilDiscord_ConnectNetwork(UtilDiscord_Client* discord)
 enum EDiscordResult static
 UtilDiscord_DisconnectNetwork(UtilDiscord_Client* discord)
 {
-	Assert(discord->core);
+	SafeAssert(discord->core);
 	
 	return discord->lobbies->disconnect_network(discord->lobbies, discord->lobby.id);
 }
@@ -804,11 +810,10 @@ UtilDiscord_DisconnectNetwork(UtilDiscord_Client* discord)
 enum EDiscordResult static
 UtilDiscord_SendNetworkMessage(UtilDiscord_Client* discord, int64 user_id, bool reliable, String memory)
 {
-	Assert(discord->core);
-	Assert(memory.size <= UINT32_MAX);
+	SafeAssert(discord->core);
+	SafeAssert(memory.size <= UINT32_MAX);
 	
 	uint8 channel = (uint8)reliable;
-	Assert(channel == 0 || channel == 1);
 	
 	return discord->lobbies->send_network_message(discord->lobbies, discord->lobby.id, user_id, channel, (void*)memory.data, (uint32)memory.size);
 }

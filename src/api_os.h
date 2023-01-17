@@ -281,7 +281,10 @@ API void OS_VirtualRelease(void* ptr, uintsize size);
 API bool OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size);
 API bool OS_WriteEntireFile(String path, const void* data, uintsize size);
 
+API void* OS_LoadDiscordLibrary(void);
+#ifdef CONFIG_ENABLE_HOT
 API void* OS_LoadGameLibrary(void);
+#endif
 
 #ifdef CONFIG_DEBUG
 API void OS_DebugMessageBox(const char* fmt, ...);

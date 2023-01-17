@@ -724,6 +724,24 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	return true;
 }
 
+API void*
+OS_LoadDiscordLibrary(void)
+{
+	Trace();
+	
+	static HANDLE library;
+	
+	if (!library)
+	{
+		library = Win32_LoadLibrary("discord_game_sdk.dll");
+		
+		if (!library)
+			return NULL;
+	}
+	
+	return (void*)GetProcAddress(library, "DiscordCreate");
+}
+
 #ifdef CONFIG_ENABLE_HOT
 static uint64
 GetFileLastWriteTime(const char* filename)

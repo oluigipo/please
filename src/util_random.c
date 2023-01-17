@@ -31,11 +31,11 @@ UtilRandom_U64(UtilRandom_State* state)
 }
 
 static void
-UtilRandom_Init(UtilRandom_State* state)
+UtilRandom_Init(UtilRandom_State* state, uint64 seed)
 {
 	static const uint64 jump[] = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
 	
-	state->seed[0] = state->seed[1] = Platform_CurrentPosixTime();
+	state->seed[0] = state->seed[1] = seed;
 	
 	uint64 s0 = 0;
 	uint64 s1 = 0;

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "fileformats_sdlgamecontroller.h"
+#include "fileformat_sdlgamecontroller.h"
 
 static void
 PrintHelp(const char* self)
@@ -121,7 +121,8 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 		};
 		
 		SdlDb_Controller con;
-		if (SdlDb_ParseEntry(line, &con))
+		String platform;
+		if (SdlDb_ParseEntry(line, &con, &platform) && String_Equals(platform, Str("Windows")))
 		{
 			Write(w, "\t//%S\n\t{", con.name);
 			

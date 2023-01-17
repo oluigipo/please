@@ -1,7 +1,5 @@
 #define GL (*g_graphics_context->opengl)
 
-static uint32 g_ogl_uniform_buffer;
-
 #ifdef CONFIG_DEBUG
 static void APIENTRY
 RenderBackend_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
@@ -54,7 +52,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				int32 channels = cmd->texture_2d.channels;
 				const void* pixels = cmd->texture_2d.pixels;
 				
-				Assert(width && height && channels > 0 && channels <= 4);
+				SafeAssert(width && height && channels > 0 && channels <= 4);
 				
 				uint32 id;
 				const int32 formats[4] = { GL_RED, GL_RG, GL_RGB, GL_RGBA, };
@@ -287,7 +285,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 		
 		switch (cmd->kind)
 		{
-			case 0: Assert(false); break;
+			case 0: SafeAssert(false); break;
 			
 			case RenderBackend_DrawCommandKind_Clear:
 			{
@@ -334,8 +332,8 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				Assert(cmd->drawcall.shader);
 				Assert(cmd->drawcall.ibuffer);
 				
-				shader = (uint32)cmd->drawcall.shader->ref;
-				ibuffer = (uint32)cmd->drawcall.ibuffer->ref;
+				shader = cmd->drawcall.shader->id;
+				ibuffer = cmd->drawcall.ibuffer->id;
 				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vbuffers); ++i)
 				{
 					if (cmd->drawcall.vbuffers[i])

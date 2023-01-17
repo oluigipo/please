@@ -110,9 +110,11 @@ SdlDb_FindObjectFromName_(String name)
 }
 
 static bool
-SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller)
+SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller, String* out_platform)
 {
 	SdlDb_Controller con = { 0 };
+	String platform = StrNull;
+	
 	const uint8* const begin = line.data;
 	const uint8* const end = line.data + line.size;
 	const uint8* head = begin;
@@ -167,8 +169,18 @@ SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller)
 		
 		if (String_Equals(left_arg, Str("platform")))
 		{
+			if (head + 2 >= end || head[0] != ':')
+				return false;
+			
+			const uint8* platform_begin = ++head;
 			while (head < end && (head[0] != '\n' || head[0] != ','))
 				++head;
+			
+			platform = StrRange(platform_begin, head - 1);
+			
+			if (head >= end || *head++ != ',')
+				break;
+			
 			continue;
 		}
 		
@@ -261,6 +273,7 @@ SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller)
 	
 	//- Done
 	*out_controller = con;
+	*out_platform = platform;
 	return true;
 }
 
