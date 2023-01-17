@@ -1,11 +1,11 @@
 #ifndef API_H
 #define API_H
 
-#include <config.h>
-#include "internal_config.h"
+#include "config.h"
+#include "engine_internal_config.h"
 
-#include <lib_os/api.h>
-#include <lib_render_backend/api.h>
+#include "api_os.h"
+#include "api_renderbackend.h"
 
 //~ Debug
 #if defined(CONFIG_DEBUG)
@@ -42,7 +42,7 @@ struct Asset_SoundBuffer
 }
 typedef Asset_SoundBuffer;
 
-#include "internal_api_engine.h"
-#include "internal_api_render.h"
+#include "engine_internal_api_engine.h"
+#include "engine_internal_api_render.h"
 
 #endif //API_H

@@ -1,4 +1,4 @@
-#include "internal_gamepad_map.h"
+#include "os_internal_gamepad_map.h"
 
 #define GAMEPAD_DEADZONE 0.3f
 

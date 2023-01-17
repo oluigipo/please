@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <lib_file_formats/sdl_gamecontrollerdb.h>
+#include "fileformats_sdlgamecontroller.h"
 
 static void
 PrintHelp(const char* self)

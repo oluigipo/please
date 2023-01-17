@@ -1,10 +1,10 @@
 static const OS_WindowGraphicsContext* g_graphics_context;
 
 #ifdef CONFIG_ENABLE_OPENGL
-#   include "render_backend_opengl.c"
+#   include "renderbackend_opengl.c"
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-#   include "render_backend_d3d11.c"
+#   include "renderbackend_d3d11.c"
 #endif
 
 API void

@@ -6,8 +6,8 @@
 #   define D3d11_Call(...) (__VA_ARGS__)
 #endif
 
-#include "internal_d3d11_shader_default_vs.inc"
-#include "internal_d3d11_shader_default_ps.inc"
+#include "engine_internal_d3d11_shader_default_vs.inc"
+#include "engine_internal_d3d11_shader_default_ps.inc"
 
 static Render_Shader global_d3d11_default_shader;
 static Render_Texture2D global_d3d11_default_texture;

@@ -88,7 +88,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				
 				GL.glGenBuffers(1, &id);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.data, usage);
+				GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 				
 				handle.id = id;
@@ -101,7 +101,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				
 				GL.glGenBuffers(1, &id);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.data, usage);
+				GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 				
 				handle.id = id;
@@ -187,10 +187,10 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 				
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
-				if (cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.data, usage);
+				if (!cmd->flag_subregion)
+					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.data);
+					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.memory.size, cmd->buffer.memory.data);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			
@@ -202,10 +202,10 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 				
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
-				if (cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.data, usage);
+				if (!cmd->flag_subregion)
+					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.data);
+					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.memory.size, cmd->buffer.memory.data);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			

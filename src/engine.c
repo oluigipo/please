@@ -14,11 +14,13 @@
 //
 //
 
+#include "api_engine.h"
+
 #ifdef CONFIG_ENABLE_OPENGL
-#   include <lib_os/api_opengl.h>
+#   include "api_os_opengl.h"
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-#   include <lib_os/api_d3d11.h>
+#   include "api_os_d3d11.h"
 #endif
 
 //~ Libraries
@@ -38,9 +40,9 @@
 //~ Our Code
 static Engine_Data global_engine;
 
-#include <lib_file_formats/json.h>
-#include <lib_file_formats/qoi.h>
-#include <lib_file_formats/gltf.h>
+#include "fileformat_json.h"
+#include "fileformat_qoi.h"
+#include "fileformat_gltf.h"
 
 #ifdef CONFIG_ENABLE_OPENGL
 #   include "engine_render_opengl.c"
@@ -54,7 +56,7 @@ static Engine_Data global_engine;
 #include "engine_render.c"
 #include "engine_main.c"
 
-#include <lib_render_backend/render_backend.c>
+#include "renderbackend.c"
 
 //~ External
 DisableWarnings();

@@ -1,7 +1,5 @@
-#include <common.h>
 #include <math.h>
 #include <ext/cglm/cglm.h>
-#include "api.h"
 
 //- Includes
 DisableWarnings();

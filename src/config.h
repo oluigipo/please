@@ -2,10 +2,10 @@
 #define CONFIG_H
 
 //#define CONFIG_DEBUG
-#define COMMON_DONT_USE_CRT
 #ifdef CONFIG_DEBUG
 #   define COMMON_DEBUG
 #endif
+#define COMMON_DONT_USE_CRT
 
 #if defined(__cplusplus)
 #   define API extern "C"

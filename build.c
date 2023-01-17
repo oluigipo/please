@@ -36,7 +36,7 @@ static g_projects[] = {
 	{
 		.name = "engine",
 		.outname = "engine",
-		.deps = (Cstr[]) { NULL },
+		.deps = (Cstr[]) { "os", NULL },
 		.shaders = (struct Build_Shader[]) {
 			{ "shader_default.hlsl", "internal_d3d11_shader_default_vs.inc", "vs_5_0", "Shader_DefaultVertex" },
 			{ "shader_default.hlsl", "internal_d3d11_shader_default_ps.inc", "ps_5_0", "Shader_DefaultPixel" },
@@ -84,6 +84,7 @@ static Cstr f_verbose = "-v";
 static Cstr f_output = "-o";
 static Cstr f_output_obj = "-c -o";
 static Cstr f_analyze = "--analyze";
+static Cstr f_incfile = "-include";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
@@ -102,6 +103,7 @@ static Cstr f_verbose = "";
 static Cstr f_output = "/Fe";
 static Cstr f_output_obj = "/c /Fo";
 static Cstr f_analyze = "";
+static Cstr f_incfile = "/FI";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
@@ -119,6 +121,7 @@ static Cstr f_define = "-D";
 static Cstr f_verbose = "-v";
 static Cstr f_output = "-o";
 static Cstr f_analyze = "";
+static Cstr f_incfile = "-include";
 #error TODO
 
 #endif
@@ -178,8 +181,8 @@ Build(struct Build_Project* project)
 	{
 		for (struct Build_Shader* it = project->shaders; it->name; ++it)
 		{
-			Append(&head, end, "fxc /nologo src/%s/%s", project->name, it->name);
-			Append(&head, end, " /Fhsrc/%s/%s", project->name, it->output);
+			Append(&head, end, "fxc /nologo src/%s_%s", project->name, it->name);
+			Append(&head, end, " /Fhsrc/%s_%s", project->name, it->output);
 			Append(&head, end, " /T%s /E%s", it->profile, it->entry_point);
 			
 			int result = RunCommand(cmd);
@@ -190,7 +193,31 @@ Build(struct Build_Project* project)
 		}
 	}
 	
-	Append(&head, end, "%s src/%s/unity_build.c", f_cc, project->name);
+	Append(&head, end, "%s", f_cc);
+	
+	if (project->is_executable)
+		Append(&head, end, " src/%s/unity_build.c", project->name);
+	else if (g_opts.hot)
+	{
+		Append(&head, end, " src/%s.c", project->name);
+		
+		for (Cstr* it = project->deps; *it; ++it)
+			Append(&head, end, " src/%s.c", *it);
+	}
+	else
+	{
+		// NOTE(ljre): Hack with '-include' flag... won't work with MSVC :kekw
+		Cstr previous = project->name;
+		
+		for (Cstr* it = project->deps; *it; ++it)
+		{
+			Append(&head, end, " %s %s.c", f_incfile, previous);
+			previous = *it;
+		}
+		
+		Append(&head, end, " src/%s.c", previous);
+	}
+	
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
 	if (g_opts.analyze)
 		Append(&head, end, " %s", f_analyze);
@@ -212,11 +239,14 @@ Build(struct Build_Project* project)
 		Append(&head, end, " %sbuild/hot-%s.dll", f_output, project->outname);
 		Append(&head, end, " %s %s %s", f_hotcflags, f_ldflags, f_hotldflags);
 		
-		for (Cstr* it = project->deps; *it; ++it)
+		if (project->is_executable)
 		{
-			struct Build_Project* dep = FindProject(*it);
-			
-			Append(&head, end, " build/hot-%s.lib", dep->outname);
+			for (Cstr* it = project->deps; *it; ++it)
+			{
+				struct Build_Project* dep = FindProject(*it);
+				
+				Append(&head, end, " build/hot-%s.lib", dep->outname);
+			}
 		}
 	}
 	else
@@ -230,14 +260,17 @@ Build(struct Build_Project* project)
 		if (project->is_graphic_program)
 			Append(&head, end, " %s", f_ldflags_graphic);
 		
-		for (Cstr* it = project->deps; *it; ++it)
+		if (project->is_executable)
 		{
-			struct Build_Project* dep = FindProject(*it);
-			
-			if (dep->is_executable)
-				Append(&head, end, " build/%s.lib", dep->outname);
-			else
-				Append(&head, end, " build/%s.obj", dep->outname);
+			for (Cstr* it = project->deps; *it; ++it)
+			{
+				struct Build_Project* dep = FindProject(*it);
+				
+				if (dep->is_executable)
+					Append(&head, end, " build/%s.lib", dep->outname);
+				else
+					Append(&head, end, " build/%s.obj", dep->outname);
+			}
 		}
 	}
 	

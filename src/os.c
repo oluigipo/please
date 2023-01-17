@@ -1,5 +1,5 @@
-#include <config.h>
-#include <common.h>
+#include "config.h"
+#include "api_os.h"
 
 #ifdef _WIN32
 #   include "os_win32.c"

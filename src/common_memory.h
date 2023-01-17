@@ -343,21 +343,24 @@ Mem_Copy128Ax4(void* dst, const void* src, uintsize count)
 	}
 }
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#   pragma optimize("", off)
+#endif
 static inline void
 Mem_ZeroSafe(void* restrict dst, uintsize size)
 {
-#if defined(__GNUC__) || defined(__clang__)
 	Mem_Zero(dst, size);
+#if defined(__GNUC__) || defined(__clang__)
 	__asm__ __volatile__ ("" : "+d"(dst) :: "memory");
 #elif defined(_MSC_VER)
-#   pragma optimize("", off)
-	Mem_Zero(dst, size);
-#   pragma optimize("", on)
 	_ReadWriteBarrier();
 #else
 	// TODO
 #endif
 }
+#if defined(_MSC_VER) && !defined(__clang__)
+#   pragma optimize("", on)
+#endif
 
 //- CRT memcpy, memmove, memset & memcmp functions
 #ifdef COMMON_DONT_USE_CRT
