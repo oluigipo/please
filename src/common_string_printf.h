@@ -254,6 +254,23 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 					}
 				} break;
 				
+				case 'z':
+				{
+					uintsize arg = va_arg(args, uintsize);
+					
+					if (arg == 0)
+					{
+						count += 1;
+						break;
+					}
+					
+					while (arg > 0)
+					{
+						++count;
+						arg /= 10;
+					}
+				} break;
+				
 				case 'x': case 'X':
 				{
 					uint32 arg = va_arg(args, uint32);
@@ -280,7 +297,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 						len = Mem_Strlen(arg);
 					else
 					{
-						const char* off = Mem_FindByte(arg, 0, trailling_padding);
+						const char* off = (const char*)Mem_FindByte(arg, 0, trailling_padding);
 						len = off ? off - arg : trailling_padding;
 					}
 					
@@ -633,7 +650,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 						len = Mem_Strlen(arg);
 					else
 					{
-						const char* off = Mem_FindByte(arg, 0, trailling_padding);
+						const char* off = (const char*)Mem_FindByte(arg, 0, trailling_padding);
 						len = off ? off - arg : trailling_padding;
 					}
 					

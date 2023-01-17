@@ -1,9 +1,9 @@
+#include "api_d3d11.h"
+
 #define near
 #define far
 
-#include "internal_graphics_d3d11.h"
-
-#if defined(DEBUG)
+#if defined(CONFIG_DEBUG)
 #   include <dxgidebug.h>
 #endif
 
@@ -26,16 +26,16 @@ ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
 	ID3D11DeviceContext** ppImmediateContext);
 
 //~ Globals
-static Engine_Direct3DGraphicsContext global_direct3d;
+static OS_D3d11Api global_direct3d;
 static ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
-#if defined(DEBUG)
+#if defined(CONFIG_DEBUG)
 static IDXGIInfoQueue* global_direct3d_info_queue;
 #endif
 
 //~ Internal API
 static void
-Win32_DestroyDirect3DWindow(void)
+Win32_DestroyD3d11Window(void)
 {
 	if (global_direct3d.context)
 		ID3D11DeviceContext_Release(global_direct3d.context);
@@ -47,12 +47,13 @@ Win32_DestroyDirect3DWindow(void)
 	DestroyWindow(global_window);
 }
 
-static void
-Win32_Direct3DSwapBuffers(void)
+static bool
+Win32_D3d11SwapBuffers(int32 vsync_count)
 {
-	IDXGISwapChain_Present(global_direct3d.swapchain, 1, 0);
+	int32 to_d3d11 = Min(vsync_count, 4);
+	bool ok = IDXGISwapChain_Present(global_direct3d.swapchain, to_d3d11, 0);
 	
-#if defined(DEBUG)
+#if defined(CONFIG_DEBUG)
 	// NOTE(ljre): Check for debug messages
 	if (global_direct3d_info_queue)
 	{
@@ -64,28 +65,44 @@ Win32_Direct3DSwapBuffers(void)
 			SIZE_T message_length;
 			if (S_OK == IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, NULL, &message_length))
 			{
-				
-				DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(global_scratch_arena, message_length);
-				
-				IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, message, &message_length);
-				Platform_DebugMessageBox("%.*s", message->DescriptionByteLength, message->pDescription);
-				
-				Arena_Clear(global_scratch_arena);
+				for Arena_TempScope(global_scratch_arena)
+				{
+					DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(global_scratch_arena, message_length);
+					
+					IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, message, &message_length);
+					OS_DebugMessageBox("%.*s", message->DescriptionByteLength, message->pDescription);
+				}
 			}
 		}
 	}
 #endif
+	
+	if (ok)
+	{
+		ok = (vsync_count > 0);
+		vsync_count -= to_d3d11;
+		
+		while (vsync_count --> 0)
+		{
+			ok = OS_WaitForVsync();
+			
+			if (!ok)
+				break;
+		}
+	}
+	
+	return ok;
 }
 
-static bool32
-Win32_CreateDirect3DWindow(const Engine_PlatformData* config, const wchar_t* title)
+static bool
+Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 {
 	Trace();
 	
-	DWORD style = (WS_OVERLAPPEDWINDOW) & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+	DWORD style = (WS_OVERLAPPEDWINDOW); // & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-		config->window_x, config->window_y,
-		config->window_width, config->window_height,
+		config->x, config->y,
+		config->width, config->height,
 		NULL, NULL, global_instance, NULL);
 	
 	if (!window)
@@ -133,7 +150,7 @@ Win32_CreateDirect3DWindow(const Engine_PlatformData* config, const wchar_t* tit
 	
 	UINT flags = 0;
 	
-#if defined(DEBUG)
+#if defined(CONFIG_DEBUG)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	
@@ -156,25 +173,14 @@ Win32_CreateDirect3DWindow(const Engine_PlatformData* config, const wchar_t* tit
 	ID3D11Device_CreateRenderTargetView(global_direct3d.device, backbuffer, NULL, &global_direct3d.target);
 	ID3D11Resource_Release(backbuffer);
 	
-	// NOTE(ljre): Load D3D Compiler.
-	{
-		HMODULE library = Win32_LoadLibrary("d3dcompiler_47.dll");
-		
-		if (library)
-		{
-			Platform_DebugLog("Loaded Library: d3dcompiler_47.dll\n");
-			global_direct3d.compile_shader = (void*)GetProcAddress(library, "D3DCompile");
-		}
-	}
-	
-#if defined(DEBUG)
+#if defined(CONFIG_DEBUG)
 	// NOTE(ljre): Load debugging thingy
 	{
 		HMODULE library = Win32_LoadLibrary("dxgidebug.dll");
 		
 		if (library)
 		{
-			Platform_DebugLog("Loaded Library: dxgidebug.dll\n");
+			OS_DebugLog("Loaded Library: dxgidebug.dll\n");
 			
 			HRESULT (WINAPI* get_debug_interface)(REFIID, void**);
 			get_debug_interface = (void*)GetProcAddress(library, "DXGIGetDebugInterface");
@@ -189,8 +195,9 @@ Win32_CreateDirect3DWindow(const Engine_PlatformData* config, const wchar_t* tit
 	
 	global_window = window;
 	global_hdc = hdc;
-	global_graphics_context.d3d = &global_direct3d;
-	global_graphics_context.api = Engine_GraphicsApi_Direct3D;
+	global_graphics_context.d3d11 = &global_direct3d;
+	global_graphics_context.api = OS_WindowGraphicsApi_Direct3D11;
+	global_graphics_context.present_and_vsync = Win32_D3d11SwapBuffers;
 	
 	return true;
 }

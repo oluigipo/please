@@ -1,9 +1,9 @@
-//~ NOTE(ljre): needed by 'platform_win32_input.c'
+//~ NOTE(ljre): needed by 'os_win32_input.c'
 #define IID_IDirectInput8W _def_IID_IDirectInput8W
 static const GUID IID_IDirectInput8W =
 {0xBF798031,0x483A,0x4DA2,{0xAA,0x99,0x5D,0x64,0xED,0x36,0x97,0x00}};
 
-//~ NOTE(ljre): needed by 'platform_win32_audio.c'
+//~ NOTE(ljre): needed by 'os_win32_audio.c'
 #define CLSID_MMDeviceEnumerator _def_CLSID_MMDeviceEnumerator
 static const CLSID CLSID_MMDeviceEnumerator =
 {0xBCDE0395,0xE52F,0x467C,{0x8E,0x3D,0xC4,0x57,0x92,0x91,0x69,0x2E}};
@@ -20,7 +20,7 @@ static const IID IID_IAudioClient =
 static const IID IID_IAudioRenderClient =
 {0xF294ACFC,0x3146,0x4483,{0xA7,0xBF,0xAD,0xDC,0xA7,0xC2,0x60,0xE2}};
 
-//~ NOTE(ljre): needed by 'platform_win32_direct3d.h'
+//~ NOTE(ljre): needed by 'os_win32_direct3d.h'
 #define IID_ID3D11Resource _def_IID_ID3D11Resource
 static const IID IID_ID3D11Resource =
 {0xdc8e63f3,0xd12b,0x4952,{0xb4,0x7b,0x5e,0x45,0x02,0x6a,0x86,0x2d}};

@@ -1,5 +1,5 @@
-#ifndef INTERNAL_GAMEPAD_MAP_H
-#define INTERNAL_GAMEPAD_MAP_H
+#ifndef OS_INTERNAL_GAMEPAD_MAP_H
+#define OS_INTERNAL_GAMEPAD_MAP_H
 
 typedef uint16 GamepadObject;
 enum GamepadObject
@@ -91,4 +91,4 @@ static GamepadMappings global_gamepadmap_default = {
 
 #include <internal_gamepad_map_database.inc>
 
-#endif //INTERNAL_GAMEPAD_MAP_H
+#endif //OS_INTERNAL_GAMEPAD_MAP_H

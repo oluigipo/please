@@ -17,7 +17,9 @@ Game_Init(void)
 	// NOTE(ljre): Load texture
 	{
 		uintsize size;
-		void* data = Platform_ReadEntireFile(Str("assets/base_texture.png"), &size, engine->scratch_arena);
+		void* data;
+		
+		OS_ReadEntireFile(Str("assets/base_texture.png"), engine->scratch_arena, &data, &size);
 		
 		Render_Texture2DDesc desc = {
 			.encoded_image = data,
@@ -35,7 +37,9 @@ Game_Init(void)
 		String path = StrInit("c:/windows/fonts/arial.ttf");
 		
 		uintsize size;
-		void* data = Platform_ReadEntireFile(path, &size, engine->scratch_arena);
+		void* data = NULL;
+		
+		OS_ReadEntireFile(path, engine->scratch_arena, &data, &size);
 		Assert(data);
 		
 		Render_FontDesc desc = {
@@ -62,11 +66,10 @@ Game_UpdateAndRender(void)
 {
 	Trace();
 	
-	void* saved_arena = Arena_End(engine->scratch_arena);
-	
+	for Arena_TempScope(engine->scratch_arena)
 	{
 		//~ Update
-		if (Engine_IsPressed(engine->input->keyboard, Engine_KeyboardKey_Escape) || engine->platform->window_should_close)
+		if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Escape) || engine->window_state->should_close)
 			engine->running = false;
 		
 		//~ Render
@@ -94,7 +97,6 @@ Game_UpdateAndRender(void)
 		Render_Draw2D(engine, &data2d);
 	}
 	
-	Arena_Pop(engine->scratch_arena, saved_arena);
 	Engine_FinishFrame();
 }
 

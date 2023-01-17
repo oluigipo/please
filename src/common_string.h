@@ -1,26 +1,22 @@
 #ifndef COMMON_STRING_H
 #define COMMON_STRING_H
 
-struct String
-{
-	uintsize size;
-	const uint8* data;
-}
-typedef String;
+Buffer typedef String;
 
 #ifndef __cplusplus
 #   define Str(x) (String) StrInit(x)
 #   define StrNull (String) { 0 }
-#   define StrMake(size, data) (String) { (uintsize)(size), (const uint8*)(data) }
-#   define StrRange(begin, end) (String) { (uintsize)((end) - (begin)), (const uint8*)(begin) }
+#   define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
+#   define StrRange(begin, end) (String) StrInitRange(begin, end)
 #else
 #   define Str(x) String StrInit(x)
 #   define StrNull String {}
 #   define StrMake(size, data) String { (uintsize)(size), (const uint8*)(data) }
-#   define StrRange(begin, end) String { (uintsize)((end) - (begin)), (const uint8*)(begin) }
+#   define StrRange(begin, end) String StrInitRange(begin, end)
 #endif
 
 #define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }
+#define StrInitRange(begin, end) { (uintsize)((end) - (begin)), (const uint8*)(begin) }
 #define StrFmt(x) (x).size, (char*)(x).data
 #define StrMacro_(x) #x
 #define StrMacro(x) StrMacro_(x)

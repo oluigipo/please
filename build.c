@@ -27,7 +27,7 @@ struct Build_Project
 }
 static g_projects[] = {
 	{
-		.name = "engine_test",
+		.name = "game_test",
 		.outname = "game",
 		.is_executable = true,
 		.is_graphic_program = true,
@@ -38,8 +38,8 @@ static g_projects[] = {
 		.outname = "engine",
 		.deps = (Cstr[]) { NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "shader_default.hlsl", "internal_d3d11_shader_default_vs.inc", "vs_4_0", "Shader_DefaultVertex" },
-			{ "shader_default.hlsl", "internal_d3d11_shader_default_ps.inc", "ps_4_0", "Shader_DefaultPixel" },
+			{ "shader_default.hlsl", "internal_d3d11_shader_default_vs.inc", "vs_5_0", "Shader_DefaultVertex" },
+			{ "shader_default.hlsl", "internal_d3d11_shader_default_ps.inc", "ps_5_0", "Shader_DefaultPixel" },
 			{ NULL },
 		},
 	},
@@ -77,7 +77,7 @@ static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static" };
 static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
-"-Wno-assume -Wno-unused-command-line-argument";
+"-Wno-assume -Wno-unused-command-line-argument -Wno-int-to-void-pointer-cast -Wno-void-pointer-to-int-cast";
 static Cstr f_debuginfo = "-g";
 static Cstr f_define = "-D";
 static Cstr f_verbose = "-v";
@@ -87,8 +87,8 @@ static Cstr f_analyze = "--analyze";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
-static Cstr f_hotcflags = "-DINTERNAL_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
-static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -llibucrt";
+static Cstr f_hotcflags = "-DCONFIG_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
+static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
 
 #elif defined(_MSC_VER)
 static Cstr f_cc = "cl /nologo";
@@ -105,7 +105,7 @@ static Cstr f_analyze = "";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
-static Cstr f_hotcflags = "/DINTERNAL_ENABLE_HOT";
+static Cstr f_hotcflags = "/DCONFIG_ENABLE_HOT";
 static Cstr f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
 
 #elif defined(__GNUC__)
@@ -178,9 +178,9 @@ Build(struct Build_Project* project)
 	{
 		for (struct Build_Shader* it = project->shaders; it->name; ++it)
 		{
-			Append(&head, end, "dxc -nologo src/%s/%s", project->name, it->name);
-			Append(&head, end, " -Fhsrc/%s/%s", project->name, it->output);
-			Append(&head, end, " -T%s -E%s", it->profile, it->entry_point);
+			Append(&head, end, "fxc /nologo src/%s/%s", project->name, it->name);
+			Append(&head, end, " /Fhsrc/%s/%s", project->name, it->output);
+			Append(&head, end, " /T%s /E%s", it->profile, it->entry_point);
 			
 			int result = RunCommand(cmd);
 			if (result)
@@ -201,7 +201,7 @@ Build(struct Build_Project* project)
 	if (g_opts.debug_info)
 		Append(&head, end, " %s", f_debuginfo);
 	if (g_opts.debug_mode)
-		Append(&head, end, " %s%s", f_define, "DEBUG");
+		Append(&head, end, " %s%s", f_define, "CONFIG_DEBUG");
 	if (g_opts.verbose)
 		Append(&head, end, " %s", f_verbose);
 	if (g_opts.tracy)
@@ -303,7 +303,7 @@ main(int argc, char** argv)
 	if (g_opts.hot)
 	{
 		ok = ok && !RunCommand("cmd /c echo ; > \"build/empty.c\"");
-		ok = ok && !RunCommand("clang -fuse-ld=lld build/empty.c build/hot-engine.lib -o build/hot-game.exe");
+		ok = ok && !RunCommand("clang -fuse-ld=lld -g build/empty.c build/hot-engine.lib -o build/game.exe");
 	}
 	
 	return !ok;

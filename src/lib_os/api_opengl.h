@@ -1,5 +1,5 @@
-#if defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_GRAPHICS_OPENGL_H)
-#define INTERNAL_GRAPHICS_OPENGL_H
+#ifndef OS_API_OPENGL_H
+#define OS_API_OPENGL_H
 
 #define __gl_h
 
@@ -1259,9 +1259,9 @@ typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIPROC)(GLenum type, GLuint color);
 typedef void (APIENTRYP PFNGLSECONDARYCOLORP3UIVPROC)(GLenum type, const GLuint *color);
 typedef void (APIENTRYP PFNGLDEBUGMESSAGECALLBACKPROC)(GLDEBUGPROC callback, const void* userParam);
 
-struct Engine_OpenGLGraphicsContext
+struct OS_OpenGlApi
 {
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG
 	PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 #endif
 	PFNGLCULLFACEPROC glCullFace;
@@ -1640,4 +1640,4 @@ struct Engine_OpenGLGraphicsContext
 	PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
 };
 
-#endif // defined(INTERNAL_ENABLE_OPENGL) && !defined(INTERNAL_GRAPHICS_OPENGL_H)
+#endif //OS_API_OPENGL_H

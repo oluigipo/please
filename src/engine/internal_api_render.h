@@ -36,73 +36,6 @@ struct Render_Camera2D
 }
 typedef Render_Camera2D;
 
-#ifndef INTERNAL_TEST_OPENGL_NEWREN
-
-struct Render_Data2D
-{
-	const Asset_Texture* texture;
-	Render_BlendMode blendmode;
-	Render_Camera2D camera;
-	
-	const Render_Data2DInstance* instances;
-	uintsize instance_count;
-}
-typedef Render_Data2D;
-
-struct Engine_Renderer3DPointLight
-{
-	vec3 position;
-	
-	float32 constant, linear, quadratic;
-	
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
-}
-typedef Engine_Renderer3DPointLight;
-
-struct Engine_Renderer3DFlashlight
-{
-	vec3 position;
-	vec3 direction;
-	vec3 color;
-	
-	float32 constant, linear, quadratic;
-	
-	float32 inner_cutoff;
-	float32 outer_cutoff;
-}
-typedef Engine_Renderer3DFlashlight;
-
-struct Engine_Renderer3DModel
-{
-	mat4 transform;
-	Asset_3DModel* asset;
-	vec4 color;
-}
-typedef Engine_Renderer3DModel;
-
-struct Engine_Renderer3DScene
-{
-	Asset_3DModel* light_model;
-	vec3 dirlight;
-	vec3 dirlight_color;
-	
-	uint32 shadow_fbo, shadow_depthmap;
-	uint32 gbuffer, gbuffer_pos, gbuffer_norm, gbuffer_albedo, gbuffer_depth;
-	
-	int32 model_count;
-	int32 point_light_count;
-	int32 flashlights_count;
-	
-	Engine_Renderer3DModel* models;
-	Engine_Renderer3DPointLight* point_lights;
-	Engine_Renderer3DFlashlight* flashlights;
-}
-typedef Engine_Renderer3DScene;
-
-#else //INTERNAL_TEST_OPENGL_NEWREN
-// TODO(ljre): API
 struct Render_Texture2DDesc
 {
 	// NOTE(ljre): If actual image data
@@ -189,7 +122,7 @@ struct Render_Texture2D
 	union
 	{
 		struct { uint32 id;    } opengl;
-		struct { void* handle; } d3d11;
+		struct { void* texture_handle; void* view_handle; } d3d11;
 	};
 }
 typedef Render_Texture2D;
@@ -295,29 +228,9 @@ struct Render_Data2D
 }
 typedef Render_Data2D;
 
-#endif //INTERNAL_TEST_OPENGL_NEWREN
-
 //~ Main API
 struct Engine_RenderApi
 {
-#ifndef INTERNAL_TEST_OPENGL_NEWREN
-	void (*clear_color)(const vec4 color);
-	void (*draw_2d)(const Render_Data2D* data);
-	
-	//- OLD API
-	bool (*load_font_from_file)(String path, Asset_Font* out_font);
-	bool (*load_3dmodel_from_file)(String path, Asset_3DModel* out_model);
-	bool (*load_texture_from_file)(String path, Asset_Texture* out_texture);
-	
-	void (*clear_background)(float32 r, float32 g, float32 b, float32 a);
-	void (*begin)(void);
-	void (*draw_rectangle)(vec4 color, vec3 pos, vec3 size, vec3 alignment);
-	void (*draw_texture)(const Asset_Texture* texture, const mat4 transform, const mat4 view, const vec4 color);
-	void (*draw_text)(const Asset_Font* font, String text, const vec3 pos, float32 char_height, const vec4 color, const vec3 alignment);
-	
-	void (*draw_3dscene)(Engine_Renderer3DScene* scene, const Render_Camera3D* camera);
-	
-#else //INTERNAL_TEST_OPENGL_NEWREN
 	bool (*make_texture_2d)(const Render_Texture2DDesc* desc, Render_Texture2D* out_texture);
 	bool (*make_font)(const Render_FontDesc* desc, Render_Font* out_font);
 	bool (*make_shader)(const Render_ShaderDesc* desc, Render_Shader* out_shader);
@@ -335,23 +248,10 @@ struct Engine_RenderApi
 	void (*batch_text)(Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data);
 	
 	void (*calc_text_size)(const Render_Font* font, String text, vec2* out_size);
-#endif //INTERNAL_TEST_OPENGL_NEWREN
 }
 typedef Engine_RenderApi;
 
 //~ Wrappers
-#ifndef INTERNAL_TEST_OPENGL_NEWREN
-
-static inline void
-Render_ClearColor(Engine_Data* engine, const vec4 color)
-{ engine->render->clear_color(color); }
-
-static inline void
-Render_Draw2D(Engine_Data* engine, const Render_Data2D* data)
-{ engine->render->draw_2d(data); }
-
-#else //INTERNAL_TEST_OPENGL_NEWREN
-
 static inline bool
 Render_MakeTexture2D(Engine_Data* engine, const Render_Texture2DDesc* desc, Render_Texture2D* out_texture)
 { return engine->render->make_texture_2d(desc, out_texture); }
@@ -403,8 +303,5 @@ Render_BatchText(Engine_Data* engine, Render_Font* font, String text, const vec4
 static inline void
 Render_CalcTextSize(Engine_Data* engine, const Render_Font* font, String text, vec2* out_size)
 { engine->render->calc_text_size(font, text, out_size); }
-
-#endif //INTERNAL_TEST_OPENGL_NEWREN
-
 
 #endif //INTERNAL_API_RENDER_H

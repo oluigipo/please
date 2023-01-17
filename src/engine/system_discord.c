@@ -155,7 +155,7 @@ PlsDiscord_CallbackCreateLobby_(void* event_data, enum EDiscordResult result, st
 	
 	discord->lobby = *lobby;
 	PlsDiscord_UpdateLobbyActivity(discord);
-	Platform_DebugLog("Created Lobby!\n");
+	OS_DebugLog("Created Lobby!\n");
 }
 
 static DISCORD_CALLBACK void
@@ -213,7 +213,7 @@ PlsDiscord_EventOnCurrentUserUpdate_(void* data)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("User ID: %I\nUsername: %s\nDiscriminator: %s\n", discord->user.id, discord->user.username, discord->user.discriminator);
+	//OS_DebugLog("User ID: %I\nUsername: %s\nDiscriminator: %s\n", discord->user.id, discord->user.username, discord->user.discriminator);
 }
 
 static DISCORD_CALLBACK void
@@ -237,9 +237,9 @@ PlsDiscord_EventOnLobbyUpdate_(void* event_data, int64 lobby_id)
 		discord->lobby = lobby;
 	}
 	else
-		Platform_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
+		OS_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
 	
-	//Platform_DebugLog("Discord: OnLobbyUpdate -- %I\n", lobby_id);
+	//OS_DebugLog("Discord: OnLobbyUpdate -- %I\n", lobby_id);
 }
 
 static DISCORD_CALLBACK void
@@ -256,7 +256,7 @@ PlsDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 	
 	PlsDiscord_PushEvent_(discord, &event);
 	Mem_Set(&discord->lobby, 0, sizeof(discord->lobby));
-	//Platform_DebugLog("Discord: OnLobbyDelete -- %I\t%u\n", lobby_id, reason);
+	//OS_DebugLog("Discord: OnLobbyDelete -- %I\t%u\n", lobby_id, reason);
 }
 
 static DISCORD_CALLBACK void
@@ -278,10 +278,10 @@ PlsDiscord_EventOnMemberConnect_(void* event_data, int64 lobby_id, int64 user_id
 		};
 		
 		PlsDiscord_PushEvent_(discord, &event);
-		//Platform_DebugLog("Discord: OnMemberConnect -- %I\t%I\n", lobby_id, user_id);
+		//OS_DebugLog("Discord: OnMemberConnect -- %I\t%I\n", lobby_id, user_id);
 	}
 	else
-		Platform_DebugLog("Discord: OnMemberConnect failed to fetch user data\n");
+		OS_DebugLog("Discord: OnMemberConnect failed to fetch user data\n");
 }
 
 static DISCORD_CALLBACK void
@@ -303,10 +303,10 @@ PlsDiscord_EventOnMemberUpdate_(void* event_data, int64 lobby_id, int64 user_id)
 		};
 		
 		PlsDiscord_PushEvent_(discord, &event);
-		//Platform_DebugLog("Discord: OnMemberUpdate -- %I\t%I\n", lobby_id, user_id);
+		//OS_DebugLog("Discord: OnMemberUpdate -- %I\t%I\n", lobby_id, user_id);
 	}
 	else
-		Platform_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
+		OS_DebugLog("Discord: OnMemberUpdate failed to fetch user data\n");
 }
 
 static DISCORD_CALLBACK void
@@ -322,7 +322,7 @@ PlsDiscord_EventOnMemberDisconnect_(void* event_data, int64 lobby_id, int64 user
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnMemberDisconnect -- %I\t%I\n", lobby_id, user_id);
+	//OS_DebugLog("Discord: OnMemberDisconnect -- %I\t%I\n", lobby_id, user_id);
 }
 
 static DISCORD_CALLBACK void
@@ -340,7 +340,7 @@ PlsDiscord_EventOnLobbyMessage_(void* event_data, int64 lobby_id, int64 user_id,
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnLobbyMessage -- %I\t%I\t%p\t%u\n", lobby_id, user_id, data, data_length);
+	//OS_DebugLog("Discord: OnLobbyMessage -- %I\t%I\t%p\t%u\n", lobby_id, user_id, data, data_length);
 }
 
 static DISCORD_CALLBACK void
@@ -357,7 +357,7 @@ PlsDiscord_EventOnSpeaking_(void* event_data, int64 lobby_id, int64 user_id, boo
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnSpeaking -- %I\t%I\t%i\n", lobby_id, user_id, speaking);
+	//OS_DebugLog("Discord: OnSpeaking -- %I\t%I\t%i\n", lobby_id, user_id, speaking);
 }
 
 static DISCORD_CALLBACK void
@@ -376,7 +376,7 @@ PlsDiscord_EventOnNetworkMessage_(void* event_data, int64 lobby_id, int64 user_i
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnNetworkMessage -- %I\t%I\t%i\t%p\t%u\n", lobby_id, user_id, channel_id, data, data_length);
+	//OS_DebugLog("Discord: OnNetworkMessage -- %I\t%I\t%i\t%p\t%u\n", lobby_id, user_id, channel_id, data, data_length);
 }
 
 static DISCORD_CALLBACK void
@@ -401,7 +401,7 @@ PlsDiscord_EventOnActivityJoin_(void* event_data, const char* secret)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnActivityJoin -- %s\n", secret);
+	//OS_DebugLog("Discord: OnActivityJoin -- %s\n", secret);
 }
 
 static DISCORD_CALLBACK void
@@ -426,7 +426,7 @@ PlsDiscord_EventOnActivitySpectate_(void* event_data, const char* secret)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnActivitySpectate -- %s\n", secret);
+	//OS_DebugLog("Discord: OnActivitySpectate -- %s\n", secret);
 }
 
 static DISCORD_CALLBACK void
@@ -441,7 +441,7 @@ PlsDiscord_EventOnActivityJoinRequest_(void* event_data, struct DiscordUser* use
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnActivityJoinRequest -- %I\n", user->id);
+	//OS_DebugLog("Discord: OnActivityJoinRequest -- %I\n", user->id);
 }
 
 static DISCORD_CALLBACK void
@@ -458,7 +458,7 @@ PlsDiscord_EventOnActivityInvite_(void* event_data, enum EDiscordActivityActionT
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnActivityJoinRequest -- %i\t%I\t%i\n", type, user->id, activity->type);
+	//OS_DebugLog("Discord: OnActivityJoinRequest -- %i\t%I\t%i\n", type, user->id, activity->type);
 }
 
 static DISCORD_CALLBACK void
@@ -470,7 +470,7 @@ PlsDiscord_EventOnRefresh_(void* event_data)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnRefresh -- \n");
+	//OS_DebugLog("Discord: OnRefresh -- \n");
 }
 
 static DISCORD_CALLBACK void
@@ -485,7 +485,7 @@ PlsDiscord_EventOnRelationshipUpdate_(void* event_data, struct DiscordRelationsh
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnRelationshipUpdate -- %p\n", relationship);
+	//OS_DebugLog("Discord: OnRelationshipUpdate -- %p\n", relationship);
 }
 
 static DISCORD_CALLBACK void
@@ -503,7 +503,7 @@ PlsDiscord_EventOnMessage_(void* event_data, DiscordNetworkPeerId peer_id, uint8
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnMessage -- %llu\t%hhu\t%p\t%u\n", peer_id, channel_id, data, data_length);
+	//OS_DebugLog("Discord: OnMessage -- %llu\t%hhu\t%p\t%u\n", peer_id, channel_id, data, data_length);
 }
 
 static DISCORD_CALLBACK void
@@ -528,7 +528,7 @@ PlsDiscord_EventOnRouteUpdate_(void* event_data, const char* route_data)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnRouteUpdate -- %s\n", route_data);
+	//OS_DebugLog("Discord: OnRouteUpdate -- %s\n", route_data);
 }
 
 static DISCORD_CALLBACK void
@@ -543,7 +543,7 @@ PlsDiscord_EventOnToggle_(void* event_data, bool locked)
 	};
 	
 	PlsDiscord_PushEvent_(discord, &event);
-	//Platform_DebugLog("Discord: OnToggle -- %s\n", locked ? "true" : "false");
+	//OS_DebugLog("Discord: OnToggle -- %s\n", locked ? "true" : "false");
 }
 
 //~ API
@@ -592,7 +592,7 @@ PlsDiscord_Init(int64 appid, PlsDiscord_Client* discord)
 	// Init
 	if (!discord->create)
 	{
-		discord->create = Platform_LoadDiscordLibrary();
+		discord->create = OS_LoadDiscordLibrary();
 		
 		if (!discord->create)
 			return false;
@@ -677,11 +677,11 @@ PlsDiscord_LateUpdate(PlsDiscord_Client* discord)
 		
 		result = discord->network->flush(discord->network);
 		if (result != DiscordResult_Ok)
-			Platform_DebugLog("Discord: discord->network->flush failed.");
+			OS_DebugLog("Discord: discord->network->flush failed.");
 		
 		result = discord->lobbies->flush_network(discord->lobbies);
 		if (result != DiscordResult_Ok)
-			Platform_DebugLog("Discord: discord->lobbies->flush_network failed.");
+			OS_DebugLog("Discord: discord->lobbies->flush_network failed.");
 	}
 }
 

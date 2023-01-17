@@ -55,8 +55,6 @@ _Pragma("GCC diagnostic pop")
 #   define ReenableWarnings()
 #endif
 
-#define Assert(...) do { if (!(__VA_ARGS__)) { Debugbreak(); Unreachable(); } } while (0)
-
 #if 0 // NOTE(ljre): Ignore this.
 #define NULL
 #endif

@@ -1,4 +1,4 @@
-#include "internal_graphics_opengl.h"
+#include "api_opengl.h"
 
 //~ Types and Macros
 #define WGL_DRAW_TO_WINDOW_ARB                  0x2001
@@ -14,12 +14,6 @@
 #define WGL_CONTEXT_MINOR_VERSION_ARB           0x2092
 #define WGL_CONTEXT_PROFILE_MASK_ARB            0x9126
 #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB        0x0001
-
-#define DwmIsCompositionEnabled global_proc_DwmIsCompositionEnabled
-#define DwmFlush global_proc_DwnFlush
-
-typedef HRESULT(WINAPI* PFNDWMFLUSHPROC)(void);
-typedef HRESULT(WINAPI* PFNDWMISCOMPOSITIONENABLEDPROC)(BOOL*);
 
 typedef PROC(WINAPI* PFNWGLGETPROCADDRESSPROC)(LPCSTR);
 typedef HGLRC(WINAPI* PFNWGLCREATECONTEXTPROC)(HDC);
@@ -48,16 +42,12 @@ struct Win32_OpenGL
 	PFNWGLMAKECONTEXTCURRENTARBPROC wglMakeContextCurrentARB;
 	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 	
-	Engine_OpenGLGraphicsContext vtable;
+	OS_OpenGlApi vtable;
 }
 typedef Win32_OpenGL;
 
 //~ Globals
 static Win32_OpenGL global_opengl;
-static bool32 global_should_flush_dwm;
-static int32 global_swap_interval;
-static PFNDWMISCOMPOSITIONENABLEDPROC DwmIsCompositionEnabled;
-static PFNDWMFLUSHPROC DwmFlush;
 
 //~ Functions
 static void*
@@ -83,7 +73,7 @@ LoadOpenGLFunctions(void)
 {
 	Trace();
 	
-	Engine_OpenGLGraphicsContext* opengl = &global_opengl.vtable;
+	OS_OpenGlApi* opengl = &global_opengl.vtable;
 	void* (*loader)(const char*) = OpenGLGetProc;
 	
 	opengl->glGetString = loader("glGetString");
@@ -94,9 +84,9 @@ LoadOpenGLFunctions(void)
 	if (!str)
 		return false;
 	
-	Platform_DebugLog("OpenGL Version: %s\n", str);
+	OS_DebugLog("OpenGL Version: %s\n", str);
 	
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG
 	opengl->glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC)loader("glDebugMessageCallback");
 #endif
 	
@@ -490,31 +480,35 @@ Win32_DestroyOpenGLWindow(void)
 	DestroyWindow(global_window);
 }
 
-static void
-Win32_OpenGLSwapBuffers(void)
+static bool
+Win32_OpenGLSwapBuffers(int32 vsync_count)
 {
 	//global_opengl.vtable.glFlush();
 	global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
 	//SwapBuffers(global_hdc);
 	
-	if (global_should_flush_dwm)
+	bool vsynced = false;
+	
+	while (vsync_count --> 0)
 	{
-		int32 count = global_swap_interval;
+		vsynced = OS_WaitForVsync();
 		
-		while (count --> 0)
-			DwmFlush();
+		if (!vsynced)
+			break;
 	}
+	
+	return vsynced;
 }
 
 static bool
-Win32_CreateOpenGLWindow(const Engine_PlatformData* config, const wchar_t* title)
+Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 {
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(0, global_class_name, title, style,
-		config->window_x, config->window_y,
-		config->window_width, config->window_height,
+		config->x, config->y,
+		config->width, config->height,
 		NULL, NULL, global_instance, NULL);
 	
 	if (!window)
@@ -648,35 +642,12 @@ Win32_CreateOpenGLWindow(const Engine_PlatformData* config, const wchar_t* title
 		return false;
 	}
 	
-	int32 interval = 1;
-	global_swap_interval = interval;
-	
-	if (IsWindowsVistaOrGreater())
-	{
-		HMODULE library = Win32_LoadLibrary("dwmapi.dll");
-		
-		if (library)
-		{
-			DwmIsCompositionEnabled = (void*)GetProcAddress(library, "DwmIsCompositionEnabled");
-			DwmFlush = (void*)GetProcAddress(library, "DwmFlush");
-			
-			BOOL enabled = IsWindows8OrGreater();
-			
-			if (enabled || (SUCCEEDED(DwmIsCompositionEnabled(&enabled)) && enabled))
-			{
-				global_should_flush_dwm = true;
-				interval = 0;
-			}
-		}
-	}
-	
-	global_opengl.wglSwapIntervalEXT(interval);
-	
 	// Globals
 	global_window = window;
 	global_hdc = hdc;
-	global_graphics_context.api = Engine_GraphicsApi_OpenGL;
+	global_graphics_context.api = OS_WindowGraphicsApi_OpenGL;
 	global_graphics_context.opengl = &global_opengl.vtable;
+	global_graphics_context.present_and_vsync = Win32_OpenGLSwapBuffers;
 	
 	return true;
 }

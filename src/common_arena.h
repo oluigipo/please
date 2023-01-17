@@ -52,6 +52,7 @@ static inline void* Arena_PushMemory(Arena* arena, const void* buf, uintsize siz
 static inline void* Arena_PushMemoryAligned(Arena* arena, const void* buf, uintsize size, uintsize alignment);
 static inline String Arena_PushString(Arena* arena, String str);
 static inline String Arena_PushStringAligned(Arena* arena, String str, uintsize alignment);
+static inline const char* Arena_PushCString(Arena* arena, String str);
 
 static String Arena_VPrintf(Arena* arena, const char* fmt, va_list args);
 static String Arena_Printf(Arena* arena, const char* fmt, ...);
@@ -93,9 +94,11 @@ Arena_Create(uintsize reserved, uintsize page_size)
 	
 	reserved = AlignUp(reserved, page_size-1);
 	Arena* result = (Arena*)Arena_OsReserve_(reserved);
+	SafeAssert(result);
+	
 	if (result)
 	{
-		Arena_OsCommit_(result, page_size);
+		SafeAssert(Arena_OsCommit_(result, page_size));
 		
 		result->reserved = reserved;
 		result->commited = page_size;
@@ -129,7 +132,7 @@ Arena_FromUncommitedMemory(void* memory, uintsize reserved, uintsize page_size)
 	Assert(reserved >= page_size);
 	
 	reserved = AlignDown(reserved, page_size-1);
-	Arena_OsCommit_(memory, page_size);
+	SafeAssert(Arena_OsCommit_(memory, page_size));
 	
 	Arena* result = (Arena*)memory;
 	result->reserved = reserved;
@@ -169,9 +172,9 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 			return NULL;
 		
 		uintsize size_to_commit = AlignUp(needed - arena->commited, arena->page_size-1);
-		Assert(size_to_commit + arena->commited <= arena->reserved);
+		SafeAssert(size_to_commit + arena->commited <= arena->reserved);
 		
-		Arena_OsCommit_((uint8*)arena + arena->commited, size_to_commit);
+		SafeAssert(Arena_OsCommit_((uint8*)arena + arena->commited, size_to_commit));
 		arena->commited += size_to_commit;
 	}
 	
@@ -231,6 +234,15 @@ Arena_Save(Arena* arena)
 	return ret;
 }
 
+static inline const char*
+Arena_PushCString(Arena* arena, String str)
+{
+	char* buffer = (char*)Arena_PushDirtyAligned(arena, str.size + 1, 1);
+	Mem_Copy(buffer, str.data, str.size);
+	buffer[str.size] = 0;
+	return buffer;
+}
+
 static inline void
 Arena_Restore(Arena_Savepoint savepoint)
 { savepoint.arena->offset = savepoint.offset; }
@@ -270,9 +282,5 @@ Arena_Clear(Arena* arena)
 static inline void*
 Arena_End(Arena* arena)
 { return arena->memory + arena->offset; }
-
-#undef Arena_OsReserve_
-#undef Arena_OsCommit_
-#undef Arena_OsFree_
 
 #endif // COMMON_ARENA_H

@@ -22,9 +22,9 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	Trace(); TraceText(path);
 	
 	uintsize size;
-	void* memory = Platform_ReadEntireFile(path, &size, global_engine.scratch_arena);
+	void* memory;
 	
-	if (!memory)
+	if (!OS_ReadEntireFile(path, global_engine.scratch_arena, &memory, &size))
 		return false;
 	
 	// not inside 'if'
@@ -47,7 +47,7 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 API void
 Engine_FreeSoundBuffer(Asset_SoundBuffer* sound)
 {
-	Platform_HeapFree(sound->samples);
+	OS_HeapFree(sound->samples);
 }
 
 API void
@@ -65,7 +65,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 	int32 elapsed_frames;
 	
 	// NOTE(ljre): returned buffer is guaranteed to be zero'd
-	int16* samples = Platform_RequestSoundBuffer(&sample_count, &channels, &sample_rate, &elapsed_frames);
+	int16* samples = OS_RequestSoundBuffer(&sample_count, &channels, &sample_rate, &elapsed_frames);
 	int16* end_samples = samples + sample_count;
 	
 	if (!samples)
@@ -73,7 +73,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 	
 	if (!audio_count)
 	{
-		Platform_CloseSoundBuffer(samples);
+		OS_CloseSoundBuffer(samples);
 		return;
 	}
 	
@@ -157,5 +157,5 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 		}
 	}
 	
-	Platform_CloseSoundBuffer(samples);
+	OS_CloseSoundBuffer(samples);
 }

@@ -9,59 +9,34 @@ Engine_FinishFrame(void)
 	
 	global_engine.outputed_sound_this_frame = false;
 	
-	Platform_FinishFrame();
+	global_engine.graphics_context->present_and_vsync(1);
 	TraceFrameMark();
-	Platform_PollEvents(global_engine.platform, global_engine.input);
+	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
-	float64 current_time = Platform_GetTime();
+	float64 current_time = OS_GetTimeInSeconds();
 	global_engine.delta_time = (float32)( (current_time - global_engine.last_frame_time) * REFERENCE_FPS );
 	global_engine.last_frame_time = current_time;
 }
 
-API bool
-Engine_IsGamepadConnected(uint32 index)
-{ return global_engine.input->connected_gamepads & (1 << index); }
-
-API int32
-Engine_ConnectedGamepadCount(void)
-{ return Mem_PopCnt64(global_engine.input->connected_gamepads); }
-
-API int32
-Engine_ConnectedGamepadsIndices(int32 out_indices[Engine_MAX_GAMEPAD_COUNT])
-{
-	uint64 c = global_engine.input->connected_gamepads;
-	int32 len = 0;
-	
-	while (c)
-	{
-		out_indices[len++] = Mem_BitCtz64(c);
-		
-		c &= c-1; // NOTE(ljre): Clear last bit
-	}
-	
-	return len;
-}
-
 //~ Entry Point
 API int32
-Engine_Main(int32 argc, char** argv)
+OS_UserMain(int32 argc, char* argv[])
 {
 	Trace();
 	
 	// NOTE(ljre): Desired initial state
-	Engine_PlatformData config = { 0 };
-	Platform_DefaultState(&config);
+	OS_WindowState window_state = { 0 };
+	OS_DefaultWindowState(&window_state);
 	
-	config.window_width = 1280;
-	config.window_height = 720;
-	config.window_title = Str("Title");
-	config.center_window = true;
-	config.graphics_api = Engine_GraphicsApi_OpenGL | Engine_GraphicsApi_Direct3D;
+	window_state.width = 1280;
+	window_state.height = 720;
+	Mem_Copy(window_state.title, "Title", 6);
+	window_state.center_window = true;
 	
 	// NOTE(ljre): Init basic stuff
 	{
 		uintsize game_memory_size = 512ull << 20;
-		void* game_memory = Platform_VirtualReserve(game_memory_size); // 512 MiB
+		void* game_memory = OS_VirtualReserve(game_memory_size); // 512 MiB
 		
 		global_engine.game_memory = game_memory;
 		global_engine.game_memory_size = game_memory_size;
@@ -82,33 +57,41 @@ Engine_Main(int32 argc, char** argv)
 		}
 		
 		// NOTE(ljre): Allocate structs
-		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, Engine_InputData);
-		global_engine.platform = Arena_PushStructData(global_engine.persistent_arena, Engine_PlatformData, &config);
+		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, OS_InputState);
+		global_engine.window_state = Arena_PushStructData(global_engine.persistent_arena, OS_WindowState, &window_state);
 	}
 	
-	Platform_InitDesc init_desc = {
-		.engine = &global_engine,
+	OS_InitDesc init_desc = {
+		.flags = OS_InitFlags_WindowAndGraphics | OS_InitFlags_SimpleAudio,
 		
-		.inout_state = global_engine.platform,
-		.out_graphics = &global_engine.graphics_context,
+		.window_initial_state = window_state,
+		.window_desired_api = 0,
+		
+		.simpleaudio_desired_sample_rate = 48000,
 	};
 	
-	if (!Platform_Init(&init_desc))
-		Platform_ExitWithErrorMessage(Str("Failed to initialize platform layer."));
+	OS_InitOutput output;
+	
+	if (!OS_Init(&init_desc, &output))
+		OS_ExitWithErrorMessage("Failed to initialize platform layer.");
+	
+	*global_engine.window_state = output.window_state;
+	*global_engine.input = output.input_state;
+	global_engine.graphics_context = output.graphics_context;
 	
 	// NOTE(ljre): Init global_engine structure
-	Platform_PollEvents(global_engine.platform, global_engine.input);
+	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else
 	Engine_InitRender(&global_engine.render);
 	
 	// NOTE(ljre): Run
-	global_engine.last_frame_time = Platform_GetTime();
+	global_engine.last_frame_time = OS_GetTimeInSeconds();
 	
-#ifdef INTERNAL_ENABLE_HOT
+#ifdef CONFIG_ENABLE_HOT
 	do
 	{
-		void(*func)(Engine_Data*) = Platform_LoadGameLibrary();
+		void(*func)(Engine_Data*) = OS_LoadGameLibrary();
 		
 		func(&global_engine);
 	}

@@ -6,12 +6,12 @@ Engine_InitRender(const Engine_RenderApi** out_api)
 	
 	switch (global_engine.graphics_context->api)
 	{
-		case Engine_GraphicsApi_None: return false;
-#ifdef INTERNAL_ENABLE_OPENGL
-		case Engine_GraphicsApi_OpenGL: return OpenGL_Init(out_api);
+		case OS_WindowGraphicsApi_Null: return false;
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: return OpenGL_Init(out_api);
 #endif
-#ifdef INTERNAL_ENABLE_D3D11
-		case Engine_GraphicsApi_Direct3D: return D3d11_Init(out_api);
+#ifdef CONFIG_ENABLE_D3D11
+		case OS_WindowGraphicsApi_Direct3D11: return D3d11_Init(out_api);
 #endif
 		default: Unreachable(); break;
 	}
@@ -26,12 +26,12 @@ Engine_DeinitRender(void)
 	
 	switch (global_engine.graphics_context->api)
 	{
-		case Engine_GraphicsApi_None: break;
-#ifdef INTERNAL_ENABLE_OPENGL
-		case Engine_GraphicsApi_OpenGL: OpenGL_Deinit(); break;
+		case OS_WindowGraphicsApi_Null: break;
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: OpenGL_Deinit(); break;
 #endif
-#ifdef INTERNAL_ENABLE_D3D11
-		case Engine_GraphicsApi_Direct3D: D3d11_Deinit(); break;
+#ifdef CONFIG_ENABLE_D3D11
+		case OS_WindowGraphicsApi_Direct3D11: D3d11_Deinit(); break;
 #endif
 		default: Unreachable(); break;
 	}

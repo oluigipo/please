@@ -39,7 +39,7 @@ Qoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int3
 		uint32 value;
 	};
 	
-	Assert(sizeof(union QoiColor) == sizeof(uint32));
+	static_assert(sizeof(union QoiColor) == sizeof(uint32));
 	
 	//- NOTE(ljre): Validate header.
 	if (size < 14 + 8)
@@ -128,7 +128,7 @@ Qoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int3
 			cur.array[3] += diff[3];
 			
 			previous_pixel = colors[color_index++] = cur;
-			++head;
+			head += 2;
 		}
 		else if (head[0] == 0b11111110) // NOTE(ljre): QOI_OP_RGB
 		{
