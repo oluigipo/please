@@ -1,5 +1,15 @@
 #define GL (*g_graphics_context->opengl)
 
+struct RenderBackend_OpenGLShader_
+{
+	uint32 program_id;
+	
+	RenderBackend_LayoutDesc input_layout[ArrayLength( ((RenderBackend_ResourceCommand*)0)->shader.input_layout )];
+}
+typedef RenderBackend_OpenGLShader_;
+
+static RenderBackend_PoolOf(RenderBackend_OpenGLShader_, 64) g_ogl_shaderpool;
+
 #ifdef CONFIG_DEBUG
 static void APIENTRY
 RenderBackend_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
@@ -76,7 +86,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				
 				GL.glBindTexture(GL_TEXTURE_2D, 0);
 				
-				handle.ref = (void*)id;
+				handle.id = id;
 			} break;
 			
 			case RenderBackend_ResourceCommandKind_MakeVertexBuffer:
@@ -86,7 +96,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				
 				GL.glGenBuffers(1, &id);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
+				GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 				
 				handle.id = id;
@@ -99,7 +109,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				
 				GL.glGenBuffers(1, &id);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
+				GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 				
 				handle.id = id;
@@ -169,7 +179,9 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				GL.glDeleteShader(vertex_shader);
 				GL.glDeleteShader(fragment_shader);
 				
-				handle.id = program;
+				RenderBackend_OpenGLShader_* pool_data = RenderBackend_PoolAlloc(&g_ogl_shaderpool, &handle.id);
+				pool_data->program_id = program;
+				Mem_Copy(pool_data->input_layout, cmd->shader.input_layout, sizeof(pool_data->input_layout));
 			} break;
 			
 			case RenderBackend_ResourceCommandKind_MakeRenderTarget:
@@ -179,31 +191,31 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 			
 			case RenderBackend_ResourceCommandKind_UpdateVertexBuffer:
 			{
-				Assert(handle.ref);
+				Assert(handle.id);
 				
 				uint32 id = handle.id;
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 				
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
 				if (!cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
+					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.memory.size, cmd->buffer.memory.data);
+					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			
 			case RenderBackend_ResourceCommandKind_UpdateIndexBuffer:
 			{
-				Assert(handle.ref);
+				Assert(handle.id);
 				
 				uint32 id = handle.id;
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 				
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
 				if (!cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.memory.size, cmd->buffer.memory.data, usage);
+					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.memory.size, cmd->buffer.memory.data);
+					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			
@@ -230,7 +242,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 			
 			case RenderBackend_ResourceCommandKind_FreeTexture2D:
 			{
-				Assert(handle.ref);
+				Assert(handle.id);
 				
 				uint32 id = handle.id;
 				
@@ -242,7 +254,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 			case RenderBackend_ResourceCommandKind_FreeVertexBuffer:
 			case RenderBackend_ResourceCommandKind_FreeIndexBuffer:
 			{
-				Assert(handle.ref);
+				Assert(handle.id);
 				
 				uint32 id = handle.id;
 				
@@ -253,12 +265,12 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 			
 			case RenderBackend_ResourceCommandKind_FreeShader:
 			{
-				Assert(handle.ref);
+				Assert(handle.id);
+				RenderBackend_OpenGLShader_* pool_data = RenderBackend_PoolFetch(&g_ogl_shaderpool, handle.id);
 				
-				uint32 id = handle.id;
+				GL.glDeleteProgram(pool_data->program_id);
 				
-				GL.glDeleteProgram(id);
-				
+				RenderBackend_PoolFree(&g_ogl_shaderpool, handle.id);
 				handle.id = 0;
 			} break;
 			
@@ -273,8 +285,10 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 }
 
 static void
-RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* commands)
+RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height)
 {
+	GL.glViewport(0, 0, default_width, default_height);
+	
 	uint32 ubo;
 	GL.glGenBuffers(1, &ubo);
 	
@@ -312,6 +326,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 			
 			case RenderBackend_DrawCommandKind_SetRenderTarget:
 			{
+				Assert(cmd->set_target.handle);
 				uint32 id = cmd->set_target.handle->id;
 				
 				GL.glBindFramebuffer(GL_FRAMEBUFFER, id);
@@ -325,19 +340,20 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 			case RenderBackend_DrawCommandKind_DrawCall:
 			{
 				// Buffers and Shader
-				uint32 shader = 0;
+				SafeAssert(cmd->drawcall.shader && cmd->drawcall.ibuffer);
+				
+				RenderBackend_OpenGLShader_* shader_pool_data = RenderBackend_PoolFetch(&g_ogl_shaderpool, cmd->drawcall.shader->id);
+				
+				uint32 shader = shader_pool_data->program_id;
 				uint32 ibuffer = 0;
 				uint32 vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
-				
-				Assert(cmd->drawcall.shader);
-				Assert(cmd->drawcall.ibuffer);
 				
 				shader = cmd->drawcall.shader->id;
 				ibuffer = cmd->drawcall.ibuffer->id;
 				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vbuffers); ++i)
 				{
 					if (cmd->drawcall.vbuffers[i])
-						vbuffers[i] = (uint32)cmd->drawcall.vbuffers[i]->ref;
+						vbuffers[i] = cmd->drawcall.vbuffers[i]->id;
 				}
 				
 				// Vertex Layout
@@ -347,17 +363,18 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				GL.glBindVertexArray(vao);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuffer);
 				
-				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vertex_layout); ++i)
+				for (intsize i = 0; i < ArrayLength(shader_pool_data->input_layout); ++i)
 				{
-					const RenderBackend_LayoutDesc* layout = &cmd->drawcall.vertex_layout[i];
+					const RenderBackend_LayoutDesc* layout = &shader_pool_data->input_layout[i];
 					
 					if (!layout->kind)
-						continue;
+						break;
+					
+					SafeAssert(layout->vbuffer_index < ArrayLength(vbuffers));
+					GL.glBindBuffer(GL_ARRAY_BUFFER, vbuffers[layout->vbuffer_index]);
 					
 					uint32 loc = layout->location;
-					
-					Assert(layout->vbuffer_index < ArrayLength(vbuffers));
-					GL.glBindBuffer(GL_ARRAY_BUFFER, vbuffers[layout->vbuffer_index]);
+					uint32 stride = cmd->drawcall.vbuffer_strides[layout->vbuffer_index];
 					
 					switch (layout->kind)
 					{
@@ -373,7 +390,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 							
 							GL.glEnableVertexAttribArray(loc);
 							GL.glVertexAttribDivisor(loc, layout->divisor);
-							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, layout->stride, (void*)layout->offset);
+							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)layout->offset);
 						} break;
 						
 						case RenderBackend_LayoutDescKind_Mat4:
@@ -388,10 +405,10 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 							GL.glVertexAttribDivisor(loc+2, layout->divisor);
 							GL.glVertexAttribDivisor(loc+3, layout->divisor);
 							
-							GL.glVertexAttribPointer(loc+0, 4, GL_FLOAT, false, layout->stride, (void*)(layout->offset + sizeof(float32[4])*0));
-							GL.glVertexAttribPointer(loc+1, 4, GL_FLOAT, false, layout->stride, (void*)(layout->offset + sizeof(float32[4])*1));
-							GL.glVertexAttribPointer(loc+2, 4, GL_FLOAT, false, layout->stride, (void*)(layout->offset + sizeof(float32[4])*2));
-							GL.glVertexAttribPointer(loc+3, 4, GL_FLOAT, false, layout->stride, (void*)(layout->offset + sizeof(float32[4])*3));
+							GL.glVertexAttribPointer(loc+0, 4, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[4])*0));
+							GL.glVertexAttribPointer(loc+1, 4, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[4])*1));
+							GL.glVertexAttribPointer(loc+2, 4, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[4])*2));
+							GL.glVertexAttribPointer(loc+3, 4, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[4])*3));
 						} break;
 						
 						default: Assert(false); break;
@@ -424,7 +441,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 					if (!sampler->handle)
 						continue;
 					
-					uint32 id = (uint32)sampler->handle->ref;
+					uint32 id = sampler->handle->id;
 					int32 location = 0;
 					
 					for Arena_TempScope(scratch_arena)

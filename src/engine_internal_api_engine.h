@@ -3,7 +3,6 @@
 
 //~ Main Data
 struct Game_Data typedef Game_Data;
-
 struct Engine_RenderApi typedef Engine_RenderApi;
 
 struct Engine_Data

@@ -1,9 +1,33 @@
 #ifndef RENDER_BACKEND_API_H
 #define RENDER_BACKEND_API_H
 
-union RenderBackend_Handle { void* ref; uint32 id; } typedef RenderBackend_Handle;
+union RenderBackend_Handle
+{ uint32 id; }
+typedef RenderBackend_Handle;
 
 //~ ResourceCommand
+enum RenderBackend_LayoutDescKind
+{
+	RenderBackend_LayoutDescKind_Null = 0,
+	
+	RenderBackend_LayoutDescKind_Vec2,
+	RenderBackend_LayoutDescKind_Vec3,
+	RenderBackend_LayoutDescKind_Vec4,
+	RenderBackend_LayoutDescKind_Mat4,
+}
+typedef RenderBackend_LayoutDescKind;
+
+struct RenderBackend_LayoutDesc
+{
+	RenderBackend_LayoutDescKind kind;
+	uint32 offset;
+	
+	uint8 location;
+	uint8 divisor;
+	uint8 vbuffer_index;
+}
+typedef RenderBackend_LayoutDesc;
+
 enum RenderBackend_ResourceCommandKind
 {
 	RenderBackend_ResourceCommandKind_Null = 0,
@@ -54,12 +78,15 @@ struct RenderBackend_ResourceCommand
 		{
 			Buffer d3d_vs_blob, d3d_ps_blob;
 			String gl_vs_src, gl_fs_src;
+			
+			RenderBackend_LayoutDesc input_layout[8];
 		}
 		shader;
 		
 		struct
 		{
-			Buffer memory;
+			const void* memory;
+			uintsize size;
 			
 			// used if 'flag_subregion' is set and not on init.
 			uintsize offset;
@@ -76,29 +103,6 @@ struct RenderBackend_ResourceCommand
 };
 
 //~ DrawCommand
-enum RenderBackend_LayoutDescKind
-{
-	RenderBackend_LayoutDescKind_Null = 0,
-	
-	RenderBackend_LayoutDescKind_Vec2,
-	RenderBackend_LayoutDescKind_Vec3,
-	RenderBackend_LayoutDescKind_Vec4,
-	RenderBackend_LayoutDescKind_Mat4,
-}
-typedef RenderBackend_LayoutDescKind;
-
-struct RenderBackend_LayoutDesc
-{
-	RenderBackend_LayoutDescKind kind;
-	uint32 stride;
-	uint32 offset;
-	
-	uint8 location;
-	uint8 divisor;
-	uint8 vbuffer_index;
-}
-typedef RenderBackend_LayoutDesc;
-
 struct RenderBackend_SamplerDesc
 {
 	RenderBackend_Handle* handle;
@@ -146,8 +150,9 @@ struct RenderBackend_DrawCommand
 		struct
 		{
 			RenderBackend_Handle* shader;
-			RenderBackend_Handle* vbuffers[4];
 			RenderBackend_Handle* ibuffer;
+			RenderBackend_Handle* vbuffers[4];
+			uint32 vbuffer_strides[4];
 			
 			uint32 index_count;
 			uint32 instance_count;
@@ -155,7 +160,6 @@ struct RenderBackend_DrawCommand
 			Buffer uniform_buffer;
 			
 			RenderBackend_SamplerDesc samplers[8];
-			RenderBackend_LayoutDesc vertex_layout[16];
 		}
 		drawcall;
 	};
@@ -166,6 +170,6 @@ API void RenderBackend_Deinit(Arena* scratch_arena);
 API bool RenderBackend_Present(Arena* scratch_arena, int32 vsync_count);
 
 API void RenderBackend_ExecuteResourceCommands(Arena* scratch_arena, RenderBackend_ResourceCommand* commands);
-API void RenderBackend_ExecuteDrawCommands(Arena* scratch_arena, RenderBackend_DrawCommand* commands);
+API void RenderBackend_ExecuteDrawCommands(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height);
 
 #endif //RENDER_BACKEND_API_H

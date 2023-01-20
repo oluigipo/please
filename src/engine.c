@@ -43,11 +43,11 @@ static Engine_Data global_engine;
 #include "fileformat_json.h"
 #include "fileformat_qoi.h"
 #include "fileformat_gltf.h"
+#include "renderbackend.c"
 
 #ifdef CONFIG_ENABLE_OPENGL
 #   include "engine_render_opengl.c"
 #endif
-
 #ifdef CONFIG_ENABLE_D3D11
 #   include "engine_render_d3d11.c"
 #endif
@@ -55,8 +55,6 @@ static Engine_Data global_engine;
 #include "engine_audio.c"
 #include "engine_render.c"
 #include "engine_main.c"
-
-#include "renderbackend.c"
 
 //~ External
 DisableWarnings();
