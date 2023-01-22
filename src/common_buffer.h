@@ -9,12 +9,12 @@ struct Buffer
 typedef Buffer;
 
 #ifndef __cplusplus
-#   define Buf(x) (Buffer) StrInit(x)
+#   define Buf(x) (Buffer) BufInit(x)
 #   define BufNull (Buffer) { 0 }
 #   define BufMake(size, data) (Buffer) { (uintsize)(size), (const uint8*)(data) }
 #   define BufRange(begin, end) (Buffer) BufInitRange(begin, end)
 #else
-#   define Buf(x) Buffer StrInit(x)
+#   define Buf(x) Buffer BufInit(x)
 #   define BufNull Buffer {}
 #   define BufMake(size, data) Buffer { (uintsize)(size), (const uint8*)(data) }
 #   define BufRange(begin, end) Buffer BufInitRange(begin, end)

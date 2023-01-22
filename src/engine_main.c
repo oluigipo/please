@@ -6,11 +6,20 @@ E_FinishFrame(void)
 	
 	if (!global_engine.outputed_sound_this_frame)
 		E_PlayAudios(NULL, NULL, 1.0f);
-	
 	global_engine.outputed_sound_this_frame = false;
 	
-	global_engine.graphics_context->present_and_vsync(1);
+	if (global_engine.draw_command_list)
+	{
+		RB_ExecuteDrawCommands(global_engine.scratch_arena, global_engine.draw_command_list, global_engine.window_state->width, global_engine.window_state->height);
+		
+		global_engine.draw_command_list = NULL;
+		global_engine.last_draw_command = NULL;
+	}
+	
+	RB_Present(global_engine.scratch_arena, 1);
 	TraceFrameMark();
+	
+	Arena_Clear(global_engine.frame_arena);
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	float64 current_time = OS_GetTimeInSeconds();
@@ -48,8 +57,12 @@ OS_UserMain(int32 argc, char* argv[])
 			uint8* memory_head = (uint8*)game_memory;
 			uint8* memory_end = (uint8*)game_memory + game_memory_size;
 			
-			// NOTE(ljre): 64MiB of scratch_arena
-			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, 64 << 20, 8 << 20);
+			// NOTE(ljre): 16MiB of scratch_arena
+			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, 16 << 20, 8 << 20);
+			memory_head += 16 << 20;
+			
+			// NOTE(ljre): 64MiB of frame_arena
+			global_engine.frame_arena = Arena_FromUncommitedMemory(memory_head, 64 << 20, 8 << 20);
 			memory_head += 64 << 20;
 			
 			// NOTE(ljre): All the rest of persistent_arena
@@ -65,7 +78,7 @@ OS_UserMain(int32 argc, char* argv[])
 		.flags = OS_InitFlags_WindowAndGraphics | OS_InitFlags_SimpleAudio,
 		
 		.window_initial_state = window_state,
-		.window_desired_api = 0,
+		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
 		
 		.simpleaudio_desired_sample_rate = 48000,
 	};
@@ -83,7 +96,7 @@ OS_UserMain(int32 argc, char* argv[])
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else
-	E_InitRender(&global_engine.render);
+	E_InitRender_();
 	
 	// NOTE(ljre): Run
 	global_engine.last_frame_time = OS_GetTimeInSeconds();
@@ -103,7 +116,7 @@ OS_UserMain(int32 argc, char* argv[])
 #endif
 	
 	// NOTE(ljre): Deinit
-	E_DeinitRender();
+	E_DeinitRender_();
 	
 	return 0;
 }

@@ -87,8 +87,12 @@ RB_DeinitD3d11_(Arena* scratch_arena)
 static void
 RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
+	Trace();
+	
 	for (RB_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
+		Trace(); TraceName(RB_resource_cmd_names[cmd->kind]);
+		
 		Assert(cmd->kind);
 		Assert(cmd->handle);
 		
@@ -249,12 +253,13 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						{
 							DXGI_FORMAT format;
 							
+							if (0) case RB_LayoutDescKind_Float: format = DXGI_FORMAT_R32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec2: format = DXGI_FORMAT_R32G32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec3: format = DXGI_FORMAT_R32G32B32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec4: format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 							
-							char* semname = (char[4]) { 'V', chars[layout_size], '_', 0 };
-							semname = Mem_Copy(layout_semname[layout_size], semname, 4);
+							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
+							semname = Mem_Copy(layout_semname[i], semname, 4);
 							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = semname,
@@ -269,10 +274,49 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 							layout_desc[layout_size++] = element_desc;
 						} break;
 						
+						case RB_LayoutDescKind_Mat2:
+						{
+							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
+							semname = Mem_Copy(layout_semname[i], semname, 4);
+							
+							D3D11_INPUT_ELEMENT_DESC element_desc = {
+								.SemanticName = semname,
+								.SemanticIndex = 0,
+								.Format = DXGI_FORMAT_R32G32_FLOAT,
+								.InputSlot = curr_layout.vbuffer_index,
+								.AlignedByteOffset = curr_layout.offset,
+								.InputSlotClass = (curr_layout.divisor == 0) ? D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA,
+								.InstanceDataStepRate = curr_layout.divisor,
+							};
+							
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[2]);
+							layout_desc[layout_size++] = element_desc;
+						} break;
+						
+						case RB_LayoutDescKind_Mat3:
+						{
+							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
+							semname = Mem_Copy(layout_semname[i], semname, 4);
+							
+							D3D11_INPUT_ELEMENT_DESC element_desc = {
+								.SemanticName = semname,
+								.SemanticIndex = 0,
+								.Format = DXGI_FORMAT_R32G32B32_FLOAT,
+								.InputSlot = curr_layout.vbuffer_index,
+								.AlignedByteOffset = curr_layout.offset,
+								.InputSlotClass = (curr_layout.divisor == 0) ? D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA,
+								.InstanceDataStepRate = curr_layout.divisor,
+							};
+							
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[3]);
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[3]);
+							layout_desc[layout_size++] = element_desc;
+						} break;
+						
 						case RB_LayoutDescKind_Mat4:
 						{
-							char* semname = (char[4]) { 'V', chars[layout_size], '_', 0 };
-							semname = Mem_Copy(layout_semname[layout_size], semname, 4);
+							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
+							semname = Mem_Copy(layout_semname[i], semname, 4);
 							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = semname,
@@ -284,9 +328,9 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 								.InstanceDataStepRate = curr_layout.divisor,
 							};
 							
-							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex;
-							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex;
-							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex;
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[4]);
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[4]);
+							layout_desc[layout_size++] = element_desc; ++element_desc.SemanticIndex; element_desc.AlignedByteOffset += sizeof(float32[4]);
 							layout_desc[layout_size++] = element_desc;
 						} break;
 					}
@@ -311,19 +355,40 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			case RB_ResourceCommandKind_UpdateIndexBuffer:
 			{
 				Assert(handle.id);
+				SafeAssert(cmd->buffer.size <= UINT32_MAX);
 				
 				RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, handle.id);
-				
-				// TODO(ljre): cmd->flag_subregion
-				
 				ID3D11Buffer* buffer = pool_data->buffer;
-				ID3D11Resource* resource;
-				D3D11_MAPPED_SUBRESOURCE map;
 				
-				D3d11Call(ID3D11Buffer_QueryInterface(buffer, &IID_ID3D11Resource, (void**)&resource));
-				D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD | D3D11_MAP_WRITE, 0, &map));
-				Mem_Copy(map.pData, cmd->buffer.memory, cmd->buffer.size);
-				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
+				// Grow if needed
+				D3D11_BUFFER_DESC desc = { 0 };
+				ID3D11Buffer_GetDesc(buffer, &desc);
+				
+				if (desc.ByteWidth < cmd->buffer.size)
+				{
+					ID3D11Buffer_Release(buffer);
+					
+					desc.ByteWidth = (uint32)cmd->buffer.size;
+					
+					D3D11_SUBRESOURCE_DATA initial_data = {
+						.pSysMem = cmd->buffer.memory,
+					};
+					
+					D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &desc, &initial_data, &buffer));
+				}
+				else
+				{
+					// TODO(ljre): cmd->flag_subregion
+					ID3D11Resource* resource;
+					D3D11_MAPPED_SUBRESOURCE map;
+					
+					D3d11Call(ID3D11Buffer_QueryInterface(buffer, &IID_ID3D11Resource, (void**)&resource));
+					D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD, 0, &map));
+					Mem_Copy(map.pData, cmd->buffer.memory, cmd->buffer.size);
+					ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
+				}
+				
+				pool_data->buffer = buffer;
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateTexture2D:
@@ -344,7 +409,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				D3D11_MAPPED_SUBRESOURCE map;
 				
 				D3d11Call(ID3D11Texture2D_QueryInterface(texture, &IID_ID3D11Resource, (void**)&resource));
-				D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD | D3D11_MAP_WRITE, 0, &map));
+				D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD, 0, &map));
 				Assert(map.RowPitch == width * channels);
 				Mem_Copy(map.pData, pixels, width * height * channels);
 				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
@@ -386,12 +451,16 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(false);
 			} break;
 		}
+		
+		*cmd->handle = handle;
 	}
 }
 
 static void
 RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
+	Trace();
+	
 	D3D11_VIEWPORT viewport = {
 		.TopLeftX = 0,
 		.TopLeftY = 0,
@@ -406,7 +475,12 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
+		Trace(); TraceName(RB_draw_cmd_names[cmd->kind]);
+		
 		Assert(cmd->kind);
+		
+		if (cmd->resources_cmd)
+			RB_ResourceD3d11_(scratch_arena, cmd->resources_cmd);
 		
 		switch (cmd->kind)
 		{
@@ -469,6 +543,22 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				uint32 sampler_count = 0;
 				ID3D11SamplerState* sampler_states[ArrayLength(cmd->drawcall.samplers)] = { 0 };
 				ID3D11ShaderResourceView* shader_resources[ArrayLength(sampler_states)] = { 0 };
+				
+				for (int32 i = 0; i < ArrayLength(cmd->drawcall.samplers); ++i)
+				{
+					RB_SamplerDesc desc = cmd->drawcall.samplers[i];
+					
+					if (!desc.handle)
+						break;
+					
+					SafeAssert(desc.handle->id);
+					RB_D3d11Texture2D_* tex_pool_data = RB_PoolFetch_(&g_d3d11_texpool, desc.handle->id);
+					
+					sampler_states[i] = tex_pool_data->sampler_state;
+					shader_resources[i] = tex_pool_data->resource_view;
+					
+					++sampler_count;
+				}
 				
 				// Constant buffer
 				D3D11_BUFFER_DESC cbuffer_desc = {

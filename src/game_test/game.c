@@ -5,7 +5,7 @@ static E_GlobalData* engine;
 
 struct G_GlobalData
 {
-	Render_Texture2D texture;
+	int32 dummy;
 };
 
 static void
@@ -22,51 +22,46 @@ G_UpdateAndRender(void)
 	if (engine->window_state->should_close || OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
 	
-	Render_ClearColor(engine, (vec4) { 0.2f, 0.0f, 0.4f, 1.0f });
+	E_DrawClear(0.2f, 0.0f, 0.4f, 1.0f);
 	
-	Render_Data2DInstance* instances;
-	uintsize instance_count;
+	E_RectBatchElem* elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem));
+	uint32 count = 0;
+	
+	for (int32 i = 0; i < 100; ++i)
 	{
-		instances = Arena_EndAligned(engine->scratch_arena, alignof(Render_Data2DInstance));
+		uint64 random = Hash_IntHash64(i);
 		
-		for (int32 i = 0; i < 100; ++i)
-		{
-			Render_Data2DInstance inst = {
-				.transform = GLM_MAT4_IDENTITY_INIT,
-				.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
-				.color = { 1.0f, 1.0f, 1.0f, 1.0f }
-			};
-			
-			uint64 random = Hash_IntHash64(i);
-			
-			float32 x = (random & 511) - 256.0f;
-			float32 y = (random>>9 & 511) - 256.0f;
-			float32 angle = (random>>18 & 511) / 512.0f * (float32)M_PI*2;
-			vec3 color = {
-				(random>>27 & 255) / 255.0f,
-				(random>>35 & 255) / 255.0f,
-				(random>>43 & 255) / 255.0f,
-			};
-			
-			glm_translate(inst.transform, (vec3) { x, y });
-			glm_rotate(inst.transform, angle, (vec3) { 0, 0, 1.0f });
-			glm_scale(inst.transform, (vec3) { 32.0f, 32.0f, 1.0f });
-			
-			glm_vec4_copy(color, inst.color);
-			
-			Arena_PushData(engine->scratch_arena, &inst);
-		}
+		float32 x = (random & 511) - 256.0f;
+		float32 y = (random>>9 & 511) - 256.0f;
+		float32 angle = (random>>18 & 511) / 512.0f * (float32)Math_PI*2;
+		float32 size = 32.0f;
+		vec3 color = {
+			(random>>27 & 255) / 255.0f,
+			(random>>35 & 255) / 255.0f,
+			(random>>43 & 255) / 255.0f,
+		};
 		
-		instance_count = (Render_Data2DInstance*)Arena_End(engine->scratch_arena) - instances;
+		E_RectBatchElem elem = {
+			.pos = { x, y },
+			.scaling = {
+				{ size*cosf(angle), size*-sinf(angle) },
+				{ size*sinf(angle), size* cosf(angle) },
+			},
+			.tex_index = 0.0f,
+			.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+			.color = { color[0], color[1], color[2], 1.0f },
+		};
+		
+		Arena_PushData(engine->frame_arena, &elem);
+		++count;
 	}
 	
-	Render_Data2D data2d = {
-		.instance_count = instance_count,
-		.instances = instances,
+	E_RectBatch batch = {
+		.count = count,
+		.elements = elements,
 	};
 	
-	Render_Draw2D(engine, &data2d);
-	
+	E_DrawRectBatch(&batch);
 	E_FinishFrame();
 }
 

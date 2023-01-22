@@ -34,6 +34,7 @@ struct E_GlobalData
 {
 	Arena* persistent_arena;
 	Arena* scratch_arena;
+	Arena* frame_arena;
 	Arena* audio_thread_arena;
 	G_GlobalData* game;
 	
@@ -42,14 +43,17 @@ struct E_GlobalData
 	OS_WindowState* window_state;
 	OS_InputState* input;
 	
+	RB_DrawCommand* draw_command_list;
+	RB_DrawCommand* last_draw_command;
+	
 	void* game_memory;
 	uintsize game_memory_size;
 	
 	float32 delta_time;
 	float64 last_frame_time;
 	
-	bool outputed_sound_this_frame;
-	bool running;
+	bool outputed_sound_this_frame : 1;
+	bool running : 1;
 }
 typedef E_GlobalData;
 
@@ -73,14 +77,28 @@ API void E_FreeSoundBuffer(Asset_SoundBuffer* sound);
 API void E_PlayAudios(E_PlayingAudio* audios, int32* audio_count, float32 volume);
 
 //- Basic renderer funcs
-struct Render_Camera2D typedef Render_Camera2D;
-struct Render_Camera3D typedef Render_Camera3D;
+struct E_Camera2D
+{
+	vec2 pos;
+	vec2 size;
+	float32 zoom;
+	float32 angle;
+}
+typedef E_Camera2D;
 
-API void E_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view);
-API void E_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect);
+struct E_Camera3D
+{
+	vec3 pos;
+	vec3 dir;
+	vec3 up;
+}
+typedef E_Camera3D;
+
+API void E_CalcViewMatrix2D(const E_Camera2D* camera, mat4 out_view);
+API void E_CalcViewMatrix3D(const E_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect);
 API void E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model);
 API void E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model);
-API void E_CalcPointInCamera2DSpace(const Render_Camera2D* camera, const vec2 pos, vec2 out_pos);
+API void E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_pos);
 
 //- YET ANOTHER NEW RENDERER API!!!
 struct E_Tex2d typedef E_Tex2d;
@@ -102,9 +120,8 @@ API E_Tex2d* E_MakeTex2d(const E_Tex2dDesc* desc, Arena* arena);
 
 struct E_RectBatchElem
 {
-	vec2 top_left;
-	vec2 top_right;
-	vec2 bottom_left;
+	vec2 pos;
+	mat2 scaling;
 	float32 tex_index;
 	
 	vec4 texcoords;
@@ -114,10 +131,10 @@ typedef E_RectBatchElem;
 
 struct E_RectBatch
 {
-	uint32 count;
 	E_Tex2d* textures[8];
 	
-	E_RectBatchElem elements[];
+	uint32 count;
+	E_RectBatchElem* elements;
 }
 typedef E_RectBatch;
 
@@ -127,8 +144,5 @@ API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawCachedBatch(const E_CachedBatch* batch);
 API void E_DrawRectBatch(const E_RectBatch* batch);
 API void E_RawDrawCommand(RB_DrawCommand* commands);
-
-// TODO(ljre): MORE LEGACY STUFF TO DELETE
-#include "engine_internal_api_render.h"
 
 #endif //API_ENGINE_H

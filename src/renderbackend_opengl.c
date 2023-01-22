@@ -4,7 +4,7 @@ struct RB_OpenGLShader_
 {
 	uint32 program_id;
 	
-	RB_LayoutDesc input_layout[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
+	RB_LayoutDesc input_layout[8];
 }
 typedef RB_OpenGLShader_;
 
@@ -18,7 +18,12 @@ RB_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sev
 	const char* type_str = "Debug Message";
 	
 	if (type == GL_DEBUG_TYPE_ERROR)
+	{
 		type_str = "Error";
+		
+		if (Assert_IsDebuggerPresent_())
+			Debugbreak();
+	}
 	
 	OS_DebugLog("OpenGL %s:\n\tType: 0x%x\n\tID: %u\n\tSeverity: 0x%x\n\tMessage: %.*s\n", type_str, type, id, severity, (int)length, message);
 }
@@ -34,6 +39,11 @@ RB_InitOpenGL_(Arena* scratch_arena)
 #endif //CONFIG_DEBUG
 	
 	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	
+	GL.glDisable(GL_DEPTH_TEST);
+	GL.glDisable(GL_CULL_FACE);
+	GL.glEnable(GL_BLEND);
+	GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 static void
@@ -44,8 +54,11 @@ RB_DeinitOpenGL_(Arena* scratch_arena)
 static void
 RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
+	Trace();
+	
 	for (RB_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
+		Trace(); TraceName(RB_resource_cmd_names[cmd->kind]);
 		Assert(cmd->kind);
 		Assert(cmd->handle);
 		
@@ -194,7 +207,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				Assert(handle.id);
 				
 				uint32 id = handle.id;
-				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+				uint32 usage = GL_DYNAMIC_DRAW;
 				
 				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
 				if (!cmd->flag_subregion)
@@ -209,14 +222,14 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				Assert(handle.id);
 				
 				uint32 id = handle.id;
-				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+				uint32 usage = GL_DYNAMIC_DRAW;
 				
-				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
+				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
 				if (!cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
+					GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
-				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
+					GL.glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
+				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateTexture2D:
@@ -287,6 +300,8 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 static void
 RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
+	Trace();
+	
 	GL.glViewport(0, 0, default_width, default_height);
 	
 	uint32 ubo;
@@ -294,6 +309,9 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
+		Trace(); TraceName(RB_draw_cmd_names[cmd->kind]);
+		Assert(cmd->kind != 0);
+		
 		if (cmd->resources_cmd)
 			RB_ResourceOpenGL_(scratch_arena, cmd->resources_cmd);
 		
@@ -344,12 +362,10 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				
 				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->drawcall.shader->id);
 				
-				uint32 shader = shader_pool_data->program_id;
-				uint32 ibuffer = 0;
+				const uint32 shader = shader_pool_data->program_id;
+				const uint32 ibuffer = cmd->drawcall.ibuffer->id;
 				uint32 vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
 				
-				shader = cmd->drawcall.shader->id;
-				ibuffer = cmd->drawcall.ibuffer->id;
 				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vbuffers); ++i)
 				{
 					if (cmd->drawcall.vbuffers[i])
@@ -373,7 +389,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					SafeAssert(layout->vbuffer_index < ArrayLength(vbuffers));
 					GL.glBindBuffer(GL_ARRAY_BUFFER, vbuffers[layout->vbuffer_index]);
 					
-					uint32 loc = layout->location;
+					uint32 loc = layout->gl_location;
 					uint32 stride = cmd->drawcall.vbuffer_strides[layout->vbuffer_index];
 					
 					switch (layout->kind)
@@ -384,6 +400,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 						{
 							uint32 count;
 							
+							if (0) case RB_LayoutDescKind_Float: count = 1;
 							if (0) case RB_LayoutDescKind_Vec2: count = 2;
 							if (0) case RB_LayoutDescKind_Vec3: count = 3;
 							if (0) case RB_LayoutDescKind_Vec4: count = 4;
@@ -391,6 +408,33 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							GL.glEnableVertexAttribArray(loc);
 							GL.glVertexAttribDivisor(loc, layout->divisor);
 							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)layout->offset);
+						} break;
+						
+						case RB_LayoutDescKind_Mat2:
+						{
+							GL.glEnableVertexAttribArray(loc+0);
+							GL.glEnableVertexAttribArray(loc+1);
+							
+							GL.glVertexAttribDivisor(loc+0, layout->divisor);
+							GL.glVertexAttribDivisor(loc+1, layout->divisor);
+							
+							GL.glVertexAttribPointer(loc+0, 2, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[2])*0));
+							GL.glVertexAttribPointer(loc+1, 2, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[2])*1));
+						} break;
+						
+						case RB_LayoutDescKind_Mat3:
+						{
+							GL.glEnableVertexAttribArray(loc+0);
+							GL.glEnableVertexAttribArray(loc+1);
+							GL.glEnableVertexAttribArray(loc+2);
+							
+							GL.glVertexAttribDivisor(loc+0, layout->divisor);
+							GL.glVertexAttribDivisor(loc+1, layout->divisor);
+							GL.glVertexAttribDivisor(loc+2, layout->divisor);
+							
+							GL.glVertexAttribPointer(loc+0, 3, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[3])*0));
+							GL.glVertexAttribPointer(loc+1, 3, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[3])*1));
+							GL.glVertexAttribPointer(loc+2, 3, GL_FLOAT, false, stride, (void*)(layout->offset + sizeof(float32[3])*2));
 						} break;
 						
 						case RB_LayoutDescKind_Mat4:
@@ -424,11 +468,13 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				{
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, ubo);
 					GL.glBufferData(GL_UNIFORM_BUFFER, cmd->drawcall.uniform_buffer.size, cmd->drawcall.uniform_buffer.data, GL_DYNAMIC_DRAW);
-					GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
 					
 					int32 location = GL.glGetUniformBlockIndex(shader, "UniformBuffer");
+					SafeAssert(location != -1);
 					GL.glUniformBlockBinding(shader, location, 0);
-					GL.glBindBufferBase(shader, 0, ubo);
+					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
+					
+					GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
 				}
 				
 				// Samplers
@@ -442,11 +488,13 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 						continue;
 					
 					uint32 id = sampler->handle->id;
-					int32 location = 0;
+					int32 location = -1;
 					
-					for Arena_TempScope(scratch_arena)
 					{
-						const char* name = Arena_PushCString(scratch_arena, sampler->gl_name);
+						SafeAssert(i < 10);
+						char name[] = "uTexture[N]";
+						name[sizeof(name)-3] = (char)('0' + i);
+						
 						location = GL.glGetUniformLocation(shader, name);
 						SafeAssert(location != -1);
 					}

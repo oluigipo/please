@@ -16,13 +16,6 @@
 
 #include "api_engine.h"
 
-#ifdef CONFIG_ENABLE_OPENGL
-#   include "api_os_opengl.h"
-#endif
-#ifdef CONFIG_ENABLE_D3D11
-#   include "api_os_d3d11.h"
-#endif
-
 //~ Libraries
 #define STB_IMAGE_STATIC
 #define STBI_ONLY_PNG
@@ -43,13 +36,6 @@ static E_GlobalData global_engine;
 #include "util_json.h"
 #include "util_qoi.h"
 #include "util_gltf.h"
-
-#ifdef CONFIG_ENABLE_OPENGL
-#   include "engine_render_opengl.c"
-#endif
-#ifdef CONFIG_ENABLE_D3D11
-#   include "engine_render_d3d11.c"
-#endif
 
 #include "engine_audio.c"
 #include "engine_render.c"

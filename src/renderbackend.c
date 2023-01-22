@@ -58,10 +58,35 @@ RB_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 inde
 	pool->first_free = index;
 }
 
+static const String RB_resource_cmd_names[] = {
+	[RB_ResourceCommandKind_MakeTexture2D] = StrInit("RB_ResourceCommandKind_MakeTexture2D"),
+	[RB_ResourceCommandKind_MakeVertexBuffer] = StrInit("RB_ResourceCommandKind_MakeVertexBuffer"),
+	[RB_ResourceCommandKind_MakeIndexBuffer] = StrInit("RB_ResourceCommandKind_MakeIndexBuffer"),
+	[RB_ResourceCommandKind_MakeShader] = StrInit("RB_ResourceCommandKind_MakeShader"),
+	[RB_ResourceCommandKind_MakeRenderTarget] = StrInit("RB_ResourceCommandKind_MakeRenderTarget"),
+	[RB_ResourceCommandKind_UpdateVertexBuffer] = StrInit("RB_ResourceCommandKind_UpdateVertexBuffer"),
+	[RB_ResourceCommandKind_UpdateIndexBuffer] = StrInit("RB_ResourceCommandKind_UpdateIndexBuffer"),
+	[RB_ResourceCommandKind_UpdateTexture2D] = StrInit("RB_ResourceCommandKind_UpdateTexture2D"),
+	[RB_ResourceCommandKind_FreeTexture2D] = StrInit("RB_ResourceCommandKind_FreeTexture2D"),
+	[RB_ResourceCommandKind_FreeVertexBuffer] = StrInit("RB_ResourceCommandKind_FreeVertexBuffer"),
+	[RB_ResourceCommandKind_FreeIndexBuffer] = StrInit("RB_ResourceCommandKind_FreeIndexBuffer"),
+	[RB_ResourceCommandKind_FreeShader] = StrInit("RB_ResourceCommandKind_FreeShader"),
+	[RB_ResourceCommandKind_FreeRenderTarget] = StrInit("RB_ResourceCommandKind_FreeRenderTarget"),
+};
+
+static const String RB_draw_cmd_names[] = {
+	[RB_DrawCommandKind_Clear] = StrInit("RB_DrawCommandKind_Clear"),
+	[RB_DrawCommandKind_SetRenderTarget] = StrInit("RB_DrawCommandKind_SetRenderTarget"),
+	[RB_DrawCommandKind_ResetRenderTarget] = StrInit("RB_DrawCommandKind_ResetRenderTarget"),
+	[RB_DrawCommandKind_DrawCall] = StrInit("RB_DrawCommandKind_DrawCall"),
+};
+
 #ifdef CONFIG_ENABLE_OPENGL
+#   include "api_os_opengl.h"
 #   include "renderbackend_opengl.c"
 #endif
 #ifdef CONFIG_ENABLE_D3D11
+#   include "api_os_d3d11.h"
 #   include "renderbackend_d3d11.c"
 #endif
 

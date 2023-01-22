@@ -239,6 +239,29 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			global_window_state.height = HIWORD(lparam);
 			
 			global_window_state.resized_by_user = true;
+			
+#ifdef CONFIG_ENABLE_D3D11
+			if (global_graphics_context.api == OS_WindowGraphicsApi_Direct3D11)
+			{
+				ID3D11DeviceContext_ClearState(global_direct3d.context);
+				ID3D11RenderTargetView_Release(global_direct3d.target);
+				global_direct3d.target = NULL;
+				
+				HRESULT hr;
+				
+				hr = IDXGISwapChain_ResizeBuffers(global_direct3d.swapchain, 0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+				SafeAssert(SUCCEEDED(hr));
+				
+				ID3D11Resource* backbuffer;
+				hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Resource, (void**)&backbuffer);
+				SafeAssert(SUCCEEDED(hr));
+				
+				hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, backbuffer, NULL, &global_direct3d.target);
+				SafeAssert(SUCCEEDED(hr));
+				
+				ID3D11Resource_Release(backbuffer);
+			}
+#endif
 		} break;
 		
 		case WM_SYSKEYDOWN:

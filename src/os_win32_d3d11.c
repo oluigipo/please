@@ -144,7 +144,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		.BufferCount = 3,
 		.OutputWindow = window,
 		.Windowed = true,
-		.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+		.SwapEffect = IsWindows10OrGreater() ? DXGI_SWAP_EFFECT_FLIP_DISCARD : DXGI_SWAP_EFFECT_DISCARD,
 		.Flags = 0,
 	};
 	

@@ -10,9 +10,12 @@ enum RB_LayoutDescKind
 {
 	RB_LayoutDescKind_Null = 0,
 	
+	RB_LayoutDescKind_Float,
 	RB_LayoutDescKind_Vec2,
 	RB_LayoutDescKind_Vec3,
 	RB_LayoutDescKind_Vec4,
+	RB_LayoutDescKind_Mat2,
+	RB_LayoutDescKind_Mat3,
 	RB_LayoutDescKind_Mat4,
 }
 typedef RB_LayoutDescKind;
@@ -22,9 +25,9 @@ struct RB_LayoutDesc
 	RB_LayoutDescKind kind;
 	uint32 offset;
 	
-	uint8 location;
 	uint8 divisor;
 	uint8 vbuffer_index;
+	uint8 gl_location;
 }
 typedef RB_LayoutDesc;
 
@@ -64,7 +67,7 @@ struct RB_ResourceCommand
 	{
 		struct
 		{
-			const uint8* pixels;
+			const void* pixels;
 			int32 width, height;
 			uint32 channels;
 			
@@ -106,8 +109,6 @@ struct RB_ResourceCommand
 struct RB_SamplerDesc
 {
 	RB_Handle* handle;
-	uint32 d3d_id;
-	String gl_name;
 }
 typedef RB_SamplerDesc;
 

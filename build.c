@@ -38,8 +38,8 @@ static g_projects[] = {
 		.outname = "engine",
 		.deps = (Cstr[]) { "os", NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "shader_default.hlsl", "internal_d3d11_shader_default_vs.inc", "vs_5_0", "Shader_DefaultVertex" },
-			{ "shader_default.hlsl", "internal_d3d11_shader_default_ps.inc", "ps_5_0", "Shader_DefaultPixel" },
+			{ "shader_quad.hlsl", "internal_d3d11_vshader_quad.inc", "vs_5_0", "D3d11Shader_QuadVertex" },
+			{ "shader_quad.hlsl", "internal_d3d11_pshader_quad.inc", "ps_5_0", "D3d11Shader_QuadPixel" },
 			{ NULL },
 		},
 	},
