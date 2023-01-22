@@ -1,11 +1,14 @@
+#ifndef UTIL_RANDOM_H
+#define UTIL_RANDOM_H
+
 // NOTE(ljre): this is a xorshift128+
 // https://prng.di.unimi.it/
 
-struct UtilRandom_State
+struct URng_State
 {
 	uint64 seed[2];
 }
-typedef UtilRandom_State;
+typedef URng_State;
 
 //~ Functions
 static inline uint64
@@ -17,7 +20,7 @@ BitRotateLeft(const uint64 x, int32 k)
 //~ Internal API
 // Generates a random number between 0 and UINT64_MAX
 static uint64
-UtilRandom_U64(UtilRandom_State* state)
+URng_U64(URng_State* state)
 {
 	const uint64 s0 = state->seed[0];
 	uint64 s1 = state->seed[1];
@@ -31,7 +34,7 @@ UtilRandom_U64(UtilRandom_State* state)
 }
 
 static void
-UtilRandom_Init(UtilRandom_State* state, uint64 seed)
+URng_Init(URng_State* state, uint64 seed)
 {
 	static const uint64 jump[] = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
 	
@@ -49,7 +52,7 @@ UtilRandom_Init(UtilRandom_State* state, uint64 seed)
 				s0 ^= state->seed[0];
 				s1 ^= state->seed[1];
 			}
-			UtilRandom_U64(state);
+			URng_U64(state);
 		}
 	}
 	
@@ -59,9 +62,9 @@ UtilRandom_Init(UtilRandom_State* state, uint64 seed)
 
 // NOTE(ljre): good enough
 static float64
-UtilRandom_F64(UtilRandom_State* state)
+URng_F64(URng_State* state)
 {
-	uint64 roll = UtilRandom_U64(state);
+	uint64 roll = URng_U64(state);
 	union
 	{
 		uint64 i;
@@ -75,9 +78,9 @@ UtilRandom_F64(UtilRandom_State* state)
 }
 
 static float32
-UtilRandom_F32Range(UtilRandom_State* state, float32 start, float32 end)
+URng_F32Range(URng_State* state, float32 start, float32 end)
 {
-	uint64 roll = UtilRandom_U64(state);
+	uint64 roll = URng_U64(state);
 	union
 	{
 		uint32 i;
@@ -91,8 +94,10 @@ UtilRandom_F32Range(UtilRandom_State* state, float32 start, float32 end)
 }
 
 static uint32
-UtilRandom_U32(UtilRandom_State* state)
+URng_U32(URng_State* state)
 {
-	uint64 result = UtilRandom_U64(state);
+	uint64 result = URng_U64(state);
 	return (uint32)(result >> 32); // the higher bits are more random.
 }
+
+#endif //UTIL_RANDOM_H

@@ -9,41 +9,41 @@ static const IID IID_ID3D11Resource =
 #endif //IID_ID3D11Texture2D
 
 //~ Globals
-struct RenderBackend_D3d11Texture2D_
+struct RB_D3d11Texture2D_
 {
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* resource_view;
 	ID3D11SamplerState* sampler_state;
 }
-typedef RenderBackend_D3d11Texture2D_;
+typedef RB_D3d11Texture2D_;
 
-struct RenderBackend_D3d11Shader_
+struct RB_D3d11Shader_
 {
 	ID3D11VertexShader* vertex_shader;
 	ID3D11PixelShader* pixel_shader;
 	ID3D11InputLayout* input_layout;
 	
-	uint32 strides[ArrayLength( ((RenderBackend_ResourceCommand*)0)->shader.input_layout )];
-	uint32 offsets[ArrayLength( ((RenderBackend_ResourceCommand*)0)->shader.input_layout )];
+	uint32 strides[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
+	uint32 offsets[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
 }
-typedef RenderBackend_D3d11Shader_;
+typedef RB_D3d11Shader_;
 
-struct RenderBackend_D3d11Buffer_
+struct RB_D3d11Buffer_
 {
 	ID3D11Buffer* buffer;
 }
-typedef RenderBackend_D3d11Buffer_;
+typedef RB_D3d11Buffer_;
 
-static RenderBackend_PoolOf(RenderBackend_D3d11Texture2D_, 512) g_d3d11_texpool;
-static RenderBackend_PoolOf(RenderBackend_D3d11Shader_, 64) g_d3d11_shaderpool;
-static RenderBackend_PoolOf(RenderBackend_D3d11Shader_, 512) g_d3d11_bufferpool;
+static RB_PoolOf_(RB_D3d11Texture2D_, 512) g_d3d11_texpool;
+static RB_PoolOf_(RB_D3d11Shader_, 64) g_d3d11_shaderpool;
+static RB_PoolOf_(RB_D3d11Shader_, 512) g_d3d11_bufferpool;
 
 static ID3D11RasterizerState* g_d3d11_rasterizer_state;
 static ID3D11SamplerState* g_d3d11_linear_sampler_state;
 static ID3D11SamplerState* g_d3d11_nearest_sampler_state;
 
 static void
-RenderBackend_InitD3d11_(Arena* scratch_arena)
+RB_InitD3d11_(Arena* scratch_arena)
 {
 	D3D11_RASTERIZER_DESC rasterizer_desc = {
 		.FillMode = D3D11_FILL_SOLID,
@@ -80,25 +80,25 @@ RenderBackend_InitD3d11_(Arena* scratch_arena)
 }
 
 static void
-RenderBackend_DeinitD3d11_(Arena* scratch_arena)
+RB_DeinitD3d11_(Arena* scratch_arena)
 {
 }
 
 static void
-RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand* commands)
+RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
-	for (RenderBackend_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
+	for (RB_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
 		Assert(cmd->kind);
 		Assert(cmd->handle);
 		
-		RenderBackend_Handle handle = *cmd->handle;
+		RB_Handle handle = *cmd->handle;
 		
 		switch (cmd->kind)
 		{
 			case 0: Assert(false); break;
 			
-			case RenderBackend_ResourceCommandKind_MakeTexture2D:
+			case RB_ResourceCommandKind_MakeTexture2D:
 			{
 				Assert(!handle.id);
 				
@@ -159,13 +159,13 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				D3d11Call(ID3D11Texture2D_QueryInterface(texture, &IID_ID3D11Resource, (void**)&as_resource));
 				D3d11Call(ID3D11Device_CreateShaderResourceView(D3d11.device, as_resource, &resource_view_desc, &resource_view));
 				
-				RenderBackend_D3d11Texture2D_* pool_data = RenderBackend_PoolAlloc(&g_d3d11_texpool, &handle.id);
+				RB_D3d11Texture2D_* pool_data = RB_PoolAlloc_(&g_d3d11_texpool, &handle.id);
 				pool_data->texture = texture;
 				pool_data->resource_view = resource_view;
 				pool_data->sampler_state = sampler_state;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeVertexBuffer:
+			case RB_ResourceCommandKind_MakeVertexBuffer:
 			{
 				Assert(!handle.id);
 				SafeAssert(cmd->buffer.size <= UINT32_MAX);
@@ -187,11 +187,11 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				
 				D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &buffer_desc, buf_initial, &buffer));
 				
-				RenderBackend_D3d11Buffer_* pool_data = RenderBackend_PoolAlloc(&g_d3d11_bufferpool, &handle.id);
+				RB_D3d11Buffer_* pool_data = RB_PoolAlloc_(&g_d3d11_bufferpool, &handle.id);
 				pool_data->buffer = buffer;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeIndexBuffer:
+			case RB_ResourceCommandKind_MakeIndexBuffer:
 			{
 				Assert(!handle.id);
 				SafeAssert(cmd->buffer.size <= UINT32_MAX);
@@ -213,11 +213,11 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				
 				D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &buffer_desc, buf_initial, &buffer));
 				
-				RenderBackend_D3d11Buffer_* pool_data = RenderBackend_PoolAlloc(&g_d3d11_bufferpool, &handle.id);
+				RB_D3d11Buffer_* pool_data = RB_PoolAlloc_(&g_d3d11_bufferpool, &handle.id);
 				pool_data->buffer = buffer;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeShader:
+			case RB_ResourceCommandKind_MakeShader:
 			{
 				Assert(!handle.id);
 				
@@ -236,22 +236,22 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 					if (!cmd->shader.input_layout[i].kind)
 						break;
 					
-					RenderBackend_LayoutDesc curr_layout = cmd->shader.input_layout[i];
+					RB_LayoutDesc curr_layout = cmd->shader.input_layout[i];
 					const char* chars = "0123456789abcdef";
 					
 					switch (curr_layout.kind)
 					{
 						case 0: Assert(false); break;
 						
-						//case RenderBackend_LayoutDescKind_Vec2:
-						//case RenderBackend_LayoutDescKind_Vec3:
-						//case RenderBackend_LayoutDescKind_Vec4:
+						//case RB_LayoutDescKind_Vec2:
+						//case RB_LayoutDescKind_Vec3:
+						//case RB_LayoutDescKind_Vec4:
 						{
 							DXGI_FORMAT format;
 							
-							if (0) case RenderBackend_LayoutDescKind_Vec2: format = DXGI_FORMAT_R32G32_FLOAT;
-							if (0) case RenderBackend_LayoutDescKind_Vec3: format = DXGI_FORMAT_R32G32B32_FLOAT;
-							if (0) case RenderBackend_LayoutDescKind_Vec4: format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+							if (0) case RB_LayoutDescKind_Vec2: format = DXGI_FORMAT_R32G32_FLOAT;
+							if (0) case RB_LayoutDescKind_Vec3: format = DXGI_FORMAT_R32G32B32_FLOAT;
+							if (0) case RB_LayoutDescKind_Vec4: format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 							
 							char* semname = (char[4]) { 'V', chars[layout_size], '_', 0 };
 							semname = Mem_Copy(layout_semname[layout_size], semname, 4);
@@ -269,7 +269,7 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 							layout_desc[layout_size++] = element_desc;
 						} break;
 						
-						case RenderBackend_LayoutDescKind_Mat4:
+						case RB_LayoutDescKind_Mat4:
 						{
 							char* semname = (char[4]) { 'V', chars[layout_size], '_', 0 };
 							semname = Mem_Copy(layout_semname[layout_size], semname, 4);
@@ -296,23 +296,23 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				D3d11Call(ID3D11Device_CreatePixelShader(D3d11.device, ps_blob.data, ps_blob.size, NULL, &ps));
 				D3d11Call(ID3D11Device_CreateInputLayout(D3d11.device, layout_desc, layout_size, vs_blob.data, vs_blob.size, &input_layout));
 				
-				RenderBackend_D3d11Shader_* pool_data = RenderBackend_PoolAlloc(&g_d3d11_shaderpool, &handle.id);
+				RB_D3d11Shader_* pool_data = RB_PoolAlloc_(&g_d3d11_shaderpool, &handle.id);
 				pool_data->vertex_shader = vs;
 				pool_data->pixel_shader = ps;
 				pool_data->input_layout = input_layout;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeRenderTarget:
+			case RB_ResourceCommandKind_MakeRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_UpdateVertexBuffer:
-			case RenderBackend_ResourceCommandKind_UpdateIndexBuffer:
+			case RB_ResourceCommandKind_UpdateVertexBuffer:
+			case RB_ResourceCommandKind_UpdateIndexBuffer:
 			{
 				Assert(handle.id);
 				
-				RenderBackend_D3d11Buffer_* pool_data = RenderBackend_PoolFetch(&g_d3d11_bufferpool, handle.id);
+				RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, handle.id);
 				
 				// TODO(ljre): cmd->flag_subregion
 				
@@ -326,11 +326,11 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_UpdateTexture2D:
+			case RB_ResourceCommandKind_UpdateTexture2D:
 			{
 				Assert(handle.id);
 				
-				RenderBackend_D3d11Texture2D_* pool_data = RenderBackend_PoolFetch(&g_d3d11_texpool, handle.id);
+				RB_D3d11Texture2D_* pool_data = RB_PoolFetch_(&g_d3d11_texpool, handle.id);
 				
 				// TODO(ljre): cmd->flag_subregion
 				
@@ -350,38 +350,38 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeTexture2D:
+			case RB_ResourceCommandKind_FreeTexture2D:
 			{
 				Assert(handle.id);
 				
-				RenderBackend_D3d11Texture2D_* pool_data = RenderBackend_PoolFetch(&g_d3d11_texpool, handle.id);
+				RB_D3d11Texture2D_* pool_data = RB_PoolFetch_(&g_d3d11_texpool, handle.id);
 				
 				ID3D11Texture2D_Release(pool_data->texture);
 				ID3D11ShaderResourceView_Release(pool_data->resource_view);
 				
-				RenderBackend_PoolFree(&g_d3d11_texpool, handle.id);
+				RB_PoolFree_(&g_d3d11_texpool, handle.id);
 				handle.id = 0;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeVertexBuffer:
-			case RenderBackend_ResourceCommandKind_FreeIndexBuffer:
+			case RB_ResourceCommandKind_FreeVertexBuffer:
+			case RB_ResourceCommandKind_FreeIndexBuffer:
 			{
 				Assert(handle.id);
 				
-				RenderBackend_D3d11Buffer_* pool_data = RenderBackend_PoolFetch(&g_d3d11_bufferpool, handle.id);
+				RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, handle.id);
 				
 				ID3D11Buffer_Release(pool_data->buffer);
 				
-				RenderBackend_PoolFree(&g_d3d11_bufferpool, handle.id);
+				RB_PoolFree_(&g_d3d11_bufferpool, handle.id);
 				handle.id = 0;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeShader:
+			case RB_ResourceCommandKind_FreeShader:
 			{
 				SafeAssert(false);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeRenderTarget:
+			case RB_ResourceCommandKind_FreeRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
@@ -390,7 +390,7 @@ RenderBackend_ResourceD3d11_(Arena* scratch_arena, RenderBackend_ResourceCommand
 }
 
 static void
-RenderBackend_DrawD3d11_(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height)
+RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
 	D3D11_VIEWPORT viewport = {
 		.TopLeftX = 0,
@@ -404,7 +404,7 @@ RenderBackend_DrawD3d11_(Arena* scratch_arena, RenderBackend_DrawCommand* comman
 	ID3D11DeviceContext_RSSetViewports(D3d11.context, 1, &viewport);
 	ID3D11DeviceContext_RSSetState(D3d11.context, g_d3d11_rasterizer_state);
 	
-	for (RenderBackend_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
+	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
 		Assert(cmd->kind);
 		
@@ -412,29 +412,29 @@ RenderBackend_DrawD3d11_(Arena* scratch_arena, RenderBackend_DrawCommand* comman
 		{
 			case 0: SafeAssert(false); break;
 			
-			case RenderBackend_DrawCommandKind_Clear:
+			case RB_DrawCommandKind_Clear:
 			{
 				ID3D11DeviceContext_ClearRenderTargetView(D3d11.context, D3d11.target, cmd->clear.color);
 			} break;
 			
-			case RenderBackend_DrawCommandKind_SetRenderTarget:
+			case RB_DrawCommandKind_SetRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
 			
-			case RenderBackend_DrawCommandKind_ResetRenderTarget:
+			case RB_DrawCommandKind_ResetRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
 			
-			case RenderBackend_DrawCommandKind_DrawCall:
+			case RB_DrawCommandKind_DrawCall:
 			{
 				uint32 index_count = cmd->drawcall.index_count;
 				uint32 instance_count = cmd->drawcall.instance_count;
 				
 				// Shaders
 				SafeAssert(cmd->drawcall.shader && cmd->drawcall.shader->id);
-				RenderBackend_D3d11Shader_* shader_pool_data = RenderBackend_PoolFetch(&g_d3d11_shaderpool, cmd->drawcall.shader->id);
+				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, cmd->drawcall.shader->id);
 				
 				ID3D11VertexShader* vertex_shader = shader_pool_data->vertex_shader;
 				ID3D11PixelShader* pixel_shader = shader_pool_data->pixel_shader;
@@ -442,7 +442,7 @@ RenderBackend_DrawD3d11_(Arena* scratch_arena, RenderBackend_DrawCommand* comman
 				
 				// Buffers
 				SafeAssert(cmd->drawcall.ibuffer && cmd->drawcall.ibuffer->id);
-				RenderBackend_D3d11Buffer_* ibuffer_pool_data = RenderBackend_PoolFetch(&g_d3d11_bufferpool, cmd->drawcall.ibuffer->id);
+				RB_D3d11Buffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.ibuffer->id);
 				
 				ID3D11Buffer* ibuffer = ibuffer_pool_data->buffer;;
 				
@@ -455,7 +455,7 @@ RenderBackend_DrawD3d11_(Arena* scratch_arena, RenderBackend_DrawCommand* comman
 						break;
 					
 					SafeAssert(cmd->drawcall.vbuffers[i]->id);
-					RenderBackend_D3d11Buffer_* vbuffer = RenderBackend_PoolFetch(&g_d3d11_bufferpool, cmd->drawcall.vbuffers[i]->id);
+					RB_D3d11Buffer_* vbuffer = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.vbuffers[i]->id);
 					
 					vbuffers[i] = vbuffer->buffer;
 					vbuffer_count = i+1;

@@ -1,64 +1,67 @@
-float32 typedef UtilEase_Proc(float32 t);
+#ifndef UTIL_EASE_H
+#define UTIL_EASE_H
 
-static inline float32 UtilEase_InSine(float32 t);
-static inline float32 UtilEase_OutSine(float32 t);
-static inline float32 UtilEase_InOutSine(float32 t);
+float32 typedef UEase_Proc(float32 t);
 
-static inline float32 UtilEase_InQuad(float32 t);
-static inline float32 UtilEase_OutQuad(float32 t);
-static inline float32 UtilEase_InOutQuad(float32 t);
+static inline float32 UEase_InSine(float32 t);
+static inline float32 UEase_OutSine(float32 t);
+static inline float32 UEase_InOutSine(float32 t);
 
-static inline float32 UtilEase_InCubic(float32 t);
-static inline float32 UtilEase_OutCubic(float32 t);
-static inline float32 UtilEase_InOutCubic(float32 t);
+static inline float32 UEase_InQuad(float32 t);
+static inline float32 UEase_OutQuad(float32 t);
+static inline float32 UEase_InOutQuad(float32 t);
 
-static inline float32 UtilEase_InQuart(float32 t);
-static inline float32 UtilEase_OutQuart(float32 t);
-static inline float32 UtilEase_InOutQuart(float32 t);
+static inline float32 UEase_InCubic(float32 t);
+static inline float32 UEase_OutCubic(float32 t);
+static inline float32 UEase_InOutCubic(float32 t);
 
-static inline float32 UtilEase_InExpo(float32 t);
-static inline float32 UtilEase_OutExpo(float32 t);
-static inline float32 UtilEase_InOutExpo(float32 t);
+static inline float32 UEase_InQuart(float32 t);
+static inline float32 UEase_OutQuart(float32 t);
+static inline float32 UEase_InOutQuart(float32 t);
 
-static inline float32 UtilEase_InCirc(float32 t);
-static inline float32 UtilEase_OutCirc(float32 t);
-static inline float32 UtilEase_InOutCirc(float32 t);
+static inline float32 UEase_InExpo(float32 t);
+static inline float32 UEase_OutExpo(float32 t);
+static inline float32 UEase_InOutExpo(float32 t);
 
-static inline float32 UtilEase_InBack(float32 t);
-static inline float32 UtilEase_OutBack(float32 t);
-static inline float32 UtilEase_InOutBack(float32 t);
+static inline float32 UEase_InCirc(float32 t);
+static inline float32 UEase_OutCirc(float32 t);
+static inline float32 UEase_InOutCirc(float32 t);
 
-static inline float32 UtilEase_InElastic(float32 t);
-static inline float32 UtilEase_OutElastic(float32 t);
-static inline float32 UtilEase_InOutElastic(float32 t);
+static inline float32 UEase_InBack(float32 t);
+static inline float32 UEase_OutBack(float32 t);
+static inline float32 UEase_InOutBack(float32 t);
 
-static inline float32 UtilEase_InBounce(float32 t);
-static inline float32 UtilEase_OutBounce(float32 t);
-static inline float32 UtilEase_InOutBounce(float32 t);
+static inline float32 UEase_InElastic(float32 t);
+static inline float32 UEase_OutElastic(float32 t);
+static inline float32 UEase_InOutElastic(float32 t);
+
+static inline float32 UEase_InBounce(float32 t);
+static inline float32 UEase_OutBounce(float32 t);
+static inline float32 UEase_InOutBounce(float32 t);
 
 //~ Implementation
 static inline float32
-UtilEase_InSine(float32 t)
+UEase_InSine(float32 t)
 { return 1.0f - cosf(t * Math_PI * 0.5f); }
 
 static inline float32
-UtilEase_OutSine(float32 t)
+UEase_OutSine(float32 t)
 { return sinf(t * Math_PI * 0.5f); }
 
 static inline float32
-UtilEase_InOutSine(float32 t)
+UEase_InOutSine(float32 t)
 { return -(cosf(Math_PI * t) - 1) * 0.5f; }
 
 static inline float32
-UtilEase_InQuad(float32 t)
+UEase_InQuad(float32 t)
 { return t*t; }
 
 static inline float32
-UtilEase_OutQuad(float32 t)
+UEase_OutQuad(float32 t)
 { t = 1 - t; return 1 - t*t; }
 
 static inline float32
-UtilEase_InOutQuad(float32 t)
+UEase_InOutQuad(float32 t)
 {
 	if (t < 0.5f)
 		return 2 * t*t;
@@ -68,15 +71,15 @@ UtilEase_InOutQuad(float32 t)
 }
 
 static inline float32
-UtilEase_InCubic(float32 t)
+UEase_InCubic(float32 t)
 { return t*t*t; }
 
 static inline float32
-UtilEase_OutCubic(float32 t)
+UEase_OutCubic(float32 t)
 { t = 1 - t; return 1 - t*t*t; }
 
 static inline float32
-UtilEase_InOutCubic(float32 t)
+UEase_InOutCubic(float32 t)
 {
 	if (t < 0.5f)
 		return 4 * t*t*t;
@@ -86,15 +89,15 @@ UtilEase_InOutCubic(float32 t)
 }
 
 static inline float32
-UtilEase_InQuart(float32 t)
+UEase_InQuart(float32 t)
 { return t*t*t*t; }
 
 static inline float32
-UtilEase_OutQuart(float32 t)
+UEase_OutQuart(float32 t)
 { t = 1 - t; return 1 - t*t*t*t; }
 
 static inline float32
-UtilEase_InOutQuart(float32 t)
+UEase_InOutQuart(float32 t)
 {
 	if (t < 0.5f)
 		return 8 * t*t*t*t;
@@ -104,15 +107,15 @@ UtilEase_InOutQuart(float32 t)
 }
 
 static inline float32
-UtilEase_InExpo(float32 t)
+UEase_InExpo(float32 t)
 { return (t <= 0) ? 0.0f : powf(2, 10 * t - 10); }
 
 static inline float32
-UtilEase_OutExpo(float32 t)
+UEase_OutExpo(float32 t)
 { return (t >= 1) ? 1.0f : powf(2, -10 * t); }
 
 static inline float32
-UtilEase_InOutExpo(float32 t)
+UEase_InOutExpo(float32 t)
 {
 	if (t <= 0)
 		return 0.0f;
@@ -124,15 +127,15 @@ UtilEase_InOutExpo(float32 t)
 }
 
 static inline float32
-UtilEase_InCirc(float32 t)
+UEase_InCirc(float32 t)
 { return 1 - sqrtf(1 - t*t); }
 
 static inline float32
-UtilEase_OutCirc(float32 t)
+UEase_OutCirc(float32 t)
 { t -= 1; return sqrtf(1 - t*t);  }
 
 static inline float32
-UtilEase_InOutCirc(float32 t)
+UEase_InOutCirc(float32 t)
 {
 	if (t < 0.5f)
 		return (1 - sqrtf(1 - 4*t*t)) * 0.5f;
@@ -142,7 +145,7 @@ UtilEase_InOutCirc(float32 t)
 }
 
 static inline float32
-UtilEase_InBack(float32 t)
+UEase_InBack(float32 t)
 {
 	const float32 c1 = 1.70158f;
 	const float32 c3 = c1 + 1;
@@ -151,7 +154,7 @@ UtilEase_InBack(float32 t)
 }
 
 static inline float32
-UtilEase_OutBack(float32 t)
+UEase_OutBack(float32 t)
 {
 	const float32 c1 = 1.70158f;
 	const float32 c3 = c1 + 1;
@@ -161,7 +164,7 @@ UtilEase_OutBack(float32 t)
 }
 
 static inline float32
-UtilEase_InOutBack(float32 t)
+UEase_InOutBack(float32 t)
 {
 	const float32 c1 = 1.70158f;
 	const float32 c2 = c1 * 1.525f;
@@ -174,7 +177,7 @@ UtilEase_InOutBack(float32 t)
 }
 
 static inline float32
-UtilEase_InElastic(float32 t)
+UEase_InElastic(float32 t)
 {
 	const float32 c4 = (2 * Math_PI) / 3;
 	
@@ -187,7 +190,7 @@ UtilEase_InElastic(float32 t)
 }
 
 static inline float32
-UtilEase_OutElastic(float32 t)
+UEase_OutElastic(float32 t)
 {
 	const float32 c4 = (2 * Math_PI) / 3;
 	
@@ -200,7 +203,7 @@ UtilEase_OutElastic(float32 t)
 }
 
 static inline float32
-UtilEase_InOutElastic(float32 t)
+UEase_InOutElastic(float32 t)
 {
 	const float32 c5 = (2 * Math_PI) / 4.5f;
 	
@@ -215,11 +218,11 @@ UtilEase_InOutElastic(float32 t)
 }
 
 static inline float32
-UtilEase_InBounce(float32 t)
-{ return 1 - UtilEase_OutBounce(t); }
+UEase_InBounce(float32 t)
+{ return 1 - UEase_OutBounce(t); }
 
 static inline float32
-UtilEase_OutBounce(float32 t)
+UEase_OutBounce(float32 t)
 {
 	const float32 n1 = 7.5625f;
 	const float32 d1 = 2.75f;
@@ -243,9 +246,11 @@ UtilEase_OutBounce(float32 t)
 }
 
 static inline float32
-UtilEase_InOutBounce(float32 t)
+UEase_InOutBounce(float32 t)
 {
 	if (t < 0.5f)
-		return (1 - UtilEase_OutBounce(1 - 2*t)) * 0.5f;
-	return (1 + UtilEase_OutBounce(2*t - 1)) * 0.5f;
+		return (1 - UEase_OutBounce(1 - 2*t)) * 0.5f;
+	return (1 + UEase_OutBounce(2*t - 1)) * 0.5f;
 }
+
+#endif //UTIL_EASE_H

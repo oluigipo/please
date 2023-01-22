@@ -229,7 +229,7 @@ struct Render_Data2D
 typedef Render_Data2D;
 
 //~ Main API
-struct Engine_RenderApi
+struct E_RenderApi
 {
 	bool (*make_texture_2d)(const Render_Texture2DDesc* desc, Render_Texture2D* out_texture);
 	bool (*make_font)(const Render_FontDesc* desc, Render_Font* out_font);
@@ -249,59 +249,59 @@ struct Engine_RenderApi
 	
 	void (*calc_text_size)(const Render_Font* font, String text, vec2* out_size);
 }
-typedef Engine_RenderApi;
+typedef E_RenderApi;
 
 //~ Wrappers
 static inline bool
-Render_MakeTexture2D(Engine_Data* engine, const Render_Texture2DDesc* desc, Render_Texture2D* out_texture)
+Render_MakeTexture2D(E_GlobalData* engine, const Render_Texture2DDesc* desc, Render_Texture2D* out_texture)
 { return engine->render->make_texture_2d(desc, out_texture); }
 
 static inline bool
-Render_MakeFont(Engine_Data* engine, const Render_FontDesc* desc, Render_Font* out_font)
+Render_MakeFont(E_GlobalData* engine, const Render_FontDesc* desc, Render_Font* out_font)
 { return engine->render->make_font(desc, out_font); }
 
 static inline bool
-Render_MakeShader(Engine_Data* engine, const Render_ShaderDesc* desc, Render_Shader* out_shader)
+Render_MakeShader(E_GlobalData* engine, const Render_ShaderDesc* desc, Render_Shader* out_shader)
 { return engine->render->make_shader(desc, out_shader); }
 
 static inline bool
-Render_MakeFramebuffer(Engine_Data* engine, const Render_FramebufferDesc* desc, Render_Framebuffer* out_fb)
+Render_MakeFramebuffer(E_GlobalData* engine, const Render_FramebufferDesc* desc, Render_Framebuffer* out_fb)
 { return engine->render->make_framebuffer(desc, out_fb); }
 
 static inline void
-Render_FreeTexture2D(Engine_Data* engine, Render_Texture2D* texture)
+Render_FreeTexture2D(E_GlobalData* engine, Render_Texture2D* texture)
 { engine->render->free_texture_2d(texture); }
 
 static inline void
-Render_FreeFont(Engine_Data* engine, Render_Font* font)
+Render_FreeFont(E_GlobalData* engine, Render_Font* font)
 { engine->render->free_font(font); }
 
 static inline void
-Render_FreeShader(Engine_Data* engine, Render_Shader* shader)
+Render_FreeShader(E_GlobalData* engine, Render_Shader* shader)
 { engine->render->free_shader(shader); }
 
 static inline void
-Render_FreeFramebuffer(Engine_Data* engine, Render_Framebuffer* fb)
+Render_FreeFramebuffer(E_GlobalData* engine, Render_Framebuffer* fb)
 { engine->render->free_framebuffer(fb); }
 
 static inline void
-Render_ClearColor(Engine_Data* engine, const vec4 color)
+Render_ClearColor(E_GlobalData* engine, const vec4 color)
 { engine->render->clear_color(color); }
 
 static inline void
-Render_ClearFramebuffer(Engine_Data* engine, Render_Framebuffer* fb, const vec4 color)
+Render_ClearFramebuffer(E_GlobalData* engine, Render_Framebuffer* fb, const vec4 color)
 { engine->render->clear_framebuffer(fb, color); }
 
 static inline void
-Render_Draw2D(Engine_Data* engine, const Render_Data2D* data)
+Render_Draw2D(E_GlobalData* engine, const Render_Data2D* data)
 { engine->render->draw_2d(data); }
 
 static inline void
-Render_BatchText(Engine_Data* engine, Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data)
+Render_BatchText(E_GlobalData* engine, Render_Font* font, String text, const vec4 color, const vec2 pos, const vec2 alignment, const vec2 scale, Arena* arena, Render_Data2D* out_data)
 { engine->render->batch_text(font, text, color, pos, alignment, scale, arena, out_data); }
 
 static inline void
-Render_CalcTextSize(Engine_Data* engine, const Render_Font* font, String text, vec2* out_size)
+Render_CalcTextSize(E_GlobalData* engine, const Render_Font* font, String text, vec2* out_size)
 { engine->render->calc_text_size(font, text, out_size); }
 
 #endif //INTERNAL_API_RENDER_H

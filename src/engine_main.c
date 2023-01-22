@@ -1,11 +1,11 @@
 //~ API
 API void
-Engine_FinishFrame(void)
+E_FinishFrame(void)
 {
 	Trace();
 	
 	if (!global_engine.outputed_sound_this_frame)
-		Engine_PlayAudios(NULL, NULL, 1.0f);
+		E_PlayAudios(NULL, NULL, 1.0f);
 	
 	global_engine.outputed_sound_this_frame = false;
 	
@@ -83,7 +83,7 @@ OS_UserMain(int32 argc, char* argv[])
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else
-	Engine_InitRender(&global_engine.render);
+	E_InitRender(&global_engine.render);
 	
 	// NOTE(ljre): Run
 	global_engine.last_frame_time = OS_GetTimeInSeconds();
@@ -91,19 +91,19 @@ OS_UserMain(int32 argc, char* argv[])
 #ifdef CONFIG_ENABLE_HOT
 	do
 	{
-		void(*func)(Engine_Data*) = OS_LoadGameLibrary();
+		void(*func)(E_GlobalData*) = OS_LoadGameLibrary();
 		
 		func(&global_engine);
 	}
 	while (global_engine.running);
 #else
 	do
-		Game_Main(&global_engine);
+		G_Main(&global_engine);
 	while (global_engine.running);
 #endif
 	
 	// NOTE(ljre): Deinit
-	Engine_DeinitRender();
+	E_DeinitRender();
 	
 	return 0;
 }

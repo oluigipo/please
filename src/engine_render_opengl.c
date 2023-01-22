@@ -545,7 +545,7 @@ OpenGL_Draw2D(const Render_Data2D* data)
 		};
 	}
 	
-	Engine_CalcViewMatrix2D(&camera, view);
+	E_CalcViewMatrix2D(&camera, view);
 	
 	switch (data->blendmode)
 	{
@@ -831,11 +831,11 @@ OpenGL_FreeFramebuffer(Render_Framebuffer* fb)
 
 //~ NOTE(ljre): Init
 static bool
-OpenGL_Init(const Engine_RenderApi** out_api)
+OpenGL_Init(const E_RenderApi** out_api)
 {
 	Trace();
 	
-	static const Engine_RenderApi api = {
+	static const E_RenderApi api = {
 		.make_texture_2d = OpenGL_MakeTexture2D,
 		.make_font = OpenGL_MakeFont,
 		.make_shader = OpenGL_MakeShader,

@@ -1,6 +1,6 @@
 //~ Internal API
 static bool
-Engine_InitRender(const Engine_RenderApi** out_api)
+E_InitRender(const E_RenderApi** out_api)
 {
 	Trace();
 	
@@ -20,7 +20,7 @@ Engine_InitRender(const Engine_RenderApi** out_api)
 }
 
 static void
-Engine_DeinitRender(void)
+E_DeinitRender(void)
 {
 	Trace();
 	
@@ -39,7 +39,7 @@ Engine_DeinitRender(void)
 
 //~ API
 API void
-Engine_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view)
+E_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view)
 {
 	vec3 size = {
 		camera->zoom * 2.0f / camera->size[0],
@@ -57,7 +57,7 @@ Engine_CalcViewMatrix2D(const Render_Camera2D* camera, mat4 out_view)
 }
 
 API void
-Engine_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect)
+E_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect)
 {
 	glm_mat4_identity(out_view);
 	glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, out_view);
@@ -68,7 +68,7 @@ Engine_CalcViewMatrix3D(const Render_Camera3D* camera, mat4 out_view, float32 fo
 }
 
 API void
-Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model)
+E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model)
 {
 	mat4 model;
 	glm_mat4_identity(model);
@@ -79,7 +79,7 @@ Engine_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 o
 }
 
 API void
-Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model)
+E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model)
 {
 	mat4 model;
 	glm_mat4_identity(model);
@@ -92,7 +92,7 @@ Engine_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 
 }
 
 API void
-Engine_CalcPointInCamera2DSpace(const Render_Camera2D* camera, const vec2 pos, vec2 out_pos)
+E_CalcPointInCamera2DSpace(const Render_Camera2D* camera, const vec2 pos, vec2 out_pos)
 {
 	vec2 result;
 	float32 inv_zoom = 1.0f / camera->zoom * 2.0f;

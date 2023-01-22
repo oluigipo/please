@@ -1,8 +1,8 @@
-#ifndef QOI_H
-#define QOI_H
+#ifndef UTIL_QOI_H
+#define UTIL_QOI_H
 
 static int32
-Qoi_HashOfPixel_(uint32 color)
+UQoi_HashOfPixel_(uint32 color)
 {
 	uint8 r = (color >> 0 ) & 0xff;
 	uint8 g = (color >> 8 ) & 0xff;
@@ -14,7 +14,7 @@ Qoi_HashOfPixel_(uint32 color)
 
 //~ Internal API
 static uint32*
-Qoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int32* out_height)
+UQoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int32* out_height)
 {
 	Trace();
 	
@@ -190,7 +190,7 @@ Qoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int3
 			break;
 		}
 		
-		pixels[Qoi_HashOfPixel_(previous_pixel.value)] = previous_pixel;
+		pixels[UQoi_HashOfPixel_(previous_pixel.value)] = previous_pixel;
 	}
 	
 	//- NOTE(ljre): Check for end marker.
@@ -217,4 +217,4 @@ Qoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int3
 	return (uint32*)colors;
 }
 
-#endif //QOI_H
+#endif //UTIL_QOI_H

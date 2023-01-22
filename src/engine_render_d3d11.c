@@ -212,7 +212,7 @@ D3d11_Draw2D(const Render_Data2D* data)
 		};
 	}
 	
-	Engine_CalcViewMatrix2D(&camera, view);
+	E_CalcViewMatrix2D(&camera, view);
 	
 	D3D11_BUFFER_DESC buffer_desc = {
 		.Usage = D3D11_USAGE_IMMUTABLE,
@@ -288,10 +288,10 @@ D3d11_Draw2D(const Render_Data2D* data)
 
 //~ NOTE(ljre): Internal API
 static bool
-D3d11_Init(const Engine_RenderApi** out_api)
+D3d11_Init(const E_RenderApi** out_api)
 {
 	Trace();
-	static const Engine_RenderApi api = {
+	static const E_RenderApi api = {
 		.make_texture_2d = D3d11_MakeTexture2D,
 		.make_shader = D3d11_MakeShader,
 		.clear_color = D3d11_ClearColor,

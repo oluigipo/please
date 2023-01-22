@@ -1,5 +1,5 @@
-#ifndef JSON_H
-#define JSON_H
+#ifndef UTIL_JSON_H
+#define UTIL_JSON_H
 
 //   JSON Parser
 //
@@ -8,21 +8,21 @@
 EXAMPLE USAGE
 {
 	// NOTE(ljre): 'file' is expected to be an object
-	Json_Value file;
-	Json_InitFromBuffer(data, size, &file);
+	UJson_Value file;
+	UJson_InitFromBuffer(data, size, &file);
 	
 	// NOTE(ljre): iterate through every field of the object
-	for (Json_Field field = { &file }; Json_NextField(&field); )
+	for (UJson_Field field = { &file }; UJson_NextField(&field); )
 	{
 		// NOTE(ljre): "raw name" = without processing escape sequences, etc.
-		String name = Json_RawFieldName(&field);
+		String name = UJson_RawFieldName(&field);
 		
 		if (String_Equals(name, Str("to_print")))
 		{
-			Json_Value value;
-			Json_FieldValue(&field, &value);
+			UJson_Value value;
+			UJson_FieldValue(&field, &value);
 			
-			String value = Json_RawStringValue(&value);
+			String value = UJson_RawStringValue(&value);
 			
 			Print(value);
 		}
@@ -31,31 +31,31 @@ EXAMPLE USAGE
 #endif
 
 //~ Types
-enum Json_ValueKind
+enum UJson_ValueKind
 {
-	Json_ValueKind_Invalid = 0,
+	UJson_ValueKind_Invalid = 0,
 	
-	Json_ValueKind_Object,
-	Json_ValueKind_Array,
-	Json_ValueKind_Number,
-	Json_ValueKind_String,
-	Json_ValueKind_Bool,
-	Json_ValueKind_Null,
+	UJson_ValueKind_Object,
+	UJson_ValueKind_Array,
+	UJson_ValueKind_Number,
+	UJson_ValueKind_String,
+	UJson_ValueKind_Bool,
+	UJson_ValueKind_Null,
 }
-typedef Json_ValueKind;
+typedef UJson_ValueKind;
 
-struct Json_Value
+struct UJson_Value
 {
 	const uint8* begin;
 	const uint8* end;
 	
-	Json_ValueKind kind;
+	UJson_ValueKind kind;
 }
-typedef Json_Value;
+typedef UJson_Value;
 
-struct Json_Field
+struct UJson_Field
 {
-	const Json_Value* object;
+	const UJson_Value* object;
 	
 	const uint8* begin;
 	const uint8* end;
@@ -63,44 +63,44 @@ struct Json_Field
 	const uint8* name_end;
 	const uint8* value_begin;
 }
-typedef Json_Field;
+typedef UJson_Field;
 
-struct Json_ArrayIndex
+struct UJson_ArrayIndex
 {
-	const Json_Value* object;
+	const UJson_Value* object;
 	
 	const uint8* begin;
 	const uint8* end;
 }
-typedef Json_ArrayIndex;
+typedef UJson_ArrayIndex;
 
 //~ Functions
 static inline bool
-Json_IsWhiteSpace_(uint8 c)
+UJson_IsWhiteSpace_(uint8 c)
 {
 	return (c == ' ') | (c == '\t') | (c == '\n') | (c == '\r');
 }
 
 static inline const uint8*
-Json_IgnoreWhiteSpacesLeft_(const uint8* begin, const uint8* end)
+UJson_IgnoreWhiteSpacesLeft_(const uint8* begin, const uint8* end)
 {
-	while (begin < end && Json_IsWhiteSpace_(*begin))
+	while (begin < end && UJson_IsWhiteSpace_(*begin))
 		++begin;
 	
 	return begin;
 }
 
 static inline const uint8*
-Json_IgnoreWhiteSpacesRight_(const uint8* begin, const uint8* end)
+UJson_IgnoreWhiteSpacesRight_(const uint8* begin, const uint8* end)
 {
-	while (begin + 1 < end && Json_IsWhiteSpace_(end[-1]))
+	while (begin + 1 < end && UJson_IsWhiteSpace_(end[-1]))
 		--end;
 	
 	return end;
 }
 
 static const uint8*
-Json_FindEndOfValue_(const uint8* begin, const uint8* end)
+UJson_FindEndOfValue_(const uint8* begin, const uint8* end)
 {
 	const uint8* it = begin;
 	
@@ -174,19 +174,19 @@ Json_FindEndOfValue_(const uint8* begin, const uint8* end)
 	return it;
 }
 
-static Json_ValueKind
-Json_CalcValueKind_(const Json_Value* value)
+static UJson_ValueKind
+UJson_CalcValueKind_(const UJson_Value* value)
 {
 	switch (*value->begin)
 	{
-		case '{': return Json_ValueKind_Object; break;
-		case '[': return Json_ValueKind_Array; break;
-		case '"': return Json_ValueKind_String; break;
+		case '{': return UJson_ValueKind_Object; break;
+		case '[': return UJson_ValueKind_Array; break;
+		case '"': return UJson_ValueKind_String; break;
 		
 		case '-': case '0':
 		case '1': case '2': case '3': case'4':
 		case '5': case '6': case '7': case'8':
-		case '9': return Json_ValueKind_Number; break;
+		case '9': return UJson_ValueKind_Number; break;
 		
 		default:
 		{
@@ -194,30 +194,30 @@ Json_CalcValueKind_(const Json_Value* value)
 			String str = { .size = len, .data = value->begin };
 			
 			if (String_Equals(str, Str("true")) || String_Equals(str, Str("false")))
-				return Json_ValueKind_Bool;
+				return UJson_ValueKind_Bool;
 			else if (String_Equals(str, Str("null")))
-				return Json_ValueKind_Null;
+				return UJson_ValueKind_Null;
 			else
-				return Json_ValueKind_Invalid;
+				return UJson_ValueKind_Invalid;
 		} break;
 	}
 	
-	return Json_ValueKind_Invalid;
+	return UJson_ValueKind_Invalid;
 }
 
 //~ Internal API
 static String
-Json_RawFieldName(const Json_Field* field)
+UJson_RawFieldName(const UJson_Field* field)
 {
 	return StrMake(field->name_end - (field->begin + 1), field->begin + 1);
 }
 
 static float64
-Json_NumberValueF64(const Json_Value* value)
+UJson_NumberValueF64(const UJson_Value* value)
 {
 	Assert(value);
 	Assert(value->begin);
-	Assert(value->kind == Json_ValueKind_Number);
+	Assert(value->kind == UJson_ValueKind_Number);
 	
 	uintsize len = (uintsize)(value->end - value->begin);
 	
@@ -231,11 +231,11 @@ Json_NumberValueF64(const Json_Value* value)
 }
 
 static int64
-Json_NumberValueI64(const Json_Value* value)
+UJson_NumberValueI64(const UJson_Value* value)
 {
 	Assert(value);
 	Assert(value->begin);
-	Assert(value->kind == Json_ValueKind_Number);
+	Assert(value->kind == UJson_ValueKind_Number);
 	
 	uintsize len = (uintsize)(value->end - value->begin);
 	
@@ -249,22 +249,22 @@ Json_NumberValueI64(const Json_Value* value)
 }
 
 static bool
-Json_BoolValue(const Json_Value* value)
+UJson_BoolValue(const UJson_Value* value)
 {
 	Assert(value);
 	Assert(value->begin);
-	Assert(value->kind == Json_ValueKind_Bool);
+	Assert(value->kind == UJson_ValueKind_Bool);
 	Assert(value->end - value->begin >= 4);
 	
 	return (value->end - value->begin) == 4;
 }
 
 static String
-Json_RawStringValue(const Json_Value* value)
+UJson_RawStringValue(const UJson_Value* value)
 {
 	Assert(value);
 	Assert(value->begin);
-	Assert(value->kind == Json_ValueKind_String);
+	Assert(value->kind == UJson_ValueKind_String);
 	
 	String result;
 	
@@ -275,32 +275,32 @@ Json_RawStringValue(const Json_Value* value)
 }
 
 static bool
-Json_NextIndex(Json_ArrayIndex* index)
+UJson_NextIndex(UJson_ArrayIndex* index)
 {
 	if (!index)
 		return false;
 	
-	const Json_Value* value = index->object;
-	Assert(value->kind == Json_ValueKind_Array);
+	const UJson_Value* value = index->object;
+	Assert(value->kind == UJson_ValueKind_Array);
 	Assert(value->begin < value->end);
 	
 	if (!index->begin)
 	{
-		index->begin = Json_IgnoreWhiteSpacesLeft_(value->begin + 1, value->end);
-		index->end = Json_IgnoreWhiteSpacesRight_(index->begin, value->end);
+		index->begin = UJson_IgnoreWhiteSpacesLeft_(value->begin + 1, value->end);
+		index->end = UJson_IgnoreWhiteSpacesRight_(index->begin, value->end);
 		
 		if (index->begin >= index->end)
 			return false;
 	}
 	else
 	{
-		index->end = Json_IgnoreWhiteSpacesLeft_(index->end, value->end);
+		index->end = UJson_IgnoreWhiteSpacesLeft_(index->end, value->end);
 		
 		if (index->end >= value->end || index->end[0] != ',')
 			return false;
 		
 		++index->end; // ignore ,
-		index->end = Json_IgnoreWhiteSpacesLeft_(index->end, value->end);
+		index->end = UJson_IgnoreWhiteSpacesLeft_(index->end, value->end);
 		
 		if (index->end >= value->end || index->end[0] == ']')
 			return false;
@@ -309,7 +309,7 @@ Json_NextIndex(Json_ArrayIndex* index)
 		index->end = value->end;
 	}
 	
-	index->end = Json_FindEndOfValue_(index->begin, index->end);
+	index->end = UJson_FindEndOfValue_(index->begin, index->end);
 	if (!index->end)
 		return false;
 	
@@ -317,7 +317,7 @@ Json_NextIndex(Json_ArrayIndex* index)
 }
 
 static void
-Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
+UJson_IndexValue(const UJson_ArrayIndex* index, UJson_Value* value)
 {
 	Assert(index);
 	Assert(value);
@@ -326,49 +326,49 @@ Json_IndexValue(const Json_ArrayIndex* index, Json_Value* value)
 	value->begin = index->begin;
 	value->end = index->end;
 	
-	value->kind = Json_CalcValueKind_(value);
+	value->kind = UJson_CalcValueKind_(value);
 }
 
 static uintsize
-Json_ArrayLength(const Json_Value* value)
+UJson_ArrayLength(const UJson_Value* value)
 {
 	Assert(value);
-	Assert(value->kind == Json_ValueKind_Array);
+	Assert(value->kind == UJson_ValueKind_Array);
 	
 	uintsize len = 0;
-	for (Json_ArrayIndex index = { value }; Json_NextIndex(&index); )
+	for (UJson_ArrayIndex index = { value }; UJson_NextIndex(&index); )
 		++len;
 	
 	return len;
 }
 
 static bool
-Json_NextField(Json_Field* field)
+UJson_NextField(UJson_Field* field)
 {
 	if (!field)
 		return false;
 	
-	const Json_Value* value = field->object;
-	Assert(value->kind == Json_ValueKind_Object);
+	const UJson_Value* value = field->object;
+	Assert(value->kind == UJson_ValueKind_Object);
 	Assert(value->begin < value->end);
 	
 	if (!field->begin)
 	{
-		field->begin = Json_IgnoreWhiteSpacesLeft_(value->begin + 1, value->end);
-		field->end = Json_IgnoreWhiteSpacesRight_(field->begin, value->end);
+		field->begin = UJson_IgnoreWhiteSpacesLeft_(value->begin + 1, value->end);
+		field->end = UJson_IgnoreWhiteSpacesRight_(field->begin, value->end);
 		
 		if (field->begin + 2 >= field->end)
 			return false;
 	}
 	else
 	{
-		field->end = Json_IgnoreWhiteSpacesLeft_(field->end, value->end);
+		field->end = UJson_IgnoreWhiteSpacesLeft_(field->end, value->end);
 		
 		if (field->end >= value->end || field->end[0] != ',')
 			return false;
 		
 		++field->end; // ignore ,
-		field->end = Json_IgnoreWhiteSpacesLeft_(field->end, value->end);
+		field->end = UJson_IgnoreWhiteSpacesLeft_(field->end, value->end);
 		
 		if (field->end >= value->end || field->end[0] == '}')
 			return false;
@@ -393,18 +393,18 @@ Json_NextField(Json_Field* field)
 	field->name_end = it;
 	
 	// NOTE(ljre): ':'
-	it = Json_IgnoreWhiteSpacesLeft_(it + 1, field->end);
+	it = UJson_IgnoreWhiteSpacesLeft_(it + 1, field->end);
 	if (it >= field->end || it[0] != ':')
 		return false;
 	
-	it = Json_IgnoreWhiteSpacesLeft_(it + 1, field->end);
+	it = UJson_IgnoreWhiteSpacesLeft_(it + 1, field->end);
 	if (it + 1 >= field->end)
 		return false;
 	
 	// NOTE(ljre): Value
 	field->value_begin = it;
 	
-	it = Json_FindEndOfValue_(it, field->end);
+	it = UJson_FindEndOfValue_(it, field->end);
 	if (!it)
 		return false;
 	
@@ -414,7 +414,7 @@ Json_NextField(Json_Field* field)
 }
 
 static void
-Json_FieldValue(const Json_Field* field, Json_Value* value)
+UJson_FieldValue(const UJson_Field* field, UJson_Value* value)
 {
 	Assert(field);
 	Assert(value);
@@ -423,19 +423,19 @@ Json_FieldValue(const Json_Field* field, Json_Value* value)
 	value->begin = field->value_begin;
 	value->end = field->end;
 	
-	value->kind = Json_CalcValueKind_(value);
+	value->kind = UJson_CalcValueKind_(value);
 }
 
 static bool
-Json_FindField(const Json_Value* object, String name, Json_Field* out)
+UJson_FindField(const UJson_Value* object, String name, UJson_Field* out)
 {
 	Assert(object);
-	Assert(object->kind == Json_ValueKind_Object);
+	Assert(object->kind == UJson_ValueKind_Object);
 	
-	Json_Field field = { object };
-	while (Json_NextField(&field))
+	UJson_Field field = { object };
+	while (UJson_NextField(&field))
 	{
-		if (String_Equals(Json_RawFieldName(&field), name))
+		if (String_Equals(UJson_RawFieldName(&field), name))
 		{
 			*out = field;
 			return true;
@@ -446,14 +446,14 @@ Json_FindField(const Json_Value* object, String name, Json_Field* out)
 }
 
 static bool
-Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
+UJson_FindIndex(const UJson_Value* array, int32 i, UJson_ArrayIndex* out)
 {
 	Assert(array);
-	Assert(array->kind == Json_ValueKind_Array);
+	Assert(array->kind == UJson_ValueKind_Array);
 	
-	Json_ArrayIndex index = { array };
+	UJson_ArrayIndex index = { array };
 	int32 current_i = 0;
-	while (Json_NextIndex(&index))
+	while (UJson_NextIndex(&index))
 	{
 		if (current_i++ == i)
 		{
@@ -466,60 +466,60 @@ Json_FindIndex(const Json_Value* array, int32 i, Json_ArrayIndex* out)
 }
 
 static uintsize
-Json_ReadWholeArray(const Json_Value* array, Json_Value* out_entries, uintsize max_entry_count)
+UJson_ReadWholeArray(const UJson_Value* array, UJson_Value* out_entries, uintsize max_entry_count)
 {
 	Assert(array);
-	Assert(array->kind == Json_ValueKind_Array);
+	Assert(array->kind == UJson_ValueKind_Array);
 	
 	uintsize i = 0;
-	for (Json_ArrayIndex index = { array }; i < max_entry_count && Json_NextIndex(&index); ++i)
-		Json_IndexValue(&index, &out_entries[i]);
+	for (UJson_ArrayIndex index = { array }; i < max_entry_count && UJson_NextIndex(&index); ++i)
+		UJson_IndexValue(&index, &out_entries[i]);
 	
 	return i;
 }
 
 static bool
-Json_FindFieldValue(const Json_Value* object, String name, Json_Value* out)
+UJson_FindFieldValue(const UJson_Value* object, String name, UJson_Value* out)
 {
-	Json_Field field;
-	if (!Json_FindField(object, name, &field))
+	UJson_Field field;
+	if (!UJson_FindField(object, name, &field))
 		return false;
 	
-	Json_FieldValue(&field, out);
+	UJson_FieldValue(&field, out);
 	return true;
 }
 
 static bool
-Json_FindIndexValue(const Json_Value* array, int32 i, Json_Value* out)
+UJson_FindIndexValue(const UJson_Value* array, int32 i, UJson_Value* out)
 {
-	Json_ArrayIndex index;
-	if (!Json_FindIndex(array, i, &index))
+	UJson_ArrayIndex index;
+	if (!UJson_FindIndex(array, i, &index))
 		return false;
 	
-	Json_IndexValue(&index, out);
+	UJson_IndexValue(&index, out);
 	return true;
 }
 
 static void
-Json_InitFromBufferRange(const uint8* begin, const uint8* end, Json_Value* out_state)
+UJson_InitFromBufferRange(const uint8* begin, const uint8* end, UJson_Value* out_state)
 {
 	if (begin + 1 < end)
 	{
 		out_state->begin = begin;
 		out_state->end = end;
 		
-		out_state->begin = Json_IgnoreWhiteSpacesLeft_(out_state->begin, out_state->end);
+		out_state->begin = UJson_IgnoreWhiteSpacesLeft_(out_state->begin, out_state->end);
 		if (out_state->begin >= out_state->end)
-			out_state->kind = Json_ValueKind_Invalid;
+			out_state->kind = UJson_ValueKind_Invalid;
 		else
-			out_state->kind = Json_CalcValueKind_(out_state);
+			out_state->kind = UJson_CalcValueKind_(out_state);
 	}
 	else
-		out_state->kind = Json_ValueKind_Invalid;
+		out_state->kind = UJson_ValueKind_Invalid;
 }
 
 static inline void
-Json_InitFromBuffer(const uint8* data, uintsize size, Json_Value* out_state)
-{ Json_InitFromBufferRange(data, data + size, out_state); }
+UJson_InitFromBuffer(const uint8* data, uintsize size, UJson_Value* out_state)
+{ UJson_InitFromBufferRange(data, data + size, out_state); }
 
-#endif //JSON_H
+#endif //UTIL_JSON_H

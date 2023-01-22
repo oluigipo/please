@@ -791,7 +791,7 @@ OS_LoadGameLibrary(void)
 		library = Win32_LoadLibrary(target_dll_path);
 		Assert(library);
 		
-		result = GetProcAddress(library, "Game_Main");
+		result = GetProcAddress(library, "G_Main");
 	}
 	else
 	{
@@ -811,7 +811,7 @@ OS_LoadGameLibrary(void)
 			library = Win32_LoadLibrary(target_dll_path);
 			Assert(library);
 			
-			result = GetProcAddress(library, "Game_Main");
+			result = GetProcAddress(library, "G_Main");
 			
 			SetForegroundWindow(global_window);
 		}

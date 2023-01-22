@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "fileformat_sdlgamecontroller.h"
+#include "util_sdlgamecontroller.h"
 
 static void
 PrintHelp(const char* self)
@@ -62,28 +62,28 @@ static void
 Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 {
 	static const String objects_table[] = {
-		[SdlDb_Button_A] = StrInit("GamepadObject_Button_A"),
-		[SdlDb_Button_B] = StrInit("GamepadObject_Button_B"),
-		[SdlDb_Button_X] = StrInit("GamepadObject_Button_X"),
-		[SdlDb_Button_Y] = StrInit("GamepadObject_Button_Y"),
-		[SdlDb_Button_Left] = StrInit("GamepadObject_Button_Left"),
-		[SdlDb_Button_Right] = StrInit("GamepadObject_Button_Right"),
-		[SdlDb_Button_Up] = StrInit("GamepadObject_Button_Up"),
-		[SdlDb_Button_Down] = StrInit("GamepadObject_Button_Down"),
-		[SdlDb_Button_LeftShoulder] = StrInit("GamepadObject_Button_LeftShoulder"),
-		[SdlDb_Button_RightShoulder] = StrInit("GamepadObject_Button_RightShoulder"),
-		[SdlDb_Button_LeftStick] = StrInit("GamepadObject_Button_LeftStick"),
-		[SdlDb_Button_RightStick] = StrInit("GamepadObject_Button_RightStick"),
-		[SdlDb_Button_Start] = StrInit("GamepadObject_Button_Start"),
-		[SdlDb_Button_Back] = StrInit("GamepadObject_Button_Back"),
+		[USdldb_Button_A] = StrInit("GamepadObject_Button_A"),
+		[USdldb_Button_B] = StrInit("GamepadObject_Button_B"),
+		[USdldb_Button_X] = StrInit("GamepadObject_Button_X"),
+		[USdldb_Button_Y] = StrInit("GamepadObject_Button_Y"),
+		[USdldb_Button_Left] = StrInit("GamepadObject_Button_Left"),
+		[USdldb_Button_Right] = StrInit("GamepadObject_Button_Right"),
+		[USdldb_Button_Up] = StrInit("GamepadObject_Button_Up"),
+		[USdldb_Button_Down] = StrInit("GamepadObject_Button_Down"),
+		[USdldb_Button_LeftShoulder] = StrInit("GamepadObject_Button_LeftShoulder"),
+		[USdldb_Button_RightShoulder] = StrInit("GamepadObject_Button_RightShoulder"),
+		[USdldb_Button_LeftStick] = StrInit("GamepadObject_Button_LeftStick"),
+		[USdldb_Button_RightStick] = StrInit("GamepadObject_Button_RightStick"),
+		[USdldb_Button_Start] = StrInit("GamepadObject_Button_Start"),
+		[USdldb_Button_Back] = StrInit("GamepadObject_Button_Back"),
 		
-		[SdlDb_Pressure_LeftTrigger] = StrInit("GamepadObject_Pressure_LeftTrigger"),
-		[SdlDb_Pressure_RightTrigger] = StrInit("GamepadObject_Pressure_RightTrigger"),
+		[USdldb_Pressure_LeftTrigger] = StrInit("GamepadObject_Pressure_LeftTrigger"),
+		[USdldb_Pressure_RightTrigger] = StrInit("GamepadObject_Pressure_RightTrigger"),
 		
-		[SdlDb_Axis_LeftX] = StrInit("GamepadObject_Axis_LeftX"),
-		[SdlDb_Axis_LeftY] = StrInit("GamepadObject_Axis_LeftY"),
-		[SdlDb_Axis_RightX] = StrInit("GamepadObject_Axis_RightX"),
-		[SdlDb_Axis_RightY] = StrInit("GamepadObject_Axis_RightY"),
+		[USdldb_Axis_LeftX] = StrInit("GamepadObject_Axis_LeftX"),
+		[USdldb_Axis_LeftY] = StrInit("GamepadObject_Axis_LeftY"),
+		[USdldb_Axis_RightX] = StrInit("GamepadObject_Axis_RightX"),
+		[USdldb_Axis_RightY] = StrInit("GamepadObject_Axis_RightY"),
 	};
 	
 	Writing* w = &(Writing) { 0 };
@@ -120,9 +120,9 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			.data = head,
 		};
 		
-		SdlDb_Controller con;
+		USdldb_Controller con;
 		String platform;
-		if (SdlDb_ParseEntry(line, &con, &platform) && String_Equals(platform, Str("Windows")))
+		if (USdldb_ParseEntry(line, &con, &platform) && String_Equals(platform, Str("Windows")))
 		{
 			Write(w, "\t//%S\n\t{", con.name);
 			
@@ -137,7 +137,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			// Print buttons
 			for (int32 i = 0; i < ArrayLength(con.buttons); ++i)
 			{
-				SdlDb_Object obj = con.buttons[i];
+				USdldb_Object obj = con.buttons[i];
 				
 				if (obj != 0)
 					Write(w, ".buttons[%i]=%S,", i, objects_table[obj]);
@@ -146,7 +146,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			// Print axes
 			for (int32 i = 0; i < ArrayLength(con.axes); ++i)
 			{
-				SdlDb_Object obj = con.axes[i];
+				USdldb_Object obj = con.axes[i];
 				
 				if (obj != 0)
 					Write(w, ".axes[%i]=%S|%i,", i, objects_table[obj & 0xff], obj & 0xff00);
@@ -157,7 +157,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			{
 				for (int32 k = 0; k < ArrayLength(con.povs[i]); ++k)
 				{
-					SdlDb_Object obj = con.povs[i][k];
+					USdldb_Object obj = con.povs[i][k];
 					
 					if (obj != 0)
 						Write(w, ".povs[%i][%i]=%S,", i, k, objects_table[obj]);

@@ -1,5 +1,5 @@
-#ifndef OS_API_D3D11_H
-#define OS_API_D3D11_H
+#ifndef API_OS_D3D11_H
+#define API_OS_D3D11_H
 
 #ifndef WIN32_LEAN_AND_MEAN
 #   define WIN32_LEAN_AND_MEAN
@@ -28,4 +28,4 @@ struct OS_D3d11Api
 #pragma pop_macro("far")
 #pragma pop_macro("near")
 
-#endif //OS_API_D3D11_H
+#endif //API_OS_D3D11_H

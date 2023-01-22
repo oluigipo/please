@@ -1,17 +1,17 @@
 static const OS_WindowGraphicsContext* g_graphics_context;
 
-#define RenderBackend_PoolOf(T, size_) struct { uint32 size; uint32 first_free; T data[size_]; }
+#define RB_PoolOf_(T, size_) struct { uint32 size; uint32 first_free; T data[size_]; }
 
-#define RenderBackend_PoolAlloc(pool, out_index) RenderBackend_PoolAllocImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), out_index)
-#define RenderBackend_PoolFetch(pool, index) RenderBackend_PoolFetchImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), index)
-#define RenderBackend_PoolFree(pool, index) RenderBackend_PoolFreeImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), index)
+#define RB_PoolAlloc_(pool, out_index) RB_PoolAllocImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), out_index)
+#define RB_PoolFetch_(pool, index) RB_PoolFetchImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), index)
+#define RB_PoolFree_(pool, index) RB_PoolFreeImpl_(pool, ArrayLength((pool)->data), sizeof((pool)->data[0]), index)
 
-RenderBackend_PoolOf(uint8,) typedef RenderBackend_Pool_;
+RB_PoolOf_(uint8,) typedef RB_Pool_;
 
 static void*
-RenderBackend_PoolAllocImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32* out_index)
+RB_PoolAllocImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32* out_index)
 {
-	RenderBackend_Pool_* pool = pool_ptr;
+	RB_Pool_* pool = pool_ptr;
 	uint32 index = 0;
 	
 	if (pool->first_free != 0)
@@ -36,22 +36,22 @@ RenderBackend_PoolAllocImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size,
 }
 
 static void*
-RenderBackend_PoolFetchImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
+RB_PoolFetchImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
 {
 	SafeAssert(index != 0);
 	
-	RenderBackend_Pool_* pool = pool_ptr;
+	RB_Pool_* pool = pool_ptr;
 	void* result = pool->data + (index-1) * obj_size;
 	
 	return result;
 }
 
 static void
-RenderBackend_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
+RB_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
 {
 	SafeAssert(index != 0);
 	
-	RenderBackend_Pool_* pool = pool_ptr;
+	RB_Pool_* pool = pool_ptr;
 	uint32* next_free_ptr = (uint32*)(pool->data + (index-1) * obj_size);
 	
 	*next_free_ptr = pool->first_free;
@@ -66,7 +66,7 @@ RenderBackend_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, 
 #endif
 
 API void
-RenderBackend_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context)
+RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context)
 {
 	Trace();
 	
@@ -76,17 +76,17 @@ RenderBackend_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphic
 	switch (g_graphics_context->api)
 	{
 #ifdef CONFIG_ENABLE_OPENGL
-		case OS_WindowGraphicsApi_OpenGL: RenderBackend_InitOpenGL_(scratch_arena); break;
+		case OS_WindowGraphicsApi_OpenGL: RB_InitOpenGL_(scratch_arena); break;
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-		case OS_WindowGraphicsApi_Direct3D11: RenderBackend_InitD3d11_(scratch_arena); break;
+		case OS_WindowGraphicsApi_Direct3D11: RB_InitD3d11_(scratch_arena); break;
 #endif
 		default: break;
 	}
 }
 
 API void
-RenderBackend_Deinit(Arena* scratch_arena)
+RB_Deinit(Arena* scratch_arena)
 {
 	Trace();
 	
@@ -96,10 +96,10 @@ RenderBackend_Deinit(Arena* scratch_arena)
 	switch (g_graphics_context->api)
 	{
 #ifdef CONFIG_ENABLE_OPENGL
-		case OS_WindowGraphicsApi_OpenGL: RenderBackend_DeinitOpenGL_(scratch_arena); break;
+		case OS_WindowGraphicsApi_OpenGL: RB_DeinitOpenGL_(scratch_arena); break;
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-		case OS_WindowGraphicsApi_Direct3D11: RenderBackend_DeinitD3d11_(scratch_arena); break;
+		case OS_WindowGraphicsApi_Direct3D11: RB_DeinitD3d11_(scratch_arena); break;
 #endif
 		default: break;
 	}
@@ -108,7 +108,7 @@ RenderBackend_Deinit(Arena* scratch_arena)
 }
 
 API bool
-RenderBackend_Present(Arena* scratch_arena, int32 vsync_count)
+RB_Present(Arena* scratch_arena, int32 vsync_count)
 {
 	Trace();
 	
@@ -119,7 +119,7 @@ RenderBackend_Present(Arena* scratch_arena, int32 vsync_count)
 }
 
 API void
-RenderBackend_ExecuteResourceCommands(Arena* scratch_arena, RenderBackend_ResourceCommand* commands)
+RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
 	Trace();
 	
@@ -129,17 +129,17 @@ RenderBackend_ExecuteResourceCommands(Arena* scratch_arena, RenderBackend_Resour
 	switch (g_graphics_context->api)
 	{
 #ifdef CONFIG_ENABLE_OPENGL
-		case OS_WindowGraphicsApi_OpenGL: RenderBackend_ResourceOpenGL_(scratch_arena, commands); break;
+		case OS_WindowGraphicsApi_OpenGL: RB_ResourceOpenGL_(scratch_arena, commands); break;
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-		case OS_WindowGraphicsApi_Direct3D11: RenderBackend_ResourceD3d11_(scratch_arena, commands); break;
+		case OS_WindowGraphicsApi_Direct3D11: RB_ResourceD3d11_(scratch_arena, commands); break;
 #endif
 		default: break;
 	}
 }
 
 API void
-RenderBackend_ExecuteDrawCommands(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height)
+RB_ExecuteDrawCommands(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
 	Trace();
 	
@@ -149,10 +149,10 @@ RenderBackend_ExecuteDrawCommands(Arena* scratch_arena, RenderBackend_DrawComman
 	switch (g_graphics_context->api)
 	{
 #ifdef CONFIG_ENABLE_OPENGL
-		case OS_WindowGraphicsApi_OpenGL: RenderBackend_DrawOpenGL_(scratch_arena, commands, default_width, default_height); break;
+		case OS_WindowGraphicsApi_OpenGL: RB_DrawOpenGL_(scratch_arena, commands, default_width, default_height); break;
 #endif
 #ifdef CONFIG_ENABLE_D3D11
-		case OS_WindowGraphicsApi_Direct3D11: RenderBackend_DrawD3d11_(scratch_arena, commands, default_width, default_height); break;
+		case OS_WindowGraphicsApi_Direct3D11: RB_DrawD3d11_(scratch_arena, commands, default_width, default_height); break;
 #endif
 		default: break;
 	}

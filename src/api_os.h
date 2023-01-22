@@ -1,5 +1,7 @@
-#ifndef OS_API_H
-#define OS_API_H
+#ifndef API_OS_H
+#define API_OS_H
+
+#include "config.h"
 
 //~ Common
 #include "common_defs.h"
@@ -11,6 +13,12 @@ API void OS_VirtualFree(void* ptr, uintsize size);
 #define Arena_OsReserve_(size) OS_VirtualReserve(size)
 #define Arena_OsCommit_(ptr, size) OS_VirtualCommit(ptr, size)
 #define Arena_OsFree_(ptr, size) OS_VirtualFree(ptr, size)
+
+API void OS_ExitWithErrorMessage(const char* fmt, ...);
+#define SafeAssert_OnFailure(expr, file, line, func) \
+OS_ExitWithErrorMessage("Safety Assertion Failure!\nExpr: %s\nFile: %s\nLine: %i\nFunction: %s", expr, file, line, func)
+#define Assert_OnFailure(expr, file, line, func) \
+OS_ExitWithErrorMessage("Assertion Failure!\nExpr: %s\nFile: %s\nLine: %i\nFunction: %s", expr, file, line, func)
 
 #include "common.h"
 
@@ -298,4 +306,4 @@ API void OS_DebugLog(const char* fmt, ...);
 API int16* OS_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames);
 API void OS_CloseSoundBuffer(int16* sound_buffer);
 
-#endif //OS_API_H
+#endif //API_OS_H

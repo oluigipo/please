@@ -1,64 +1,64 @@
-#ifndef RENDER_BACKEND_API_H
-#define RENDER_BACKEND_API_H
+#ifndef API_RENDERBACKEND_H
+#define API_RENDERBACKEND_H
 
-union RenderBackend_Handle
+union RB_Handle
 { uint32 id; }
-typedef RenderBackend_Handle;
+typedef RB_Handle;
 
 //~ ResourceCommand
-enum RenderBackend_LayoutDescKind
+enum RB_LayoutDescKind
 {
-	RenderBackend_LayoutDescKind_Null = 0,
+	RB_LayoutDescKind_Null = 0,
 	
-	RenderBackend_LayoutDescKind_Vec2,
-	RenderBackend_LayoutDescKind_Vec3,
-	RenderBackend_LayoutDescKind_Vec4,
-	RenderBackend_LayoutDescKind_Mat4,
+	RB_LayoutDescKind_Vec2,
+	RB_LayoutDescKind_Vec3,
+	RB_LayoutDescKind_Vec4,
+	RB_LayoutDescKind_Mat4,
 }
-typedef RenderBackend_LayoutDescKind;
+typedef RB_LayoutDescKind;
 
-struct RenderBackend_LayoutDesc
+struct RB_LayoutDesc
 {
-	RenderBackend_LayoutDescKind kind;
+	RB_LayoutDescKind kind;
 	uint32 offset;
 	
 	uint8 location;
 	uint8 divisor;
 	uint8 vbuffer_index;
 }
-typedef RenderBackend_LayoutDesc;
+typedef RB_LayoutDesc;
 
-enum RenderBackend_ResourceCommandKind
+enum RB_ResourceCommandKind
 {
-	RenderBackend_ResourceCommandKind_Null = 0,
+	RB_ResourceCommandKind_Null = 0,
 	
-	RenderBackend_ResourceCommandKind_MakeTexture2D,
-	RenderBackend_ResourceCommandKind_MakeVertexBuffer,
-	RenderBackend_ResourceCommandKind_MakeIndexBuffer,
-	RenderBackend_ResourceCommandKind_MakeShader,
-	RenderBackend_ResourceCommandKind_MakeRenderTarget,
+	RB_ResourceCommandKind_MakeTexture2D,
+	RB_ResourceCommandKind_MakeVertexBuffer,
+	RB_ResourceCommandKind_MakeIndexBuffer,
+	RB_ResourceCommandKind_MakeShader,
+	RB_ResourceCommandKind_MakeRenderTarget,
 	//
-	RenderBackend_ResourceCommandKind_UpdateVertexBuffer,
-	RenderBackend_ResourceCommandKind_UpdateIndexBuffer,
-	RenderBackend_ResourceCommandKind_UpdateTexture2D,
+	RB_ResourceCommandKind_UpdateVertexBuffer,
+	RB_ResourceCommandKind_UpdateIndexBuffer,
+	RB_ResourceCommandKind_UpdateTexture2D,
 	//
-	RenderBackend_ResourceCommandKind_FreeTexture2D,
-	RenderBackend_ResourceCommandKind_FreeVertexBuffer,
-	RenderBackend_ResourceCommandKind_FreeIndexBuffer,
-	RenderBackend_ResourceCommandKind_FreeShader,
-	RenderBackend_ResourceCommandKind_FreeRenderTarget,
+	RB_ResourceCommandKind_FreeTexture2D,
+	RB_ResourceCommandKind_FreeVertexBuffer,
+	RB_ResourceCommandKind_FreeIndexBuffer,
+	RB_ResourceCommandKind_FreeShader,
+	RB_ResourceCommandKind_FreeRenderTarget,
 }
-typedef RenderBackend_ResourceCommandKind;
+typedef RB_ResourceCommandKind;
 
-struct RenderBackend_ResourceCommand typedef RenderBackend_ResourceCommand;
-struct RenderBackend_ResourceCommand
+struct RB_ResourceCommand typedef RB_ResourceCommand;
+struct RB_ResourceCommand
 {
-	RenderBackend_ResourceCommand* next;
-	RenderBackend_ResourceCommandKind kind;
+	RB_ResourceCommand* next;
+	RB_ResourceCommandKind kind;
 	bool flag_dynamic : 1;
 	bool flag_subregion : 1;
 	
-	RenderBackend_Handle* handle;
+	RB_Handle* handle;
 	
 	union
 	{
@@ -79,7 +79,7 @@ struct RenderBackend_ResourceCommand
 			Buffer d3d_vs_blob, d3d_ps_blob;
 			String gl_vs_src, gl_fs_src;
 			
-			RenderBackend_LayoutDesc input_layout[8];
+			RB_LayoutDesc input_layout[8];
 		}
 		shader;
 		
@@ -95,39 +95,39 @@ struct RenderBackend_ResourceCommand
 		
 		struct
 		{
-			RenderBackend_Handle* color_textures[4];
-			RenderBackend_Handle* depth_stencil_texture;
+			RB_Handle* color_textures[4];
+			RB_Handle* depth_stencil_texture;
 		}
 		render_target;
 	};
 };
 
 //~ DrawCommand
-struct RenderBackend_SamplerDesc
+struct RB_SamplerDesc
 {
-	RenderBackend_Handle* handle;
+	RB_Handle* handle;
 	uint32 d3d_id;
 	String gl_name;
 }
-typedef RenderBackend_SamplerDesc;
+typedef RB_SamplerDesc;
 
-enum RenderBackend_DrawCommandKind
+enum RB_DrawCommandKind
 {
-	RenderBackend_DrawCommandKind_Null = 0,
+	RB_DrawCommandKind_Null = 0,
 	
-	RenderBackend_DrawCommandKind_Clear,
-	RenderBackend_DrawCommandKind_SetRenderTarget,
-	RenderBackend_DrawCommandKind_ResetRenderTarget,
-	RenderBackend_DrawCommandKind_DrawCall,
+	RB_DrawCommandKind_Clear,
+	RB_DrawCommandKind_SetRenderTarget,
+	RB_DrawCommandKind_ResetRenderTarget,
+	RB_DrawCommandKind_DrawCall,
 }
-typedef RenderBackend_DrawCommandKind;
+typedef RB_DrawCommandKind;
 
-struct RenderBackend_DrawCommand typedef RenderBackend_DrawCommand;
-struct RenderBackend_DrawCommand
+struct RB_DrawCommand typedef RB_DrawCommand;
+struct RB_DrawCommand
 {
-	RenderBackend_DrawCommand* next;
-	RenderBackend_ResourceCommand* resources_cmd;
-	RenderBackend_DrawCommandKind kind;
+	RB_DrawCommand* next;
+	RB_ResourceCommand* resources_cmd;
+	RB_DrawCommandKind kind;
 	
 	union
 	{
@@ -143,15 +143,15 @@ struct RenderBackend_DrawCommand
 		
 		struct
 		{
-			RenderBackend_Handle* handle;
+			RB_Handle* handle;
 		}
 		set_target;
 		
 		struct
 		{
-			RenderBackend_Handle* shader;
-			RenderBackend_Handle* ibuffer;
-			RenderBackend_Handle* vbuffers[4];
+			RB_Handle* shader;
+			RB_Handle* ibuffer;
+			RB_Handle* vbuffers[4];
 			uint32 vbuffer_strides[4];
 			
 			uint32 index_count;
@@ -159,17 +159,17 @@ struct RenderBackend_DrawCommand
 			
 			Buffer uniform_buffer;
 			
-			RenderBackend_SamplerDesc samplers[8];
+			RB_SamplerDesc samplers[8];
 		}
 		drawcall;
 	};
 };
 
-API void RenderBackend_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context);
-API void RenderBackend_Deinit(Arena* scratch_arena);
-API bool RenderBackend_Present(Arena* scratch_arena, int32 vsync_count);
+API void RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context);
+API void RB_Deinit(Arena* scratch_arena);
+API bool RB_Present(Arena* scratch_arena, int32 vsync_count);
 
-API void RenderBackend_ExecuteResourceCommands(Arena* scratch_arena, RenderBackend_ResourceCommand* commands);
-API void RenderBackend_ExecuteDrawCommands(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height);
+API void RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands);
+API void RB_ExecuteDrawCommands(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height);
 
-#endif //RENDER_BACKEND_API_H
+#endif //API_RENDERBACKEND_H

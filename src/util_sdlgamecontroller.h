@@ -1,31 +1,31 @@
-#ifndef SDL_GAMECONTROLLERDB_H
-#define SDL_GAMECONTROLLERDB_H
+#ifndef UTIL_SDLGAMECONTROLLER_H
+#define UTIL_SDLGAMECONTROLLER_H
 
-uint16 typedef SdlDb_Object;
-enum SdlDb_Object
+uint16 typedef USdldb_Object;
+enum USdldb_Object
 {
-	SdlDb_Button_A = 1,
-	SdlDb_Button_B = 2,
-	SdlDb_Button_X = 3,
-	SdlDb_Button_Y = 4,
-	SdlDb_Button_Left = 5,
-	SdlDb_Button_Right = 6,
-	SdlDb_Button_Up = 7,
-	SdlDb_Button_Down = 8,
-	SdlDb_Button_LeftShoulder = 9, // LB
-	SdlDb_Button_RightShoulder = 10, // RB
-	SdlDb_Button_LeftStick = 11, // LS
-	SdlDb_Button_RightStick = 12, // RS
-	SdlDb_Button_Start = 13,
-	SdlDb_Button_Back = 14,
+	USdldb_Button_A = 1,
+	USdldb_Button_B = 2,
+	USdldb_Button_X = 3,
+	USdldb_Button_Y = 4,
+	USdldb_Button_Left = 5,
+	USdldb_Button_Right = 6,
+	USdldb_Button_Up = 7,
+	USdldb_Button_Down = 8,
+	USdldb_Button_LeftShoulder = 9, // LB
+	USdldb_Button_RightShoulder = 10, // RB
+	USdldb_Button_LeftStick = 11, // LS
+	USdldb_Button_RightStick = 12, // RS
+	USdldb_Button_Start = 13,
+	USdldb_Button_Back = 14,
 	
-	SdlDb_Pressure_LeftTrigger = 15, // LT
-	SdlDb_Pressure_RightTrigger = 16, // RT
+	USdldb_Pressure_LeftTrigger = 15, // LT
+	USdldb_Pressure_RightTrigger = 16, // RT
 	
-	SdlDb_Axis_LeftX = 17,
-	SdlDb_Axis_LeftY = 18,
-	SdlDb_Axis_RightX = 19,
-	SdlDb_Axis_RightY = 20,
+	USdldb_Axis_LeftX = 17,
+	USdldb_Axis_LeftY = 18,
+	USdldb_Axis_RightX = 19,
+	USdldb_Axis_RightY = 20,
 	
 	// The lower bits of this enum is one of these entries specified above.
 	// The higher bits are used to store extra information about the object.
@@ -40,54 +40,54 @@ enum SdlDb_Object
 	// Bits 6 & 5 should never be set at the same time
 	// Bits 4 & 3 should never be set at the same time
 	
-	SdlDb_Count = 21,
+	USdldb_Count = 21,
 };
 
-struct SdlDb_Controller
+struct USdldb_Controller
 {
 	uint8 guid[32];
 	String name;
 	
-	SdlDb_Object buttons[32];
-	SdlDb_Object axes[16];
-	SdlDb_Object povs[8][4];
+	USdldb_Object buttons[32];
+	USdldb_Object axes[16];
+	USdldb_Object povs[8][4];
 }
-typedef SdlDb_Controller;
+typedef USdldb_Controller;
 
-static SdlDb_Object
-SdlDb_FindObjectFromName_(String name)
+static USdldb_Object
+USdldb_FindObjectFromName_(String name)
 {
 	struct
 	{
 		String name;
-		SdlDb_Object object;
+		USdldb_Object object;
 	}
 	static const table[] = {
-		{ StrInit("a"), SdlDb_Button_A },
-		{ StrInit("b"), SdlDb_Button_B },
-		{ StrInit("back"), SdlDb_Button_Back },
+		{ StrInit("a"), USdldb_Button_A },
+		{ StrInit("b"), USdldb_Button_B },
+		{ StrInit("back"), USdldb_Button_Back },
 		
-		{ StrInit("dpdown"), SdlDb_Button_Down },
-		{ StrInit("dpleft"), SdlDb_Button_Left },
-		{ StrInit("dpright"), SdlDb_Button_Right },
-		{ StrInit("dpup"), SdlDb_Button_Up },
+		{ StrInit("dpdown"), USdldb_Button_Down },
+		{ StrInit("dpleft"), USdldb_Button_Left },
+		{ StrInit("dpright"), USdldb_Button_Right },
+		{ StrInit("dpup"), USdldb_Button_Up },
 		
-		{ StrInit("leftshoulder"), SdlDb_Button_LeftShoulder },
-		{ StrInit("leftstick"), SdlDb_Button_LeftStick },
-		{ StrInit("lefttrigger"), SdlDb_Pressure_LeftTrigger },
-		{ StrInit("leftx"), SdlDb_Axis_LeftX },
-		{ StrInit("lefty"), SdlDb_Axis_LeftY },
+		{ StrInit("leftshoulder"), USdldb_Button_LeftShoulder },
+		{ StrInit("leftstick"), USdldb_Button_LeftStick },
+		{ StrInit("lefttrigger"), USdldb_Pressure_LeftTrigger },
+		{ StrInit("leftx"), USdldb_Axis_LeftX },
+		{ StrInit("lefty"), USdldb_Axis_LeftY },
 		
-		{ StrInit("rightshoulder"), SdlDb_Button_RightShoulder },
-		{ StrInit("rightstick"), SdlDb_Button_RightStick },
-		{ StrInit("righttrigger"), SdlDb_Pressure_RightTrigger },
-		{ StrInit("rightx"), SdlDb_Axis_RightX },
-		{ StrInit("righty"), SdlDb_Axis_RightY },
+		{ StrInit("rightshoulder"), USdldb_Button_RightShoulder },
+		{ StrInit("rightstick"), USdldb_Button_RightStick },
+		{ StrInit("righttrigger"), USdldb_Pressure_RightTrigger },
+		{ StrInit("rightx"), USdldb_Axis_RightX },
+		{ StrInit("righty"), USdldb_Axis_RightY },
 		
-		{ StrInit("start"), SdlDb_Button_Start },
+		{ StrInit("start"), USdldb_Button_Start },
 		
-		{ StrInit("x"), SdlDb_Button_X },
-		{ StrInit("y"), SdlDb_Button_Y },
+		{ StrInit("x"), USdldb_Button_X },
+		{ StrInit("y"), USdldb_Button_Y },
 	};
 	
 	int32 left = 0;
@@ -110,9 +110,9 @@ SdlDb_FindObjectFromName_(String name)
 }
 
 static bool
-SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller, String* out_platform)
+USdldb_ParseEntry(String line, USdldb_Controller* out_controller, String* out_platform)
 {
-	SdlDb_Controller con = { 0 };
+	USdldb_Controller con = { 0 };
 	String platform = StrNull;
 	
 	const uint8* const begin = line.data;
@@ -184,7 +184,7 @@ SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller, String* out_plat
 			continue;
 		}
 		
-		SdlDb_Object object = SdlDb_FindObjectFromName_(left_arg);
+		USdldb_Object object = USdldb_FindObjectFromName_(left_arg);
 		if (object == 0)
 			return false;
 		
@@ -277,4 +277,4 @@ SdlDb_ParseEntry(String line, SdlDb_Controller* out_controller, String* out_plat
 	return true;
 }
 
-#endif //SDL_GAMECONTROLLERDB_H
+#endif //UTIL_SDLGAMECONTROLLER_H

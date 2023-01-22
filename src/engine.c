@@ -38,12 +38,11 @@
 #include <ext/stb_vorbis.h>
 
 //~ Our Code
-static Engine_Data global_engine;
+static E_GlobalData global_engine;
 
-#include "fileformat_json.h"
-#include "fileformat_qoi.h"
-#include "fileformat_gltf.h"
-#include "renderbackend.c"
+#include "util_json.h"
+#include "util_qoi.h"
+#include "util_gltf.h"
 
 #ifdef CONFIG_ENABLE_OPENGL
 #   include "engine_render_opengl.c"
@@ -55,6 +54,8 @@ static Engine_Data global_engine;
 #include "engine_audio.c"
 #include "engine_render.c"
 #include "engine_main.c"
+
+#include "renderbackend.c"
 
 //~ External
 DisableWarnings();

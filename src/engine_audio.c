@@ -17,7 +17,7 @@ InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, cons
 
 //~ API
 API bool32
-Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
+E_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 {
 	Trace(); TraceText(path);
 	
@@ -45,13 +45,13 @@ Engine_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 }
 
 API void
-Engine_FreeSoundBuffer(Asset_SoundBuffer* sound)
+E_FreeSoundBuffer(Asset_SoundBuffer* sound)
 {
 	OS_HeapFree(sound->samples);
 }
 
 API void
-Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volume)
+E_PlayAudios(E_PlayingAudio* audios, int32* audio_count, float32 volume)
 {
 	Trace();
 	
@@ -79,7 +79,7 @@ Engine_PlayAudios(Engine_PlayingAudio* audios, int32* audio_count, float32 volum
 	
 	for (int32 i = 0; i < *audio_count; )
 	{
-		Engine_PlayingAudio* playing = &audios[i];
+		E_PlayingAudio* playing = &audios[i];
 		int16* it = samples;
 		int16* end_it = end_samples;
 		bool32 should_remove = false;

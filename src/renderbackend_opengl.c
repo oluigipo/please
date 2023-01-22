@@ -1,18 +1,18 @@
 #define GL (*g_graphics_context->opengl)
 
-struct RenderBackend_OpenGLShader_
+struct RB_OpenGLShader_
 {
 	uint32 program_id;
 	
-	RenderBackend_LayoutDesc input_layout[ArrayLength( ((RenderBackend_ResourceCommand*)0)->shader.input_layout )];
+	RB_LayoutDesc input_layout[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
 }
-typedef RenderBackend_OpenGLShader_;
+typedef RB_OpenGLShader_;
 
-static RenderBackend_PoolOf(RenderBackend_OpenGLShader_, 64) g_ogl_shaderpool;
+static RB_PoolOf_(RB_OpenGLShader_, 64) g_ogl_shaderpool;
 
 #ifdef CONFIG_DEBUG
 static void APIENTRY
-RenderBackend_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
+RB_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum severity,
 	GLsizei length, const GLchar* message, const void* user_param)
 {
 	const char* type_str = "Debug Message";
@@ -25,37 +25,37 @@ RenderBackend_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id,
 #endif //CONFIG_DEBUG
 
 static void
-RenderBackend_InitOpenGL_(Arena* scratch_arena)
+RB_InitOpenGL_(Arena* scratch_arena)
 {
 #ifdef CONFIG_DEBUG
 	GL.glEnable(GL_DEBUG_OUTPUT);
 	GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	GL.glDebugMessageCallback(RenderBackend_OpenGLDebugMessageCallback_, NULL);
+	GL.glDebugMessageCallback(RB_OpenGLDebugMessageCallback_, NULL);
 #endif //CONFIG_DEBUG
 	
 	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 static void
-RenderBackend_DeinitOpenGL_(Arena* scratch_arena)
+RB_DeinitOpenGL_(Arena* scratch_arena)
 {
 }
 
 static void
-RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceCommand* commands)
+RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
-	for (RenderBackend_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
+	for (RB_ResourceCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
 		Assert(cmd->kind);
 		Assert(cmd->handle);
 		
-		RenderBackend_Handle handle = *cmd->handle;
+		RB_Handle handle = *cmd->handle;
 		
 		switch (cmd->kind)
 		{
 			case 0: Assert(false); break;
 			
-			case RenderBackend_ResourceCommandKind_MakeTexture2D:
+			case RB_ResourceCommandKind_MakeTexture2D:
 			{
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
@@ -89,7 +89,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				handle.id = id;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeVertexBuffer:
+			case RB_ResourceCommandKind_MakeVertexBuffer:
 			{
 				uint32 id;
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
@@ -102,7 +102,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				handle.id = id;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeIndexBuffer:
+			case RB_ResourceCommandKind_MakeIndexBuffer:
 			{
 				uint32 id;
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
@@ -115,7 +115,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				handle.id = id;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeShader:
+			case RB_ResourceCommandKind_MakeShader:
 			{
 				char info[512];
 				int32 success = true;
@@ -179,17 +179,17 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				GL.glDeleteShader(vertex_shader);
 				GL.glDeleteShader(fragment_shader);
 				
-				RenderBackend_OpenGLShader_* pool_data = RenderBackend_PoolAlloc(&g_ogl_shaderpool, &handle.id);
+				RB_OpenGLShader_* pool_data = RB_PoolAlloc_(&g_ogl_shaderpool, &handle.id);
 				pool_data->program_id = program;
 				Mem_Copy(pool_data->input_layout, cmd->shader.input_layout, sizeof(pool_data->input_layout));
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_MakeRenderTarget:
+			case RB_ResourceCommandKind_MakeRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_UpdateVertexBuffer:
+			case RB_ResourceCommandKind_UpdateVertexBuffer:
 			{
 				Assert(handle.id);
 				
@@ -204,7 +204,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_UpdateIndexBuffer:
+			case RB_ResourceCommandKind_UpdateIndexBuffer:
 			{
 				Assert(handle.id);
 				
@@ -219,7 +219,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_UpdateTexture2D:
+			case RB_ResourceCommandKind_UpdateTexture2D:
 			{
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
@@ -240,7 +240,7 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				GL.glBindTexture(GL_TEXTURE_2D, 0);
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeTexture2D:
+			case RB_ResourceCommandKind_FreeTexture2D:
 			{
 				Assert(handle.id);
 				
@@ -251,8 +251,8 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				handle.id = 0;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeVertexBuffer:
-			case RenderBackend_ResourceCommandKind_FreeIndexBuffer:
+			case RB_ResourceCommandKind_FreeVertexBuffer:
+			case RB_ResourceCommandKind_FreeIndexBuffer:
 			{
 				Assert(handle.id);
 				
@@ -263,18 +263,18 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 				handle.id = 0;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeShader:
+			case RB_ResourceCommandKind_FreeShader:
 			{
 				Assert(handle.id);
-				RenderBackend_OpenGLShader_* pool_data = RenderBackend_PoolFetch(&g_ogl_shaderpool, handle.id);
+				RB_OpenGLShader_* pool_data = RB_PoolFetch_(&g_ogl_shaderpool, handle.id);
 				
 				GL.glDeleteProgram(pool_data->program_id);
 				
-				RenderBackend_PoolFree(&g_ogl_shaderpool, handle.id);
+				RB_PoolFree_(&g_ogl_shaderpool, handle.id);
 				handle.id = 0;
 			} break;
 			
-			case RenderBackend_ResourceCommandKind_FreeRenderTarget:
+			case RB_ResourceCommandKind_FreeRenderTarget:
 			{
 				SafeAssert(false);
 			} break;
@@ -285,23 +285,23 @@ RenderBackend_ResourceOpenGL_(Arena* scratch_arena, RenderBackend_ResourceComman
 }
 
 static void
-RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* commands, int32 default_width, int32 default_height)
+RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
 	GL.glViewport(0, 0, default_width, default_height);
 	
 	uint32 ubo;
 	GL.glGenBuffers(1, &ubo);
 	
-	for (RenderBackend_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
+	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
 		if (cmd->resources_cmd)
-			RenderBackend_ResourceOpenGL_(scratch_arena, cmd->resources_cmd);
+			RB_ResourceOpenGL_(scratch_arena, cmd->resources_cmd);
 		
 		switch (cmd->kind)
 		{
 			case 0: SafeAssert(false); break;
 			
-			case RenderBackend_DrawCommandKind_Clear:
+			case RB_DrawCommandKind_Clear:
 			{
 				uint32 bits = 0;
 				
@@ -324,7 +324,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				}
 			} break;
 			
-			case RenderBackend_DrawCommandKind_SetRenderTarget:
+			case RB_DrawCommandKind_SetRenderTarget:
 			{
 				Assert(cmd->set_target.handle);
 				uint32 id = cmd->set_target.handle->id;
@@ -332,17 +332,17 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				GL.glBindFramebuffer(GL_FRAMEBUFFER, id);
 			} break;
 			
-			case RenderBackend_DrawCommandKind_ResetRenderTarget:
+			case RB_DrawCommandKind_ResetRenderTarget:
 			{
 				GL.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			} break;
 			
-			case RenderBackend_DrawCommandKind_DrawCall:
+			case RB_DrawCommandKind_DrawCall:
 			{
 				// Buffers and Shader
 				SafeAssert(cmd->drawcall.shader && cmd->drawcall.ibuffer);
 				
-				RenderBackend_OpenGLShader_* shader_pool_data = RenderBackend_PoolFetch(&g_ogl_shaderpool, cmd->drawcall.shader->id);
+				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->drawcall.shader->id);
 				
 				uint32 shader = shader_pool_data->program_id;
 				uint32 ibuffer = 0;
@@ -365,7 +365,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				
 				for (intsize i = 0; i < ArrayLength(shader_pool_data->input_layout); ++i)
 				{
-					const RenderBackend_LayoutDesc* layout = &shader_pool_data->input_layout[i];
+					const RB_LayoutDesc* layout = &shader_pool_data->input_layout[i];
 					
 					if (!layout->kind)
 						break;
@@ -378,22 +378,22 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 					
 					switch (layout->kind)
 					{
-						//case RenderBackend_LayoutDescKind_Vec2:
-						//case RenderBackend_LayoutDescKind_Vec3:
-						//case RenderBackend_LayoutDescKind_Vec4:
+						//case RB_LayoutDescKind_Vec2:
+						//case RB_LayoutDescKind_Vec3:
+						//case RB_LayoutDescKind_Vec4:
 						{
 							uint32 count;
 							
-							if (0) case RenderBackend_LayoutDescKind_Vec2: count = 2;
-							if (0) case RenderBackend_LayoutDescKind_Vec3: count = 3;
-							if (0) case RenderBackend_LayoutDescKind_Vec4: count = 4;
+							if (0) case RB_LayoutDescKind_Vec2: count = 2;
+							if (0) case RB_LayoutDescKind_Vec3: count = 3;
+							if (0) case RB_LayoutDescKind_Vec4: count = 4;
 							
 							GL.glEnableVertexAttribArray(loc);
 							GL.glVertexAttribDivisor(loc, layout->divisor);
 							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)layout->offset);
 						} break;
 						
-						case RenderBackend_LayoutDescKind_Mat4:
+						case RB_LayoutDescKind_Mat4:
 						{
 							GL.glEnableVertexAttribArray(loc+0);
 							GL.glEnableVertexAttribArray(loc+1);
@@ -436,7 +436,7 @@ RenderBackend_DrawOpenGL_(Arena* scratch_arena, RenderBackend_DrawCommand* comma
 				
 				for (intsize i = 0; i < ArrayLength(cmd->drawcall.samplers); ++i)
 				{
-					const RenderBackend_SamplerDesc* sampler = &cmd->drawcall.samplers[i];
+					const RB_SamplerDesc* sampler = &cmd->drawcall.samplers[i];
 					
 					if (!sampler->handle)
 						continue;

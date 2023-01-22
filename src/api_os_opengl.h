@@ -1,5 +1,5 @@
-#ifndef OS_API_OPENGL_H
-#define OS_API_OPENGL_H
+#ifndef API_OS_OPENGL_H
+#define API_OS_OPENGL_H
 
 #define __gl_h
 
@@ -1640,4 +1640,4 @@ struct OS_OpenGlApi
 	PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv;
 };
 
-#endif //OS_API_OPENGL_H
+#endif //API_OS_OPENGL_H

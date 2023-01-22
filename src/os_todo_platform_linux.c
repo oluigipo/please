@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 		clock_gettime(CLOCK_MONOTONIC, &global_time_begin);
 	}
 	
-	int32 result = Engine_Main(argc, argv);
+	int32 result = E_Main(argc, argv);
 	
 	if (global_display)
 		XCloseDisplay(global_display);
