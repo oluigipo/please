@@ -86,6 +86,8 @@ E_AppendDrawCmd_(RB_DrawCommand* first, RB_DrawCommand* last)
 static void
 E_InitRender_(void)
 {
+	Trace();
+	
 	Arena* arena = global_engine.scratch_arena;
 	RB_Init(arena, global_engine.graphics_context);
 	
@@ -240,6 +242,8 @@ E_InitRender_(void)
 static void
 E_DeinitRender_(void)
 {
+	Trace();
+	
 	RB_Deinit(global_engine.scratch_arena);
 }
 
@@ -314,6 +318,8 @@ E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_po
 API void
 E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 {
+	Trace();
+	
 	RB_DrawCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_DrawCommand);
 	
 	cmd->kind = RB_DrawCommandKind_Clear;
@@ -329,6 +335,8 @@ E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 API void
 E_DrawRectBatch(const E_RectBatch* batch)
 {
+	Trace();
+	
 	mat4 view;
 	E_Camera2D cam = {
 		.pos = { 0.0f, 0.0f },

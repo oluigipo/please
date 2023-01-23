@@ -124,6 +124,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		return false;
 	}
 	
+	bool is_win10_or_later = IsWindows10OrGreater();
+	
 	DXGI_SWAP_CHAIN_DESC swapchain_desc = {
 		.BufferDesc = {
 			.Width = 0,
@@ -144,7 +146,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		.BufferCount = 3,
 		.OutputWindow = window,
 		.Windowed = true,
-		.SwapEffect = IsWindows10OrGreater() ? DXGI_SWAP_EFFECT_FLIP_DISCARD : DXGI_SWAP_EFFECT_DISCARD,
+		.SwapEffect = is_win10_or_later ? DXGI_SWAP_EFFECT_FLIP_DISCARD : DXGI_SWAP_EFFECT_DISCARD,
 		.Flags = 0,
 	};
 	

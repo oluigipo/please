@@ -31,9 +31,13 @@ G_UpdateAndRender(void)
 	{
 		uint64 random = Hash_IntHash64(i);
 		
-		float32 x = (random & 511) - 256.0f;
-		float32 y = (random>>9 & 511) - 256.0f;
-		float32 angle = (random>>18 & 511) / 512.0f * (float32)Math_PI*2;
+		float32 time = (float32)OS_GetTimeInSeconds() * 0.25f + (float32)i;
+		float32 xoffset = cosf(time * 5.0f) * 100.0f;
+		float32 yoffset = sinf(time * 1.4f) * 100.0f;
+		
+		float32 x = (random & 511) - 256.0f + xoffset;
+		float32 y = (random>>9 & 511) - 256.0f + yoffset;
+		float32 angle = (random>>18 & 511) / 512.0f * (float32)Math_PI*2 + time;
 		float32 size = 32.0f;
 		vec3 color = {
 			(random>>27 & 255) / 255.0f,

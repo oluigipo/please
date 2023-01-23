@@ -574,7 +574,10 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				
 				ID3D11Buffer* cbuffer;
 				
-				D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &cbuffer_desc, &cbuffer_data, &cbuffer));
+				{
+					Trace(); TraceName(Str("ID3D11Device::CreateBuffer"));
+					D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &cbuffer_desc, &cbuffer_data, &cbuffer));
+				}
 				
 				// Draw
 				ID3D11DeviceContext_IASetInputLayout(D3d11.context, input_layout);
@@ -586,7 +589,10 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				ID3D11DeviceContext_PSSetSamplers(D3d11.context, 0, sampler_count, sampler_states);
 				ID3D11DeviceContext_PSSetShaderResources(D3d11.context, 0, sampler_count, shader_resources);
 				
-				ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
+				{
+					Trace(); TraceName(Str("ID3D11DeviceContext::DrawIndexedInstanced"));
+					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
+				}
 				
 				ID3D11Buffer_Release(cbuffer);
 			} break;

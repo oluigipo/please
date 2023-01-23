@@ -83,6 +83,20 @@ OS_UserMain(int32 argc, char* argv[])
 		.simpleaudio_desired_sample_rate = 48000,
 	};
 	
+	for (int32 i = 1; i < argc; ++i)
+	{
+		extern int strcmp(const char* left, const char* right);
+		
+		if (!strcmp(argv[i], "-opengl") || !strcmp(argv[i], "-gl") || !strcmp(argv[i], "-gl3"))
+			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
+		else if (!strcmp(argv[i], "-d3d11") || !strcmp(argv[i], "-dx11"))
+			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
+		else if (!strcmp(argv[i], "-audio-44100"))
+			init_desc.simpleaudio_desired_sample_rate = 44100;
+		else if (!strcmp(argv[i], "-audio-48000"))
+			init_desc.simpleaudio_desired_sample_rate = 48000;
+	}
+	
 	OS_InitOutput output;
 	
 	if (!OS_Init(&init_desc, &output))
