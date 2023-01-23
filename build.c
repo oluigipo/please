@@ -56,6 +56,7 @@ struct
 	struct Build_Project* project;
 	int optimize;
 	bool asan;
+	bool ubsan;
 	bool debug_info;
 	bool debug_mode;
 	bool verbose;
@@ -63,6 +64,7 @@ struct
 	bool hot;
 	bool force_rebuild;
 	bool analyze;
+	bool do_rc;
 }
 static g_opts = {
 	.project = &g_projects[0],
@@ -91,6 +93,8 @@ static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 static Cstr f_hotcflags = "-DCONFIG_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
 static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
 
+static Cstr f_rc = "llvm-rc";
+
 #elif defined(_MSC_VER)
 static Cstr f_cc = "cl /nologo";
 static Cstr f_cflags = "/std:c11 /Isrc /Iinclude";
@@ -109,6 +113,8 @@ static Cstr f_ldflags_graphic = "/subsystem:windows";
 
 static Cstr f_hotcflags = "/DCONFIG_ENABLE_HOT";
 static Cstr f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
+
+static Cstr f_rc = "rc";
 
 #elif defined(__GNUC__)
 static Cstr f_cc = "gcc";
@@ -225,6 +231,8 @@ Build(struct Build_Project* project)
 		Append(&head, end, " %s", f_optimize[g_opts.optimize]);
 	if (g_opts.asan)
 		Append(&head, end, " -fsanitize=address");
+	if (g_opts.ubsan)
+		Append(&head, end, " -fsanitize=undefined -fno-sanitize=alignment");
 	if (g_opts.debug_info)
 		Append(&head, end, " %s", f_debuginfo);
 	if (g_opts.debug_mode)
@@ -271,6 +279,9 @@ Build(struct Build_Project* project)
 				else
 					Append(&head, end, " build/%s.obj", dep->outname);
 			}
+			
+			if (g_opts.do_rc)
+				Append(&head, end, " build/windows-resource-file.res");
 		}
 	}
 	
@@ -288,6 +299,10 @@ main(int argc, char** argv)
 			g_opts.debug_mode = false;
 		else if (strcmp(argv[i], "-asan") == 0)
 			g_opts.asan = true;
+		else if (strcmp(argv[i], "-ubsan") == 0)
+			g_opts.ubsan = true;
+		else if (strcmp(argv[i], "-rc") == 0)
+			g_opts.do_rc = true;
 		else if (strcmp(argv[i], "-v") == 0)
 			g_opts.verbose = true;
 		else if (strcmp(argv[i], "-tracy") == 0)
@@ -328,6 +343,11 @@ main(int argc, char** argv)
 	}
 	
 	bool ok = true;
+	
+	ok = ok && !RunCommand("cmd /c if not exist build mkdir build");
+	if (g_opts.do_rc)
+		ok = ok && !RunCommand("llvm-rc windows-resource-file.rc /FO build\\windows-resource-file.res");
+	
 	for (Cstr* it = g_opts.project->deps; *it; ++it)
 		ok = ok && !Build(FindProject(*it));
 	
