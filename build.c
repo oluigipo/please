@@ -38,8 +38,8 @@ static g_projects[] = {
 		.outname = "engine",
 		.deps = (Cstr[]) { "os", NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "shader_quad.hlsl", "internal_d3d11_vshader_quad.inc", "vs_5_0", "D3d11Shader_QuadVertex" },
-			{ "shader_quad.hlsl", "internal_d3d11_pshader_quad.inc", "ps_5_0", "D3d11Shader_QuadPixel" },
+			{ "shader_quad.hlsl", "internal_d3d11_vshader_quad.inc", "vs_4_0_level_9_3", "D3d11Shader_QuadVertex" },
+			{ "shader_quad.hlsl", "internal_d3d11_pshader_quad.inc", "ps_4_0_level_9_3", "D3d11Shader_QuadPixel" },
 			{ NULL },
 		},
 	},
@@ -65,6 +65,8 @@ struct
 	bool force_rebuild;
 	bool analyze;
 	bool do_rc;
+	bool m32;
+	Cstr* extra_flags;
 }
 static g_opts = {
 	.project = &g_projects[0],
@@ -73,7 +75,7 @@ static g_opts = {
 
 #ifdef __clang__
 static Cstr f_cc = "clang";
-static Cstr f_cflags = "-std=c11 -Isrc -Iinclude -march=x86-64-v2";
+static Cstr f_cflags = "-std=c11 -Isrc -Iinclude";
 static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
 static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static" };
 static Cstr f_warnings =
@@ -87,6 +89,8 @@ static Cstr f_output = "-o";
 static Cstr f_output_obj = "-c -o";
 static Cstr f_analyze = "--analyze";
 static Cstr f_incfile = "-include";
+static Cstr f_m32 = "-m32 -msse2";
+static Cstr f_m64 = "-march=x86-64";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
@@ -100,7 +104,7 @@ static Cstr f_cc = "cl /nologo";
 static Cstr f_cflags = "/std:c11 /Isrc /Iinclude";
 static Cstr f_ldflags = "/link /incremental:no";
 static Cstr f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
-static Cstr f_warnings = "/w";
+static Cstr f_warnings = "/W3";
 static Cstr f_debuginfo = "/Zi";
 static Cstr f_define = "/D";
 static Cstr f_verbose = "";
@@ -108,6 +112,8 @@ static Cstr f_output = "/Fe";
 static Cstr f_output_obj = "/c /Fo";
 static Cstr f_analyze = "";
 static Cstr f_incfile = "/FI";
+static Cstr f_m32 = "/arch:SSE2";
+static Cstr f_m64 = "";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
@@ -241,6 +247,13 @@ Build(struct Build_Project* project)
 		Append(&head, end, " %s", f_verbose);
 	if (g_opts.tracy)
 		Append(&head, end, " %sTRACY_ENABLE TracyClient.obj", f_define);
+	if (g_opts.m32)
+		Append(&head, end, " %s", f_m32);
+	else
+		Append(&head, end, " %s", f_m64);
+	
+	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
+		Append(&head, end, " \"%s\"", *argv);
 	
 	if (g_opts.hot)
 	{
@@ -303,10 +316,17 @@ main(int argc, char** argv)
 			g_opts.ubsan = true;
 		else if (strcmp(argv[i], "-rc") == 0)
 			g_opts.do_rc = true;
+		else if (strcmp(argv[i], "-m32") == 0)
+			g_opts.m32 = true;
 		else if (strcmp(argv[i], "-v") == 0)
 			g_opts.verbose = true;
 		else if (strcmp(argv[i], "-tracy") == 0)
 			g_opts.tracy = true;
+		else if (strcmp(argv[i], "--") == 0)
+		{
+			g_opts.extra_flags = (Cstr*)&argv[i + 1];
+			break;
+		}
 		else if (strcmp(argv[i], "-hot") == 0)
 		{
 #ifdef __clang__
