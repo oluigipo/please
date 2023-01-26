@@ -31,7 +31,7 @@ E_FinishFrame(void)
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	float64 current_time = OS_GetTimeInSeconds();
-	global_engine.delta_time = (float32)( (current_time - global_engine.last_frame_time) * REFERENCE_FPS );
+	global_engine.delta_time = (float32)(current_time - global_engine.last_frame_time);
 	global_engine.last_frame_time = current_time;
 }
 

@@ -13,6 +13,10 @@ DisableWarnings();
 #include <ext/cglm/cglm.h>
 ReenableWarnings();
 
+#define vec2(...) (vec2) { __VA_ARGS__ }
+#define vec3(...) (vec3) { __VA_ARGS__ }
+#define vec4(...) (vec4) { __VA_ARGS__ }
+
 //~ Actual Api
 // TODO(ljre): LEGACY THING DELETE SOON
 struct Asset_SoundBuffer
@@ -204,13 +208,13 @@ struct E_RectBatch
 }
 typedef E_RectBatch;
 
-API bool E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, int32 texindex, String text, vec2 pos, vec2 scale, vec4 color);
+API bool E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
 
 API void E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Arena* to_clone_batch_at);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawCachedBatch(const E_CachedBatch* batch);
-API void E_DrawRectBatch(const E_RectBatch* batch);
+API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
 
 API void E_RawDrawCommand(RB_DrawCommand* commands);
 

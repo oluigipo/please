@@ -273,10 +273,10 @@ E_CalcViewMatrix2D(const E_Camera2D* camera, mat4 out_view)
 	
 	mat4 view;
 	glm_mat4_identity(view);
-	glm_translate(view, (vec3) { -camera->pos[0] * size[0], -camera->pos[1] * size[1] });
-	glm_rotate(view, camera->angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_translate(view, vec3(-camera->pos[0] * size[0] - 1.0f, -camera->pos[1] * size[1] + 1.0f));
+	glm_rotate(view, camera->angle, vec3(0.0f, 0.0f, 1.0f));
 	glm_scale(view, size);
-	glm_translate(view, (vec3) { -0.5f, -0.5f });
+	//glm_translate(view, vec3(-0.5f, -0.5f));
 	glm_mat4_copy(view, out_view);
 }
 
@@ -300,9 +300,9 @@ E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_mo
 	
 	mat4 model;
 	glm_mat4_identity(model);
-	glm_translate(model, (vec3) { pos[0], pos[1] });
-	glm_scale(model, (vec3) { scale[0], scale[1], 1.0f });
-	glm_rotate(model, angle, (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_translate(model, vec3(pos[0], pos[1]));
+	glm_scale(model, vec3(scale[0], scale[1], 1.0f));
+	glm_rotate(model, angle, vec3(0.0f, 0.0f, 1.0f));
 	glm_mat4_copy(model, out_model);
 }
 
@@ -315,9 +315,9 @@ E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_m
 	glm_mat4_identity(model);
 	glm_translate(model, (float32*)pos);
 	glm_scale(model, (float32*)scale);
-	glm_rotate(model, rot[0], (vec3) { 1.0f, 0.0f, 0.0f });
-	glm_rotate(model, rot[1], (vec3) { 0.0f, 1.0f, 0.0f });
-	glm_rotate(model, rot[2], (vec3) { 0.0f, 0.0f, 1.0f });
+	glm_rotate(model, rot[0], vec3(1.0f, 0.0f, 0.0f));
+	glm_rotate(model, rot[1], vec3(0.0f, 1.0f, 0.0f));
+	glm_rotate(model, rot[2], vec3(0.0f, 0.0f, 1.0f));
 	glm_mat4_copy(model, out_model);
 }
 
@@ -596,6 +596,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			.width = tex_size,
 			.height = tex_size,
 			.channels = 1,
+			.flag_linear_filtering = true,
 		},
 	};
 	
@@ -625,19 +626,22 @@ E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 }
 
 API void
-E_DrawRectBatch(const E_RectBatch* batch)
+E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 {
 	Trace();
 	
 	mat4 view;
-	E_Camera2D cam = {
-		.pos = { 0.0f, 0.0f },
-		.size = { (float32)global_engine.window_state->width, (float32)global_engine.window_state->height },
-		.zoom = 1.0f,
-		.angle = 0.0f,
-	};
+	if (!cam)
+	{
+		cam = &(E_Camera2D) {
+			.pos = { 0.0f, 0.0f },
+			.size = { (float32)global_engine.window_state->width, (float32)global_engine.window_state->height },
+			.zoom = 1.0f,
+			.angle = 0.0f,
+		};
+	}
 	
-	E_CalcViewMatrix2D(&cam, view);
+	E_CalcViewMatrix2D(cam, view);
 	
 	Buffer uniform_buffer = Arena_PushStringAligned(global_engine.frame_arena, Buf(view), 16);
 	
@@ -711,38 +715,29 @@ E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Aren
 }
 
 API bool
-E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, int32 texindex_, String text, vec2 pos, vec2 scale, vec4 color)
+E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color)
 {
 	Trace();
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
 	
-	int32 int_texindex = texindex_;
+	int32 int_texindex = -1;
 	
-	if (int_texindex == -1)
+	for (int32 i = 0; i < ArrayLength(batch->textures); ++i)
 	{
-		for (int32 i = 0; i < ArrayLength(batch->textures); ++i)
+		if (!batch->textures[i])
+			int_texindex = i;
+		
+		if (batch->textures[i] == &font->texture)
 		{
-			if (!batch->textures[i])
-			{
-				batch->textures[i] = &font->texture;
-				int_texindex = i;
-				break;
-			}
-			
-			if (batch->textures[i] == &font->texture)
-			{
-				int_texindex = i;
-				break;
-			}
+			int_texindex = i;
+			break;
 		}
-	}
-	else
-	{
-		batch->textures[int_texindex] = &font->texture;
 	}
 	
 	if (int_texindex == -1)
 		return false;
+	
+	batch->textures[int_texindex] = &font->texture;
 	
 	const float32 texindex = (float32)int_texindex;
 	const float32 begin_x = pos[0];
