@@ -5,7 +5,10 @@
 #ifdef CONFIG_DEBUG
 #   define COMMON_DEBUG
 #endif
-#define COMMON_DONT_USE_CRT
+
+#if !defined(_WIN32) || defined(_WIN64)
+#   define COMMON_DONT_USE_CRT
+#endif
 
 #if defined(__cplusplus)
 #   define API extern "C"

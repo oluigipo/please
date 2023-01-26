@@ -441,9 +441,12 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 			DBT_DEVTYP_DEVICEINTERFACE
 		};
 		
-		ok = ok && RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE);
+		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
+			OS_DebugLog("Failed to register input device notification.");
+		if (!Win32_InitSimpleAudio())
+			OS_DebugLog("Failed to initialize SimpleAudio API.");
+		
 		ok = ok && Win32_InitInput();
-		ok = ok && Win32_InitSimpleAudio();
 		
 		if (ok)
 		{
@@ -680,8 +683,16 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 		return false;
 	}
 	
+#ifndef _WIN64
+	if (large_int.QuadPart > UINT32_MAX)
+	{
+		CloseHandle(handle);
+		return false;
+	}
+#endif
+	
 	Arena_Savepoint output_arena_save = Arena_Save(output_arena);
-	uintsize file_size = large_int.QuadPart;
+	uintsize file_size = (uintsize)large_int.QuadPart;
 	uint8* file_data = Arena_PushDirtyAligned(output_arena, file_size, 1);
 	
 	uintsize still_to_read = file_size;

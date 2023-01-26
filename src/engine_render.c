@@ -9,23 +9,18 @@ static RB_Handle g_render_whitetex;
 static RB_Handle g_render_quadshader;
 static RB_Handle g_render_quadelemsbuf;
 
-struct E_Tex2d
-{
-	RB_Handle handle;
-};
-
 static const char g_render_gl_quadvshader[] =
 "#version 330 core\n"
 "layout (location=0) in vec2  aPos;\n"
 "layout (location=1) in vec2  aElemPos;\n"
 "layout (location=2) in mat2  aElemScaling;\n"
-"layout (location=4) in float aElemTexIndex;\n"
+"layout (location=4) in vec2  aElemTexIndex;\n"
 "layout (location=5) in vec4  aElemTexcoords;\n"
 "layout (location=6) in vec4  aElemColor;\n"
 "\n"
 "out vec2  vTexcoords;\n"
 "out vec4  vColor;\n"
-"out float vTexIndex;\n"
+"out vec2  vTexIndex;\n"
 "\n"
 "uniform UniformBuffer {\n"
 "    mat4 uView;\n"
@@ -43,25 +38,27 @@ static const char g_render_gl_quadfshader[] =
 "#version 330 core\n"
 "in vec2  vTexcoords;\n"
 "in vec4  vColor;\n"
-"in float vTexIndex;\n"
+"in vec2  vTexIndex;\n"
 "\n"
 "out vec4 oFragColor;\n"
 "\n"
-"uniform sampler2D uTexture[8];\n"
+"uniform sampler2D uTexture[4];\n"
 "\n"
 "void main() {\n"
 "    vec4 color = vec4(1.0);\n"
 "    \n"
-"    switch (int(vTexIndex)) {\n"
+"    switch (int(vTexIndex.x)) {\n"
 "        default:\n"
 "        case 0: color = texture(uTexture[0], vTexcoords); break;\n"
 "        case 1: color = texture(uTexture[1], vTexcoords); break;\n"
 "        case 2: color = texture(uTexture[2], vTexcoords); break;\n"
 "        case 3: color = texture(uTexture[3], vTexcoords); break;\n"
-"        case 4: color = texture(uTexture[4], vTexcoords); break;\n"
-"        case 5: color = texture(uTexture[5], vTexcoords); break;\n"
-"        case 6: color = texture(uTexture[6], vTexcoords); break;\n"
-"        case 7: color = texture(uTexture[7], vTexcoords); break;\n"
+"    }\n"
+"    \n"
+"    switch (int(vTexIndex.y)) {\n"
+"        default:"
+"        case 0: break;"
+"        case 1: color = vec4(1.0, 1.0, 1.0, color.x); break;"
 "    }\n"
 "    \n"
 "    oFragColor = color * vColor;\n"
@@ -80,6 +77,21 @@ E_AppendDrawCmd_(RB_DrawCommand* first, RB_DrawCommand* last)
 	{
 		global_engine.last_draw_command->next = first;
 		global_engine.last_draw_command = last;
+	}
+}
+
+static void
+E_AppendResourceCmd_(RB_ResourceCommand* first, RB_ResourceCommand* last)
+{
+	if (!global_engine.last_resource_command)
+	{
+		global_engine.resource_command_list = first;
+		global_engine.last_resource_command = last;
+	}
+	else
+	{
+		global_engine.last_resource_command->next = first;
+		global_engine.last_resource_command = last;
 	}
 }
 
@@ -207,7 +219,7 @@ E_InitRender_(void)
 						.gl_location = 2,
 					},
 					[3] = {
-						.kind = RB_LayoutDescKind_Float,
+						.kind = RB_LayoutDescKind_Vec2,
 						.offset = offsetof(E_RectBatchElem, tex_index),
 						.divisor = 1,
 						.vbuffer_index = 1,
@@ -251,6 +263,8 @@ E_DeinitRender_(void)
 API void
 E_CalcViewMatrix2D(const E_Camera2D* camera, mat4 out_view)
 {
+	Trace();
+	
 	vec3 size = {
 		camera->zoom * 2.0f / camera->size[0],
 		-camera->zoom * 2.0f / camera->size[1],
@@ -269,6 +283,8 @@ E_CalcViewMatrix2D(const E_Camera2D* camera, mat4 out_view)
 API void
 E_CalcViewMatrix3D(const E_Camera3D* camera, mat4 out_view, float32 fov, float32 aspect)
 {
+	Trace();
+	
 	glm_mat4_identity(out_view);
 	glm_look((float32*)camera->pos, (float32*)camera->dir, (float32*)camera->up, out_view);
 	
@@ -280,6 +296,8 @@ E_CalcViewMatrix3D(const E_Camera3D* camera, mat4 out_view, float32 fov, float32
 API void
 E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_model)
 {
+	Trace();
+	
 	mat4 model;
 	glm_mat4_identity(model);
 	glm_translate(model, (vec3) { pos[0], pos[1] });
@@ -291,6 +309,8 @@ E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, mat4 out_mo
 API void
 E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model)
 {
+	Trace();
+	
 	mat4 model;
 	glm_mat4_identity(model);
 	glm_translate(model, (float32*)pos);
@@ -304,6 +324,8 @@ E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_m
 API void
 E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_pos)
 {
+	Trace();
+	
 	vec2 result;
 	float32 inv_zoom = 1.0f / camera->zoom * 2.0f;
 	
@@ -315,19 +337,289 @@ E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_po
 }
 
 //- New api
+API bool
+E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
+{
+	Trace();
+	
+	void* pixels;
+	int32 width, height;
+	int32 channels;
+	
+	if (desc->encoded_image.size)
+	{
+		SafeAssert(desc->encoded_image.size <= INT32_MAX);
+		
+		const void* data = desc->encoded_image.data;
+		int32 size = (int32)desc->encoded_image.size;
+		
+		void* allocated = stbi_load_from_memory(data, size, &width, &height, &(int32) { 0 }, 4);
+		channels = 4;
+		
+		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, allocated, width*height*channels, 4);
+		stbi_image_free(allocated);
+		
+		if (!pixels)
+			return false;
+	}
+	else
+	{
+		const void* data = desc->raw_image.data;
+		uintsize size = desc->raw_image.size;
+		
+		width = desc->width;
+		height = desc->height;
+		channels = desc->raw_image_channel_count;
+		
+		SafeAssert(data && size);
+		SafeAssert(size == width*height*channels);
+		
+		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, data, size, 4);
+	}
+	
+	// Generate command
+	*out_tex = (E_Tex2d) {
+		.handle = { 0 },
+		.width = width,
+		.height = height,
+	};
+	
+	RB_ResourceCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
+	*cmd = (RB_ResourceCommand) {
+		.kind = RB_ResourceCommandKind_MakeTexture2D,
+		.handle = &out_tex->handle,
+		.texture_2d = {
+			.pixels = pixels,
+			.width = width,
+			.height = height,
+			.channels = (uint32)channels,
+		},
+	};
+	
+	E_AppendResourceCmd_(cmd, cmd);
+	
+	return true;
+}
+
+API bool
+E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
+{
+	Trace();
+	
+	stbtt_fontinfo* stb_fontinfo = Arena_PushStruct(desc->arena, stbtt_fontinfo);
+	Buffer ttf = desc->ttf;
+	
+	{
+		Trace(); TraceName(Str("stbtt_InitFont"));
+		if (!stbtt_InitFont(stb_fontinfo, ttf.data, 0))
+			return false;
+	}
+	
+	stb_fontinfo->userdata = global_engine.scratch_arena;
+	
+	int32 tex_size = desc->bitmap_size ? desc->bitmap_size : 1024;
+	uint8* bitmap;
+	
+	{
+		Trace(); TraceName(Str("Allocate bitmap"));
+		bitmap = Arena_PushAligned(desc->arena, tex_size*tex_size, 4);
+	}
+	
+	uint32 glyphmap_count = 0;
+	uint32 glyphmap_log2cap = desc->hashmap_log2cap ? desc->hashmap_log2cap : 16;
+	E_FontGlyphEntry invalid_glyph = { 0 };
+	E_FontGlyphEntry* glyphmap;
+	
+	{
+		Trace(); TraceName(Str("Allocate hashmap"));
+		glyphmap = Arena_PushAligned(desc->arena, sizeof(*glyphmap) << glyphmap_log2cap, 4);
+	}
+	
+	int32 ascent;
+	int32 descent;
+	int32 line_gap;
+	int32 space_advance;
+	int32 bbox_y1;
+	int32 bbox_y2;
+	float32 char_scale;
+	
+	{
+		Trace(); TraceName(Str("stbtt_ScaleForPixelHeight"));
+		char_scale = stbtt_ScaleForPixelHeight(stb_fontinfo, (desc->char_height != 0) ? desc->char_height : 16.0f);
+	}
+	
+	{
+		Trace(); TraceName(Str("stbtt_GetFontVMetrics"));
+		stbtt_GetFontVMetrics(stb_fontinfo, &ascent, &descent, &line_gap);
+	}
+	{
+		Trace(); TraceName(Str("stbtt_GetCodepointHMetrics"));
+		stbtt_GetCodepointHMetrics(stb_fontinfo, ' ', &space_advance, &(int32) { 0 });
+	}
+	{
+		Trace(); TraceName(Str("stbtt_GetFontBoundingBox"));
+		stbtt_GetFontBoundingBox(stb_fontinfo, &(int32) { 0 }, &bbox_y1, &(int32) { 0 }, &bbox_y2);
+	}
+	
+	int32 tex_currline = 0;
+	int32 tex_currcol = 0;
+	int32 tex_linesize = (int32)ceilf((bbox_y2 - bbox_y1) * char_scale);
+	
+	for (int32 i = -1; i < (int32)ArrayLength(desc->prebake_ranges); ++i)
+	{
+		uint32 range_begin;
+		uint32 range_end;
+		
+		// NOTE(ljre): Handle special case of the replacement character.
+		if (i == -1)
+		{
+			range_begin = 0xFFFD;
+			range_end = range_begin + 1;
+		}
+		else
+		{
+			range_begin = Max(' '+1, desc->prebake_ranges[i].begin);
+			range_end = desc->prebake_ranges[i].end;
+			
+			if (!range_begin)
+				break;
+		}
+		
+		for (uint32 codepoint = range_begin; codepoint < range_end; ++codepoint)
+		{
+			E_FontGlyphEntry* glyph = NULL;
+			
+			if (i == -1)
+				glyph = &invalid_glyph;
+			else
+			{
+				uint64 hash = Hash_IntHash64(codepoint);
+				int32 index = (int32)hash;
+				
+				for (;;)
+				{
+					index = Hash_Msi(glyphmap_log2cap, hash, index);
+					glyph = &glyphmap[index];
+					
+					if (glyph->codepoint == codepoint)
+					{
+						glyph = NULL;
+						break;
+					}
+					
+					if (!glyph->codepoint)
+						break;
+				}
+			}
+			
+			if (!glyph)
+				continue;
+			
+			int32 glyph_font_index;
+			int32 advance, bearing;
+			int32 x1, y1, x2, y2;
+			
+			glyph_font_index = stbtt_FindGlyphIndex(stb_fontinfo, (int32)codepoint);
+			stbtt_GetGlyphHMetrics(stb_fontinfo, glyph_font_index, &advance, &bearing);
+			stbtt_GetGlyphBitmapBox(stb_fontinfo, glyph_font_index, char_scale, char_scale, &x1, &y1, &x2, &y2);
+			
+			int32 width = x2 - x1 + 1;
+			int32 height = y2 - y1 + 1;
+			
+			if (tex_currcol + width >= tex_size)
+			{
+				tex_currcol = 0;
+				tex_currline += 1;
+				
+				SafeAssert((tex_currline - 1) * tex_linesize < tex_size);
+			}
+			
+			int32 x = tex_currcol;
+			int32 y = tex_currline * tex_linesize;
+			
+			tex_currcol += width + 1;
+			
+			*glyph = (E_FontGlyphEntry) {
+				.codepoint = codepoint,
+				.x = (uint16)x,
+				.y = (uint16)y,
+				.width = (uint16)width,
+				.height = (uint16)height,
+				.xoff = (int16)x1,
+				.yoff = (int16)y1,
+				.advance = (int16)advance,
+				.bearing = (int16)bearing,
+			};
+			
+			uint8* base_ptr = bitmap + (x + y * tex_size);
+			int32 stride = tex_size;
+			
+			for Arena_TempScope(global_engine.scratch_arena)
+			{
+				Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
+				stbtt_MakeGlyphBitmap(stb_fontinfo, base_ptr, glyph->width, glyph->height, stride, char_scale, char_scale, glyph_font_index);
+			}
+		}
+	}
+	
+	*out_font = (E_Font) {
+		.texture = { 0 },
+		
+		.ttf = ttf,
+		.stb_fontinfo = stb_fontinfo,
+		
+		.bitmap = bitmap,
+		.tex_size = tex_size,
+		.tex_currline = tex_currline,
+		.tex_currcol = tex_currcol,
+		.tex_linesize = tex_linesize,
+		
+		.glyphmap_count = glyphmap_count,
+		.glyphmap_log2cap = glyphmap_log2cap,
+		.glyphmap = glyphmap,
+		.invalid_glyph = invalid_glyph,
+		
+		.ascent = ascent,
+		.descent = descent,
+		.line_gap = line_gap,
+		.space_advance = space_advance,
+		.char_scale = char_scale,
+	};
+	
+	RB_ResourceCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
+	*cmd = (RB_ResourceCommand) {
+		.kind = RB_ResourceCommandKind_MakeTexture2D,
+		.handle = &out_font->texture,
+		.flag_dynamic = true,
+		.texture_2d = {
+			.pixels = bitmap,
+			.width = tex_size,
+			.height = tex_size,
+			.channels = 1,
+		},
+	};
+	
+	E_AppendResourceCmd_(cmd, cmd);
+	
+	return true;
+}
+
 API void
 E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 {
 	Trace();
 	
 	RB_DrawCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_DrawCommand);
-	
-	cmd->kind = RB_DrawCommandKind_Clear;
-	cmd->clear.flag_color = true;
-	cmd->clear.color[0] = r;
-	cmd->clear.color[1] = g;
-	cmd->clear.color[2] = b;
-	cmd->clear.color[3] = a;
+	*cmd = (RB_DrawCommand) {
+		.kind = RB_DrawCommandKind_Clear,
+		.clear = {
+			.flag_color = true,
+			.color[0] = r,
+			.color[1] = g,
+			.color[2] = b,
+			.color[3] = a,
+		},
+	};
 	
 	E_AppendDrawCmd_(cmd, cmd);
 }
@@ -372,17 +664,165 @@ E_DrawRectBatch(const E_RectBatch* batch)
 			.instance_count = batch->count,
 			.uniform_buffer = uniform_buffer,
 			.samplers = {
-				{ batch->textures[0] ? &batch->textures[0]->handle : &g_render_whitetex, },
-				{ batch->textures[1] ? &batch->textures[1]->handle : &g_render_whitetex, },
-				{ batch->textures[2] ? &batch->textures[2]->handle : &g_render_whitetex, },
-				{ batch->textures[3] ? &batch->textures[3]->handle : &g_render_whitetex, },
-				{ batch->textures[4] ? &batch->textures[4]->handle : &g_render_whitetex, },
-				{ batch->textures[5] ? &batch->textures[5]->handle : &g_render_whitetex, },
-				{ batch->textures[6] ? &batch->textures[6]->handle : &g_render_whitetex, },
-				{ batch->textures[7] ? &batch->textures[7]->handle : &g_render_whitetex, },
+				{ batch->textures[0] ? batch->textures[0] : &g_render_whitetex, },
+				{ batch->textures[1] ? batch->textures[1] : &g_render_whitetex, },
+				{ batch->textures[2] ? batch->textures[2] : &g_render_whitetex, },
+				{ batch->textures[3] ? batch->textures[3] : &g_render_whitetex, },
 			},
 		},
 	};
 	
 	E_AppendDrawCmd_(cmd, cmd);
+}
+
+API void
+E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Arena* to_clone_batch_at)
+{
+	Trace();
+	
+	*out_cached_batch = (E_CachedBatch) {
+		.vbuffer = { 0 },
+		.samplers = {
+			batch->textures[0] ? batch->textures[0] : &g_render_whitetex,
+			batch->textures[1] ? batch->textures[1] : &g_render_whitetex,
+			batch->textures[2] ? batch->textures[2] : &g_render_whitetex,
+			batch->textures[3] ? batch->textures[3] : &g_render_whitetex,
+		},
+		.instance_count = batch->count,
+	};
+	
+	const void* buffer = batch->elements;
+	uintsize size = batch->count * sizeof(batch->elements[0]);
+	
+	if (to_clone_batch_at)
+		buffer = Arena_PushMemoryAligned(to_clone_batch_at, buffer, size, 16);
+	
+	RB_ResourceCommand* rc_cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
+	*rc_cmd = (RB_ResourceCommand) {
+		.kind = RB_ResourceCommandKind_MakeVertexBuffer,
+		.handle = &out_cached_batch->vbuffer,
+		.buffer = {
+			.memory = buffer,
+			.size = size,
+		},
+	};
+	
+	E_AppendResourceCmd_(rc_cmd, rc_cmd);
+}
+
+API bool
+E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, int32 texindex_, String text, vec2 pos, vec2 scale, vec4 color)
+{
+	Trace();
+	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
+	
+	int32 int_texindex = texindex_;
+	
+	if (int_texindex == -1)
+	{
+		for (int32 i = 0; i < ArrayLength(batch->textures); ++i)
+		{
+			if (!batch->textures[i])
+			{
+				batch->textures[i] = &font->texture;
+				int_texindex = i;
+				break;
+			}
+			
+			if (batch->textures[i] == &font->texture)
+			{
+				int_texindex = i;
+				break;
+			}
+		}
+	}
+	else
+	{
+		batch->textures[int_texindex] = &font->texture;
+	}
+	
+	if (int_texindex == -1)
+		return false;
+	
+	const float32 texindex = (float32)int_texindex;
+	const float32 begin_x = pos[0];
+	const float32 begin_y = pos[1];
+	const float32 scale_x = font->char_scale * scale[0];
+	const float32 scale_y = font->char_scale * scale[1];
+	const float32 inv_bitmap_size = 1.0f / (float32)font->tex_size;
+	
+	float32 curr_x = begin_x;
+	float32 curr_y = begin_y;
+	
+	uint32 codepoint;
+	int32 str_index = 0;
+	while (codepoint = String_Decode(text, &str_index), codepoint)
+	{
+		if (codepoint == ' ')
+		{
+			curr_x += (float32)font->space_advance * scale_x;
+			continue;
+		}
+		
+		if (codepoint == '\n')
+		{
+			curr_x = begin_x;
+			curr_y += (float32)(font->ascent - font->descent + font->line_gap) * scale_y;
+			continue;
+		}
+		
+		if (codepoint <= 32)
+			continue;
+		
+		// Hashmap find
+		uint64 hash = Hash_IntHash64(codepoint);
+		int32 index = (int32)hash;
+		E_FontGlyphEntry* glyph = NULL;
+		
+		SafeAssert(font->glyphmap_count >> font->glyphmap_log2cap == 0);
+		
+		for (;;)
+		{
+			index = Hash_Msi(font->glyphmap_log2cap, hash, index);
+			glyph = &font->glyphmap[index];
+			
+			if (!glyph->codepoint)
+			{
+				glyph = &font->invalid_glyph;
+				break;
+			}
+			
+			if (glyph->codepoint == codepoint)
+				break;
+		}
+		
+		SafeAssert(glyph);
+		
+		E_RectBatchElem* elem = Arena_PushStruct(arena, E_RectBatchElem);
+		++batch->count;
+		
+		float32 x = curr_x + (float32)(glyph->xoff + glyph->bearing * font->char_scale) * scale[0];
+		float32 y = curr_y + (float32)(glyph->yoff + font->ascent * font->char_scale) * scale[1];
+		
+		*elem = (E_RectBatchElem) {
+			.pos = { x, y, },
+			.scaling = {
+				[0][0] = (float32)glyph->width * scale[0],
+				[1][1] = (float32)glyph->height * scale[1],
+			},
+			.tex_index = texindex,
+			.tex_kind = 1,
+			.texcoords = {
+				(float32)glyph->x * inv_bitmap_size,
+				(float32)glyph->y * inv_bitmap_size,
+				(float32)glyph->width * inv_bitmap_size,
+				(float32)glyph->height * inv_bitmap_size,
+			},
+			.color = { color[0], color[1], color[2], color[3], },
+		};
+		
+		curr_x += (float32)glyph->advance * scale_x;
+	}
+	
+	return true;
 }

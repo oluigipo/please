@@ -154,10 +154,21 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	
 #if defined(CONFIG_DEBUG)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
+	
+	D3D_FEATURE_LEVEL feature_levels[] = {
+		D3D_FEATURE_LEVEL_9_3
+	};
+#else
+	D3D_FEATURE_LEVEL feature_levels[] = {
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+		D3D_FEATURE_LEVEL_9_3,
+	};
 #endif
 	
 	HRESULT result = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
-		flags, NULL, 0,
+		flags, feature_levels, ArrayLength(feature_levels),
 		D3D11_SDK_VERSION, &swapchain_desc,
 		&global_direct3d.swapchain,
 		&global_direct3d.device,

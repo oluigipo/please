@@ -54,8 +54,8 @@ DisableWarnings();
 #define STB_IMAGE_IMPLEMENTATION
 #include <ext/stb_image.h>
 
-#define STBTT_malloc(x,u) ((void)(u),OS_HeapAlloc(x))
-#define STBTT_free(x,u) ((void)(u),OS_HeapFree(x))
+#define STBTT_malloc(x,u) ((u) ? Arena_PushDirtyAligned(u, x, 16) : OS_HeapAlloc(x))
+#define STBTT_free(x,u) ((u) ? (void)(x) : OS_HeapFree(x))
 #define STBTT_assert Assert
 
 #define STB_TRUETYPE_IMPLEMENTATION

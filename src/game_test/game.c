@@ -5,7 +5,8 @@ static E_GlobalData* engine;
 
 struct G_GlobalData
 {
-	int32 dummy;
+	E_Font font;
+	E_Tex2d tex_pexe;
 };
 
 static void
@@ -13,7 +14,31 @@ G_Init(void)
 {
 	game = engine->game = Arena_PushStruct(engine->persistent_arena, G_GlobalData);
 	
+	{
+		E_FontDesc desc = {
+			.arena = engine->persistent_arena,
+			.ttf = { 0 },
+			
+			.char_height = 32.0f,
+			.prebake_ranges = {
+				{ 0x21, 0x7E+1 },
+				{ 0xA1, 0xFF+1 },
+			},
+		};
+		
+		SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
+		SafeAssert(E_MakeFont(&desc, &game->font));
+	}
 	
+	for Arena_TempScope(engine->scratch_arena)
+	{
+		E_Tex2dDesc desc = {
+			0
+		};
+		
+		SafeAssert(OS_ReadEntireFile(Str("./assets/pexe.png"), engine->scratch_arena, (void**)&desc.encoded_image.data, &desc.encoded_image.size));
+		SafeAssert(E_MakeTex2d(&desc, &game->tex_pexe));
+	}
 }
 
 static void
@@ -61,9 +86,12 @@ G_UpdateAndRender(void)
 	}
 	
 	E_RectBatch batch = {
+		.textures[0] = &game->tex_pexe.handle,
 		.count = count,
 		.elements = elements,
 	};
+	
+	E_PushTextToRectBatch(&batch, engine->frame_arena, &game->font, 1, Str("Olá, mundo!\n(menos pro cien)"), GLM_VEC2_ZERO, GLM_VEC2_ONE, GLM_VEC4_ONE);
 	
 	E_DrawRectBatch(&batch);
 	E_FinishFrame();

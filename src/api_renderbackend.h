@@ -1,6 +1,13 @@
 #ifndef API_RENDERBACKEND_H
 #define API_RENDERBACKEND_H
 
+enum
+{
+	RB_Limits_SamplersPerDrawCall = 4,
+	RB_Limits_InputsPerShader = 8,
+	RB_Limits_ColorAttachPerRenderTarget = 4,
+};
+
 union RB_Handle
 { uint32 id; }
 typedef RB_Handle;
@@ -71,6 +78,8 @@ struct RB_ResourceCommand
 			int32 width, height;
 			uint32 channels;
 			
+			bool flag_linear_filtering : 1;
+			
 			// used if 'flag_subregion' is set and not on init.
 			int32 xoffset;
 			int32 yoffset;
@@ -82,7 +91,7 @@ struct RB_ResourceCommand
 			Buffer d3d_vs_blob, d3d_ps_blob;
 			String gl_vs_src, gl_fs_src;
 			
-			RB_LayoutDesc input_layout[8];
+			RB_LayoutDesc input_layout[RB_Limits_InputsPerShader];
 		}
 		shader;
 		
@@ -98,7 +107,7 @@ struct RB_ResourceCommand
 		
 		struct
 		{
-			RB_Handle* color_textures[4];
+			RB_Handle* color_textures[RB_Limits_ColorAttachPerRenderTarget];
 			RB_Handle* depth_stencil_texture;
 		}
 		render_target;
@@ -160,7 +169,7 @@ struct RB_DrawCommand
 			
 			Buffer uniform_buffer;
 			
-			RB_SamplerDesc samplers[8];
+			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
 		}
 		drawcall;
 	};

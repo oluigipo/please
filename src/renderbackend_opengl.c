@@ -81,8 +81,8 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				const int32 formats[4] = { GL_RED, GL_RG, GL_RGB, GL_RGBA, };
 				int32 format = formats[channels - 1];
 				
-				bool mag_linear = true;
-				bool min_linear = true;
+				bool mag_linear = cmd->texture_2d.flag_linear_filtering;
+				bool min_linear = mag_linear;
 				
 				GL.glGenTextures(1, &id);
 				GL.glBindTexture(GL_TEXTURE_2D, id);

@@ -8,6 +8,14 @@ E_FinishFrame(void)
 		E_PlayAudios(NULL, NULL, 1.0f);
 	global_engine.outputed_sound_this_frame = false;
 	
+	if (global_engine.resource_command_list)
+	{
+		RB_ExecuteResourceCommands(global_engine.scratch_arena, global_engine.resource_command_list);
+		
+		global_engine.resource_command_list = NULL;
+		global_engine.last_resource_command = NULL;
+	}
+	
 	if (global_engine.draw_command_list)
 	{
 		RB_ExecuteDrawCommands(global_engine.scratch_arena, global_engine.draw_command_list, global_engine.window_state->width, global_engine.window_state->height);

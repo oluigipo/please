@@ -11,8 +11,6 @@
 
 DisableWarnings();
 #include <ext/cglm/cglm.h>
-#define STBTT_STATIC
-#include <ext/stb_truetype.h>
 ReenableWarnings();
 
 //~ Actual Api
@@ -27,7 +25,6 @@ struct Asset_SoundBuffer
 typedef Asset_SoundBuffer;
 
 //- Main Data
-struct E_RenderApi typedef E_RenderApi;
 struct G_GlobalData typedef G_GlobalData;
 
 struct E_GlobalData
@@ -39,9 +36,11 @@ struct E_GlobalData
 	G_GlobalData* game;
 	
 	const OS_WindowGraphicsContext* graphics_context;
-	const E_RenderApi* render;
 	OS_WindowState* window_state;
 	OS_InputState* input;
+	
+	RB_ResourceCommand* resource_command_list;
+	RB_ResourceCommand* last_resource_command;
 	
 	RB_DrawCommand* draw_command_list;
 	RB_DrawCommand* last_draw_command;
@@ -101,8 +100,55 @@ API void E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, m
 API void E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_pos);
 
 //- YET ANOTHER NEW RENDERER API!!!
-struct E_Tex2d typedef E_Tex2d;
-struct E_CachedBatch typedef E_CachedBatch;
+struct E_Tex2d
+{
+	RB_Handle handle;
+	int32 width;
+	int32 height;
+}
+typedef E_Tex2d;
+
+struct E_FontGlyphEntry
+{
+	uint32 codepoint;
+	
+	uint16 x, y;
+	uint16 width, height;
+	
+	int16 xoff, yoff;
+	int16 advance, bearing;
+}
+typedef E_FontGlyphEntry;
+
+struct E_Font
+{
+	RB_Handle texture;
+	
+	Buffer ttf;
+	void* stb_fontinfo;
+	
+	uint8* bitmap;
+	int32 tex_size;
+	int32 tex_currline;
+	int32 tex_currcol;
+	int32 tex_linesize;
+	
+	uint32 glyphmap_count, glyphmap_log2cap;
+	E_FontGlyphEntry* glyphmap;
+	E_FontGlyphEntry invalid_glyph;
+	
+	int32 ascent, descent, line_gap, space_advance;
+	float32 char_scale;
+}
+typedef E_Font;
+
+struct E_CachedBatch
+{
+	RB_Handle vbuffer;
+	RB_Handle* samplers[RB_Limits_SamplersPerDrawCall];
+	uint32 instance_count;
+}
+typedef E_CachedBatch;
 
 struct E_Tex2dDesc
 {
@@ -112,17 +158,37 @@ struct E_Tex2dDesc
 	int32 width, height;
 	uint32 raw_image_channel_count;
 	
-	bool f_linear_filtering : 1;
+	bool flag_linear_filtering : 1;
 }
 typedef E_Tex2dDesc;
 
-API E_Tex2d* E_MakeTex2d(const E_Tex2dDesc* desc, Arena* arena);
+struct E_FontDesc
+{
+	Arena* arena;
+	Buffer ttf;
+	
+	int32 bitmap_size; // default: 1024
+	float32 char_height; // default: 32
+	int32 hashmap_log2cap; // default: 16
+	
+	struct
+	{
+		uint32 begin;
+		uint32 end;
+	}
+	prebake_ranges[8];
+}
+typedef E_FontDesc;
+
+API bool E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex);
+API bool E_MakeFont(const E_FontDesc* desc, E_Font* out_font);
 
 struct E_RectBatchElem
 {
 	vec2 pos;
 	mat2 scaling;
 	float32 tex_index;
+	float32 tex_kind;
 	
 	vec4 texcoords;
 	vec4 color;
@@ -131,18 +197,80 @@ typedef E_RectBatchElem;
 
 struct E_RectBatch
 {
-	E_Tex2d* textures[8];
+	RB_Handle* textures[RB_Limits_SamplersPerDrawCall];
 	
 	uint32 count;
 	E_RectBatchElem* elements;
 }
 typedef E_RectBatch;
 
-API E_CachedBatch E_CacheRectBatch(const E_RectBatch* batch, Arena* to_clone_at);
+API bool E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, int32 texindex, String text, vec2 pos, vec2 scale, vec4 color);
+
+API void E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Arena* to_clone_batch_at);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawCachedBatch(const E_CachedBatch* batch);
 API void E_DrawRectBatch(const E_RectBatch* batch);
+
 API void E_RawDrawCommand(RB_DrawCommand* commands);
+
+#if 0
+//- NEW AUDIO MIXER
+struct E_AudioHandle { uint32 id; } typedef E_AudioHandle;
+struct E_PlayingHandle { uint32 id; } typedef E_PlayingHandle;
+
+API bool E_LoadBunchOfAudios(const Buffer* oggs, E_AudioHandle* out_handles, uint32 audio_count);
+API void E_FreeBunchOfAudios(E_AudioHandle* handles, uint32 audio_count);
+
+struct E_PlayAudioDesc
+{
+	float32 volume; // if 0, defaults to 1. if you really want 0, then use -0
+	float32 balance; // -1 = left; 0 = middle; 1 = right. clamped.
+	
+	// both clamped, and won't play if duration <= 0
+	float32 start_at_second;
+	float32 duration_in_seconds;
+	
+	float32 fadein_duration;
+	
+	int32 priority; // audios with lower priority might be removed automatically.
+	
+	bool loop : 1;
+	bool loop_at_start : 1; // imply loop.
+}
+typedef E_PlayAudioDesc;
+
+API E_PlayingHandle E_PlayAudio(E_AudioHandle audio, E_PlayAudioDesc* desc);
+API bool E_StopPlayingAudio(E_PlayingHandle playing);
+API bool E_FadeOutPlayingAudio(E_PlayingHandle playing, float32 fade_duration_in_seconds);
+API bool E_VolumePlayingAudio(E_PlayingHandle playing, float32 target_volume, float32 transition_duration_in_seconds);
+
+struct E_AudioInfo
+{
+	bool is_ok : 1;
+	E_AudioHandle handle;
+	
+	int32 frame_rate;
+	int32 channel_count;
+	int32 duration_in_frames;
+	float32 duration_in_seconds;
+	
+	uint32 playing_count;
+}
+typedef E_AudioInfo;
+
+struct E_PlayingInfo
+{
+	bool is_ok : 1;
+	E_AudioInfo audio_info;
+	
+	int32 playing_frame_index;
+	float32 playing_second;
+}
+typedef E_PlayingInfo;
+
+API void E_FetchAudioInfo(E_AudioHandle audio, E_AudioInfo* out_info);
+API void E_FetchPlayingInfo(E_PlayingHandle playing, E_PlayingInfo* out_info);
+#endif
 
 #endif //API_ENGINE_H

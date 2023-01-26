@@ -1,5 +1,11 @@
 #define D3d11 (*g_graphics_context->d3d11)
-#define D3d11Call(...) SafeAssert(!FAILED(__VA_ARGS__))
+#define D3d11Call(...) do { \
+if (FAILED(__VA_ARGS__)) { \
+if (Assert_IsDebuggerPresent_()) \
+Debugbreak(); \
+SafeAssert_OnFailure(#__VA_ARGS__, __FILE__, __LINE__, __func__); \
+} \
+} while (0)
 
 //~ GUIDs
 #ifndef IID_ID3D11Resource
@@ -23,8 +29,8 @@ struct RB_D3d11Shader_
 	ID3D11PixelShader* pixel_shader;
 	ID3D11InputLayout* input_layout;
 	
-	uint32 strides[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
-	uint32 offsets[ArrayLength( ((RB_ResourceCommand*)0)->shader.input_layout )];
+	uint32 strides[RB_Limits_InputsPerShader];
+	uint32 offsets[RB_Limits_InputsPerShader];
 }
 typedef RB_D3d11Shader_;
 
@@ -41,6 +47,7 @@ static RB_PoolOf_(RB_D3d11Shader_, 512) g_d3d11_bufferpool;
 static ID3D11RasterizerState* g_d3d11_rasterizer_state;
 static ID3D11SamplerState* g_d3d11_linear_sampler_state;
 static ID3D11SamplerState* g_d3d11_nearest_sampler_state;
+static ID3D11BlendState* g_d3d11_blend_state;
 
 static void
 RB_InitD3d11_(Arena* scratch_arena)
@@ -65,6 +72,9 @@ RB_InitD3d11_(Arena* scratch_arena)
 		.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
 		.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
 		.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
+		.MinLOD = -FLT_MAX,
+		.MaxLOD = FLT_MAX,
+		.ComparisonFunc = D3D11_COMPARISON_NEVER,
 	};
 	
 	D3d11Call(ID3D11Device_CreateSamplerState(D3d11.device, &linear_sampler_desc, &g_d3d11_linear_sampler_state));
@@ -74,9 +84,30 @@ RB_InitD3d11_(Arena* scratch_arena)
 		.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
 		.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
 		.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
+		.MinLOD = -FLT_MAX,
+		.MaxLOD = FLT_MAX,
+		.ComparisonFunc = D3D11_COMPARISON_NEVER,
 	};
 	
 	D3d11Call(ID3D11Device_CreateSamplerState(D3d11.device, &nearest_sampler_desc, &g_d3d11_nearest_sampler_state));
+	
+	D3D11_BLEND_DESC blend_desc = {
+		.AlphaToCoverageEnable = false,
+		.IndependentBlendEnable = false,
+		
+		.RenderTarget[0] = {
+			.BlendEnable = true,
+			.SrcBlend = D3D11_BLEND_SRC_ALPHA,
+			.DestBlend = D3D11_BLEND_INV_SRC_ALPHA,
+			.BlendOp = D3D11_BLEND_OP_ADD,
+			.SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA,
+			.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA,
+			.BlendOpAlpha = D3D11_BLEND_OP_ADD,
+			.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
+		},
+	};
+	
+	D3d11Call(ID3D11Device_CreateBlendState(D3d11.device, &blend_desc, &g_d3d11_blend_state));
 }
 
 static void
@@ -157,7 +188,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				ID3D11Texture2D* texture;
 				ID3D11Resource* as_resource;
 				ID3D11ShaderResourceView* resource_view;
-				ID3D11SamplerState* sampler_state = (g_d3d11_linear_sampler_state);
+				ID3D11SamplerState* sampler_state = cmd->texture_2d.flag_linear_filtering ? g_d3d11_linear_sampler_state : g_d3d11_nearest_sampler_state;
 				
 				D3d11Call(ID3D11Device_CreateTexture2D(D3d11.device, &tex_desc, tex_initial, &texture));
 				D3d11Call(ID3D11Texture2D_QueryInterface(texture, &IID_ID3D11Resource, (void**)&as_resource));
@@ -232,8 +263,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				ID3D11PixelShader* ps;
 				ID3D11InputLayout* input_layout;
 				uint32 layout_size = 0;
-				D3D11_INPUT_ELEMENT_DESC layout_desc[ArrayLength(cmd->shader.input_layout)*4] = { 0 };
-				char layout_semname[ArrayLength(layout_desc)][4];
+				D3D11_INPUT_ELEMENT_DESC layout_desc[RB_Limits_InputsPerShader*4] = { 0 };
 				
 				for (int32 i = 0; i < ArrayLength(cmd->shader.input_layout); ++i)
 				{
@@ -241,7 +271,6 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						break;
 					
 					RB_LayoutDesc curr_layout = cmd->shader.input_layout[i];
-					const char* chars = "0123456789abcdef";
 					
 					switch (curr_layout.kind)
 					{
@@ -258,12 +287,9 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 							if (0) case RB_LayoutDescKind_Vec3: format = DXGI_FORMAT_R32G32B32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec4: format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 							
-							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
-							semname = Mem_Copy(layout_semname[i], semname, 4);
-							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
-								.SemanticName = semname,
-								.SemanticIndex = 0,
+								.SemanticName = "VINPUT",
+								.SemanticIndex = layout_size,
 								.Format = format,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -276,12 +302,9 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						
 						case RB_LayoutDescKind_Mat2:
 						{
-							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
-							semname = Mem_Copy(layout_semname[i], semname, 4);
-							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
-								.SemanticName = semname,
-								.SemanticIndex = 0,
+								.SemanticName = "VINPUT",
+								.SemanticIndex = layout_size,
 								.Format = DXGI_FORMAT_R32G32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -295,12 +318,9 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						
 						case RB_LayoutDescKind_Mat3:
 						{
-							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
-							semname = Mem_Copy(layout_semname[i], semname, 4);
-							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
-								.SemanticName = semname,
-								.SemanticIndex = 0,
+								.SemanticName = "VINPUT",
+								.SemanticIndex = layout_size,
 								.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -315,12 +335,9 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						
 						case RB_LayoutDescKind_Mat4:
 						{
-							char* semname = (char[4]) { 'V', chars[i], '_', 0 };
-							semname = Mem_Copy(layout_semname[i], semname, 4);
-							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
-								.SemanticName = semname,
-								.SemanticIndex = 0,
+								.SemanticName = "VINPUT",
+								.SemanticIndex = layout_size,
 								.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -468,10 +485,11 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 		.Height = default_height,
 	};
 	
-	ID3D11DeviceContext_OMSetRenderTargets(D3d11.context, 1, &D3d11.target, NULL);
 	ID3D11DeviceContext_IASetPrimitiveTopology(D3d11.context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D11DeviceContext_RSSetViewports(D3d11.context, 1, &viewport);
 	ID3D11DeviceContext_RSSetState(D3d11.context, g_d3d11_rasterizer_state);
+	ID3D11DeviceContext_OMSetRenderTargets(D3d11.context, 1, &D3d11.target, NULL);
+	ID3D11DeviceContext_OMSetBlendState(D3d11.context, g_d3d11_blend_state, NULL, 0xFFFFFFFF);
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
