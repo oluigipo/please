@@ -20,6 +20,7 @@ DisableWarnings();
 #include <stdlib.h>
 #include <time.h>
 #include <synchapi.h>
+#include <shellscalingapi.h>
 
 // Input
 #include <xinput.h>
@@ -35,6 +36,8 @@ DisableWarnings();
 
 #include "os_win32_guid.c"
 
+extern __declspec(dllimport) LONG WINAPI RtlGetVersion(RTL_OSVERSIONINFOW*);
+
 ReenableWarnings();
 
 #if defined(_MSC_VER)
@@ -42,6 +45,7 @@ ReenableWarnings();
 #   pragma comment(lib, "user32.lib")
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
+#   pragma comment(lib, "ntdll.lib")
 #endif
 
 //~ NOTE(ljre): Globals
@@ -340,6 +344,23 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	
 	//- Init
 	{
+		HMODULE library = LoadLibraryA("shcore.dll");
+		bool ok = false;
+		
+		if (library)
+		{
+			HRESULT (WINAPI* set_process_dpi_aware)(PROCESS_DPI_AWARENESS value);
+			
+			set_process_dpi_aware = (void*)GetProcAddress(library, "SetProcessDpiAwareness");
+			if (set_process_dpi_aware)
+				ok = (S_OK == set_process_dpi_aware(PROCESS_PER_MONITOR_DPI_AWARE));
+		}
+		
+		if (!ok)
+			SetProcessDPIAware();
+	}
+	
+	{
 		LARGE_INTEGER value;
 		QueryPerformanceFrequency(&value);
 		global_time_frequency = value.QuadPart;
@@ -351,25 +372,13 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 			.cbSize = sizeof(info),
 		};
 		
-		if (GetMonitorInfoA(monitor, &info))
-			global_monitor = info.rcWork;
+		SafeAssert(GetMonitorInfoA(monitor, &info));
+		global_monitor = info.rcWork;
 	}
 	
 	global_process_started_time = Win32_GetTimer();
 	global_instance = instance;
-	global_scratch_arena = Arena_Create(32 << 10, 8 << 10);
-	
-	// NOTE(ljre): Get Monitor Size
-	{
-		HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
-		MONITORINFO info;
-		info.cbSize = sizeof(info);
-		
-		if (GetMonitorInfoA(monitor, &info))
-		{
-			global_monitor = info.rcWork;
-		}
-	}
+	global_scratch_arena = Arena_Create(32 << 10, 32 << 10);
 	
 	//- Run
 	int32 result = OS_UserMain(argc, argv);
@@ -384,6 +393,8 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 API bool
 OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 {
+	Trace();
+	
 	WNDCLASSW window_class = {
 		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc = WindowProc,
@@ -405,33 +416,41 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		config.center_window = false;
 	}
 	
-	bool ok = false;
-	for Arena_TempScope(global_scratch_arena)
+	bool ok = true;
+	
+	if (desc->flags & OS_InitFlags_WindowAndGraphics)
 	{
-		uintsize size = 0;
-		for (int32 i = 0; i < ArrayLength(config.title); ++i)
+		bool created_window = false;
+		
+		for Arena_TempScope(global_scratch_arena)
 		{
-			if (!config.title[i])
+			uintsize size = 0;
+			for (int32 i = 0; i < ArrayLength(config.title); ++i)
 			{
-				size = i;
-				break;
+				if (!config.title[i])
+				{
+					size = i;
+					break;
+				}
 			}
-		}
-		
-		wchar_t* window_name = Win32_StringToWide(global_scratch_arena, StrMake(size, config.title));
-		
-		switch (desc->window_desired_api)
-		{
-			default: break;
 			
-			case OS_WindowGraphicsApi_OpenGL: ok = Win32_CreateOpenGLWindow(&config, window_name); break;
-			case OS_WindowGraphicsApi_Direct3D11: ok = Win32_CreateD3d11Window(&config, window_name); break;
+			wchar_t* window_name = Win32_StringToWide(global_scratch_arena, StrMake(size, config.title));
+			
+			switch (desc->window_desired_api)
+			{
+				default: break;
+				
+				case OS_WindowGraphicsApi_OpenGL: created_window = Win32_CreateOpenGLWindow(&config, window_name); break;
+				case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&config, window_name); break;
+			}
+			
+			if (!created_window)
+				created_window = Win32_CreateD3d11Window(&config, window_name);
+			if (!created_window)
+				created_window = Win32_CreateOpenGLWindow(&config, window_name);
 		}
 		
-		if (!ok)
-			ok = Win32_CreateD3d11Window(&config, window_name);
-		if (!ok)
-			ok = Win32_CreateOpenGLWindow(&config, window_name);
+		ok = ok && created_window;
 	}
 	
 	if (ok)
@@ -443,7 +462,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		
 		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if (!Win32_InitSimpleAudio())
+		if ((desc->flags & OS_InitFlags_SimpleAudio) && !Win32_InitSimpleAudio())
 			OS_DebugLog("Failed to initialize SimpleAudio API.");
 		
 		ok = ok && Win32_InitInput();
@@ -455,10 +474,13 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 			global_window_state = config;
 			
 			out_output->window_state = config;
-			out_output->graphics_context = &global_graphics_context;
 			out_output->input_state = global_input_state;
 			
-			ShowWindow(global_window, SW_SHOWDEFAULT);
+			if (desc->flags & OS_InitFlags_WindowAndGraphics)
+			{
+				out_output->graphics_context = &global_graphics_context;
+				ShowWindow(global_window, SW_SHOWDEFAULT);
+			}
 		}
 	}
 	

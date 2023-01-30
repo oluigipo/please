@@ -12,7 +12,8 @@
 
 #define D3D11CreateDeviceAndSwapChain global_proc_D3D11CreateDeviceAndSwapChain
 typedef HRESULT WINAPI
-ProcD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter,
+ProcD3D11CreateDeviceAndSwapChain(
+	IDXGIAdapter* pAdapter,
 	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,
 	UINT Flags,
@@ -100,7 +101,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW); // & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-	HWND window = CreateWindowExW(0, global_class_name, title, style,
+	HWND window = CreateWindowExW(
+		0, global_class_name, title, style,
 		config->x, config->y,
 		config->width, config->height,
 		NULL, NULL, global_instance, NULL);
@@ -124,7 +126,9 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		return false;
 	}
 	
-	bool is_win10_or_later = IsWindows10OrGreater();
+	RTL_OSVERSIONINFOW version_info = { sizeof(version_info), };
+	RtlGetVersion(&version_info);
+	bool is_win10_or_later = (version_info.dwMajorVersion >= 10);
 	
 	DXGI_SWAP_CHAIN_DESC swapchain_desc = {
 		.BufferDesc = {
@@ -167,7 +171,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	};
 #endif
 	
-	HRESULT result = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
+	HRESULT result = D3D11CreateDeviceAndSwapChain(
+		NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
 		flags, feature_levels, ArrayLength(feature_levels),
 		D3D11_SDK_VERSION, &swapchain_desc,
 		&global_direct3d.swapchain,
@@ -203,8 +208,6 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		}
 	}
 #endif
-	
-	ShowWindow(window, SW_SHOWDEFAULT);
 	
 	global_window = window;
 	global_hdc = hdc;
