@@ -59,9 +59,7 @@ G_SnakeInit(void)
 {
 	Trace();
 	
-	game->snake = Arena_PushStruct(engine->persistent_arena, G_SnakeState);
-	
-	*game->snake = (G_SnakeState) {
+	game->snake = Arena_PushStructInit(engine->persistent_arena, G_SnakeState, {
 		.cell_width = 24.0f,
 		.cell_height = 24.0f,
 		.grid_width = 30,
@@ -77,7 +75,7 @@ G_SnakeInit(void)
 		.previous_direction = 0,
 		.period = 0,
 		.time_scale = 1.0f,
-	};
+	});
 	
 	for (int32 i = 0; i < 5; ++i)
 	{
@@ -164,7 +162,6 @@ G_SnakeUpdateAndRender(void)
 	const float32 grid_base_x = (engine->window_state->width - s->grid_width * s->cell_width) * 0.5f;
 	const float32 grid_base_y = (engine->window_state->height - s->grid_height * s->cell_height) * 0.5f;
 	
-	E_RectBatchElem* elem = NULL;
 	E_RectBatch batch = {
 		.textures[0] = NULL,
 		.textures[1] = &game->font.texture,
@@ -173,8 +170,7 @@ G_SnakeUpdateAndRender(void)
 	};
 	
 	++batch.count;
-	elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-	*elem = (E_RectBatchElem) {
+	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 		.pos = {
 			grid_base_x,
 			grid_base_y,
@@ -183,14 +179,13 @@ G_SnakeUpdateAndRender(void)
 		.scaling[1][1] = s->cell_height * s->grid_height,
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { [3] = 0.3f },
-	};
+	});
 	
 	vec3 col1 = { 0.5f, 0.9f, 0.5f };
 	vec3 col2 = { 0.5f, 0.5f, 0.9f };
 	
 	++batch.count;
-	elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-	*elem = (E_RectBatchElem) {
+	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 		.pos = {
 			grid_base_x + s->tail[0].x * s->cell_width + 1,
 			grid_base_y + s->tail[0].y * s->cell_height + 1,
@@ -199,7 +194,7 @@ G_SnakeUpdateAndRender(void)
 		.scaling[1][1] = s->cell_height - 2,
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { col1[0], col1[1], col1[2], 1.0f },
-	};
+	});
 	
 	for (int32 i = 1; i < s->tail_size; ++i)
 	{
@@ -207,8 +202,7 @@ G_SnakeUpdateAndRender(void)
 		float32 scale2 = 1.0f - (1.0f-scale)*(1.0f-scale);
 		
 		++batch.count;
-		elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-		*elem = (E_RectBatchElem) {
+		E_RectBatchElem* elem = Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 			.pos = {
 				grid_base_x + s->tail[i].x * s->cell_width + 2*glm_lerp(1.0f, 1.5f, scale2),
 				grid_base_y + s->tail[i].y * s->cell_height + 2*glm_lerp(1.0f, 1.5f, scale2),
@@ -217,14 +211,13 @@ G_SnakeUpdateAndRender(void)
 			.scaling[1][1] = s->cell_height - 4*glm_lerp(1.0f, 1.5f, scale2),
 			.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 			.color = { [3] = 1.0f },
-		};
+		});
 		
 		glm_vec3_lerp(col1, col2, scale, elem->color);
 	}
 	
 	++batch.count;
-	elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-	*elem = (E_RectBatchElem) {
+	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 		.pos = {
 			grid_base_x + s->apple_x * s->cell_width + 2,
 			grid_base_y + s->apple_y * s->cell_height + 2,
@@ -233,7 +226,7 @@ G_SnakeUpdateAndRender(void)
 		.scaling[1][1] = s->cell_height - 4,
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { 0.9f, 0.3f, 0.3f, 1.0f },
-	};
+	});
 	
 	if (s->tail_size >= 12)
 	{

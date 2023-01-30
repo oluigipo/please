@@ -127,36 +127,33 @@ E_InitRender_(void)
 		RB_ResourceCommand* cmd = NULL;
 		
 		// Quad vertex buffer
-		cmd = Arena_PushStruct(arena, RB_ResourceCommand);
-		*cmd = (RB_ResourceCommand) {
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeVertexBuffer,
 			.handle = &g_render_quadvbuf,
 			.buffer = {
 				.memory = quadvbuf,
 				.size = sizeof(quadvbuf),
 			},
-		};
+		});
 		
 		*head = cmd;
 		head = &cmd->next;
 		
 		// Quad index buffer
-		cmd = Arena_PushStruct(arena, RB_ResourceCommand);
-		*cmd = (RB_ResourceCommand) {
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeIndexBuffer,
 			.handle = &g_render_quadibuf,
 			.buffer = {
 				.memory = quadibuf,
 				.size = sizeof(quadibuf),
 			},
-		};
+		});
 		
 		*head = cmd;
 		head = &cmd->next;
 		
 		// White texture
-		cmd = Arena_PushStruct(arena, RB_ResourceCommand);
-		*cmd = (RB_ResourceCommand) {
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeTexture2D,
 			.handle = &g_render_whitetex,
 			.texture_2d = {
@@ -165,14 +162,13 @@ E_InitRender_(void)
 				.height = 2,
 				.channels = 4,
 			},
-		};
+		});
 		
 		*head = cmd;
 		head = &cmd->next;
 		
 		// Quad elements vertex buffer
-		cmd = Arena_PushStruct(arena, RB_ResourceCommand);
-		*cmd = (RB_ResourceCommand) {
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeVertexBuffer,
 			.handle = &g_render_quadelemsbuf,
 			.flag_dynamic = true,
@@ -180,14 +176,13 @@ E_InitRender_(void)
 				.memory = NULL,
 				.size = sizeof(E_RectBatchElem)*1024,
 			},
-		};
+		});
 		
 		*head = cmd;
 		head = &cmd->next;
 		
 		// Quad shader
-		cmd = Arena_PushStruct(arena, RB_ResourceCommand);
-		*cmd = (RB_ResourceCommand) {
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeShader,
 			.handle = &g_render_quadshader,
 			.shader = {
@@ -241,7 +236,7 @@ E_InitRender_(void)
 					},
 				},
 			},
-		};
+		});
 		
 		*head = cmd;
 		head = &cmd->next;
@@ -384,8 +379,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 		.height = height,
 	};
 	
-	RB_ResourceCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
-	*cmd = (RB_ResourceCommand) {
+	RB_ResourceCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeTexture2D,
 		.handle = &out_tex->handle,
 		.texture_2d = {
@@ -394,7 +388,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 			.height = height,
 			.channels = (uint32)channels,
 		},
-	};
+	});
 	
 	E_AppendResourceCmd_(cmd, cmd);
 	
@@ -586,8 +580,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 		.char_scale = char_scale,
 	};
 	
-	RB_ResourceCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
-	*cmd = (RB_ResourceCommand) {
+	RB_ResourceCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeTexture2D,
 		.handle = &out_font->texture,
 		.flag_dynamic = true,
@@ -598,7 +591,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			.channels = 1,
 			.flag_linear_filtering = true,
 		},
-	};
+	});
 	
 	E_AppendResourceCmd_(cmd, cmd);
 	
@@ -610,8 +603,7 @@ E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 {
 	Trace();
 	
-	RB_DrawCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_DrawCommand);
-	*cmd = (RB_DrawCommand) {
+	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
 		.kind = RB_DrawCommandKind_Clear,
 		.clear = {
 			.flag_color = true,
@@ -620,7 +612,7 @@ E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 			.color[2] = b,
 			.color[3] = a,
 		},
-	};
+	});
 	
 	E_AppendDrawCmd_(cmd, cmd);
 }
@@ -645,18 +637,16 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	
 	Buffer uniform_buffer = Arena_PushStringAligned(global_engine.frame_arena, Buf(view), 16);
 	
-	RB_ResourceCommand* rc_cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
-	*rc_cmd = (RB_ResourceCommand) {
+	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
 		.handle = &g_render_quadelemsbuf,
 		.buffer = {
 			.memory = batch->elements,
 			.size = batch->count * sizeof(batch->elements[0]),
 		},
-	};
+	});
 	
-	RB_DrawCommand* cmd = Arena_PushStruct(global_engine.frame_arena, RB_DrawCommand);
-	*cmd = (RB_DrawCommand) {
+	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
 		.kind = RB_DrawCommandKind_DrawCall,
 		.resources_cmd = rc_cmd,
 		.drawcall = {
@@ -674,7 +664,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 				{ batch->textures[3] ? batch->textures[3] : &g_render_whitetex, },
 			},
 		},
-	};
+	});
 	
 	E_AppendDrawCmd_(cmd, cmd);
 }
@@ -701,15 +691,14 @@ E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Aren
 	if (to_clone_batch_at)
 		buffer = Arena_PushMemoryAligned(to_clone_batch_at, buffer, size, 16);
 	
-	RB_ResourceCommand* rc_cmd = Arena_PushStruct(global_engine.frame_arena, RB_ResourceCommand);
-	*rc_cmd = (RB_ResourceCommand) {
+	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeVertexBuffer,
 		.handle = &out_cached_batch->vbuffer,
 		.buffer = {
 			.memory = buffer,
 			.size = size,
 		},
-	};
+	});
 	
 	E_AppendResourceCmd_(rc_cmd, rc_cmd);
 }
@@ -793,13 +782,11 @@ E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String tex
 		
 		SafeAssert(glyph);
 		
-		E_RectBatchElem* elem = Arena_PushStruct(arena, E_RectBatchElem);
-		++batch->count;
-		
 		float32 x = curr_x + (float32)(glyph->xoff + glyph->bearing * font->char_scale) * scale[0];
 		float32 y = curr_y + (float32)(glyph->yoff + font->ascent * font->char_scale) * scale[1];
 		
-		*elem = (E_RectBatchElem) {
+		++batch->count;
+		Arena_PushStructInit(arena, E_RectBatchElem, {
 			.pos = { x, y, },
 			.scaling = {
 				[0][0] = (float32)glyph->width * scale[0],
@@ -814,7 +801,7 @@ E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String tex
 				(float32)glyph->height * inv_bitmap_size,
 			},
 			.color = { color[0], color[1], color[2], color[3], },
-		};
+		});
 		
 		curr_x += (float32)glyph->advance * scale_x;
 	}

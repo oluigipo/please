@@ -35,6 +35,20 @@ E_FinishFrame(void)
 	global_engine.last_frame_time = current_time;
 }
 
+static bool
+E_Streq_(const char* left, const char* right)
+{
+	for (;;)
+	{
+		if (*left != *right)
+			return false;
+		if (!*left)
+			return true;
+		++left;
+		++right;
+	}
+}
+
 //~ Entry Point
 API int32
 OS_UserMain(int32 argc, char* argv[])
@@ -93,15 +107,13 @@ OS_UserMain(int32 argc, char* argv[])
 	
 	for (int32 i = 1; i < argc; ++i)
 	{
-		extern int strcmp(const char* left, const char* right);
-		
-		if (!strcmp(argv[i], "-opengl") || !strcmp(argv[i], "-gl") || !strcmp(argv[i], "-gl3"))
+		if (!Mem_Strcmp(argv[i], "-opengl") || !Mem_Strcmp(argv[i], "-gl") || !Mem_Strcmp(argv[i], "-gl3"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
-		else if (!strcmp(argv[i], "-d3d11") || !strcmp(argv[i], "-dx11"))
+		else if (!Mem_Strcmp(argv[i], "-d3d11") || !Mem_Strcmp(argv[i], "-dx11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
-		else if (!strcmp(argv[i], "-audio-44100"))
+		else if (!Mem_Strcmp(argv[i], "-audio-44100"))
 			init_desc.simpleaudio_desired_sample_rate = 44100;
-		else if (!strcmp(argv[i], "-audio-48000"))
+		else if (!Mem_Strcmp(argv[i], "-audio-48000"))
 			init_desc.simpleaudio_desired_sample_rate = 48000;
 	}
 	
@@ -110,11 +122,11 @@ OS_UserMain(int32 argc, char* argv[])
 	if (!OS_Init(&init_desc, &output))
 		OS_ExitWithErrorMessage("Failed to initialize platform layer.");
 	
+	// NOTE(ljre): Init global_engine structure
 	*global_engine.window_state = output.window_state;
 	*global_engine.input = output.input_state;
 	global_engine.graphics_context = output.graphics_context;
 	
-	// NOTE(ljre): Init global_engine structure
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else

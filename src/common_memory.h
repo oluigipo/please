@@ -29,6 +29,7 @@ static inline void Mem_Copy128Ux4(void* dst, const void* src, uintsize count);
 static inline void Mem_Copy128Ax4(void* dst, const void* src, uintsize count);
 
 static inline uintsize Mem_Strlen(const char* restrict cstr);
+static inline int32 Mem_Strcmp(const char* left, const char* right);
 static inline const void* Mem_FindByte(const void* buffer, uint8 byte, uintsize size);
 static inline void Mem_Zero(void* restrict dst, uintsize size);
 static inline void Mem_ZeroSafe(void* restrict dst, uintsize size);
@@ -773,6 +774,20 @@ Mem_Strlen(const char* restrict cstr)
 	return cstr - begin;
 }
 
+static inline int32
+Mem_Strcmp(const char* left, const char* right)
+{
+	for (;;)
+	{
+		if (*left != *right)
+			return *left - *right;
+		if (!*left)
+			return 0;
+		++left;
+		++right;
+	}
+}
+
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 {
@@ -923,6 +938,10 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 static inline uintsize
 Mem_Strlen(const char* restrict cstr)
 { return strlen(cstr); }
+
+static inline int32
+Mem_Strcmp(const char* left, const char* right)
+{ return strcmp(left, right); }
 
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
