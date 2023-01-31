@@ -1,3 +1,6 @@
+
+#define E_RENDER_ENABLE_SDF_GLYPHS
+
 uint8 typedef BYTE;
 
 #include "engine_internal_d3d11_vshader_quad.inc"
@@ -80,6 +83,7 @@ static const char g_render_gl_quadfshader[] =
 "            if (dist >= -1.0)\n"
 "                color.w *= max(1.0 - (dist+1.0)*0.5, 0.0);\n"
 "        } break;\n"
+"        case 4: color = vec4(1.0, 1.0, 1.0, min(max((color.r-0.45)*8.0, 0.0), 1.0)); break;"
 "    }\n"
 "    \n"
 "    oFragColor = color * vColor;\n"
@@ -538,6 +542,12 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			stbtt_GetGlyphHMetrics(stb_fontinfo, glyph_font_index, &advance, &bearing);
 			stbtt_GetGlyphBitmapBox(stb_fontinfo, glyph_font_index, char_scale, char_scale, &x1, &y1, &x2, &y2);
 			
+#ifdef E_RENDER_ENABLE_SDF_GLYPHS
+			x1 -= 4;
+			y1 -= 4;
+			x2 += 4;
+			y2 += 4;
+#endif
 			int32 width = x2 - x1 + 1;
 			int32 height = y2 - y1 + 1;
 			
@@ -571,8 +581,22 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			
 			for Arena_TempScope(global_engine.scratch_arena)
 			{
+#ifndef E_RENDER_ENABLE_SDF_GLYPHS
 				Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
 				stbtt_MakeGlyphBitmap(stb_fontinfo, base_ptr, glyph->width, glyph->height, stride, char_scale, char_scale, glyph_font_index);
+#else
+				Trace(); TraceName(Str("stbtt_GetGlyphSDF"));
+				int32 xoff, yoff, w, h;
+				
+				uint8* sdf = stbtt_GetGlyphSDF(
+					stb_fontinfo, char_scale, glyph_font_index, 4, 128, 32.0f,
+					&w, &h, &xoff, &yoff);
+				
+				SafeAssert(w == width-1 && h == height-1);
+				
+				for (intsize y = 0; y < height-1; ++y)
+					Mem_Copy(base_ptr + y * stride, sdf + y * w, width-1);
+#endif
 			}
 		}
 	}
@@ -814,7 +838,11 @@ E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String tex
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = texindex,
+#ifdef E_RENDER_ENABLE_SDF_GLYPHS
+			.tex_kind = 4,
+#else
 			.tex_kind = 1,
+#endif
 			.texcoords = {
 				(float32)glyph->x * inv_bitmap_size,
 				(float32)glyph->y * inv_bitmap_size,

@@ -290,8 +290,8 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 {
 	Trace();
 	
-	const float32 button_width = 200.0f;
-	const float32 button_height = 60.0f;
+	const float32 button_width = 300.0f;
+	const float32 button_height = 100.0f;
 	const float32 button_x = (engine->window_state->width - button_width) / 2;
 	const float32 mouse_x = engine->input->mouse.pos[0];
 	const float32 mouse_y = engine->input->mouse.pos[1];
@@ -323,7 +323,9 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 		.color = { color[0], color[1], color[2], color[3] },
 	});
 	
-	E_PushTextToRectBatch(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
+	float32 scale = sinf((float32)OS_GetTimeInSeconds()) * 0.2f + 1.5f;
+	
+	E_PushTextToRectBatch(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(scale, scale), GLM_VEC4_ONE);
 	
 	button_y += button_height * 1.5f;
 	
