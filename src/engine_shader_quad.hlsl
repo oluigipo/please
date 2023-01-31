@@ -79,7 +79,13 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 			if (dist >= -1.0)
 				result.w *= max(1.0-(dist+1.0)*0.5, 0.0);
 		} break;
-		case 4: result = float4(1.0, 1.0, 1.0, min(max((result.x-0.4625)*12.0, 0.0), 1.0)); break;
+		case 4:
+		{
+			float m = min(input.rawscale.x, input.rawscale.y);
+			float inv = 1.0 / m;
+			float a = (result.x - 0.5 + inv) * (m * 0.5);
+			result = float4(1.0, 1.0, 1.0, a);
+		} break;
 	}
 
 	result *= input.color;
