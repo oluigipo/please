@@ -31,8 +31,8 @@ static inline void Mem_Copy128Ax4(void* dst, const void* src, uintsize count);
 static inline uintsize Mem_Strlen(const char* restrict cstr);
 static inline int32 Mem_Strcmp(const char* left, const char* right);
 static inline const void* Mem_FindByte(const void* buffer, uint8 byte, uintsize size);
-static inline void Mem_Zero(void* restrict dst, uintsize size);
-static inline void Mem_ZeroSafe(void* restrict dst, uintsize size);
+static inline void* Mem_Zero(void* restrict dst, uintsize size);
+static inline void* Mem_ZeroSafe(void* restrict dst, uintsize size);
 
 static inline void* Mem_Copy(void* restrict dst, const void* restrict src, uintsize size);
 static inline void* Mem_Move(void* dst, const void* src, uintsize size);
@@ -347,7 +347,7 @@ Mem_Copy128Ax4(void* dst, const void* src, uintsize count)
 #if defined(_MSC_VER) && !defined(__clang__)
 #   pragma optimize("", off)
 #endif
-static inline void
+static inline void*
 Mem_ZeroSafe(void* restrict dst, uintsize size)
 {
 	Mem_Zero(dst, size);
@@ -358,6 +358,7 @@ Mem_ZeroSafe(void* restrict dst, uintsize size)
 #else
 	// TODO
 #endif
+	return dst;
 }
 #if defined(_MSC_VER) && !defined(__clang__)
 #   pragma optimize("", on)
@@ -834,14 +835,14 @@ Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 	return NULL;
 }
 
-static inline void
+static inline void*
 Mem_Zero(void* restrict dst, uintsize size)
 {
 	uint8* restrict d = (uint8*)dst;
 	__m128 mzero = _mm_setzero_ps();
 	
 	if (Unlikely(size == 0))
-		return;
+		return dst;
 	if (size < 8)
 		goto by_byte;
 	if (size < 32)
@@ -861,7 +862,7 @@ Mem_Zero(void* restrict dst, uintsize size)
 		__stosb(d, 0, size);
 #   endif
 		
-		return;
+		return dst;
 	}
 #endif
 	
@@ -913,6 +914,8 @@ Mem_Zero(void* restrict dst, uintsize size)
 		size -= 1;
 		d += 1;
 	}
+	
+	return dst;
 }
 
 #else // COMMON_DONT_USE_CRT
@@ -947,9 +950,9 @@ static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 { return memchr(buffer, byte, size); }
 
-static inline void
+static inline void*
 Mem_Zero(void* restrict dst, uintsize size)
-{ memset(dst, 0, size); }
+{ return memset(dst, 0, size); }
 
 #endif
 

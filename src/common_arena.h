@@ -6,7 +6,7 @@
 #define Arena_PushStructData(arena, Type, data) \
 ((Type*)Mem_Copy(Arena_PushStruct(arena, Type), data, sizeof(Type)))
 #define Arena_PushStructInit(arena, Type, ...) \
-((Type*)Mem_Copy(Arena_PushStruct(arena, Type), &(Type) __VA_ARGS__, sizeof(Type)))
+((Type*)Arena_PushMemoryAligned(arena, &(Type) __VA_ARGS__, sizeof(Type), alignof(Type)))
 #define Arena_PushArray(arena, Type, count) \
 ((Type*)Arena_PushAligned(arena, sizeof(Type)*(count), alignof(Type)))
 #define Arena_PushArrayData(arena, Type, data, count) \
@@ -255,11 +255,11 @@ Arena_PushDirty(Arena* arena, uintsize size)
 
 static inline void*
 Arena_PushAligned(Arena* arena, uintsize size, uintsize alignment)
-{ return Mem_Set(Arena_PushDirtyAligned(arena, size, alignment), 0, size); }
+{ return Mem_Zero(Arena_PushDirtyAligned(arena, size, alignment), size); }
 
 static inline void*
 Arena_Push(Arena* arena, uintsize size)
-{ return Mem_Set(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), 0, size); }
+{ return Mem_Zero(Arena_PushDirtyAligned(arena, size, Arena_DEFAULT_ALIGNMENT), size); }
 
 static inline void*
 Arena_PushMemory(Arena* arena, const void* buf, uintsize size)

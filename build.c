@@ -77,7 +77,7 @@ static g_opts = {
 static Cstr f_cc = "clang";
 static Cstr f_cflags = "-std=c11 -Isrc -Iinclude";
 static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
-static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static" };
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static -fno-strict-aliasing", };
 static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
