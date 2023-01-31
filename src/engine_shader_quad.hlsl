@@ -13,6 +13,8 @@ struct VertexOutput
 	float4 texcoords : TEXCOORD0;
 	float4 color : COLOR0;
 	float4 position : SV_POSITION;
+	float2 rawpos : TEXCOORD1;
+	float2 rawscale : TEXCOORD2;
 };
 
 cbuffer VS_CONSTANT_BUFFER : register(b0)
@@ -30,6 +32,8 @@ VertexOutput D3d11Shader_QuadVertex(VertexInput input)
 	output.color = input.elemColor;
 	output.texcoords.xy = input.elemTexcoords.xy + input.pos * input.elemTexcoords.zw;
 	output.texcoords.zw = input.elemTexIndex;
+	output.rawpos = input.pos;
+	output.rawscale = float2(length(input.elemScaling._m00_m10), length(input.elemScaling._m01_m11));
 	
 	return output;
 }
@@ -58,6 +62,23 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 		default:
 		case 0: break;
 		case 1: result = float4(1.0, 1.0, 1.0, result.x); break;
+		case 2:
+		{
+			float2 pos = (input.rawpos - 0.5) * 2.0;
+			if (dot(pos, pos) >= 1.0)
+				result.w = 0.0;
+		} break;
+		case 3:
+		{
+			// Derived from: https://www.shadertoy.com/view/4llXD7
+			float r = 0.5 * min(input.rawscale.x, input.rawscale.y);
+			float2 p = (input.rawpos - 0.5) * 2.0 * input.rawscale;
+			float2 q = abs(p) - input.rawscale + r;
+			float dist = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+
+			if (dist >= -1.0)
+				result.w *= max(1.0-(dist+1.0)*0.5, 0.0);
+		} break;
 	}
 
 	result *= input.color;

@@ -284,6 +284,7 @@ API void OS_HeapFree(void* ptr);
 
 API void* OS_VirtualReserve(uintsize size);
 API bool OS_VirtualCommit(void* ptr, uintsize size);
+API void OS_VirtualDecommit(void* ptr, uintsize size);
 API void OS_VirtualRelease(void* ptr, uintsize size);
 
 API bool OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size);

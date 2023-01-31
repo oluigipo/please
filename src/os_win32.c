@@ -627,7 +627,7 @@ OS_VirtualDecommit(void* ptr, uintsize size)
 	Trace();
 	
 	BOOL ok = VirtualFree(ptr, size, MEM_DECOMMIT);
-	Assert(ok);
+	SafeAssert(ok);
 }
 
 API void
@@ -637,7 +637,7 @@ OS_VirtualRelease(void* ptr, uintsize size)
 	(void)size;
 	
 	BOOL ok = VirtualFree(ptr, 0, MEM_RELEASE);
-	Assert(ok);
+	SafeAssert(ok);
 }
 
 API uint64

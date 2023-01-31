@@ -314,14 +314,14 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 	}
 	
 	++batch->count;
-	E_RectBatchElem* elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-	*elem = (E_RectBatchElem) {
+	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 		.pos = { button_x, button_y },
 		.scaling[0][0] = button_width,
 		.scaling[1][1] = button_height,
+		.tex_kind = 3.0f,
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { color[0], color[1], color[2], color[3] },
-	};
+	});
 	
 	E_PushTextToRectBatch(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	
@@ -384,17 +384,17 @@ G_UpdateAndRender(void)
 				};
 				
 				++batch.count;
-				E_RectBatchElem* elem = Arena_PushStruct(engine->frame_arena, E_RectBatchElem);
-				*elem = (E_RectBatchElem) {
+				Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
 					.pos = { engine->window_state->width*0.5f + x, engine->window_state->height*0.5f + y },
 					.scaling = {
 						{ size*cosf(angle), size*-sinf(angle) },
 						{ size*sinf(angle), size* cosf(angle) },
 					},
 					.tex_index = 0.0f,
+					.tex_kind = 3.0f,
 					.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 					.color = { color[0], color[1], color[2], 1.0f },
-				};
+				});
 			}
 			
 			//- Buttons
