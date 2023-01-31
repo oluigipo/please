@@ -83,7 +83,7 @@ static const char g_render_gl_quadfshader[] =
 "            if (dist >= -1.0)\n"
 "                color.w *= max(1.0 - (dist+1.0)*0.5, 0.0);\n"
 "        } break;\n"
-"        case 4: color = vec4(1.0, 1.0, 1.0, min(max((color.r-0.45)*8.0, 0.0), 1.0)); break;"
+"        case 4: color = vec4(1.0, 1.0, 1.0, min(max((color.r-0.4625)*12.0, 0.0), 1.0)); break;"
 "    }\n"
 "    \n"
 "    oFragColor = color * vColor;\n"
@@ -585,15 +585,20 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
 				stbtt_MakeGlyphBitmap(stb_fontinfo, base_ptr, glyph->width, glyph->height, stride, char_scale, char_scale, glyph_font_index);
 #else
-				Trace(); TraceName(Str("stbtt_GetGlyphSDF"));
+				Trace(); TraceName(Str("Generating glyph"));
 				int32 xoff, yoff, w, h;
+				uint8* sdf;
 				
-				uint8* sdf = stbtt_GetGlyphSDF(
-					stb_fontinfo, char_scale, glyph_font_index, 4, 128, 32.0f,
-					&w, &h, &xoff, &yoff);
+				{
+					Trace(); TraceName(Str("stbtt_GetGlyphSDF"));
+					sdf = stbtt_GetGlyphSDF(
+						stb_fontinfo, char_scale, glyph_font_index, 4, 128, 24.0f,
+						&w, &h, &xoff, &yoff);
+				}
 				
 				SafeAssert(w == width-1 && h == height-1);
 				
+				Trace(); TraceName(Str("Copying glyph data"));
 				for (intsize y = 0; y < height-1; ++y)
 					Mem_Copy(base_ptr + y * stride, sdf + y * w, width-1);
 #endif
