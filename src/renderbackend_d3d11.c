@@ -464,6 +464,11 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 {
 	Trace();
 	
+	ID3D11VertexShader* curr_vertex_shader = NULL;
+	ID3D11PixelShader* curr_pixel_shader = NULL;
+	ID3D11InputLayout* curr_input_layout = NULL;
+	ID3D11Buffer* curr_cbuffer = NULL;
+	
 	D3D11_VIEWPORT viewport = {
 		.TopLeftX = 0,
 		.TopLeftY = 0,
@@ -574,13 +579,16 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				}
 				
 				// Draw
-				ID3D11DeviceContext_IASetInputLayout(D3d11.context, input_layout);
+				if (input_layout != curr_input_layout)
+					ID3D11DeviceContext_IASetInputLayout(D3d11.context, input_layout);
 				ID3D11DeviceContext_IASetVertexBuffers(D3d11.context, 0, vbuffer_count, vbuffers, strides, offsets);
 				ID3D11DeviceContext_IASetIndexBuffer(D3d11.context, ibuffer, DXGI_FORMAT_R32_UINT, 0);
-				ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
-				if (cbuffer)
-					ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, 1, &cbuffer);
-				ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
+				if (vertex_shader != curr_vertex_shader)
+					ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
+				if (cbuffer != curr_cbuffer)
+					ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, 1, cbuffer ? &cbuffer : NULL);
+				if (pixel_shader != curr_pixel_shader)
+					ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
 				ID3D11DeviceContext_PSSetSamplers(D3d11.context, 0, sampler_count, sampler_states);
 				ID3D11DeviceContext_PSSetShaderResources(D3d11.context, 0, sampler_count, shader_resources);
 				
@@ -588,6 +596,11 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 					Trace(); TraceName(Str("ID3D11DeviceContext::DrawIndexedInstanced"));
 					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
 				}
+				
+				curr_vertex_shader = vertex_shader;
+				curr_pixel_shader = pixel_shader;
+				curr_input_layout = input_layout;
+				curr_cbuffer = cbuffer;
 			} break;
 		}
 	}
