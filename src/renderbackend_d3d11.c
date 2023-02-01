@@ -200,8 +200,16 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				pool_data->sampler_state = sampler_state;
 			} break;
 			
-			case RB_ResourceCommandKind_MakeVertexBuffer:
+			//case RB_ResourceCommandKind_MakeVertexBuffer:
+			//case RB_ResourceCommandKind_MakeIndexBuffer:
+			//case RB_ResourceCommandKind_MakeUniformBuffer:
 			{
+				uint32 bind_flags;
+				
+				if (0) case RB_ResourceCommandKind_MakeVertexBuffer: bind_flags = D3D11_BIND_VERTEX_BUFFER;
+				if (0) case RB_ResourceCommandKind_MakeIndexBuffer: bind_flags = D3D11_BIND_INDEX_BUFFER;
+				if (0) case RB_ResourceCommandKind_MakeUniformBuffer: bind_flags = D3D11_BIND_CONSTANT_BUFFER;
+				
 				Assert(!handle.id);
 				SafeAssert(cmd->buffer.size <= UINT32_MAX);
 				
@@ -210,33 +218,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				const D3D11_BUFFER_DESC buffer_desc = {
 					.Usage = (cmd->flag_dynamic) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE,
 					.ByteWidth = (uint32)cmd->buffer.size,
-					.BindFlags = D3D11_BIND_VERTEX_BUFFER,
-					.CPUAccessFlags = (cmd->flag_dynamic) ? D3D11_CPU_ACCESS_WRITE : 0,
-				};
-				
-				const D3D11_SUBRESOURCE_DATA* buf_initial = (!memory) ? NULL : &(D3D11_SUBRESOURCE_DATA) {
-					.pSysMem = memory,
-				};
-				
-				ID3D11Buffer* buffer;
-				
-				D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &buffer_desc, buf_initial, &buffer));
-				
-				RB_D3d11Buffer_* pool_data = RB_PoolAlloc_(&g_d3d11_bufferpool, &handle.id);
-				pool_data->buffer = buffer;
-			} break;
-			
-			case RB_ResourceCommandKind_MakeIndexBuffer:
-			{
-				Assert(!handle.id);
-				SafeAssert(cmd->buffer.size <= UINT32_MAX);
-				
-				const void* memory = cmd->buffer.memory;
-				
-				const D3D11_BUFFER_DESC buffer_desc = {
-					.Usage = (cmd->flag_dynamic) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE,
-					.ByteWidth = (uint32)cmd->buffer.size,
-					.BindFlags = D3D11_BIND_INDEX_BUFFER,
+					.BindFlags = bind_flags,
 					.CPUAccessFlags = (cmd->flag_dynamic) ? D3D11_CPU_ACCESS_WRITE : 0,
 				};
 				
@@ -370,6 +352,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			
 			case RB_ResourceCommandKind_UpdateVertexBuffer:
 			case RB_ResourceCommandKind_UpdateIndexBuffer:
+			case RB_ResourceCommandKind_UpdateUniformBuffer:
 			{
 				Assert(handle.id);
 				SafeAssert(cmd->buffer.size <= UINT32_MAX);
@@ -427,8 +410,10 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				D3d11Call(ID3D11Texture2D_QueryInterface(texture, &IID_ID3D11Resource, (void**)&resource));
 				D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD, 0, &map));
-				Assert(map.RowPitch == width * channels);
-				Mem_Copy(map.pData, pixels, width * height * channels);
+				
+				for (intsize y = 0; y < height; ++y)
+					Mem_Copy((uint8*)map.pData + map.RowPitch*y, pixels + width*channels*y, width * channels);
+				
 				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
 			} break;
 			
@@ -447,6 +432,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			
 			case RB_ResourceCommandKind_FreeVertexBuffer:
 			case RB_ResourceCommandKind_FreeIndexBuffer:
+			case RB_ResourceCommandKind_FreeUniformBuffer:
 			{
 				Assert(handle.id);
 				
@@ -579,22 +565,12 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				}
 				
 				// Constant buffer
-				D3D11_BUFFER_DESC cbuffer_desc = {
-					.Usage = D3D11_USAGE_IMMUTABLE,
-					.ByteWidth = (uint32)cmd->drawcall.uniform_buffer.size,
-					.BindFlags = D3D11_BIND_CONSTANT_BUFFER,
-					.CPUAccessFlags = 0,
-				};
+				ID3D11Buffer* cbuffer = NULL;
 				
-				D3D11_SUBRESOURCE_DATA cbuffer_data = {
-					.pSysMem = cmd->drawcall.uniform_buffer.data,
-				};
-				
-				ID3D11Buffer* cbuffer;
-				
+				if (cmd->drawcall.ubuffer)
 				{
-					Trace(); TraceName(Str("ID3D11Device::CreateBuffer"));
-					D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &cbuffer_desc, &cbuffer_data, &cbuffer));
+					RB_D3d11Buffer_* cbuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.ubuffer->id);
+					cbuffer = cbuffer_pool_data->buffer;
 				}
 				
 				// Draw
@@ -602,7 +578,8 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				ID3D11DeviceContext_IASetVertexBuffers(D3d11.context, 0, vbuffer_count, vbuffers, strides, offsets);
 				ID3D11DeviceContext_IASetIndexBuffer(D3d11.context, ibuffer, DXGI_FORMAT_R32_UINT, 0);
 				ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
-				ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, 1, &cbuffer);
+				if (cbuffer)
+					ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, 1, &cbuffer);
 				ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
 				ID3D11DeviceContext_PSSetSamplers(D3d11.context, 0, sampler_count, sampler_states);
 				ID3D11DeviceContext_PSSetShaderResources(D3d11.context, 0, sampler_count, shader_resources);
@@ -611,8 +588,6 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 					Trace(); TraceName(Str("ID3D11DeviceContext::DrawIndexedInstanced"));
 					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
 				}
-				
-				ID3D11Buffer_Release(cbuffer);
 			} break;
 		}
 	}

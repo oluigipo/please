@@ -45,16 +45,19 @@ enum RB_ResourceCommandKind
 	RB_ResourceCommandKind_MakeTexture2D,
 	RB_ResourceCommandKind_MakeVertexBuffer,
 	RB_ResourceCommandKind_MakeIndexBuffer,
+	RB_ResourceCommandKind_MakeUniformBuffer,
 	RB_ResourceCommandKind_MakeShader,
 	RB_ResourceCommandKind_MakeRenderTarget,
 	//
 	RB_ResourceCommandKind_UpdateVertexBuffer,
 	RB_ResourceCommandKind_UpdateIndexBuffer,
+	RB_ResourceCommandKind_UpdateUniformBuffer,
 	RB_ResourceCommandKind_UpdateTexture2D,
 	//
 	RB_ResourceCommandKind_FreeTexture2D,
 	RB_ResourceCommandKind_FreeVertexBuffer,
 	RB_ResourceCommandKind_FreeIndexBuffer,
+	RB_ResourceCommandKind_FreeUniformBuffer,
 	RB_ResourceCommandKind_FreeShader,
 	RB_ResourceCommandKind_FreeRenderTarget,
 }
@@ -161,13 +164,12 @@ struct RB_DrawCommand
 		{
 			RB_Handle* shader;
 			RB_Handle* ibuffer;
+			RB_Handle* ubuffer;
 			RB_Handle* vbuffers[4];
 			uint32 vbuffer_strides[4];
 			
 			uint32 index_count;
 			uint32 instance_count;
-			
-			Buffer uniform_buffer;
 			
 			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
 		}

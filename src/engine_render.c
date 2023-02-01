@@ -8,6 +8,7 @@ uint8 typedef BYTE;
 
 static RB_Handle g_render_quadvbuf;
 static RB_Handle g_render_quadibuf;
+static RB_Handle g_render_quadubuf;
 static RB_Handle g_render_whitetex;
 static RB_Handle g_render_quadshader;
 static RB_Handle g_render_quadelemsbuf;
@@ -205,6 +206,20 @@ E_InitRender_(void)
 			.buffer = {
 				.memory = NULL,
 				.size = sizeof(E_RectBatchElem)*1024,
+			},
+		});
+		
+		*head = cmd;
+		head = &cmd->next;
+		
+		// Quad uniform buffer
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
+			.kind = RB_ResourceCommandKind_MakeUniformBuffer,
+			.handle = &g_render_quadubuf,
+			.flag_dynamic = true,
+			.buffer = {
+				.memory = NULL,
+				.size = sizeof(mat4),
 			},
 		});
 		
@@ -690,7 +705,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	
 	E_CalcViewMatrix2D(cam, view);
 	
-	Buffer uniform_buffer = Arena_PushStringAligned(global_engine.frame_arena, Buf(view), 16);
+	void* uniform_buffer = Arena_PushMemoryAligned(global_engine.frame_arena, view, sizeof(view), 16);
 	
 	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
@@ -701,17 +716,26 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		},
 	});
 	
+	rc_cmd->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
+		.kind = RB_ResourceCommandKind_UpdateUniformBuffer,
+		.handle = &g_render_quadubuf,
+		.buffer = {
+			.memory = uniform_buffer,
+			.size = sizeof(view),
+		},
+	});
+	
 	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
 		.kind = RB_DrawCommandKind_DrawCall,
 		.resources_cmd = rc_cmd,
 		.drawcall = {
 			.shader = &g_render_quadshader,
 			.ibuffer = &g_render_quadibuf,
+			.ubuffer = &g_render_quadubuf,
 			.vbuffers = { &g_render_quadvbuf, &g_render_quadelemsbuf, },
 			.vbuffer_strides = { sizeof(vec2), sizeof(E_RectBatchElem), },
 			.index_count = 6,
 			.instance_count = batch->count,
-			.uniform_buffer = uniform_buffer,
 			.samplers = {
 				{ batch->textures[0] ? batch->textures[0] : &g_render_whitetex, },
 				{ batch->textures[1] ? batch->textures[1] : &g_render_whitetex, },
@@ -731,6 +755,7 @@ E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Aren
 	
 	*out_cached_batch = (E_CachedBatch) {
 		.vbuffer = { 0 },
+		.ubuffer = { 0 },
 		.samplers = {
 			batch->textures[0] ? batch->textures[0] : &g_render_whitetex,
 			batch->textures[1] ? batch->textures[1] : &g_render_whitetex,

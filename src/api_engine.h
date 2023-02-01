@@ -149,6 +149,7 @@ typedef E_Font;
 struct E_CachedBatch
 {
 	RB_Handle vbuffer;
+	RB_Handle ubuffer;
 	RB_Handle* samplers[RB_Limits_SamplersPerDrawCall];
 	uint32 instance_count;
 }

@@ -102,28 +102,23 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				handle.id = id;
 			} break;
 			
-			case RB_ResourceCommandKind_MakeVertexBuffer:
+			//case RB_ResourceCommandKind_MakeVertexBuffer:
+			//case RB_ResourceCommandKind_MakeIndexBuffer:
+			//case RB_ResourceCommandKind_MakeUniformBuffer:
 			{
+				uint32 kind;
+				
+				if (0) case RB_ResourceCommandKind_MakeVertexBuffer: kind = GL_ARRAY_BUFFER;
+				if (0) case RB_ResourceCommandKind_MakeIndexBuffer: kind = GL_ELEMENT_ARRAY_BUFFER;
+				if (0) case RB_ResourceCommandKind_MakeUniformBuffer: kind = GL_UNIFORM_BUFFER;
+				
 				uint32 id;
 				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
 				
 				GL.glGenBuffers(1, &id);
-				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
-				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
-				
-				handle.id = id;
-			} break;
-			
-			case RB_ResourceCommandKind_MakeIndexBuffer:
-			{
-				uint32 id;
-				uint32 usage = (cmd->flag_dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
-				
-				GL.glGenBuffers(1, &id);
-				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-				GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
-				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				GL.glBindBuffer(kind, id);
+				GL.glBufferData(kind, cmd->buffer.size, cmd->buffer.memory, usage);
+				GL.glBindBuffer(kind, 0);
 				
 				handle.id = id;
 			} break;
@@ -202,34 +197,27 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(false);
 			} break;
 			
-			case RB_ResourceCommandKind_UpdateVertexBuffer:
+			//case RB_ResourceCommandKind_UpdateVertexBuffer:
+			//case RB_ResourceCommandKind_UpdateIndexBuffer:
+			//case RB_ResourceCommandKind_UpdateUniformBuffer:
 			{
+				uint32 kind;
+				
+				if (0) case RB_ResourceCommandKind_UpdateVertexBuffer: kind = GL_ARRAY_BUFFER;
+				if (0) case RB_ResourceCommandKind_UpdateIndexBuffer: kind = GL_ELEMENT_ARRAY_BUFFER;
+				if (0) case RB_ResourceCommandKind_UpdateUniformBuffer: kind = GL_UNIFORM_BUFFER;
+				
 				Assert(handle.id);
 				
 				uint32 id = handle.id;
 				uint32 usage = GL_DYNAMIC_DRAW;
 				
-				GL.glBindBuffer(GL_ARRAY_BUFFER, id);
+				GL.glBindBuffer(kind, id);
 				if (!cmd->flag_subregion)
-					GL.glBufferData(GL_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
+					GL.glBufferData(kind, cmd->buffer.size, cmd->buffer.memory, usage);
 				else
-					GL.glBufferSubData(GL_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
-				GL.glBindBuffer(GL_ARRAY_BUFFER, 0);
-			} break;
-			
-			case RB_ResourceCommandKind_UpdateIndexBuffer:
-			{
-				Assert(handle.id);
-				
-				uint32 id = handle.id;
-				uint32 usage = GL_DYNAMIC_DRAW;
-				
-				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-				if (!cmd->flag_subregion)
-					GL.glBufferData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.size, cmd->buffer.memory, usage);
-				else
-					GL.glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
-				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+					GL.glBufferSubData(kind, cmd->buffer.offset, cmd->buffer.size, cmd->buffer.memory);
+				GL.glBindBuffer(kind, 0);
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateTexture2D:
@@ -266,6 +254,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			
 			case RB_ResourceCommandKind_FreeVertexBuffer:
 			case RB_ResourceCommandKind_FreeIndexBuffer:
+			case RB_ResourceCommandKind_FreeUniformBuffer:
 			{
 				Assert(handle.id);
 				
@@ -303,9 +292,6 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 	Trace();
 	
 	GL.glViewport(0, 0, default_width, default_height);
-	
-	uint32 ubo;
-	GL.glGenBuffers(1, &ubo);
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
@@ -464,15 +450,15 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				// Uniforms
 				GL.glUseProgram(shader);
 				
-				if (cmd->drawcall.uniform_buffer.size)
+				if (cmd->drawcall.ubuffer)
 				{
-					GL.glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-					GL.glBufferData(GL_UNIFORM_BUFFER, cmd->drawcall.uniform_buffer.size, cmd->drawcall.uniform_buffer.data, GL_DYNAMIC_DRAW);
+					GL.glBindBuffer(GL_UNIFORM_BUFFER, cmd->drawcall.ubuffer->id);
 					
 					int32 location = GL.glGetUniformBlockIndex(shader, "UniformBuffer");
 					SafeAssert(location != -1);
+					
 					GL.glUniformBlockBinding(shader, location, 0);
-					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
+					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, cmd->drawcall.ubuffer->id);
 					
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
 				}
@@ -523,8 +509,6 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 		
 		// end of loop
 	}
-	
-	GL.glDeleteBuffers(1, &ubo);
 }
 
 #undef GL
