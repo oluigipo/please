@@ -38,8 +38,8 @@ static g_projects[] = {
 		.outname = "engine",
 		.deps = (Cstr[]) { "os", NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "shader_quad.hlsl", "internal_d3d11_vshader_quad.inc", "vs_4_0_level_9_3", "D3d11Shader_QuadVertex" },
-			{ "shader_quad.hlsl", "internal_d3d11_pshader_quad.inc", "ps_4_0_level_9_3", "D3d11Shader_QuadPixel" },
+			{ "shader_quad.hlsl", "d3d11_vshader_quad.inc", "vs_4_0_level_9_3", "D3d11Shader_QuadVertex" },
+			{ "shader_quad.hlsl", "d3d11_pshader_quad.inc", "ps_4_0_level_9_3", "D3d11Shader_QuadPixel" },
 			{ NULL },
 		},
 	},
@@ -194,7 +194,7 @@ Build(struct Build_Project* project)
 		for (struct Build_Shader* it = project->shaders; it->name; ++it)
 		{
 			Append(&head, end, "fxc /nologo src/%s_%s", project->name, it->name);
-			Append(&head, end, " /Fhsrc/%s_%s", project->name, it->output);
+			Append(&head, end, " /Fhinclude/%s", it->output);
 			Append(&head, end, " /T%s /E%s", it->profile, it->entry_point);
 			
 			int result = RunCommand(cmd);

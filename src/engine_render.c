@@ -3,8 +3,8 @@
 
 uint8 typedef BYTE;
 
-#include "engine_internal_d3d11_vshader_quad.inc"
-#include "engine_internal_d3d11_pshader_quad.inc"
+#include <d3d11_vshader_quad.inc>
+#include <d3d11_pshader_quad.inc>
 
 static RB_Handle g_render_quadvbuf;
 static RB_Handle g_render_quadibuf;
@@ -511,10 +511,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 		
 		// NOTE(ljre): Handle special case of the replacement character.
 		if (i == -1)
-		{
-			range_begin = 0xFFFD;
-			range_end = range_begin + 1;
-		}
+			range_end = range_begin = 0xFFFD;
 		else
 		{
 			range_begin = Max(' '+1, desc->prebake_ranges[i].begin);
@@ -524,7 +521,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				break;
 		}
 		
-		for (uint32 codepoint = range_begin; codepoint < range_end; ++codepoint)
+		for (uint32 codepoint = range_begin; codepoint <= range_end; ++codepoint)
 		{
 			E_FontGlyphEntry* glyph = NULL;
 			
@@ -547,7 +544,11 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 					}
 					
 					if (!glyph->codepoint)
+					{
+						++glyphmap_count;
+						SafeAssert(glyphmap_count <= (1 << glyphmap_log2cap));
 						break;
+					}
 				}
 			}
 			
@@ -842,8 +843,6 @@ E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String tex
 		uint64 hash = Hash_IntHash64(codepoint);
 		int32 index = (int32)hash;
 		E_FontGlyphEntry* glyph = NULL;
-		
-		SafeAssert(font->glyphmap_count >> font->glyphmap_log2cap == 0);
 		
 		for (;;)
 		{
