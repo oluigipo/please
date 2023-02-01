@@ -78,7 +78,7 @@ URng_Float64(URng_State* state)
 }
 
 static float32
-URng_F32Range(URng_State* state, float32 start, float32 end)
+URng_Float32Range(URng_State* state, float32 start, float32 end)
 {
 	uint64 roll = URng_UInt64(state);
 	union

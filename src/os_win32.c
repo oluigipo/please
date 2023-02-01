@@ -555,6 +555,8 @@ OS_DefaultWindowState(OS_WindowState* out_state)
 API bool
 OS_WaitForVsync(void)
 {
+	Trace();
+	
 	static bool already_tried = false;
 	static HRESULT (WINAPI* dwm_flush)(void);
 	
