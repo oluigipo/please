@@ -36,7 +36,6 @@ struct E_GlobalData
 	Arena* persistent_arena;
 	Arena* scratch_arena;
 	Arena* frame_arena;
-	Arena* audio_thread_arena;
 	G_GlobalData* game;
 	
 	const OS_WindowGraphicsContext* graphics_context;
@@ -60,7 +59,7 @@ struct E_GlobalData
 }
 typedef E_GlobalData;
 
-API void G_Main(struct E_GlobalData* data);
+API void G_Main(E_GlobalData* data);
 API void E_FinishFrame(void);
 
 //- Audio

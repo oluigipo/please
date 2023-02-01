@@ -277,8 +277,8 @@ G_Init(void)
 		
 		.char_height = 32.0f,
 		.prebake_ranges = {
-			{ 0x21, 0x7E+1 },
-			{ 0xA1, 0xFF+1 },
+			{ 0x21, 0x7E },
+			{ 0xA1, 0xFF },
 		},
 	};
 	

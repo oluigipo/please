@@ -40,14 +40,16 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 #    define TraceText(...) do { String a = (__VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), (const char*)a.data, a.size); } while (0)
 #    define TraceColor(...) TracyCZoneColor(TraceCat_(_ctx,__LINE__), (__VA_ARGS__))
 #    define TraceF(sz, ...) do { char buf[sz]; uintsize len = String_PrintfBuffer(buf, sizeof(buf), __VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), buf, len); } while (0)
-#    define TraceFrameMark() TracyCFrameMark
+#    define TraceFrameBegin() TracyCFrameMarkStart(0)
+#    define TraceFrameEnd() TracyCFrameMarkEnd(0)
 #else
 #    define Trace() ((void)0)
 #    define TraceName(...) ((void)0)
 #    define TraceText(...) ((void)0)
 #    define TraceColor(...) ((void)0)
 #    define TraceF(sz, ...) ((void)0)
-#    define TraceFrameMark() ((void)0)
+#    define TraceFrameBegin() ((void)0)
+#    define TraceFrameEnd() ((void)0)
 #endif
 
 #endif //CONFIG_H

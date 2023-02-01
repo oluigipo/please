@@ -24,8 +24,9 @@ E_FinishFrame(void)
 		global_engine.last_draw_command = NULL;
 	}
 	
+	TraceFrameEnd();
 	RB_Present(global_engine.scratch_arena, 1);
-	TraceFrameMark();
+	TraceFrameBegin();
 	
 	Arena_Clear(global_engine.frame_arena);
 	OS_PollEvents(global_engine.window_state, global_engine.input);
@@ -66,8 +67,13 @@ OS_UserMain(int32 argc, char* argv[])
 	
 	// NOTE(ljre): Init basic stuff
 	{
-		uintsize game_memory_size = 512ull << 20;
-		void* game_memory = OS_VirtualReserve(game_memory_size); // 512 MiB
+		const uintsize pagesize = 16ull << 20;
+		const uintsize sz_scratch    = 16ull << 20;
+		const uintsize sz_frame      = 64ull << 20;
+		const uintsize sz_persistent = 128ull << 20;
+		
+		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent;
+		void* game_memory = OS_VirtualReserve(game_memory_size);
 		
 		global_engine.game_memory = game_memory;
 		global_engine.game_memory_size = game_memory_size;
@@ -79,16 +85,16 @@ OS_UserMain(int32 argc, char* argv[])
 			uint8* memory_head = (uint8*)game_memory;
 			uint8* memory_end = (uint8*)game_memory + game_memory_size;
 			
-			// NOTE(ljre): 16MiB of scratch_arena
-			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, 16 << 20, 8 << 20);
-			memory_head += 16 << 20;
+			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, sz_scratch, pagesize);
+			memory_head += sz_scratch;
 			
-			// NOTE(ljre): 64MiB of frame_arena
-			global_engine.frame_arena = Arena_FromUncommitedMemory(memory_head, 64 << 20, 8 << 20);
-			memory_head += 64 << 20;
+			global_engine.frame_arena = Arena_FromUncommitedMemory(memory_head, sz_frame, pagesize);
+			memory_head += sz_frame;
 			
-			// NOTE(ljre): All the rest of persistent_arena
-			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, memory_end - memory_head, 32 << 20);
+			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, sz_persistent, pagesize);
+			memory_head += sz_persistent;
+			
+			Assert(memory_head == memory_end);
 		}
 		
 		// NOTE(ljre): Allocate structs
