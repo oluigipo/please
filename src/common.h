@@ -15,7 +15,6 @@
 #include "common_string_printf.h"
 #include "common_arena.h"
 #include "common_hash.h"
-#include "common_rwlock.h"
 #include "common_math.h"
 
 #endif //COMMON_H

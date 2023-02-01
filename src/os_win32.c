@@ -367,7 +367,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	}
 	
 	{
-		HMONITOR monitor = MonitorFromWindow(global_window, MONITOR_DEFAULTTONEAREST);
+		HMONITOR monitor = MonitorFromPoint((POINT) { 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
 		MONITORINFO info = {
 			.cbSize = sizeof(info),
 		};
@@ -881,6 +881,40 @@ OS_LoadGameLibrary(void)
 	return result;
 }
 #endif //CONFIG_ENABLE_HOT
+
+static_assert(sizeof(OS_RWLock) == sizeof(SRWLOCK));
+
+API void
+OS_InitRWLock(OS_RWLock* lock)
+{ Mem_Zero(lock, sizeof(*lock)); }
+
+API void
+OS_LockShared(OS_RWLock* lock)
+{ AcquireSRWLockShared((SRWLOCK*)lock); }
+
+API void
+OS_LockExclusive(OS_RWLock* lock)
+{ AcquireSRWLockExclusive((SRWLOCK*)lock); }
+
+API bool
+OS_TryLockShared(OS_RWLock* lock)
+{ return TryAcquireSRWLockShared((SRWLOCK*)lock); }
+
+API bool
+OS_TryLockExclusive(OS_RWLock* lock)
+{ return TryAcquireSRWLockExclusive((SRWLOCK*)lock); }
+
+API void
+OS_UnlockShared(OS_RWLock* lock)
+{ ReleaseSRWLockShared((SRWLOCK*)lock); }
+
+API void
+OS_UnlockExclusive(OS_RWLock* lock)
+{ ReleaseSRWLockExclusive((SRWLOCK*)lock); }
+
+API void
+OS_DeinitRWLock(OS_RWLock* lock)
+{}
 
 #ifdef CONFIG_DEBUG
 API void

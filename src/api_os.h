@@ -303,6 +303,31 @@ API void OS_DebugLog(const char* fmt, ...);
 #   define OS_DebugLog(...) ((void)0)
 #endif
 
+//- RWLock
+struct OS_RWLock typedef OS_RWLock;
+
+#if defined(_WIN32)
+struct OS_RWLock
+{
+	void* ptr_;
+};
+#elif defined(__linux__)
+#   include <pthread.h>
+struct OS_RWLock
+{
+	pthread_rwlock_t impl;
+};
+#endif //defined(__linux__)
+
+API void OS_InitRWLock(OS_RWLock* lock);
+API void OS_LockShared(OS_RWLock* lock);
+API void OS_LockExclusive(OS_RWLock* lock);
+API bool OS_TryLockShared(OS_RWLock* lock);
+API bool OS_TryLockExclusive(OS_RWLock* lock);
+API void OS_UnlockShared(OS_RWLock* lock);
+API void OS_UnlockExclusive(OS_RWLock* lock);
+API void OS_DeinitRWLock(OS_RWLock* lock);
+
 //- Simple Audio
 API int16* OS_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames);
 API void OS_CloseSoundBuffer(int16* sound_buffer);

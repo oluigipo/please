@@ -35,7 +35,7 @@ static IAudioClient* global_audio_client;
 static IAudioRenderClient* global_audio_render_client;
 static HANDLE global_audio_event;
 static HANDLE global_audio_thread;
-static RWLock global_audio_mutex;
+static OS_RWLock global_audio_mutex;
 
 //~ Functions
 static bool
@@ -79,13 +79,13 @@ AudioThreadProc(void* data)
 		
 		uint8* buffer;
 		int32 elapsed_frames;
-		RWLock_LockWrite(&global_audio_mutex);
+		OS_LockExclusive(&global_audio_mutex);
 		{
 			buffer = global_audio_buffer_hot;
 			elapsed_frames = global_audio_elapsed_frames;
 			global_audio_elapsed_frames += frame_count;
 		}
-		RWLock_UnlockWrite(&global_audio_mutex);
+		OS_UnlockExclusive(&global_audio_mutex);
 		
 		uintsize offset = (uintsize)((elapsed_frames * global_channels) % global_audio_buffer_sample_count);
 		
@@ -116,7 +116,7 @@ Win32_InitSimpleAudio(void)
 	{
 		error6: OS_HeapFree(global_audio_buffer);
 		error5: CloseHandle(global_audio_event);
-		error4: // NOTE(ljre): There was stuff here :P
+		error4: OS_DeinitRWLock(&global_audio_mutex);
 		error3: IAudioClient_Release(global_audio_client);
 		error2: IMMDevice_Release(global_audio_device);
 		error1: IMMDeviceEnumerator_Release(global_audio_device_enumerator);
@@ -188,9 +188,7 @@ Win32_InitSimpleAudio(void)
 	global_latency_frame_count = (int32)(reftime * (int64)(global_samples_per_second / global_channels) / (int64)10000000);
 	global_latency_frame_count *= 2;
 	
-	OS_DebugLog("%i\t%I\n", global_latency_frame_count, reftime);
-	
-	RWLock_Init(&global_audio_mutex);
+	OS_InitRWLock(&global_audio_mutex);
 	
 	global_audio_event = CreateEventW(NULL, FALSE, FALSE, NULL);
 	if (!global_audio_event)
@@ -241,6 +239,7 @@ Win32_DeinitSimpleAudio(void)
 	CloseHandle(global_audio_event);
 	
 	OS_HeapFree(global_audio_buffer);
+	OS_DeinitRWLock(&global_audio_mutex);
 	
 	IAudioClient_Stop(global_audio_client);
 	
@@ -260,11 +259,11 @@ OS_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_s
 		*out_channels = global_channels;
 		*out_sample_rate = global_samples_per_second;
 		
-		RWLock_LockWrite(&global_audio_mutex);
+		OS_LockExclusive(&global_audio_mutex);
 		{
 			*out_elapsed_frames = global_audio_to_override = global_audio_elapsed_frames;
 		}
-		RWLock_UnlockWrite(&global_audio_mutex);
+		OS_UnlockExclusive(&global_audio_mutex);
 		
 		Mem_Set(global_audio_buffer_cold, 0, (uintsize)global_audio_buffer_sample_count * sizeof(int16));
 		return (int16*)global_audio_buffer_cold;
@@ -280,7 +279,7 @@ OS_CloseSoundBuffer(int16* sound_buffer)
 {
 	Assert(sound_buffer == (int16*)global_audio_buffer_cold);
 	
-	RWLock_LockWrite(&global_audio_mutex);
+	OS_LockExclusive(&global_audio_mutex);
 	{
 		void* temp = global_audio_buffer_hot;
 		global_audio_buffer_hot = global_audio_buffer_cold;
@@ -288,5 +287,5 @@ OS_CloseSoundBuffer(int16* sound_buffer)
 		//global_audio_elapsed_frames = 0;
 		global_audio_elapsed_frames -= global_audio_to_override;
 	}
-	RWLock_UnlockWrite(&global_audio_mutex);
+	OS_UnlockExclusive(&global_audio_mutex);
 }
