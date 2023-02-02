@@ -36,20 +36,6 @@ E_FinishFrame(void)
 	global_engine.last_frame_time = current_time;
 }
 
-static bool
-E_Streq_(const char* left, const char* right)
-{
-	for (;;)
-	{
-		if (*left != *right)
-			return false;
-		if (!*left)
-			return true;
-		++left;
-		++right;
-	}
-}
-
 //~ Entry Point
 API int32
 OS_UserMain(int32 argc, char* argv[])
@@ -98,8 +84,8 @@ OS_UserMain(int32 argc, char* argv[])
 		const uintsize sz_scratch    = 16ull << 20;
 		const uintsize sz_frame      = 64ull << 20;
 		const uintsize sz_persistent = 128ull << 20;
-		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent;
 		
+		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent;
 		for (int32 i = 0; i < init_desc.workerthreads_count; ++i)
 			game_memory_size += sz_scratch;
 		
@@ -143,7 +129,7 @@ OS_UserMain(int32 argc, char* argv[])
 		global_engine.window_state = Arena_PushStructData(global_engine.persistent_arena, OS_WindowState, &window_state);
 		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
 		
-		OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, 30);
+		OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
 		OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
 	}
 	

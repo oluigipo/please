@@ -17,7 +17,7 @@ ReenableWarnings();
 enum
 {
 	E_Limits_MaxWorkerThreadCount = 4,
-	E_Limits_MaxThreadWorkCount = 256,
+	E_Limits_MaxThreadWorkCount = 1024,
 };
 
 struct G_GlobalData typedef G_GlobalData;

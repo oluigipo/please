@@ -44,15 +44,13 @@ E_RunThreadWork(E_ThreadCtx* ctx, E_ThreadWorkQueue* queue)
 		{
 			int32 doing_count;
 			
-			doing_count = OS_InterlockedIncrement32(&queue->doing_count);
-			if (doing_count == 1)
-				OS_ResetEventSignal(&queue->reached_zero_doing_work_sig);
+			OS_InterlockedIncrement32(&queue->doing_count);
 			
 			E_ThreadWork work = queue->works[index];
 			work.callback(ctx, work.data);
 			
 			doing_count = OS_InterlockedDecrement32(&queue->doing_count);
-			if (doing_count == 0)
+			if (doing_count == 0 && queue->remaining_head == queue->doing_head)
 				OS_SetEventSignal(&queue->reached_zero_doing_work_sig);
 			
 			return true;
