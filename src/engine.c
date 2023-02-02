@@ -38,6 +38,7 @@ static E_GlobalData global_engine;
 #include "util_gltf.h"
 
 #include "engine_audio.c"
+#include "engine_thread.c"
 #include "engine_render.c"
 #include "engine_main.c"
 

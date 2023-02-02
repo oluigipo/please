@@ -61,6 +61,7 @@ static HWND global_window;
 static bool global_lock_cursor;
 static HDC global_hdc;
 static LPWSTR global_class_name = L"WindowClassName";
+static HANDLE global_worker_threads[E_Limits_MaxWorkerThreadCount];
 
 //~ NOTE(ljre): Utils
 static uint64
@@ -329,6 +330,19 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 	return result;
 }
 
+static DWORD WINAPI
+Win32_ThreadProc_(void* user_data)
+{
+	void** args = user_data;
+	OS_ThreadProc* proc = args[0];
+	void* proc_arg = args[1];
+	
+	OS_HeapFree(args);
+	proc(proc_arg);
+	
+	return 0;
+}
+
 //~ NOTE(ljre): Entry point
 #ifdef CONFIG_ENABLE_HOT
 API
@@ -336,7 +350,7 @@ API
 int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 {
-	Trace();
+	//TraceInit();
 	
 	// NOTE(ljre): __argc and __argv - those are public symbols from the CRT
 	int32 argc = __argc;
@@ -378,13 +392,25 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 	
 	global_process_started_time = Win32_GetTimer();
 	global_instance = instance;
-	global_scratch_arena = Arena_Create(32 << 10, 32 << 10);
+	global_scratch_arena = Arena_Create(128 << 10, 128 << 10);
 	
 	//- Run
 	int32 result = OS_UserMain(argc, argv);
 	
 	// NOTE(ljre): Free resources... or nah :P
-	//Win32_DeinitAudio();
+	Win32_DeinitSimpleAudio();
+	
+	for (int32 i = 0; i < ArrayLength(global_worker_threads); ++i)
+	{
+		if (global_worker_threads[i])
+		{
+			TerminateThread(global_worker_threads[i], 0);
+			global_worker_threads[i] = NULL;
+		}
+	}
+	
+	//TraceDeinit();
+	//ExitProcess(result);
 	
 	return result;
 }
@@ -451,6 +477,22 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		}
 		
 		ok = ok && created_window;
+	}
+	
+	if (desc->flags & OS_InitFlags_WorkerThreads)
+	{
+		SafeAssert(desc->workerthreads_count < 16);
+		SafeAssert(desc->workerthreads_proc);
+		
+		for (int32 i = 0; i < desc->workerthreads_count; ++i)
+		{
+			void** args = OS_HeapAlloc(sizeof(void*)*2);
+			args[0] = desc->workerthreads_proc;
+			args[1] = desc->workerthreads_args[i];
+			
+			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, args, 0, NULL);
+			global_worker_threads[i] = handle;
+		}
 	}
 	
 	if (ok)
@@ -916,6 +958,115 @@ API void
 OS_DeinitRWLock(OS_RWLock* lock)
 {}
 
+API void
+OS_InitSemaphore(OS_Semaphore* sem, int32 max_count)
+{
+	Trace();
+	
+	HANDLE handle = CreateSemaphore(NULL, 0, max_count, NULL);
+	SafeAssert(handle);
+	
+	sem->ptr = handle;
+}
+
+API bool
+OS_WaitForSemaphore(OS_Semaphore* sem)
+{
+	//Trace();
+	SafeAssert(sem && sem->ptr);
+	
+	DWORD result = WaitForSingleObjectEx(sem->ptr, INFINITE, false);
+	return result == WAIT_OBJECT_0;
+}
+
+API void
+OS_SignalSemaphore(OS_Semaphore* sem, int32 count)
+{
+	Trace();
+	SafeAssert(sem && sem->ptr);
+	
+	ReleaseSemaphore(sem->ptr, count, NULL);
+}
+
+API void
+OS_DeinitSemaphore(OS_Semaphore* sem)
+{
+	Trace();
+	SafeAssert(sem && sem->ptr);
+	
+	CloseHandle(sem->ptr);
+	sem->ptr = NULL;
+}
+
+API void
+OS_InitEventSignal(OS_EventSignal* sig)
+{
+	Trace();
+	
+	HANDLE handle = CreateEvent(NULL, false, false, NULL);
+	SafeAssert(handle);
+	
+	sig->ptr = handle;
+}
+
+API bool
+OS_WaitEventSignal(OS_EventSignal* sig)
+{
+	Trace();
+	SafeAssert(sig && sig->ptr);
+	
+	DWORD result = WaitForSingleObjectEx(sig->ptr, INFINITE, false);
+	return result == WAIT_OBJECT_0;
+}
+
+API void
+OS_SetEventSignal(OS_EventSignal* sig)
+{
+	Trace();
+	SafeAssert(sig && sig->ptr);
+	
+	SetEvent(sig->ptr);
+}
+
+API void
+OS_ResetEventSignal(OS_EventSignal* sig)
+{
+	Trace();
+	SafeAssert(sig && sig->ptr);
+	
+	ResetEvent(sig->ptr);
+}
+
+API void
+OS_DeinitEventSignal(OS_EventSignal* sig)
+{
+	Trace();
+	SafeAssert(sig && sig->ptr);
+	
+	CloseHandle(sig->ptr);
+	sig->ptr = NULL;
+}
+
+API int32
+OS_InterlockedCompareExchange32(volatile int32* ptr, int32 new_value, int32 expected)
+{ return (int32)InterlockedCompareExchange((volatile LONG*)ptr, (LONG)new_value, (LONG)expected); }
+
+API int64
+OS_InterlockedCompareExchange64(volatile int64* ptr, int64 new_value, int64 expected)
+{ return (int64)InterlockedCompareExchange64((volatile LONG64*)ptr, (LONG64)new_value, (LONG64)expected); }
+
+API void*
+OS_InterlockedCompareExchangePtr(void* volatile* ptr, void* new_value, void* expected)
+{ return (void*)InterlockedCompareExchangePointer((volatile PVOID*)ptr, (PVOID)new_value, (PVOID)expected); }
+
+API int32
+OS_InterlockedIncrement32(volatile int32* ptr)
+{ return (int32)InterlockedIncrement((volatile LONG*)ptr); }
+
+API int32
+OS_InterlockedDecrement32(volatile int32* ptr)
+{ return (int32)InterlockedDecrement((volatile LONG*)ptr); }
+
 #ifdef CONFIG_DEBUG
 API void
 OS_DebugMessageBox(const char* fmt, ...)
@@ -947,6 +1098,22 @@ OS_DebugLog(const char* fmt, ...)
 			OutputDebugStringA((const char*)str.data);
 		else
 			fwrite(str.data, 1, str.size, stderr);
+	}
+}
+
+API void
+OS_DebugThreadLog(Arena* scratch_arena, const char* fmt, ...)
+{
+	for Arena_TempScope(scratch_arena)
+	{
+		va_list args;
+		va_start(args, fmt);
+		String str = Arena_VPrintf(scratch_arena, fmt, args);
+		Arena_PushData(scratch_arena, &""); // null terminator
+		va_end(args);
+		
+		if (IsDebuggerPresent())
+			OutputDebugStringA((const char*)str.data);
 	}
 }
 #endif //CONFIG_DEBUG

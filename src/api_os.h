@@ -239,8 +239,11 @@ enum OS_InitFlags
 	
 	OS_InitFlags_WindowAndGraphics = 1,
 	OS_InitFlags_SimpleAudio = 2,
+	OS_InitFlags_WorkerThreads = 4,
 }
 typedef OS_InitFlags;
+
+void typedef OS_ThreadProc(void* arg);
 
 struct OS_InitDesc
 {
@@ -252,6 +255,11 @@ struct OS_InitDesc
 	
 	// OS_InitFlags_SimpleAudio
 	int32 simpleaudio_desired_sample_rate; // 44100 or 48000
+	
+	// OS_InitFlags_WorkerThreads
+	int32 workerthreads_count;
+	void** workerthreads_args;
+	OS_ThreadProc* workerthreads_proc;
 }
 typedef OS_InitDesc;
 
@@ -298,12 +306,14 @@ API void* OS_LoadGameLibrary(void);
 #ifdef CONFIG_DEBUG
 API void OS_DebugMessageBox(const char* fmt, ...);
 API void OS_DebugLog(const char* fmt, ...);
+API void OS_DebugThreadLog(Arena* scratch_arena, const char* fmt, ...);
 #else
 #   define OS_DebugMessageBox(...) ((void)0)
 #   define OS_DebugLog(...) ((void)0)
+#   define OS_DebugThreadLog(...) ((void)0)
 #endif
 
-//- RWLock
+//- Threading stuff
 struct OS_RWLock typedef OS_RWLock;
 
 #if defined(_WIN32)
@@ -327,6 +337,32 @@ API bool OS_TryLockExclusive(OS_RWLock* lock);
 API void OS_UnlockShared(OS_RWLock* lock);
 API void OS_UnlockExclusive(OS_RWLock* lock);
 API void OS_DeinitRWLock(OS_RWLock* lock);
+
+struct OS_Semaphore
+{ void* ptr; }
+typedef OS_Semaphore;
+
+API void OS_InitSemaphore(OS_Semaphore* sem, int32 max_count);
+API bool OS_WaitForSemaphore(OS_Semaphore* sem);
+API void OS_SignalSemaphore(OS_Semaphore* sem, int32 count);
+API void OS_DeinitSemaphore(OS_Semaphore* sem);
+
+struct OS_EventSignal
+{ void* ptr; }
+typedef OS_EventSignal;
+
+API void OS_InitEventSignal(OS_EventSignal* sig);
+API bool OS_WaitEventSignal(OS_EventSignal* sig);
+API void OS_SetEventSignal(OS_EventSignal* sig);
+API void OS_ResetEventSignal(OS_EventSignal* sig);
+API void OS_DeinitEventSignal(OS_EventSignal* sig);
+
+API int32 OS_InterlockedCompareExchange32(volatile int32* ptr, int32 new_value, int32 expected);
+API int64 OS_InterlockedCompareExchange64(volatile int64* ptr, int64 new_value, int64 expected);
+API void* OS_InterlockedCompareExchangePtr(void* volatile* ptr, void* new_value, void* expected);
+
+API int32 OS_InterlockedIncrement32(volatile int32* ptr);
+API int32 OS_InterlockedDecrement32(volatile int32* ptr);
 
 //- Simple Audio
 API int16* OS_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames);

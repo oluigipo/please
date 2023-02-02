@@ -5,10 +5,6 @@
 #include "api_os.h"
 #include "api_renderbackend.h"
 
-// NOTE(ljre): The reference FPS 'E_GlobalData.delta_time' is going to be based of.
-//             60 FPS = 1.0 DT
-#define REFERENCE_FPS 60
-
 DisableWarnings();
 #include <ext/cglm/cglm.h>
 ReenableWarnings();
@@ -18,18 +14,23 @@ ReenableWarnings();
 #define vec4(...) (vec4) { __VA_ARGS__ }
 
 //~ Actual Api
-// TODO(ljre): LEGACY THING DELETE SOON
-struct Asset_SoundBuffer
+enum
 {
-	int32 channels;
-	int32 sample_rate;
-	int32 sample_count;
-	int16* samples;
-}
-typedef Asset_SoundBuffer;
+	E_Limits_MaxWorkerThreadCount = 4,
+	E_Limits_MaxThreadWorkCount = 256,
+};
 
-//- Main Data
 struct G_GlobalData typedef G_GlobalData;
+struct E_GlobalData typedef E_GlobalData;
+
+struct E_ThreadWorkQueue typedef E_ThreadWorkQueue;
+
+struct E_ThreadCtx
+{
+	alignas(64) Arena* scratch_arena;
+	intsize id;
+}
+typedef E_ThreadCtx;
 
 struct E_GlobalData
 {
@@ -44,7 +45,6 @@ struct E_GlobalData
 	
 	RB_ResourceCommand* resource_command_list;
 	RB_ResourceCommand* last_resource_command;
-	
 	RB_DrawCommand* draw_command_list;
 	RB_DrawCommand* last_draw_command;
 	
@@ -56,13 +56,26 @@ struct E_GlobalData
 	
 	bool outputed_sound_this_frame : 1;
 	bool running : 1;
-}
-typedef E_GlobalData;
+	bool multithreaded : 1;
+	
+	E_ThreadWorkQueue* thread_work_queue;
+	E_ThreadCtx worker_threads[E_Limits_MaxWorkerThreadCount];
+};
 
 API void G_Main(E_GlobalData* data);
 API void E_FinishFrame(void);
 
 //- Audio
+// TODO(ljre): LEGACY THING DELETE SOON
+struct Asset_SoundBuffer
+{
+	int32 channels;
+	int32 sample_rate;
+	int32 sample_count;
+	int16* samples;
+}
+typedef Asset_SoundBuffer;
+
 struct E_PlayingAudio
 {
 	const Asset_SoundBuffer* sound;
@@ -102,7 +115,7 @@ API void E_CalcModelMatrix2D(const vec2 pos, const vec2 scale, float32 angle, ma
 API void E_CalcModelMatrix3D(const vec3 pos, const vec3 scale, const vec3 rot, mat4 out_model);
 API void E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, vec2 out_pos);
 
-//- YET ANOTHER NEW RENDERER API!!!
+//- Rendering API
 struct E_Tex2d
 {
 	RB_Handle handle;
@@ -218,63 +231,33 @@ API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
 
 API void E_RawDrawCommand(RB_DrawCommand* commands);
 
-#if 0
-//- NEW AUDIO MIXER
-struct E_AudioHandle { uint32 id; } typedef E_AudioHandle;
-struct E_PlayingHandle { uint32 id; } typedef E_PlayingHandle;
+//- Worker Thread API
+void typedef E_ThreadWorkProc(E_ThreadCtx* ctx, void* data);
 
-API bool E_LoadBunchOfAudios(const Buffer* oggs, E_AudioHandle* out_handles, uint32 audio_count);
-API void E_FreeBunchOfAudios(E_AudioHandle* handles, uint32 audio_count);
-
-struct E_PlayAudioDesc
+struct E_ThreadWork
 {
-	float32 volume; // if 0, defaults to 1. if you really want 0, then use -0
-	float32 balance; // -1 = left; 0 = middle; 1 = right. clamped.
-	
-	// both clamped, and won't play if duration <= 0
-	float32 start_at_second;
-	float32 duration_in_seconds;
-	
-	float32 fadein_duration;
-	
-	int32 priority; // audios with lower priority might be removed automatically.
-	
-	bool loop : 1;
-	bool loop_at_start : 1; // imply loop.
+	E_ThreadWorkProc* callback;
+	void* data;
 }
-typedef E_PlayAudioDesc;
+typedef E_ThreadWork;
 
-API E_PlayingHandle E_PlayAudio(E_AudioHandle audio, E_PlayAudioDesc* desc);
-API bool E_StopPlayingAudio(E_PlayingHandle playing);
-API bool E_FadeOutPlayingAudio(E_PlayingHandle playing, float32 fade_duration_in_seconds);
-API bool E_VolumePlayingAudio(E_PlayingHandle playing, float32 target_volume, float32 transition_duration_in_seconds);
-
-struct E_AudioInfo
+struct E_ThreadWorkQueue
 {
-	bool is_ok : 1;
-	E_AudioHandle handle;
+	OS_Semaphore semaphore;
+	OS_EventSignal reached_zero_doing_work_sig;
 	
-	int32 frame_rate;
-	int32 channel_count;
-	int32 duration_in_frames;
-	float32 duration_in_seconds;
-	
-	uint32 playing_count;
-}
-typedef E_AudioInfo;
+	volatile int32 remaining_head;
+	volatile int32 doing_head;
+	volatile int32 doing_count;
+	E_ThreadWork works[E_Limits_MaxThreadWorkCount];
+};
 
-struct E_PlayingInfo
-{
-	bool is_ok : 1;
-	E_AudioInfo audio_info;
-	
-	int32 playing_frame_index;
-	float32 playing_second;
-}
-typedef E_PlayingInfo;
+// Returns true if any work has been done.
+// ctx and queue should be NULL if it's being called by the main thread
+API bool E_RunThreadWork(E_ThreadCtx* ctx, E_ThreadWorkQueue* queue);
 
-API void E_FetchAudioInfo(E_AudioHandle audio, E_AudioInfo* out_info);
-API void E_FetchPlayingInfo(E_PlayingHandle playing, E_PlayingInfo* out_info);
-#endif
+// NOTE(ljre): these should only be called by main thread!
+API void E_WaitRemainingThreadWork(void);
+API void E_QueueThreadWork(const E_ThreadWork* work);
 
 #endif //API_ENGINE_H
