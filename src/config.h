@@ -6,10 +6,6 @@
 #   define COMMON_DEBUG
 #endif
 
-#if !defined(_WIN32) || defined(_WIN64)
-#   define COMMON_DONT_USE_CRT
-#endif
-
 #if defined(__cplusplus)
 #   define API extern "C"
 #elif defined(CONFIG_ENABLE_HOT)
@@ -21,16 +17,22 @@
 #   define API
 #endif
 
+//- Platform specific stuff
 #if defined(_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
 #   define CONFIG_ENABLE_D3D11
+#   ifdef _WIN64
+#       define COMMON_DONT_USE_CRT
+#   endif
 #elif defined(__linux__)
 #   define CONFIG_ENABLE_OPENGL
 #endif
 
 //- Tracy
 #if defined(TRACY_ENABLE) && defined(__clang__) // NOTE(ljre): this won't work with MSVC...
+#    define TRACY_MANUAL_LIFETIME
+#    define TRACY_DELAYED_INIT
 #    include "B:/ext/tracy/public/tracy/TracyC.h"
 static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx); }
 #    define TraceCat__(x,y) x ## y
@@ -42,6 +44,8 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 #    define TraceF(sz, ...) do { char buf[sz]; uintsize len = String_PrintfBuffer(buf, sizeof(buf), __VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), buf, len); } while (0)
 #    define TraceFrameBegin() TracyCFrameMarkStart(0)
 #    define TraceFrameEnd() TracyCFrameMarkEnd(0)
+#    define TraceInit() ___tracy_startup_profiler()
+#    define TraceDeinit() ___tracy_shutdown_profiler()
 #else
 #    define Trace() ((void)0)
 #    define TraceName(...) ((void)0)
@@ -50,6 +54,39 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 #    define TraceF(sz, ...) ((void)0)
 #    define TraceFrameBegin() ((void)0)
 #    define TraceFrameEnd() ((void)0)
+#    define TraceInit() ((void)0)
+#    define TraceDeinit() ((void)0)
 #endif
+
+//- IncludeBinary
+
+// heil martins
+// https://gist.github.com/mmozeiko/ed9655cf50341553d282
+#if defined(__clang__) || defined(__GNUC__)
+
+#ifdef _WIN32
+#define IncludeBinary_Section ".rdata, \"dr\""
+#else
+#define IncludeBinary_Section ".rodata"
+#endif
+
+// this aligns start address to 16 and terminates byte array with explict 0
+// which is not really needed, feel free to change it to whatever you want/need
+#define IncludeBinary(name, file) \
+__asm__(".section " IncludeBinary_Section "\n" \
+".global " StrMacro(name) "_begin\n" \
+".balign 16\n" \
+StrMacro(name) "_begin:\n" \
+".incbin \"" file "\"\n" \
+\
+".global " StrMacro(name) "_end\n" \
+".balign 1\n" \
+StrMacro(name) "_end:\n" \
+".byte 0\n" \
+); \
+extern __attribute__((aligned(16))) const unsigned char name ## _begin[]; \
+extern                              const unsigned char name ## _end[]
+
+#endif //defined(__clang__) || defined(__GNUC__)
 
 #endif //CONFIG_H

@@ -1,6 +1,10 @@
 #include "api_engine.h"
 #include "util_random.h"
 
+#ifdef IncludeBinary
+IncludeBinary(g_arial_font, "C:/Windows/Fonts/Arial.ttf");
+#endif
+
 static G_GlobalData* game;
 static E_GlobalData* engine;
 
@@ -282,7 +286,12 @@ G_Init(void)
 		},
 	};
 	
+#ifdef IncludeBinary
+	desc.ttf = BufRange(g_arial_font_begin, g_arial_font_end);
+#else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
+#endif
+	
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
