@@ -221,15 +221,14 @@ struct E_RectBatch
 }
 typedef E_RectBatch;
 
-API bool E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
-
-API void E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Arena* to_clone_batch_at);
+API bool E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
+API void E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rect);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
-API void E_DrawCachedBatch(const E_CachedBatch* batch);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
 
-API void E_RawDrawCommand(RB_DrawCommand* commands);
+API void E_RawResourceCommand(RB_ResourceCommand* first, RB_ResourceCommand* last);
+API void E_RawDrawCommand(RB_DrawCommand* first, RB_DrawCommand* last);
 
 //- Worker Thread API
 void typedef E_ThreadWorkProc(E_ThreadCtx* ctx, void* data);

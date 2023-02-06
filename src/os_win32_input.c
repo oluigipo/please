@@ -79,8 +79,8 @@ typedef HRESULT WINAPI ProcDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, 
 #endif
 
 //~ Globals
-static Win32_Gamepad   global_gamepads[OS_MAX_GAMEPAD_COUNT];
-static int32           global_gamepad_free[OS_MAX_GAMEPAD_COUNT];
+static Win32_Gamepad   global_gamepads[OS_Limits_MaxGamepadCount];
+static int32           global_gamepad_free[OS_Limits_MaxGamepadCount];
 static int32           global_gamepad_free_count;
 static IDirectInput8W* global_dinput;
 static bool32          global_dinput_enabled;
@@ -142,7 +142,7 @@ static const OS_KeyboardKey global_keyboard_key_table[] = {
 };
 
 //~ Functions
-#include "ext/guid_utils.h"
+#include <ext/guid_utils.h>
 
 static inline bool
 AreGUIDsEqual(const GUID* a, const GUID* b)
@@ -792,8 +792,8 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	OS_DebugLog("[info-win32] Device Connected:\n");
 	OS_DebugLog("\tIndex: %i\n", index);
 	OS_DebugLog("\tDriver: DirectInput\n");
-	OS_DebugLog("\tName: %w\n", instance->tszInstanceName);
-	OS_DebugLog("\tProduct Name: %w\n", instance->tszProductName);
+	//OS_DebugLog("\tName: %w\n", instance->tszInstanceName);
+	//OS_DebugLog("\tProduct Name: %w\n", instance->tszProductName);
 	OS_DebugLog("\tGUID Instance: %08x-%04x-%04x-%04x-%04x-%08x\n",
 		guid->Data1, guid->Data2, guid->Data3,
 		*(uint16*)guid->Data4, ((uint16*)guid->Data4)[1], *(uint32*)guid->Data4);
@@ -992,6 +992,6 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 			out_input_data->gamepads[i] = gamepad->data;
 		}
 		else
-			Mem_Set(&out_input_data->gamepads[i], 0, sizeof(OS_GamepadState));
+			Mem_Zero(&out_input_data->gamepads[i], sizeof(OS_GamepadState));
 	}
 }

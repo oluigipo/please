@@ -60,7 +60,6 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 
 //- IncludeBinary
 
-// heil martins
 // https://gist.github.com/mmozeiko/ed9655cf50341553d282
 #if defined(__clang__) || defined(__GNUC__)
 

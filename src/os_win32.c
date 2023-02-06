@@ -348,7 +348,7 @@ Win32_ThreadProc_(void* user_data)
 API
 #endif
 int WINAPI
-WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
+WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 {
 	//TraceInit();
 	
@@ -390,12 +390,40 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR args, int cmd_show)
 		global_monitor = info.rcWork;
 	}
 	
+	int32 cpu_core_count = 1;
+	{
+		SYSTEM_INFO system_info = { 0 };
+		GetNativeSystemInfo(&system_info);
+		
+		cpu_core_count = system_info.dwNumberOfProcessors;
+	}
+	
 	global_process_started_time = Win32_GetTimer();
 	global_instance = instance;
 	global_scratch_arena = Arena_Create(128 << 10, 128 << 10);
 	
 	//- Run
-	int32 result = OS_UserMain(argc, argv);
+	OS_UserMainArgs args = {
+		.argc = argc,
+		.argv = (const char* const*)argv,
+		
+		.default_window_state = {
+			.show_cursor = true,
+			.lock_cursor = false,
+			.center_window = true,
+			.fullscreen = false,
+			.should_close = false,
+			
+			.x = 0,
+			.y = 0,
+			.width = 800,
+			.height = 600,
+		},
+		
+		.cpu_core_count = cpu_core_count,
+	};
+	
+	int32 result = OS_UserMain(&args);
 	
 	// NOTE(ljre): Free resources... or nah :P
 	Win32_DeinitSimpleAudio();
@@ -575,23 +603,6 @@ OS_MessageBox(String title, String message)
 		
 		MessageBoxW(NULL, wmessage, wtitle, MB_OK);
 	}
-}
-
-API void
-OS_DefaultWindowState(OS_WindowState* out_state)
-{
-	*out_state = (OS_WindowState) {
-		.show_cursor = true,
-		.lock_cursor = false,
-		.center_window = true,
-		.fullscreen = false,
-		.should_close = false,
-		
-		.x = 0,
-		.y = 0,
-		.width = 800,
-		.height = 600,
-	};
 }
 
 API bool

@@ -22,6 +22,14 @@ OS_ExitWithErrorMessage("Assertion Failure!\nExpr: %s\nFile: %s\nLine: %i\nFunct
 
 #include "common.h"
 
+//~
+enum
+{
+	OS_Limits_MaxGamepadCount = 16,
+	OS_Limits_MaxWindowTitleLength = 64,
+	OS_Limits_MaxBufferedInput = 256,
+};
+
 //~ Graphics Context
 enum OS_WindowGraphicsApi
 {
@@ -108,7 +116,7 @@ struct OS_KeyboardState
 	int32 buffered_count;
 	
 	OS_ButtonState buttons[OS_KeyboardKey_Count];
-	uint8 buffered[128];
+	uint8 buffered[OS_Limits_MaxBufferedInput];
 }
 typedef OS_KeyboardState;
 
@@ -159,8 +167,8 @@ typedef OS_GamepadButton;
 
 struct OS_GamepadState
 {
-	// [0] = left < 0 < right
-	// [1] = up < 0 < down
+	// [0] = -1 <= left < 0 < right <= 1
+	// [1] = -1 <= up < 0 < down <= 1
 	float32 left[2];
 	float32 right[2];
 	
@@ -171,13 +179,11 @@ struct OS_GamepadState
 }
 typedef OS_GamepadState;
 
-#define OS_MAX_GAMEPAD_COUNT 16
-
 struct OS_InputState
 {
 	OS_KeyboardState keyboard;
 	OS_MouseState mouse;
-	OS_GamepadState gamepads[OS_MAX_GAMEPAD_COUNT];
+	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
 	
 	uint16 connected_gamepads;
 }
@@ -202,7 +208,7 @@ OS_ConnectedGamepadCount(const OS_InputState* input)
 { return Mem_PopCnt64(input->connected_gamepads); }
 
 static inline int32
-OS_ConnectedGamepadsIndices(const OS_InputState* input, int32 out_indices[OS_MAX_GAMEPAD_COUNT])
+OS_ConnectedGamepadsIndices(const OS_InputState* input, int32 out_indices[OS_Limits_MaxGamepadCount])
 {
 	uint64 bits = input->connected_gamepads;
 	int32 count = 0;
@@ -228,7 +234,7 @@ struct OS_WindowState
 	bool fullscreen;
 	
 	int32 x, y, width, height;
-	uint8 title[64];
+	uint8 title[OS_Limits_MaxWindowTitleLength];
 }
 typedef OS_WindowState;
 
@@ -271,11 +277,21 @@ struct OS_InitOutput
 }
 typedef OS_InitOutput;
 
+struct OS_UserMainArgs
+{
+	int32 argc;
+	const char* const* argv;
+	
+	OS_WindowState default_window_state;
+	
+	int32 cpu_core_count;
+}
+typedef OS_UserMainArgs;
+
 //~ Functions
-API int32 OS_UserMain(int32 argc, char* argv[]);
+API int32 OS_UserMain(const OS_UserMainArgs* args);
 
 API bool OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output);
-API void OS_DefaultWindowState(OS_WindowState* out_state);
 API void OS_PollEvents(OS_WindowState* inout_state, OS_InputState* out_input);
 API bool OS_WaitForVsync(void);
 

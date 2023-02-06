@@ -1,19 +1,3 @@
-/*
-*
-* TODO:
-*  - Fullscreen;
-*  - Keyboard for 3D Demo;
-*  - Direct3D backend;
-*  - Systems:
-*      - Basic rect collision;
-*
-*/
-
-//
-//
-//
-//
-
 #include "api_engine.h"
 
 //~ Libraries

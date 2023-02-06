@@ -173,8 +173,7 @@ G_SnakeUpdateAndRender(void)
 		.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 	};
 	
-	++batch.count;
-	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x,
 			grid_base_y,
@@ -188,8 +187,7 @@ G_SnakeUpdateAndRender(void)
 	vec3 col1 = { 0.5f, 0.9f, 0.5f };
 	vec3 col2 = { 0.5f, 0.5f, 0.9f };
 	
-	++batch.count;
-	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x + s->tail[0].x * s->cell_width + 1,
 			grid_base_y + s->tail[0].y * s->cell_height + 1,
@@ -206,8 +204,7 @@ G_SnakeUpdateAndRender(void)
 		float32 scale = (float32)i / (s->tail_size-1);
 		float32 scale2 = 1.0f - (1.0f-scale)*(1.0f-scale);
 		
-		++batch.count;
-		E_RectBatchElem* elem = Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+		E_RectBatchElem elem = {
 			.pos = {
 				grid_base_x + s->tail[i].x * s->cell_width + 2*glm_lerp(1.0f, 1.5f, scale2),
 				grid_base_y + s->tail[i].y * s->cell_height + 2*glm_lerp(1.0f, 1.5f, scale2),
@@ -217,13 +214,13 @@ G_SnakeUpdateAndRender(void)
 			.scaling[1][1] = s->cell_height - 4*glm_lerp(1.0f, 1.5f, scale2),
 			.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 			.color = { [3] = 1.0f },
-		});
+		};
 		
-		glm_vec3_lerp(col1, col2, scale, elem->color);
+		glm_vec3_lerp(col1, col2, scale, elem.color);
+		E_PushRect(&batch, NULL, &elem);
 	}
 	
-	++batch.count;
-	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x + s->apple_x * s->cell_width + 2,
 			grid_base_y + s->apple_y * s->cell_height + 2,
@@ -237,7 +234,7 @@ G_SnakeUpdateAndRender(void)
 	
 	if (s->tail_size >= 12)
 	{
-		E_PushTextToRectBatch(&batch, engine->frame_arena, &game->font, Str("yes, this is intentional"), vec2(grid_base_x, grid_base_y - 96.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
+		E_PushText(&batch, engine->frame_arena, &game->font, Str("yes, this is intentional"), vec2(grid_base_x, grid_base_y - 96.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	}
 	
 	uint8 gibberish[20];
@@ -253,7 +250,7 @@ G_SnakeUpdateAndRender(void)
 	}
 	
 	String str = String_PrintfLocal(64, "%.*syou are %um long", gibberish_size, gibberish, s->tail_size);
-	E_PushTextToRectBatch(&batch, engine->frame_arena, &game->font, str, vec2(grid_base_x, grid_base_y - 48.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
+	E_PushText(&batch, engine->frame_arena, &game->font, str, vec2(grid_base_x, grid_base_y - 48.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	
 	E_DrawRectBatch(&batch, NULL);
 	
@@ -325,8 +322,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 			color[0] = color[1] = color[2] = 0.4f;
 	}
 	
-	++batch->count;
-	Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+	E_PushRect(batch, NULL, &(E_RectBatchElem) {
 		.pos = { button_x, button_y },
 		.scaling[0][0] = button_width,
 		.scaling[1][1] = button_height,
@@ -337,7 +333,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 	
 	float32 scale = sinf((float32)OS_GetTimeInSeconds()) * 0.2f + 1.5f;
 	
-	E_PushTextToRectBatch(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(scale, scale), GLM_VEC4_ONE);
+	E_PushText(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(scale, scale), GLM_VEC4_ONE);
 	
 	button_y += button_height * 1.5f;
 	
@@ -397,8 +393,7 @@ G_UpdateAndRender(void)
 					(random>>43 & 255) / 255.0f,
 				};
 				
-				++batch.count;
-				Arena_PushStructInit(engine->frame_arena, E_RectBatchElem, {
+				E_PushRect(&batch, NULL, &(E_RectBatchElem) {
 					.pos = { engine->window_state->width*0.5f + x, engine->window_state->height*0.5f + y },
 					.scaling = {
 						{ size*cosf(angle), size*-sinf(angle) },

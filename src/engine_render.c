@@ -749,43 +749,8 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	E_AppendDrawCmd_(cmd, cmd);
 }
 
-API void
-E_CacheRectBatch(const E_RectBatch* batch, E_CachedBatch* out_cached_batch, Arena* to_clone_batch_at)
-{
-	Trace();
-	
-	*out_cached_batch = (E_CachedBatch) {
-		.vbuffer = { 0 },
-		.ubuffer = { 0 },
-		.samplers = {
-			batch->textures[0] ? batch->textures[0] : &g_render_whitetex,
-			batch->textures[1] ? batch->textures[1] : &g_render_whitetex,
-			batch->textures[2] ? batch->textures[2] : &g_render_whitetex,
-			batch->textures[3] ? batch->textures[3] : &g_render_whitetex,
-		},
-		.instance_count = batch->count,
-	};
-	
-	const void* buffer = batch->elements;
-	uintsize size = batch->count * sizeof(batch->elements[0]);
-	
-	if (to_clone_batch_at)
-		buffer = Arena_PushMemoryAligned(to_clone_batch_at, buffer, size, 16);
-	
-	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_MakeVertexBuffer,
-		.handle = &out_cached_batch->vbuffer,
-		.buffer = {
-			.memory = buffer,
-			.size = size,
-		},
-	});
-	
-	E_AppendResourceCmd_(rc_cmd, rc_cmd);
-}
-
 API bool
-E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color)
+E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color)
 {
 	Trace();
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
@@ -891,3 +856,24 @@ E_PushTextToRectBatch(E_RectBatch* batch, Arena* arena, E_Font* font, String tex
 	
 	return true;
 }
+
+API void
+E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rect)
+{
+	Trace();
+	if (!arena)
+		arena = global_engine.frame_arena;
+	
+	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
+	
+	++batch->count;
+	Arena_PushStructData(arena, E_RectBatchElem, rect);
+}
+
+API void
+E_RawResourceCommand(RB_ResourceCommand* first, RB_ResourceCommand* last)
+{ E_AppendResourceCmd_(first, last); }
+
+API void
+E_RawDrawCommand(RB_DrawCommand* first, RB_DrawCommand* last)
+{ E_AppendDrawCmd_(first, last); }

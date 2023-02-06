@@ -38,13 +38,12 @@ E_FinishFrame(void)
 
 //~ Entry Point
 API int32
-OS_UserMain(int32 argc, char* argv[])
+OS_UserMain(const OS_UserMainArgs* args)
 {
 	Trace();
 	
 	// NOTE(ljre): Desired initial state
-	OS_WindowState window_state = { 0 };
-	OS_DefaultWindowState(&window_state);
+	OS_WindowState window_state = args->default_window_state;
 	
 	window_state.width = 1280;
 	window_state.height = 720;
@@ -59,16 +58,19 @@ OS_UserMain(int32 argc, char* argv[])
 		
 		.simpleaudio_desired_sample_rate = 48000,
 		
-		.workerthreads_count = 2,
-		.workerthreads_args = (void*[2]) { 0 },
+		.workerthreads_count = Min(E_Limits_MaxWorkerThreadCount, args->cpu_core_count/2),
+		.workerthreads_args = (void*[E_Limits_MaxWorkerThreadCount]) { 0 },
 		.workerthreads_proc = E_WorkerThreadProc_,
 	};
 	
+	int32 argc = args->argc;
+	const char* const* argv = args->argv;
+	
 	for (int32 i = 1; i < argc; ++i)
 	{
-		if (!Mem_Strcmp(argv[i], "-opengl") || !Mem_Strcmp(argv[i], "-gl") || !Mem_Strcmp(argv[i], "-gl3"))
+		if (!Mem_Strcmp(argv[i], "-opengl"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
-		else if (!Mem_Strcmp(argv[i], "-d3d11") || !Mem_Strcmp(argv[i], "-dx11"))
+		else if (!Mem_Strcmp(argv[i], "-d3d11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
 		else if (!Mem_Strcmp(argv[i], "-audio-44100"))
 			init_desc.simpleaudio_desired_sample_rate = 44100;

@@ -24,16 +24,17 @@ E_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
 	uintsize size;
 	void* memory;
 	
-	if (!OS_ReadEntireFile(path, global_engine.scratch_arena, &memory, &size))
-		return false;
-	
-	// not inside 'if'
+	for Arena_TempScope(global_engine.scratch_arena)
 	{
-		Trace(); TraceName(Str("stb_vorbis_decode_memory"));
-		out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels, &out_sound->sample_rate, &out_sound->samples);
+		if (!OS_ReadEntireFile(path, global_engine.scratch_arena, &memory, &size))
+			return false;
+		
+		// not inside 'if'
+		{
+			Trace(); TraceName(Str("stb_vorbis_decode_memory"));
+			out_sound->sample_count = stb_vorbis_decode_memory(memory, (int32)size, &out_sound->channels, &out_sound->sample_rate, &out_sound->samples);
+		}
 	}
-	
-	Arena_Pop(global_engine.scratch_arena, memory);
 	
 	if (out_sound->sample_count == -1)
 		return false;
