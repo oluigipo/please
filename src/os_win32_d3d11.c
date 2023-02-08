@@ -51,8 +51,9 @@ Win32_DestroyD3d11Window(void)
 static bool
 Win32_D3d11SwapBuffers(int32 vsync_count)
 {
-	int32 to_d3d11 = Min(vsync_count, 4);
-	bool ok = IDXGISwapChain_Present(global_direct3d.swapchain, to_d3d11, 0);
+	int32 to_d3d11 = Min(vsync_count, 0);
+	IDXGISwapChain_Present(global_direct3d.swapchain, 0, 0);
+	bool ok = true;
 	
 #if defined(CONFIG_DEBUG)
 	// NOTE(ljre): Check for debug messages

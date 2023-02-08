@@ -964,7 +964,10 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_window_state.width);
 		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_window_state.height);
 		
-		if (global_lock_cursor && GetActiveWindow())
+		static bool prev_update_mouse_pos = false;
+		bool update_mouse_pos = (GetForegroundWindow() == global_window);
+		
+		if (global_lock_cursor && update_mouse_pos)
 		{
 			mouse.x = global_window_state.width/2;
 			mouse.y = global_window_state.height/2;
@@ -974,7 +977,15 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 			
 			out_input_data->mouse.old_pos[0] = (float32)(global_window_state.width/2);
 			out_input_data->mouse.old_pos[1] = (float32)(global_window_state.height/2);
+			
+			if (!prev_update_mouse_pos)
+			{
+				out_input_data->mouse.pos[0] = out_input_data->mouse.old_pos[0];
+				out_input_data->mouse.pos[1] = out_input_data->mouse.old_pos[1];
+			}
 		}
+		
+		prev_update_mouse_pos = update_mouse_pos;
 	}
 	
 	// NOTE(ljre): Update Gamepads

@@ -80,6 +80,9 @@ G_Scene3DInit(void)
 {
 	Trace();
 	
+	engine->window_state->show_cursor = false;
+	engine->window_state->lock_cursor = true;
+	
 	G_Scene3DState* s = game->scene3d = Arena_PushStructInit(engine->persistent_arena, G_Scene3DState, {
 		.camera_yaw = -GLM_PIf*0.5f,
 		.camera_pitch = 0.0f,
@@ -267,7 +270,11 @@ G_Scene3DUpdateAndRender(void)
 {
 	G_Scene3DState* s = game->scene3d;
 	
-	//s->camera_yaw = fmodf(s->camera_yaw + 0.1f, GLM_PIf);
+	s->camera_yaw   +=  0.002f * (engine->input->mouse.old_pos[0] - engine->input->mouse.pos[0]);
+	s->camera_pitch += -0.002f * (engine->input->mouse.old_pos[1] - engine->input->mouse.pos[1]);
+	
+	s->camera_yaw   = fmodf(s->camera_yaw, GLM_PIf*2.0f);
+	s->camera_pitch = glm_clamp(s->camera_pitch, -GLM_PIf*0.49f, GLM_PIf*0.49f);
 	
 	float32 pitched = cosf(s->camera_pitch);
 	vec3 dir = {
@@ -282,12 +289,12 @@ G_Scene3DUpdateAndRender(void)
 	glm_vec3_cross(dir, right, up);
 	
 	vec3 move = {
-		OS_IsDown(engine->input->keyboard, 'S') - OS_IsDown(engine->input->keyboard, 'W'),
+		OS_IsDown(engine->input->keyboard, 'W') - OS_IsDown(engine->input->keyboard, 'S'),
 		OS_IsDown(engine->input->keyboard, OS_KeyboardKey_LeftShift) - OS_IsDown(engine->input->keyboard, ' '),
-		OS_IsDown(engine->input->keyboard, 'D') - OS_IsDown(engine->input->keyboard, 'A'),
+		OS_IsDown(engine->input->keyboard, 'A') - OS_IsDown(engine->input->keyboard, 'D'),
 	};
 	
-	glm_vec3_rotate(move, s->camera_yaw, vec3(0.0f, 1.0f, 0.0f));
+	glm_vec3_rotate(move, -s->camera_yaw, vec3(0.0f, 1.0f, 0.0f));
 	glm_vec3_scale(move, engine->delta_time*5.0f, move);
 	glm_vec3_add(s->camera_pos, move, s->camera_pos);
 	
