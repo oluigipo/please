@@ -6,6 +6,7 @@ enum
 	RB_Limits_SamplersPerDrawCall = 4,
 	RB_Limits_InputsPerShader = 8,
 	RB_Limits_ColorAttachPerRenderTarget = 4,
+	RB_Limits_MaxVertexBuffersPerDrawCall = 4,
 };
 
 union RB_Handle
@@ -38,6 +39,51 @@ struct RB_LayoutDesc
 }
 typedef RB_LayoutDesc;
 
+enum RB_BlendFunc
+{
+	RB_BlendFunc_Null = 0,
+	
+	RB_BlendFunc_Zero,
+	RB_BlendFunc_One,
+	RB_BlendFunc_SrcColor,
+	RB_BlendFunc_InvSrcColor,
+	RB_BlendFunc_DstColor,
+	RB_BlendFunc_InvDstColor,
+	RB_BlendFunc_SrcAlpha,
+	RB_BlendFunc_InvSrcAlpha,
+	RB_BlendFunc_DstAlpha,
+	RB_BlendFunc_InvDstAlpha,
+}
+typedef RB_BlendFunc;
+
+enum RB_BlendOp
+{
+	RB_BlendOp_Null = 0,
+	
+	RB_BlendOp_Add,
+	RB_BlendOp_Subtract,
+}
+typedef RB_BlendOp;
+
+enum RB_FillMode
+{
+	RB_FillMode_Null = 0,
+	
+	RB_FillMode_Solid,
+	RB_FillMode_Wireframe,
+}
+typedef RB_FillMode;
+
+enum RB_CullMode
+{
+	RB_CullMode_Null = 0,
+	
+	RB_CullMode_None,
+	RB_CullMode_Front,
+	RB_CullMode_Back,
+}
+typedef RB_CullMode;
+
 enum RB_ResourceCommandKind
 {
 	RB_ResourceCommandKind_Null = 0,
@@ -48,6 +94,8 @@ enum RB_ResourceCommandKind
 	RB_ResourceCommandKind_MakeUniformBuffer,
 	RB_ResourceCommandKind_MakeShader,
 	RB_ResourceCommandKind_MakeRenderTarget,
+	RB_ResourceCommandKind_MakeBlendState,
+	RB_ResourceCommandKind_MakeRasterizerState,
 	//
 	RB_ResourceCommandKind_UpdateVertexBuffer,
 	RB_ResourceCommandKind_UpdateIndexBuffer,
@@ -60,6 +108,8 @@ enum RB_ResourceCommandKind
 	RB_ResourceCommandKind_FreeUniformBuffer,
 	RB_ResourceCommandKind_FreeShader,
 	RB_ResourceCommandKind_FreeRenderTarget,
+	RB_ResourceCommandKind_FreeBlendState,
+	RB_ResourceCommandKind_FreeRasterizerState,
 }
 typedef RB_ResourceCommandKind;
 
@@ -114,6 +164,29 @@ struct RB_ResourceCommand
 			RB_Handle* depth_stencil_texture;
 		}
 		render_target;
+		
+		struct
+		{
+			bool enable;
+			RB_BlendFunc source;
+			RB_BlendFunc dest;
+			RB_BlendOp op;
+			RB_BlendFunc source_alpha;
+			RB_BlendFunc dest_alpha;
+			RB_BlendOp op_alpha;
+		}
+		blend;
+		
+		struct
+		{
+			RB_FillMode fill_mode;
+			RB_CullMode cull_mode;
+			
+			bool flag_cw_backface : 1;
+			bool flag_depth_test : 1;
+			bool flag_scissor : 1;
+		}
+		rasterizer;
 	};
 };
 
@@ -124,13 +197,22 @@ struct RB_SamplerDesc
 }
 typedef RB_SamplerDesc;
 
+enum RB_IndexType
+{
+	RB_IndexType_Uint32 = 0,
+	RB_IndexType_Uint16, // apparently gltf needs this
+	//RB_IndexType_Uint8, // but now this?????
+}
+typedef RB_IndexType;
+
 enum RB_DrawCommandKind
 {
 	RB_DrawCommandKind_Null = 0,
 	
 	RB_DrawCommandKind_Clear,
-	RB_DrawCommandKind_SetRenderTarget,
-	RB_DrawCommandKind_ResetRenderTarget,
+	RB_DrawCommandKind_ApplyBlendState,
+	RB_DrawCommandKind_ApplyRasterizerState,
+	RB_DrawCommandKind_ApplyRenderTarget,
 	RB_DrawCommandKind_DrawCall,
 }
 typedef RB_DrawCommandKind;
@@ -156,18 +238,20 @@ struct RB_DrawCommand
 		
 		struct
 		{
-			RB_Handle* handle;
+			RB_Handle* handle; // if NULL, then choose default
 		}
-		set_target;
+		apply;
 		
 		struct
 		{
 			RB_Handle* shader;
 			RB_Handle* ibuffer;
 			RB_Handle* ubuffer;
-			RB_Handle* vbuffers[4];
-			uint32 vbuffer_strides[4];
+			RB_Handle* vbuffers[RB_Limits_MaxVertexBuffersPerDrawCall];
+			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
+			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
 			
+			RB_IndexType index_type;
 			uint32 index_count;
 			uint32 instance_count;
 			

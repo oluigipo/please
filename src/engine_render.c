@@ -678,10 +678,8 @@ E_DrawClear(float32 r, float32 g, float32 b, float32 a)
 		.kind = RB_DrawCommandKind_Clear,
 		.clear = {
 			.flag_color = true,
-			.color[0] = r,
-			.color[1] = g,
-			.color[2] = b,
-			.color[3] = a,
+			.flag_depth = true,
+			.color = { r, g, b, a },
 		},
 	});
 	
@@ -871,9 +869,9 @@ E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rect)
 }
 
 API void
-E_RawResourceCommand(RB_ResourceCommand* first, RB_ResourceCommand* last)
+E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* last)
 { E_AppendResourceCmd_(first, last); }
 
 API void
-E_RawDrawCommand(RB_DrawCommand* first, RB_DrawCommand* last)
+E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last)
 { E_AppendDrawCmd_(first, last); }

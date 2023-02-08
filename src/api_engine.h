@@ -227,8 +227,8 @@ API void E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rec
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
 
-API void E_RawResourceCommand(RB_ResourceCommand* first, RB_ResourceCommand* last);
-API void E_RawDrawCommand(RB_DrawCommand* first, RB_DrawCommand* last);
+API void E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* last);
+API void E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last);
 
 //- Worker Thread API
 void typedef E_ThreadWorkProc(E_ThreadCtx* ctx, void* data);

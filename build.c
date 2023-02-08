@@ -32,6 +32,11 @@ static g_projects[] = {
 		.is_executable = true,
 		.is_graphic_program = true,
 		.deps = (Cstr[]) { "engine", NULL },
+		.shaders = (struct Build_Shader[]) {
+			{ "shader_scene3d.hlsl", "game_test_scene3d_vs.inc", "vs_4_0_level_9_3", "scene3d_d3d_vs" },
+			{ "shader_scene3d.hlsl", "game_test_scene3d_ps.inc", "ps_4_0_level_9_3", "scene3d_d3d_ps" },
+			{ NULL },
+		},
 	},
 	{
 		.name = "engine",
@@ -193,7 +198,7 @@ Build(struct Build_Project* project)
 	{
 		for (struct Build_Shader* it = project->shaders; it->name; ++it)
 		{
-			Append(&head, end, "fxc /nologo src/%s_%s", project->name, it->name);
+			Append(&head, end, "fxc /nologo src/%s%c%s", project->name, (project->is_executable ? '/' : '_'), it->name);
 			Append(&head, end, " /Fhinclude/%s", it->output);
 			Append(&head, end, " /T%s /E%s", it->profile, it->entry_point);
 			

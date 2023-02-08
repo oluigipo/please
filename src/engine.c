@@ -1,7 +1,7 @@
 #include "api_engine.h"
 
 //~ Libraries
-#define STB_IMAGE_STATIC
+//#define STB_IMAGE_STATIC
 #define STBI_ONLY_PNG
 #define STBI_NO_STDIO
 #include <ext/stb_image.h>

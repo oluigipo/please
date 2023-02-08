@@ -110,7 +110,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	if (!window)
 		return false;
 	
-	HDC hdc = GetDC(window);
+	HDC hdc = NULL;//GetDC(window);
 	
 	HMODULE library = Win32_LoadLibrary("d3d11.dll");
 	if (!library)
@@ -160,7 +160,10 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 	
 	D3D_FEATURE_LEVEL feature_levels[] = {
-		D3D_FEATURE_LEVEL_9_3
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+		D3D_FEATURE_LEVEL_9_3,
 	};
 #else
 	D3D_FEATURE_LEVEL feature_levels[] = {
@@ -171,7 +174,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	};
 #endif
 	
-	HRESULT result = D3D11CreateDeviceAndSwapChain(
+	HRESULT hr = D3D11CreateDeviceAndSwapChain(
 		NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
 		flags, feature_levels, ArrayLength(feature_levels),
 		D3D11_SDK_VERSION, &swapchain_desc,
@@ -180,16 +183,47 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		NULL,
 		&global_direct3d.context);
 	
-	if (FAILED(result))
+	if (FAILED(hr))
 	{
 		DestroyWindow(window);
 		return false;
 	}
 	
-	ID3D11Resource* backbuffer;
-	IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Resource, (void**)&backbuffer);
-	ID3D11Device_CreateRenderTargetView(global_direct3d.device, backbuffer, NULL, &global_direct3d.target);
+	// Make render target view and get backbuffer desc
+	ID3D11Texture2D* backbuffer;
+	hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Texture2D, (void**)&backbuffer);
+	SafeAssert(SUCCEEDED(hr));
+	
+	D3D11_TEXTURE2D_DESC backbuffer_desc;
+	ID3D11Texture2D_GetDesc(backbuffer, &backbuffer_desc);
+	hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, (ID3D11Resource*)backbuffer, NULL, &global_direct3d.target);
+	SafeAssert(SUCCEEDED(hr));
+	
 	ID3D11Resource_Release(backbuffer);
+	
+	// Make depth stencil view
+	D3D11_TEXTURE2D_DESC depth_stencil_desc = {
+		.Width = backbuffer_desc.Width,
+		.Height = backbuffer_desc.Height,
+		.MipLevels = 1,
+		.ArraySize = 1,
+		.Format = DXGI_FORMAT_D24_UNORM_S8_UINT,
+		.SampleDesc = {
+			.Count = 1,
+			.Quality = 0,
+		},
+		.Usage = D3D11_USAGE_DEFAULT,
+		.BindFlags = D3D11_BIND_DEPTH_STENCIL,
+		.CPUAccessFlags = 0,
+		.MiscFlags = 0,
+	};
+	
+	ID3D11Texture2D* depth_stencil;
+	hr = ID3D11Device_CreateTexture2D(global_direct3d.device, &depth_stencil_desc, NULL, &depth_stencil);
+	SafeAssert(SUCCEEDED(hr));
+	hr = ID3D11Device_CreateDepthStencilView(global_direct3d.device, (ID3D11Resource*)depth_stencil, NULL, &global_direct3d.depth_stencil);
+	SafeAssert(SUCCEEDED(hr));
+	ID3D11Texture2D_Release(depth_stencil);
 	
 #if defined(CONFIG_DEBUG)
 	// NOTE(ljre): Load debugging thingy
@@ -198,8 +232,6 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		
 		if (library)
 		{
-			OS_DebugLog("Loaded Library: dxgidebug.dll\n");
-			
 			HRESULT (WINAPI* get_debug_interface)(REFIID, void**);
 			get_debug_interface = (void*)GetProcAddress(library, "DXGIGetDebugInterface");
 			

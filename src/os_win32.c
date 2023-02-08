@@ -257,14 +257,44 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 				hr = IDXGISwapChain_ResizeBuffers(global_direct3d.swapchain, 0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
 				SafeAssert(SUCCEEDED(hr));
 				
-				ID3D11Resource* backbuffer;
-				hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Resource, (void**)&backbuffer);
+				ID3D11Texture2D* backbuffer;
+				hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Texture2D, (void**)&backbuffer);
 				SafeAssert(SUCCEEDED(hr));
 				
-				hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, backbuffer, NULL, &global_direct3d.target);
+				D3D11_TEXTURE2D_DESC backbuffer_desc;
+				ID3D11Texture2D_GetDesc(backbuffer, &backbuffer_desc);
+				
+				hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, (ID3D11Resource*)backbuffer, NULL, &global_direct3d.target);
 				SafeAssert(SUCCEEDED(hr));
 				
 				ID3D11Resource_Release(backbuffer);
+				
+				ID3D11DepthStencilView_Release(global_direct3d.depth_stencil);
+				global_direct3d.depth_stencil = NULL;
+				
+				D3D11_TEXTURE2D_DESC depth_stencil_desc = {
+					.Width = backbuffer_desc.Width,
+					.Height = backbuffer_desc.Height,
+					.MipLevels = 1,
+					.ArraySize = 1,
+					.Format = DXGI_FORMAT_D24_UNORM_S8_UINT,
+					.SampleDesc = {
+						.Count = 1,
+						.Quality = 0,
+					},
+					.Usage = D3D11_USAGE_DEFAULT,
+					.BindFlags = D3D11_BIND_DEPTH_STENCIL,
+					.CPUAccessFlags = 0,
+					.MiscFlags = 0,
+				};
+				
+				ID3D11Texture2D* depth_stencil;
+				hr = ID3D11Device_CreateTexture2D(global_direct3d.device, &depth_stencil_desc, NULL, &depth_stencil);
+				SafeAssert(SUCCEEDED(hr));
+				hr = ID3D11Device_CreateDepthStencilView(global_direct3d.device, (ID3D11Resource*)depth_stencil, NULL, &global_direct3d.depth_stencil);
+				SafeAssert(SUCCEEDED(hr));
+				
+				ID3D11Texture2D_Release(depth_stencil);
 			}
 #endif
 		} break;
@@ -275,8 +305,8 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_KEYDOWN:
 		{
 			uint32 vkcode = (uint32)wparam;
-			bool was_down = ((lparam & (1 << 30)) != 0);
-			bool is_down = ((lparam & (1 << 31)) == 0);
+			bool was_down = ((lparam & (1u << 30)) != 0);
+			bool is_down = ((lparam & (1u << 31)) == 0);
 			
 			(void)was_down;
 			
@@ -389,6 +419,20 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		SafeAssert(GetMonitorInfoA(monitor, &info));
 		global_monitor = info.rcWork;
 	}
+	
+#ifdef CONFIG_DEBUG
+	{
+		LPWSTR path;
+		
+#ifdef _WIN64
+		path = L"./redist/x86_64-windows/";
+#else
+		path = L"./redist/i386-windows/";
+#endif
+		
+		SetDllDirectoryW(path);
+	}
+#endif
 	
 	int32 cpu_core_count = 1;
 	{

@@ -23,6 +23,7 @@ struct OS_D3d11Api
 	ID3D11DeviceContext* context;
 	IDXGISwapChain* swapchain;
 	ID3D11RenderTargetView* target;
+	ID3D11DepthStencilView* depth_stencil;
 };
 
 #pragma pop_macro("far")

@@ -65,6 +65,8 @@ static const String RB_resource_cmd_names[] = {
 	[RB_ResourceCommandKind_MakeUniformBuffer] = StrInit("RB_ResourceCommandKind_MakeUniformBuffer"),
 	[RB_ResourceCommandKind_MakeShader] = StrInit("RB_ResourceCommandKind_MakeShader"),
 	[RB_ResourceCommandKind_MakeRenderTarget] = StrInit("RB_ResourceCommandKind_MakeRenderTarget"),
+	[RB_ResourceCommandKind_MakeBlendState] = StrInit("RB_ResourceCommandKind_MakeBlendState"),
+	[RB_ResourceCommandKind_MakeRasterizerState] = StrInit("RB_ResourceCommandKind_MakeRasterizerState"),
 	[RB_ResourceCommandKind_UpdateVertexBuffer] = StrInit("RB_ResourceCommandKind_UpdateVertexBuffer"),
 	[RB_ResourceCommandKind_UpdateIndexBuffer] = StrInit("RB_ResourceCommandKind_UpdateIndexBuffer"),
 	[RB_ResourceCommandKind_UpdateUniformBuffer] = StrInit("RB_ResourceCommandKind_UpdateUniformBuffer"),
@@ -75,12 +77,15 @@ static const String RB_resource_cmd_names[] = {
 	[RB_ResourceCommandKind_FreeUniformBuffer] = StrInit("RB_ResourceCommandKind_FreeUniformBuffer"),
 	[RB_ResourceCommandKind_FreeShader] = StrInit("RB_ResourceCommandKind_FreeShader"),
 	[RB_ResourceCommandKind_FreeRenderTarget] = StrInit("RB_ResourceCommandKind_FreeRenderTarget"),
+	[RB_ResourceCommandKind_FreeBlendState] = StrInit("RB_ResourceCommandKind_FreeBlendState"),
+	[RB_ResourceCommandKind_FreeRasterizerState] = StrInit("RB_ResourceCommandKind_FreeRasterizerState"),
 };
 
 static const String RB_draw_cmd_names[] = {
 	[RB_DrawCommandKind_Clear] = StrInit("RB_DrawCommandKind_Clear"),
-	[RB_DrawCommandKind_SetRenderTarget] = StrInit("RB_DrawCommandKind_SetRenderTarget"),
-	[RB_DrawCommandKind_ResetRenderTarget] = StrInit("RB_DrawCommandKind_ResetRenderTarget"),
+	[RB_DrawCommandKind_ApplyBlendState] = StrInit("RB_DrawCommandKind_ApplyBlendState"),
+	[RB_DrawCommandKind_ApplyRasterizerState] = StrInit("RB_DrawCommandKind_ApplyRasterizerState"),
+	[RB_DrawCommandKind_ApplyRenderTarget] = StrInit("RB_DrawCommandKind_ApplyRenderTarget"),
 	[RB_DrawCommandKind_DrawCall] = StrInit("RB_DrawCommandKind_DrawCall"),
 };
 
