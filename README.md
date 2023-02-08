@@ -13,12 +13,12 @@ A release build would look like: `build game_test -O2 -ndebug`.
 
 Just read `build.c` to check what flags you can input.
 
-### tools needed to build:
+### tools required to build:
 * Clang or MSVC: C Compiler;
-* `llvm-rc` or `rc`: Resource (`.rc`) files compiler;
 * `fxc`: HLSL compiler;
 
-`llvm-rc` and `rc` are optional. Pass the flag `-no-rc` to `build.exe` to not call them.
+### optional tools:
+* `llvm-rc` or `rc`: Resource (`.rc`) files compiler. Needed if passing the `-rc` flag;
 
 ## Folder Structure
 * `build`: The default build directory. It is automatically generated;

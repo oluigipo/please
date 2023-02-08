@@ -521,7 +521,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				// TODO(ljre): cmd->flag_subregion
 				
-				const void* pixels = cmd->texture_2d.pixels;
+				const uint8* pixels = cmd->texture_2d.pixels;
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
 				uint32 channels = cmd->texture_2d.channels;

@@ -827,6 +827,12 @@ E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos
 		float32 x = curr_x + (float32)(glyph->xoff + glyph->bearing * font->char_scale) * scale[0];
 		float32 y = curr_y + (float32)(glyph->yoff + font->ascent * font->char_scale) * scale[1];
 		
+#ifdef E_RENDER_ENABLE_SDF_GLYPHS
+		float32 tex_kind = 4;
+#else
+		float32 tex_kind = 1;
+#endif
+		
 		++batch->count;
 		Arena_PushStructInit(arena, E_RectBatchElem, {
 			.pos = { x, y, },
@@ -835,11 +841,7 @@ E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = texindex,
-#ifdef E_RENDER_ENABLE_SDF_GLYPHS
-			.tex_kind = 4,
-#else
-			.tex_kind = 1,
-#endif
+			.tex_kind = tex_kind,
 			.texcoords = {
 				(float32)glyph->x * inv_bitmap_size,
 				(float32)glyph->y * inv_bitmap_size,

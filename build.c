@@ -1,71 +1,73 @@
+#ifdef _WIN32
+#   define _CRT_SECURE_NO_WARNINGS
+#endif
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #define ArrayLength(x) (sizeof(x)/sizeof*(x))
 
 typedef const char* Cstr;
 
-struct Build_Shader
+struct Build_Tu
 {
 	Cstr name;
+	Cstr path;
+	bool is_cpp;
+};
+
+struct Build_Shader
+{
+	Cstr path;
 	Cstr output;
 	Cstr profile;
 	Cstr entry_point;
 };
 
-struct Build_Project
+struct Build_Executable
 {
 	Cstr name;
 	Cstr outname;
-	bool is_executable;
 	bool is_graphic_program;
-	bool is_cxx;
-	Cstr* deps;
+	struct Build_Tu** tus;
 	struct Build_Shader* shaders;
-}
-static g_projects[] = {
+};
+
+static struct Build_Tu tu_os = { "os", "os.c" };
+static struct Build_Tu tu_engine = { "engine", "engine.c" };
+static struct Build_Tu tu_game_test = { "game_test", "game_test/game.c" };
+static struct Build_Tu tu_steam = { "steam", "steam.cpp", .is_cpp = true };
+static struct Build_Tu tu_gamepad_db_gen = { "gamepad_db_gen", "gamepad_db_gen/main.c" };
+
+static struct Build_Executable g_executables[] = {
 	{
 		.name = "game_test",
 		.outname = "game",
-		.is_executable = true,
 		.is_graphic_program = true,
-		.deps = (Cstr[]) { "engine", "steam", NULL },
+		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "shader_scene3d.hlsl", "game_test_scene3d_vs.inc", "vs_4_0_level_9_3", "scene3d_d3d_vs" },
-			{ "shader_scene3d.hlsl", "game_test_scene3d_ps.inc", "ps_4_0_level_9_3", "scene3d_d3d_ps" },
-			{ NULL },
-		},
-	},
-	{
-		.name = "engine",
-		.outname = "engine",
-		.deps = (Cstr[]) { "os", NULL },
-		.shaders = (struct Build_Shader[]) {
-			{ "shader_quad.hlsl", "d3d11_vshader_quad.inc", "vs_4_0_level_9_3", "D3d11Shader_QuadVertex" },
-			{ "shader_quad.hlsl", "d3d11_pshader_quad.inc", "ps_4_0_level_9_3", "D3d11Shader_QuadPixel" },
+			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d_vs.inc", "vs_4_0_level_9_3", "scene3d_d3d_vs" },
+			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d_ps.inc", "ps_4_0_level_9_3", "scene3d_d3d_ps" },
+			{ "engine_shader_quad.hlsl", "d3d11_vshader_quad.inc", "vs_4_0_level_9_3", "D3d11Shader_QuadVertex" },
+			{ "engine_shader_quad.hlsl", "d3d11_pshader_quad.inc", "ps_4_0_level_9_3", "D3d11Shader_QuadPixel" },
 			{ NULL },
 		},
 	},
 	{
 		.name = "gamepad_db_gen",
 		.outname = "gamepad_db_gen",
-		.is_executable = true,
-		.deps = (Cstr[]) { NULL },
-	},
-	{
-		.name = "steam",
-		.outname = "steam",
-		.is_cxx = true,
-		.deps = (Cstr[]) { NULL },
+		.tus = (struct Build_Tu*[]) { &tu_gamepad_db_gen, NULL },
 	},
 };
 
 struct
 {
-	struct Build_Project* project;
+	struct Build_Executable* exec;
 	int optimize;
 	bool asan;
 	bool ubsan;
@@ -82,7 +84,7 @@ struct
 	Cstr* extra_flags;
 }
 static g_opts = {
-	.project = &g_projects[0],
+	.exec = &g_executables[0],
 	.debug_mode = true,
 };
 
@@ -178,76 +180,143 @@ RunCommand(Cstr cmd)
 	return system(cmd);
 }
 
-static struct Build_Project*
-FindProject(Cstr name)
+static bool
+NeedsRebuild(struct Build_Tu* tu)
 {
-	struct Build_Project* result = NULL;
+	bool result = true;
+	char path[128];
 	
-	for(int i = 0; i < ArrayLength(g_projects); ++i)
+	snprintf(path, sizeof(path), "build/%s.obj", tu->name);
+	struct __stat64 stat_data;
+	
+	if (_stat64(path, &stat_data) == 0)
 	{
-		if (strcmp(name, g_projects[i].name) == 0)
+		uint64_t objtime = stat_data.st_mtime;
+		
+		snprintf(path, sizeof(path), "build/%s.obj.d", tu->name);
+		FILE* file = fopen(path, "rb");
+		
+		if (file)
 		{
-			result = &g_projects[i];
-			break;
+			fseek(file, 0, SEEK_END);
+			size_t filesize = ftell(file);
+			rewind(file);
+			char* buf = malloc(filesize+1);
+			fread(buf, 1, filesize, file);
+			buf[filesize] = 0;
+			fclose(file);
+			
+			char* const begin = buf;
+			char* const end = buf + filesize;
+			char* head = buf;
+			
+			//- Parse
+			{
+				// NOTE(ljre): File should begin with the output name
+				const char* path_head = path;
+				while (*path_head == *head)
+				{
+					++path_head;
+					++head;
+				}
+				
+				if (*head++ != ':')
+					goto lbl_done;
+				
+				while (*head)
+				{
+					while (*head == ' ' || *head == '\t' || *head == '\r' || *head == '\n')
+						++head;
+					if (!*head)
+						break;
+					if (*head == '\\' && (head[1] == '\n' || head[1] == '\r' && head[2] == '\n'))
+					{
+						head += 2 + (head[1] == '\r');
+						continue;
+					}
+					
+					char depname[256] = { 0 };
+					int deplen = 0;
+					while (*head && *head != ' ' && *head != '\n' && *head != '\r')
+					{
+						if (*head == '\\' && head[1] == ' ')
+						{
+							depname[deplen++] = ' ';
+							head += 2;
+						}
+						else
+							depname[deplen++] = *head++;
+					}
+					
+					if (_stat64(depname, &stat_data) != 0)
+						goto lbl_done;
+					if (stat_data.st_mtime > objtime)
+						goto lbl_done;
+				}
+				
+				// Did we get here? cool, then we don't need to rebuild it!
+				result = false;
+			}
+			
+			//- Done Parsing
+			lbl_done:;
+			free(buf);
 		}
 	}
-	
-	if (!result)
-		fprintf(stderr, "[warning] unknown project '%s'\n", name);
 	
 	return result;
 }
 
-static int
-Build(struct Build_Project* project)
+static bool
+CompileShader(struct Build_Shader* shader)
+{
+	// NOTE(ljre): Rebuild only if needed
+	if (!g_opts.force_rebuild)
+	{
+		char path[256] = { 0 };
+		struct __stat64 stat_data;
+		snprintf(path, sizeof(path), "src/%s", shader->path);
+		
+		if (_stat64(path, &stat_data) == 0)
+		{
+			uint64_t src_time = stat_data.st_mtime;
+			snprintf(path, sizeof(path), "include/%s", shader->output);
+			
+			if (_stat64(path, &stat_data) == 0)
+			{
+				uint64_t dst_time = stat_data.st_mtime;
+				
+				if (src_time < dst_time)
+					return true;
+			}
+		}
+	}
+	
+	// NOTE(ljre): Actual build
+	char cmd[4096] = { 0 };
+	char* head = cmd;
+	char* end = cmd+sizeof(cmd);
+	
+	Append(&head, end, "fxc /nologo src/%s", shader->path);
+	Append(&head, end, " /Fhinclude/%s", shader->output);
+	Append(&head, end, " /T%s /E%s", shader->profile, shader->entry_point);
+	
+	return RunCommand(cmd) == 0;
+}
+
+static bool
+CompileTu(struct Build_Tu* tu)
 {
 	char cmd[4096] = { 0 };
-	char* end = cmd+sizeof(cmd);
 	char* head = cmd;
+	char* end = cmd+sizeof(cmd);
 	
-	Cstr ex = (project->is_cxx) ? "cpp" : "c";
+	if (!g_opts.force_rebuild && !NeedsRebuild(tu))
+		return true;
 	
-	if (project->shaders)
-	{
-		for (struct Build_Shader* it = project->shaders; it->name; ++it)
-		{
-			Append(&head, end, "fxc /nologo src/%s%c%s", project->name, (project->is_executable ? '/' : '_'), it->name);
-			Append(&head, end, " /Fhinclude/%s", it->output);
-			Append(&head, end, " /T%s /E%s", it->profile, it->entry_point);
-			
-			int result = RunCommand(cmd);
-			if (result)
-				return result;
-			
-			head = cmd;
-		}
-	}
-	
-	Append(&head, end, "%s", (project->is_cxx) ? f_cxx : f_cc);
-	
-	if (project->is_executable)
-		Append(&head, end, " src/%s/unity_build.c", project->name);
-	else if (g_opts.hot)
-	{
-		Append(&head, end, " src/%s.c", project->name);
-		
-		for (Cstr* it = project->deps; *it; ++it)
-			Append(&head, end, " src/%s.c", *it);
-	}
-	else
-	{
-		Cstr previous = project->name;
-		
-		for (Cstr* it = project->deps; *it; ++it)
-		{
-			Append(&head, end, " %s %s.%s", f_incfile, previous, ex);
-			previous = *it;
-		}
-		
-		Append(&head, end, " src/%s.%s", previous, ex);
-	}
-	
+	Append(&head, end, "%s src/%s", tu->is_cpp ? f_cxx : f_cc, tu->path);
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
+	
 	if (g_opts.analyze)
 		Append(&head, end, " %s", f_analyze);
 	if (g_opts.optimize)
@@ -274,50 +343,53 @@ Build(struct Build_Project* project)
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
 	
-	if (g_opts.hot)
+#ifdef __clang__
+	Append(&head, end, " -MMD -MF build/%s.obj.d", tu->name);
+#endif
+	
+	Append(&head, end, " %sbuild/%s.obj", f_output_obj, tu->name);
+	
+	return RunCommand(cmd) == 0;
+}
+
+static bool
+CompileExecutable(struct Build_Executable* exec)
+{
+	for (struct Build_Shader* shader = exec->shaders; shader && shader->path; ++shader)
 	{
-		Append(&head, end, " %sbuild/hot-%s.dll", f_output, project->outname);
-		Append(&head, end, " %s %s %s", f_hotcflags, f_ldflags, f_hotldflags);
-		
-		if (project->is_executable)
-		{
-			for (Cstr* it = project->deps; *it; ++it)
-			{
-				struct Build_Project* dep = FindProject(*it);
-				
-				Append(&head, end, " build/hot-%s.lib", dep->outname);
-			}
-		}
-	}
-	else
-	{
-		if (project->is_executable)
-			Append(&head, end, " %sbuild/%s.exe", f_output, project->outname);
-		else
-			Append(&head, end, " %sbuild/%s.obj", f_output_obj, project->outname);
-		
-		Append(&head, end, " %s", f_ldflags);
-		if (project->is_graphic_program)
-			Append(&head, end, " %s", f_ldflags_graphic);
-		
-		if (project->is_executable)
-		{
-			for (Cstr* it = project->deps; *it; ++it)
-			{
-				struct Build_Project* dep = FindProject(*it);
-				
-				if (dep->is_executable)
-					Append(&head, end, " build/%s.lib", dep->outname);
-				else
-					Append(&head, end, " build/%s.obj", dep->outname);
-			}
-			
-			if (g_opts.do_rc)
-				Append(&head, end, " build/windows-resource-file.res");
-		}
+		if (!CompileShader(shader))
+			return false;
 	}
 	
-	return RunCommand(cmd);
+	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
+	{
+		if (!CompileTu(*tu))
+			return false;
+	}
+	
+	char cmd[4096] = { 0 };
+	char* head = cmd;
+	char* end = cmd+sizeof(cmd);
+	
+	Append(&head, end, "%s %sbuild/%s.exe", f_cc, f_output, exec->outname);
+	
+	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
+		Append(&head, end, " build/%s.obj", (*tu)->name);
+	
+	if (g_opts.do_rc)
+		Append(&head, end, " build/windows-resource-file.res");
+	if (g_opts.debug_info)
+		Append(&head, end, " %s", f_debuginfo);
+	
+	Append(&head, end, " %s", f_ldflags);
+	
+	if (exec->is_graphic_program)
+		Append(&head, end, " %s", f_ldflags_graphic);
+	
+	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
+		Append(&head, end, " \"%s\"", *argv);
+	
+	return RunCommand(cmd) == 0;
 }
 
 int
@@ -343,6 +415,8 @@ main(int argc, char** argv)
 			g_opts.tracy = true;
 		else if (strcmp(argv[i], "-steam") == 0)
 			g_opts.steam = true;
+		else if (strcmp(argv[i], "-rebuild") == 0)
+			g_opts.force_rebuild = true;
 		else if (strcmp(argv[i], "--") == 0)
 		{
 			g_opts.extra_flags = (Cstr*)&argv[i + 1];
@@ -374,12 +448,25 @@ main(int argc, char** argv)
 			else
 				fprintf(stderr, "[warning] invalid optimization flag '%s'.\n", argv[i]);
 		}
+		else if (argv[i][0] == '-')
+			fprintf(stderr, "[warning] unknown flag '%s'.\n", argv[i]);
 		else
 		{
-			struct Build_Project* project = FindProject(argv[i]);
+			struct Build_Executable* exec = NULL;
 			
-			if (project)
-				g_opts.project = project;
+			for (int j = 0; j < ArrayLength(g_executables); ++j)
+			{
+				if (strcmp(g_executables[j].name, argv[i]) == 0)
+				{
+					exec = &g_executables[j];
+					break;
+				}
+			}
+			
+			if (exec)
+				g_opts.exec = exec;
+			else
+				fprintf(stderr, "[warning] unknown project '%s'.\n", argv[i]);
 		}
 	}
 	
@@ -389,16 +476,7 @@ main(int argc, char** argv)
 	if (g_opts.do_rc)
 		ok = ok && !RunCommand("llvm-rc windows-resource-file.rc /FO build\\windows-resource-file.res");
 	
-	for (Cstr* it = g_opts.project->deps; *it; ++it)
-		ok = ok && !Build(FindProject(*it));
-	
-	ok = ok && !Build(g_opts.project);
-	
-	if (g_opts.hot)
-	{
-		ok = ok && !RunCommand("cmd /c echo ; > \"build/empty.c\"");
-		ok = ok && !RunCommand("clang -fuse-ld=lld -g build/empty.c build/hot-engine.lib -o build/game.exe");
-	}
+	ok = ok && CompileExecutable(g_opts.exec);
 	
 	return !ok;
 }

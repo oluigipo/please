@@ -1,5 +1,6 @@
 #include "config.h"
 #include "api_os.h"
+#include "api_engine.h"
 
 #ifdef _WIN32
 #   include "os_win32.c"
