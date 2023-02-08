@@ -46,6 +46,9 @@ ReenableWarnings();
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
 #   pragma comment(lib, "ntdll.lib")
+#   if defined(CONFIG_ENABLE_STEAM)
+#       pragma comment(lib, "lib\\steam_api64.lib")
+#   endif
 #endif
 
 //~ NOTE(ljre): Globals

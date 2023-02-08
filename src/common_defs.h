@@ -64,10 +64,12 @@ _Pragma("GCC diagnostic pop")
 //      NOTE(ljre): ugh
 #   define static_assert_(a,b,...) static_assert(a,b)
 #   define static_assert(...) static_assert_(__VA_ARGS__, "static_assert",)
+#   define externC_ extern "C"
 #else
 #   define alignas(x) _Alignas(x)
 #   define alignof(x) _Alignof(x)
 #   define static_assert(...) _Static_assert(__VA_ARGS__, "static_assert")
+#   define externC_ extern
 #endif
 
 #endif //COMMON_DEFS_H

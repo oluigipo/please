@@ -1,5 +1,3 @@
-#include "api_engine.h"
-
 //~ Libraries
 //#define STB_IMAGE_STATIC
 #define STBI_ONLY_PNG
@@ -15,6 +13,9 @@
 #include <ext/stb_vorbis.h>
 
 //~ Our Code
+#include "api_engine.h"
+#include "api_steam.h"
+
 static E_GlobalData global_engine;
 
 #include "util_json.h"

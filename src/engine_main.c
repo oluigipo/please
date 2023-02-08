@@ -169,6 +169,9 @@ OS_UserMain(const OS_UserMainArgs* args)
 #endif
 	
 	// NOTE(ljre): Deinit
+#ifdef CONFIG_ENABLE_STEAM
+	S_Deinit();
+#endif
 	E_DeinitRender_();
 	
 	return 0;

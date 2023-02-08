@@ -69,8 +69,8 @@ static inline void            Arena_Restore(Arena_Savepoint savepoint);
 
 #ifndef Arena_OsReserve_
 #   if defined(_WIN32)
-extern void* __stdcall VirtualAlloc(void* base, uintsize size, unsigned long type, unsigned long protect);
-extern int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type);
+externC_ void* __stdcall VirtualAlloc(void* base, uintsize size, unsigned long type, unsigned long protect);
+externC_ int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type);
 #       define Arena_OsReserve_(size) VirtualAlloc(NULL,size,0x00002000/*MEM_RESERVE*/,0x04/*PAGE_READWRITE*/)
 #       define Arena_OsCommit_(ptr, size) VirtualAlloc(ptr,size,0x00001000/*MEM_COMMIT*/,0x04/*PAGE_READWRITE*/)
 #       define Arena_OsFree_(ptr, size) ((void)(size), VirtualFree(ptr,0,0x00008000/*MEM_RELEASE*/))

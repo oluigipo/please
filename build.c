@@ -22,6 +22,7 @@ struct Build_Project
 	Cstr outname;
 	bool is_executable;
 	bool is_graphic_program;
+	bool is_cxx;
 	Cstr* deps;
 	struct Build_Shader* shaders;
 }
@@ -31,7 +32,7 @@ static g_projects[] = {
 		.outname = "game",
 		.is_executable = true,
 		.is_graphic_program = true,
-		.deps = (Cstr[]) { "engine", NULL },
+		.deps = (Cstr[]) { "engine", "steam", NULL },
 		.shaders = (struct Build_Shader[]) {
 			{ "shader_scene3d.hlsl", "game_test_scene3d_vs.inc", "vs_4_0_level_9_3", "scene3d_d3d_vs" },
 			{ "shader_scene3d.hlsl", "game_test_scene3d_ps.inc", "ps_4_0_level_9_3", "scene3d_d3d_ps" },
@@ -54,6 +55,12 @@ static g_projects[] = {
 		.is_executable = true,
 		.deps = (Cstr[]) { NULL },
 	},
+	{
+		.name = "steam",
+		.outname = "steam",
+		.is_cxx = true,
+		.deps = (Cstr[]) { NULL },
+	},
 };
 
 struct
@@ -71,6 +78,7 @@ struct
 	bool analyze;
 	bool do_rc;
 	bool m32;
+	bool steam;
 	Cstr* extra_flags;
 }
 static g_opts = {
@@ -79,8 +87,9 @@ static g_opts = {
 };
 
 #ifdef __clang__
-static Cstr f_cc = "clang";
-static Cstr f_cflags = "-std=c11 -Isrc -Iinclude";
+static Cstr f_cc = "clang -std=c11";
+static Cstr f_cxx = "clang++ -std=c++11 -fno-exceptions -fno-rtti";
+static Cstr f_cflags = "-Isrc -Iinclude";
 static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
 static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static -fno-strict-aliasing", };
 static Cstr f_warnings =
@@ -105,8 +114,9 @@ static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
 static Cstr f_rc = "llvm-rc";
 
 #elif defined(_MSC_VER)
-static Cstr f_cc = "cl /nologo";
-static Cstr f_cflags = "/std:c11 /Isrc /Iinclude";
+static Cstr f_cc = "cl /nologo /std:c11";
+static Cstr f_cxx = "cl /nologo /std:c++14 /GR- /EHa-";
+static Cstr f_cflags = "/Isrc /Iinclude";
 static Cstr f_ldflags = "/link /incremental:no";
 static Cstr f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
 static Cstr f_warnings = "/W3";
@@ -128,8 +138,9 @@ static Cstr f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.
 static Cstr f_rc = "rc";
 
 #elif defined(__GNUC__)
-static Cstr f_cc = "gcc";
-static Cstr f_cflags = "-std=c11 -Isrc -march=x86-64-v2 -static";
+static Cstr f_cc = "gcc -std=c11";
+static Cstr f_cxx = "g++ -std=c++11 -fno-exceptions -fno-rtti";
+static Cstr f_cflags = "-Isrc -march=x86-64-v2 -static";
 static Cstr f_ldflags = "-mwindows";
 static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math" };
 static Cstr f_warnings = "-w";
@@ -194,6 +205,8 @@ Build(struct Build_Project* project)
 	char* end = cmd+sizeof(cmd);
 	char* head = cmd;
 	
+	Cstr ex = (project->is_cxx) ? "cpp" : "c";
+	
 	if (project->shaders)
 	{
 		for (struct Build_Shader* it = project->shaders; it->name; ++it)
@@ -210,7 +223,7 @@ Build(struct Build_Project* project)
 		}
 	}
 	
-	Append(&head, end, "%s", f_cc);
+	Append(&head, end, "%s", (project->is_cxx) ? f_cxx : f_cc);
 	
 	if (project->is_executable)
 		Append(&head, end, " src/%s/unity_build.c", project->name);
@@ -223,16 +236,15 @@ Build(struct Build_Project* project)
 	}
 	else
 	{
-		// NOTE(ljre): Hack with '-include' flag... won't work with MSVC :kekw
 		Cstr previous = project->name;
 		
 		for (Cstr* it = project->deps; *it; ++it)
 		{
-			Append(&head, end, " %s %s.c", f_incfile, previous);
+			Append(&head, end, " %s %s.%s", f_incfile, previous, ex);
 			previous = *it;
 		}
 		
-		Append(&head, end, " src/%s.c", previous);
+		Append(&head, end, " src/%s.%s", previous, ex);
 	}
 	
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
@@ -252,6 +264,8 @@ Build(struct Build_Project* project)
 		Append(&head, end, " %s", f_verbose);
 	if (g_opts.tracy)
 		Append(&head, end, " %sTRACY_ENABLE TracyClient.obj", f_define);
+	if (g_opts.steam)
+		Append(&head, end, " %sCONFIG_ENABLE_STEAM", f_define);
 	if (g_opts.m32)
 		Append(&head, end, " %s", f_m32);
 	else
@@ -327,6 +341,8 @@ main(int argc, char** argv)
 			g_opts.verbose = true;
 		else if (strcmp(argv[i], "-tracy") == 0)
 			g_opts.tracy = true;
+		else if (strcmp(argv[i], "-steam") == 0)
+			g_opts.steam = true;
 		else if (strcmp(argv[i], "--") == 0)
 		{
 			g_opts.extra_flags = (Cstr*)&argv[i + 1];

@@ -1,4 +1,5 @@
 #include "api_engine.h"
+#include "api_steam.h"
 #include "util_random.h"
 #include "util_json.h"
 #include "util_gltf.h"
@@ -44,6 +45,10 @@ static void
 G_Init(void)
 {
 	Trace();
+	
+#ifdef CONFIG_ENABLE_STEAM
+	S_Init(0);
+#endif
 	
 	game = engine->game = Arena_PushStruct(engine->persistent_arena, G_GlobalData);
 	game->previous_state = game->state = G_GlobalState_MainMenu;
@@ -123,6 +128,10 @@ static void
 G_UpdateAndRender(void)
 {
 	Trace();
+	
+#ifdef CONFIG_ENABLE_STEAM
+	S_Update();
+#endif
 	
 	if (engine->window_state->should_close || OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;

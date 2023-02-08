@@ -3,7 +3,7 @@
 
 #ifndef Assert_IsDebuggerPresent_
 #   ifdef _WIN32
-extern __declspec(dllimport) int __stdcall IsDebuggerPresent(void);
+externC_ __declspec(dllimport) int __stdcall IsDebuggerPresent(void);
 #       define Assert_IsDebuggerPresent_() IsDebuggerPresent()
 #   else
 #       define Assert_IsDebuggerPresent_() true
