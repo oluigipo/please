@@ -133,6 +133,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		
 		OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
 		OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
+		OS_InitRWLock(&global_engine.mt_lock);
 	}
 	
 	OS_InitOutput output;

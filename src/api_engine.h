@@ -58,6 +58,10 @@ struct E_GlobalData
 	bool running : 1;
 	bool multithreaded : 1;
 	
+	// NOTE(ljre): Convenience lock for mutating global engine data. Should only be used if the main thread is
+	//             currently waiting and individual worker threads needs to access global resources.
+	OS_RWLock mt_lock;
+	
 	E_ThreadWorkQueue* thread_work_queue;
 	E_ThreadCtx worker_threads[E_Limits_MaxWorkerThreadCount];
 };
@@ -229,6 +233,8 @@ API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
 
 API void E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* last);
 API void E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last);
+
+API bool E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_width, int32* out_height);
 
 //- Worker Thread API
 void typedef E_ThreadWorkProc(E_ThreadCtx* ctx, void* data);

@@ -81,6 +81,7 @@ struct
 	bool do_rc;
 	bool m32;
 	bool steam;
+	bool lto;
 	Cstr* extra_flags;
 }
 static g_opts = {
@@ -107,6 +108,7 @@ static Cstr f_analyze = "--analyze";
 static Cstr f_incfile = "-include";
 static Cstr f_m32 = "-m32 -msse2";
 static Cstr f_m64 = "-march=x86-64";
+static Cstr f_lto = "-flto";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
@@ -131,6 +133,7 @@ static Cstr f_analyze = "";
 static Cstr f_incfile = "/FI";
 static Cstr f_m32 = "/arch:SSE2";
 static Cstr f_m64 = "";
+static Cstr f_lto = "";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
@@ -332,9 +335,11 @@ CompileTu(struct Build_Tu* tu)
 	if (g_opts.verbose)
 		Append(&head, end, " %s", f_verbose);
 	if (g_opts.tracy)
-		Append(&head, end, " %sTRACY_ENABLE TracyClient.obj", f_define);
+		Append(&head, end, " %sTRACY_ENABLE", f_define);
 	if (g_opts.steam)
 		Append(&head, end, " %sCONFIG_ENABLE_STEAM", f_define);
+	if (g_opts.lto)
+		Append(&head, end, " %s", f_lto);
 	if (g_opts.m32)
 		Append(&head, end, " %s", f_m32);
 	else
@@ -380,6 +385,10 @@ CompileExecutable(struct Build_Executable* exec)
 		Append(&head, end, " build/windows-resource-file.res");
 	if (g_opts.debug_info)
 		Append(&head, end, " %s", f_debuginfo);
+	if (g_opts.lto)
+		Append(&head, end, " %s %s", f_lto, f_optimize[g_opts.optimize]);
+	if (g_opts.tracy)
+		Append(&head, end, " TracyClient.obj");
 	
 	Append(&head, end, " %s", f_ldflags);
 	
@@ -417,6 +426,8 @@ main(int argc, char** argv)
 			g_opts.steam = true;
 		else if (strcmp(argv[i], "-rebuild") == 0)
 			g_opts.force_rebuild = true;
+		else if (strcmp(argv[i], "-lto") == 0)
+			g_opts.lto = true;
 		else if (strcmp(argv[i], "--") == 0)
 		{
 			g_opts.extra_flags = (Cstr*)&argv[i + 1];

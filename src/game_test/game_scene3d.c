@@ -1,7 +1,3 @@
-#define STBI_ONLY_PNG
-#define STBI_NO_STDIO
-#include <ext/stb_image.h>
-
 struct G_Scene3DState
 {
 	RB_Handle rasterizer_state;
@@ -240,26 +236,26 @@ G_Scene3DInit(void)
 		UGltf_JsonBufferView* bufferview = &gltf.buffer_views[image->buffer_view];
 		(void)sampler;
 		
-		const void* encoded_imgdata = gltf.buffers[bufferview->buffer].data + bufferview->byte_offset;
-		intsize encoded_imgsize = bufferview->byte_length;
-		SafeAssert(encoded_imgsize <= INT32_MAX);
+		Buffer encoded_image = {
+			.size = bufferview->byte_length,
+			.data = gltf.buffers[bufferview->buffer].data + bufferview->byte_offset,
+		};
 		
 		int32 imgwidth, imgheight;
-		void* imgdata = stbi_load_from_memory(encoded_imgdata, (int32)encoded_imgsize, &imgwidth, &imgheight, &(int32) { 0 }, 4);
+		void* imgdata;
+		SafeAssert(E_DecodeImage(engine->frame_arena, encoded_image, &imgdata, &imgwidth, &imgheight));
 		
 		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeTexture2D,
 			.handle = &s->tree_model_diffuse_texture,
 			.texture_2d = {
-				.pixels = Arena_PushMemory(engine->frame_arena, imgdata, imgwidth*imgheight*4),
+				.pixels = imgdata,
 				.width = imgwidth,
 				.height = imgheight,
 				.channels = 4,
 				.flag_linear_filtering = true,
 			},
 		});
-		
-		stbi_image_free(imgdata);
 	}
 	
 	E_RawResourceCommands(first, last);

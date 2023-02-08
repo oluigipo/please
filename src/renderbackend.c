@@ -22,9 +22,7 @@ RB_PoolAllocImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32* ou
 		pool->first_free = *next_free_ptr;
 	}
 	else if (pool->size < max_size)
-	{
 		index = ++pool->size;
-	}
 	else
 		SafeAssert(false);
 	
@@ -39,6 +37,7 @@ static void*
 RB_PoolFetchImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
 {
 	SafeAssert(index != 0);
+	SafeAssert(index <= max_size);
 	
 	RB_Pool_* pool = pool_ptr;
 	void* result = pool->data + (index-1) * obj_size;
@@ -50,6 +49,7 @@ static void
 RB_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 index)
 {
 	SafeAssert(index != 0);
+	SafeAssert(index <= max_size);
 	
 	RB_Pool_* pool = pool_ptr;
 	uint32* next_free_ptr = (uint32*)(pool->data + (index-1) * obj_size);

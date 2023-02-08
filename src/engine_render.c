@@ -606,7 +606,6 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
 				stbtt_MakeGlyphBitmap(stb_fontinfo, base_ptr, glyph->width, glyph->height, stride, char_scale, char_scale, glyph_font_index);
 #else
-				Trace(); TraceName(Str("Generating glyph"));
 				int32 xoff, yoff, w, h;
 				uint8* sdf;
 				
@@ -619,7 +618,6 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				
 				SafeAssert(w == width-1 && h == height-1);
 				
-				Trace(); TraceName(Str("Copying glyph data"));
 				for (intsize y = 0; y < height-1; ++y)
 					Mem_Copy(base_ptr + y * stride, sdf + y * w, width-1);
 #endif
@@ -877,3 +875,28 @@ E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* last)
 API void
 E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last)
 { E_AppendDrawCmd_(first, last); }
+
+API bool
+E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_width, int32* out_height)
+{
+	Trace();
+	SafeAssert(image.size <= INT32_MAX);
+	
+	int32 width, height;
+	void* temp_data;
+	{
+		Trace(); TraceName(Str("stbi_load_from_memory"));
+		temp_data = stbi_load_from_memory(image.data, (int32)image.size, &width, &height, &(int32){ 0 }, 4);
+	}
+	if (!temp_data)
+		return false;
+	
+	void* pixels = Arena_PushMemoryAligned(output_arena, temp_data, width*height*4, alignof(uint32));
+	stbi_image_free(temp_data);
+	
+	*out_pixels = pixels;
+	*out_width = width;
+	*out_height = height;
+	
+	return true;
+}

@@ -4,10 +4,6 @@
 #include "util_json.h"
 #include "util_gltf.h"
 
-#ifdef IncludeBinary
-IncludeBinary(g_arial_font, "C:/Windows/Fonts/Arial.ttf");
-#endif
-
 static G_GlobalData* game;
 static E_GlobalData* engine;
 
@@ -48,6 +44,8 @@ G_Init(void)
 	
 #ifdef CONFIG_ENABLE_STEAM
 	S_Init(0);
+	
+	OS_DebugLog("Steam user nickname: %S\n", S_GetUserNickname());
 #endif
 	
 	game = engine->game = Arena_PushStruct(engine->persistent_arena, G_GlobalData);
@@ -66,12 +64,7 @@ G_Init(void)
 		},
 	};
 	
-#ifdef IncludeBinary
-	desc.ttf = BufRange(g_arial_font_begin, g_arial_font_end);
-#else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
-#endif
-	
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
