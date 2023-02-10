@@ -9,12 +9,14 @@ static E_GlobalData* engine;
 
 struct G_SnakeState typedef G_SnakeState;
 struct G_Scene3DState typedef G_Scene3DState;
+struct G_StressState typedef G_StressState;
 
 enum G_GlobalState
 {
 	G_GlobalState_MainMenu,
 	G_GlobalState_Snake,
 	G_GlobalState_Scene3D,
+	G_GlobalState_Stress,
 }
 typedef G_GlobalState;
 
@@ -26,15 +28,21 @@ struct G_GlobalData
 	Arena_Savepoint persistent_arena_save;
 	URng_State rng;
 	
+	Asset_SoundBuffer music;
+	int32 playing_audio_count;
+	E_PlayingAudio playing_audios[1];
+	
 	union
 	{
 		G_SnakeState* snake;
 		G_Scene3DState* scene3d;
+		G_StressState* stress;
 	};
 };
 
 #include "game_snake.c"
 #include "game_scene3d.c"
+#include "game_stress.c"
 
 //~ NOTE(ljre): Main menu implementation
 static void
@@ -43,9 +51,8 @@ G_Init(void)
 	Trace();
 	
 #ifdef CONFIG_ENABLE_STEAM
-	S_Init(0);
-	
-	OS_DebugLog("Steam user nickname: %S\n", S_GetUserNickname());
+	if (S_Init(0))
+		OS_DebugLog("Steam user nickname: %S\n", S_GetUserNickname());
 #endif
 	
 	game = engine->game = Arena_PushStruct(engine->persistent_arena, G_GlobalData);
@@ -66,6 +73,15 @@ G_Init(void)
 	
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
 	SafeAssert(E_MakeFont(&desc, &game->font));
+	SafeAssert(E_LoadSoundBuffer(Str("music.ogg"), &game->music));
+	
+	game->playing_audios[game->playing_audio_count++] = (E_PlayingAudio) {
+		.sound = &game->music,
+		.frame_index = -1,
+		.loop = true,
+		.volume = 0.25f,
+		.speed = 1.0f,
+	};
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
 }
@@ -138,6 +154,7 @@ G_UpdateAndRender(void)
 			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
 			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
+			case G_GlobalState_Stress: G_StressInit(); break;
 		}
 		
 		game->previous_state = game->state;
@@ -192,6 +209,8 @@ G_UpdateAndRender(void)
 				game->state = G_GlobalState_Snake;
 			if (G_MenuButton(&batch, &ui_y, Str("Play Scene 3D")))
 				game->state = G_GlobalState_Scene3D;
+			if (G_MenuButton(&batch, &ui_y, Str("Play Stress")))
+				game->state = G_GlobalState_Stress;
 			if (G_MenuButton(&batch, &ui_y, Str("Quit")))
 				engine->running = false;
 			
@@ -200,8 +219,10 @@ G_UpdateAndRender(void)
 		
 		case G_GlobalState_Snake: G_SnakeUpdateAndRender(); break;
 		case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
+		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	
+	E_PlayAudios(game->playing_audios, &game->playing_audio_count, 0.25f);
 	E_FinishFrame();
 }
 

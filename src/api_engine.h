@@ -77,6 +77,8 @@ struct Asset_SoundBuffer
 	int32 sample_rate;
 	int32 sample_count;
 	int16* samples;
+	
+	void* vorbis;
 }
 typedef Asset_SoundBuffer;
 
