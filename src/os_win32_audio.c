@@ -164,6 +164,8 @@ Win32_InitAudio(OS_AudioThreadProc* proc, void* user_data)
 	if (!global_audio_thread)
 		goto lbl_error;
 	
+	SetThreadPriority(global_audio_thread, THREAD_PRIORITY_TIME_CRITICAL);
+	
 	return true;
 	
 	// Errors
