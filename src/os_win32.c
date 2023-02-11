@@ -206,7 +206,7 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 
 //~ NOTE(ljre): Files
 #include "os_win32_input.c"
-#include "os_win32_simpleaudio.c"
+#include "os_win32_audio.c"
 
 #ifdef CONFIG_ENABLE_OPENGL
 #   include "os_win32_opengl.c"
@@ -473,7 +473,8 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	int32 result = OS_UserMain(&args);
 	
 	// NOTE(ljre): Free resources... or nah :P
-	Win32_DeinitSimpleAudio();
+	//Win32_DeinitSimpleAudio();
+	Win32_DeinitAudio();
 	
 	for (int32 i = 0; i < ArrayLength(global_worker_threads); ++i)
 	{
@@ -579,8 +580,8 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		
 		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if ((desc->flags & OS_InitFlags_SimpleAudio) && !Win32_InitSimpleAudio())
-			OS_DebugLog("Failed to initialize SimpleAudio API.");
+		if ((desc->flags & OS_InitFlags_AudioThread) && !Win32_InitAudio(desc->audiothread_proc, desc->audiothread_user_data))
+			OS_DebugLog("Failed to initialize audio.");
 		
 		ok = ok && Win32_InitInput();
 		

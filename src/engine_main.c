@@ -4,10 +4,6 @@ E_FinishFrame(void)
 {
 	Trace();
 	
-	if (!global_engine.outputed_sound_this_frame)
-		E_PlayAudios(NULL, NULL, 1.0f);
-	global_engine.outputed_sound_this_frame = false;
-	
 	if (global_engine.resource_command_list)
 	{
 		RB_ExecuteResourceCommands(global_engine.scratch_arena, global_engine.resource_command_list);
@@ -51,16 +47,17 @@ OS_UserMain(const OS_UserMainArgs* args)
 	window_state.center_window = true;
 	
 	OS_InitDesc init_desc = {
-		.flags = OS_InitFlags_WindowAndGraphics | OS_InitFlags_SimpleAudio | OS_InitFlags_WorkerThreads,
+		.flags = OS_InitFlags_WindowAndGraphics | OS_InitFlags_WorkerThreads | OS_InitFlags_AudioThread,
 		
 		.window_initial_state = window_state,
 		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
 		
-		.simpleaudio_desired_sample_rate = 48000,
-		
 		.workerthreads_count = Min(E_Limits_MaxWorkerThreadCount, args->cpu_core_count/2),
 		.workerthreads_args = (void*[E_Limits_MaxWorkerThreadCount]) { 0 },
 		.workerthreads_proc = E_WorkerThreadProc_,
+		
+		.audiothread_proc = E_AudioThreadProc_,
+		.audiothread_user_data = NULL,
 	};
 	
 	int32 argc = args->argc;
@@ -72,22 +69,22 @@ OS_UserMain(const OS_UserMainArgs* args)
 			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
 		else if (!Mem_Strcmp(argv[i], "-d3d11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
-		else if (!Mem_Strcmp(argv[i], "-audio-44100"))
-			init_desc.simpleaudio_desired_sample_rate = 44100;
-		else if (!Mem_Strcmp(argv[i], "-audio-48000"))
-			init_desc.simpleaudio_desired_sample_rate = 48000;
-		else if (!Mem_Strcmp(argv[i], "-single-thread"))
+		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
+		{
 			init_desc.flags &= ~OS_InitFlags_WorkerThreads;
+			init_desc.workerthreads_count = 0;
+		}
 	}
 	
 	// NOTE(ljre): Init basic stuff
 	{
 		const uintsize pagesize = 16ull << 20;
-		const uintsize sz_scratch    = 16ull << 20;
-		const uintsize sz_frame      = 64ull << 20;
-		const uintsize sz_persistent = 128ull << 20;
+		const uintsize sz_scratch     = 16ull << 20;
+		const uintsize sz_frame       = 64ull << 20;
+		const uintsize sz_persistent  = 128ull << 20;
+		const uintsize sz_audiothread = 256ull << 10;
 		
-		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent;
+		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent + sz_audiothread;
 		for (int32 i = 0; i < init_desc.workerthreads_count; ++i)
 			game_memory_size += sz_scratch;
 		
@@ -123,6 +120,9 @@ OS_UserMain(const OS_UserMainArgs* args)
 				init_desc.workerthreads_args[i] = ctx;
 			}
 			
+			global_engine.audio_thread_arena = Arena_FromUncommitedMemory(memory_head, sz_audiothread, sz_audiothread);
+			memory_head += sz_audiothread;
+			
 			Assert(memory_head == memory_end);
 		}
 		
@@ -130,11 +130,14 @@ OS_UserMain(const OS_UserMainArgs* args)
 		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, OS_InputState);
 		global_engine.window_state = Arena_PushStructData(global_engine.persistent_arena, OS_WindowState, &window_state);
 		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
+		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, E_AudioState);
 		
 		OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
 		OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
 		OS_InitRWLock(&global_engine.mt_lock);
 	}
+	
+	init_desc.audiothread_user_data = global_engine.audio;
 	
 	OS_InitOutput output;
 	
@@ -150,6 +153,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else
+	E_InitAudio_();
 	E_InitRender_();
 	
 	// NOTE(ljre): Run
@@ -174,6 +178,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 	S_Deinit();
 #endif
 	E_DeinitRender_();
+	E_DeinitAudio_();
 	
 	return 0;
 }

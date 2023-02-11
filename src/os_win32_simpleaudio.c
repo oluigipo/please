@@ -1,4 +1,6 @@
-// TODO(ljre): cleanup after bughunt!
+//
+// NOTE(ljre): All of this is not used anymore! We are using 'os_win32_audio.c' instead.
+//
 
 #define CoCreateInstance global_proc_CoCreateInstance
 #define CoInitializeEx global_proc_CoInitializeEx
@@ -187,6 +189,8 @@ Win32_InitSimpleAudio(void)
 	
 	global_latency_frame_count = (int32)(reftime * (int64)(global_samples_per_second / global_channels) / (int64)10000000);
 	global_latency_frame_count *= 2;
+	
+	//OS_DebugLog("global_latency_frame_count: %i\n", global_latency_frame_count);
 	
 	OS_InitRWLock(&global_audio_mutex);
 	

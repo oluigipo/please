@@ -28,9 +28,7 @@ struct G_GlobalData
 	Arena_Savepoint persistent_arena_save;
 	URng_State rng;
 	
-	Asset_SoundBuffer music;
-	int32 playing_audio_count;
-	E_PlayingAudio playing_audios[1];
+	E_SoundHandle music;
 	
 	union
 	{
@@ -73,15 +71,15 @@ G_Init(void)
 	
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
 	SafeAssert(E_MakeFont(&desc, &game->font));
-	SafeAssert(E_LoadSoundBuffer(Str("music.ogg"), &game->music));
 	
-	game->playing_audios[game->playing_audio_count++] = (E_PlayingAudio) {
-		.sound = &game->music,
-		.frame_index = -1,
-		.loop = true,
-		.volume = 0.25f,
-		.speed = 1.0f,
-	};
+	{
+		Buffer ogg;
+		if (OS_ReadEntireFile(Str("music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size))
+		{
+			SafeAssert(E_LoadSound(ogg, &game->music, NULL));
+			E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f });
+		}
+	}
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
 }
@@ -222,7 +220,6 @@ G_UpdateAndRender(void)
 		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	
-	E_PlayAudios(game->playing_audios, &game->playing_audio_count, 0.25f);
 	E_FinishFrame();
 }
 

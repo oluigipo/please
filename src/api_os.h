@@ -244,12 +244,13 @@ enum OS_InitFlags
 	OS_InitFlags_Null = 0,
 	
 	OS_InitFlags_WindowAndGraphics = 1,
-	OS_InitFlags_SimpleAudio = 2,
+	OS_InitFlags_AudioThread = 2,
 	OS_InitFlags_WorkerThreads = 4,
 }
 typedef OS_InitFlags;
 
 void typedef OS_ThreadProc(void* arg);
+void typedef OS_AudioThreadProc(void* user_data, int16* out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
 
 struct OS_InitDesc
 {
@@ -259,13 +260,14 @@ struct OS_InitDesc
 	OS_WindowState window_initial_state;
 	OS_WindowGraphicsApi window_desired_api;
 	
-	// OS_InitFlags_SimpleAudio
-	int32 simpleaudio_desired_sample_rate; // 44100 or 48000
-	
 	// OS_InitFlags_WorkerThreads
 	int32 workerthreads_count;
 	void** workerthreads_args;
 	OS_ThreadProc* workerthreads_proc;
+	
+	// OS_InitFlags_AudioThread
+	OS_AudioThreadProc* audiothread_proc;
+	void* audiothread_user_data;
 }
 typedef OS_InitDesc;
 
@@ -379,9 +381,5 @@ API void* OS_InterlockedCompareExchangePtr(void* volatile* ptr, void* new_value,
 
 API int32 OS_InterlockedIncrement32(volatile int32* ptr);
 API int32 OS_InterlockedDecrement32(volatile int32* ptr);
-
-//- Simple Audio
-API int16* OS_RequestSoundBuffer(int32* out_sample_count, int32* out_channels, int32* out_sample_rate, int32* out_elapsed_frames);
-API void OS_CloseSoundBuffer(int16* sound_buffer);
 
 #endif //API_OS_H

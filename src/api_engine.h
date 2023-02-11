@@ -18,11 +18,14 @@ enum
 {
 	E_Limits_MaxWorkerThreadCount = 4,
 	E_Limits_MaxThreadWorkCount = 1024,
+	E_Limits_MaxLoadedSounds = 128,
+	E_Limits_MaxPlayingSounds = 16,
 };
 
 struct G_GlobalData typedef G_GlobalData;
 struct E_GlobalData typedef E_GlobalData;
 
+struct E_AudioState typedef E_AudioState;
 struct E_ThreadWorkQueue typedef E_ThreadWorkQueue;
 
 struct E_ThreadCtx
@@ -37,11 +40,13 @@ struct E_GlobalData
 	Arena* persistent_arena;
 	Arena* scratch_arena;
 	Arena* frame_arena;
+	Arena* audio_thread_arena;
 	G_GlobalData* game;
 	
 	const OS_WindowGraphicsContext* graphics_context;
 	OS_WindowState* window_state;
 	OS_InputState* input;
+	E_AudioState* audio;
 	
 	RB_ResourceCommand* resource_command_list;
 	RB_ResourceCommand* last_resource_command;
@@ -54,7 +59,6 @@ struct E_GlobalData
 	float32 delta_time;
 	float64 last_frame_time;
 	
-	bool outputed_sound_this_frame : 1;
 	bool running : 1;
 	bool multithreaded : 1;
 	
@@ -68,34 +72,6 @@ struct E_GlobalData
 
 API void G_Main(E_GlobalData* data);
 API void E_FinishFrame(void);
-
-//- Audio
-// TODO(ljre): LEGACY THING DELETE SOON
-struct Asset_SoundBuffer
-{
-	int32 channels;
-	int32 sample_rate;
-	int32 sample_count;
-	int16* samples;
-	
-	void* vorbis;
-}
-typedef Asset_SoundBuffer;
-
-struct E_PlayingAudio
-{
-	const Asset_SoundBuffer* sound;
-	int32 frame_index; // if < 0, then it will start playing at '-frame_index - 1'
-	bool32 loop;
-	float32 volume;
-	float32 speed;
-}
-typedef E_PlayingAudio;
-
-API bool32 E_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound);
-API void E_FreeSoundBuffer(Asset_SoundBuffer* sound);
-// NOTE(ljre): Should be called once per frame.
-API void E_PlayAudios(E_PlayingAudio* audios, int32* audio_count, float32 volume);
 
 //- Basic renderer funcs
 struct E_Camera2D
@@ -266,5 +242,58 @@ API bool E_RunThreadWork(E_ThreadCtx* ctx, E_ThreadWorkQueue* queue);
 // NOTE(ljre): these should only be called by main thread!
 API void E_WaitRemainingThreadWork(void);
 API void E_QueueThreadWork(const E_ThreadWork* work);
+
+//- Audio API
+struct E_SoundHandle
+{
+	uint16 generation;
+	uint16 index;
+}
+typedef E_SoundHandle;
+
+struct E_SoundInfo
+{
+	int32 channels;
+	int32 sample_rate;
+	int32 sample_count;
+	
+	float32 length; // seconds
+}
+typedef E_SoundInfo;
+
+API bool E_LoadSound(Buffer ogg, E_SoundHandle* out_sound, E_SoundInfo* out_info);
+API void E_UnloadSound(E_SoundHandle sound);
+API bool E_IsValidSoundHandle(E_SoundHandle sound);
+API bool E_QuerySoundInfo(E_SoundHandle sound, E_SoundInfo* out_info);
+
+struct E_PlayingSoundHandle
+{
+	uint16 generation;
+	uint16 index;
+}
+typedef E_PlayingSoundHandle;
+
+struct E_PlayingSoundInfo
+{
+	E_SoundHandle sound;
+	
+	float32 at; // seconds
+	float32 speed;
+	float32 volume;
+}
+typedef E_PlayingSoundInfo;
+
+struct E_PlaySoundOptions
+{
+	float32 volume;
+	float32 speed;
+}
+typedef E_PlaySoundOptions;
+
+API E_PlayingSoundHandle E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options);
+API bool E_StopSound(E_PlayingSoundHandle playing_sound);
+API bool E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSoundInfo* out_info);
+API void E_StopAllSounds(E_SoundHandle* specific);
+API bool E_IsValidPlayingSoundHandle(E_PlayingSoundHandle playing_sound);
 
 #endif //API_ENGINE_H

@@ -1,194 +1,410 @@
+struct E_LoadedSoundRef_
+{
+	int32 generation;
+	int32 next_free;
+	int32 index;
+}
+typedef E_LoadedSoundRef_;
+
+struct E_PlayingSoundRef_
+{
+	int32 generation;
+	int32 next_free;
+	int32 index;
+}
+typedef E_PlayingSoundRef_;
+
+struct E_LoadedSound_
+{
+	stb_vorbis* vorbis;
+	int32 channels;
+	int32 sample_rate;
+	int32 sample_count;
+}
+typedef E_LoadedSound_;
+
+struct E_PlayingSound_
+{
+	int32 ref_index;
+	
+	E_SoundHandle sound;
+	int32 current_scaled_frame;
+	
+	float32 volume;
+	float32 speed;
+}
+typedef E_PlayingSound_;
+
+struct E_AudioState
+{
+	OS_RWLock lock;
+	bool volatile ready;
+	
+	int32 loaded_sounds_table_size;
+	int32 volatile loaded_sounds_table_first_free;
+	E_LoadedSoundRef_* loaded_sounds_table;
+	
+	int32 playing_sounds_table_size;
+	int32 volatile playing_sounds_table_first_free;
+	E_PlayingSoundRef_* playing_sounds_table;
+	
+	// Audio thread data
+	Arena* arena;
+	int32 samples_cache_size_each;
+	
+	int32 playing_sounds_size;
+	int32 playing_sounds_cap;
+	E_PlayingSound_* playing_sounds;
+	
+	int32 loaded_sounds_size;
+	int32 loaded_sounds_cap;
+	E_LoadedSound_* loaded_sounds;
+}
+typedef E_AudioState;
+
 //~ Functions
-// TODO(ljre): Better interpolation method!
-static inline float32
-InterpolateSample(float32 frame_index, int32 channels, int32 channel_index, const int16* samples, int32 sample_count)
+static void
+E_AllocSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
 {
-	float32 result = samples[(int32)frame_index * channels + channel_index];
+	int32 ref_index = audio->loaded_sounds_table_first_free;
+	E_LoadedSoundRef_* ref = &audio->loaded_sounds_table[ref_index-1];
 	
-	if ((frame_index+1) * channels < sample_count)
-	{
-		result = glm_lerp(result, samples[((int32)frame_index + 1) * channels + channel_index], frame_index - floorf(frame_index));
-	}
+	*out_handle = (E_SoundHandle) {
+		.generation = (uint16)++ref->generation,
+		.index = (uint16)ref_index,
+	};
 	
-	return result;
+	audio->loaded_sounds_table_first_free = ref->next_free;
+	ref->next_free = 0;
 }
 
-//~ API
-API bool32
-E_LoadSoundBuffer(String path, Asset_SoundBuffer* out_sound)
+static void
+E_DeallocSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
 {
-	Trace(); TraceText(path);
-	
-	uintsize size;
-	void* memory;
-	
-	for Arena_TempScope(global_engine.scratch_arena)
-	{
-		if (!OS_ReadEntireFile(path, global_engine.scratch_arena, &memory, &size))
-			return false;
-		
-		void* newmem = OS_HeapAlloc(size);
-		Mem_Copy(newmem, memory, size);
-		memory = newmem;
-	}
-	
-	stb_vorbis* vorbis = NULL;
-	int32 channels, sample_rate, sample_count;
-	
-	{
-		Trace(); TraceName(Str("stb_vorbis_open_memory"));
-		int32 err;
-		vorbis = stb_vorbis_open_memory(memory, (int32)size, &err, NULL);
-	}
-	
-	if (!vorbis)
-	{
-		OS_HeapFree(memory);
-		return false;
-	}
-	
-	stb_vorbis_info info = stb_vorbis_get_info(vorbis);
-	channels = info.channels;
-	sample_rate = info.sample_rate;
-	sample_count = stb_vorbis_stream_length_in_samples(vorbis);
-	
-	out_sound->samples = memory;
-	out_sound->channels = channels;
-	out_sound->sample_rate = sample_rate;
-	out_sound->sample_count = sample_count;
-	out_sound->vorbis = vorbis;
-	
-	// NOTE(ljre): I don't know why.
-	out_sound->sample_count *= out_sound->channels;
-	
-	return true;
+	// TODO(ljre)
 }
 
-API void
-E_FreeSoundBuffer(Asset_SoundBuffer* sound)
+static void
+E_AllocPlayingSoundHandle_(E_AudioState* audio, E_PlayingSoundHandle* out_handle)
 {
-	stb_vorbis_close(sound->vorbis);
-	OS_HeapFree(sound->samples);
+	int32 ref_index = audio->playing_sounds_table_first_free;
+	E_PlayingSoundRef_* ref = &audio->playing_sounds_table[ref_index-1];
+	
+	*out_handle = (E_PlayingSoundHandle) {
+		.generation = (uint16)++ref->generation,
+		.index = (uint16)ref_index,
+	};
+	
+	audio->playing_sounds_table_first_free = ref->next_free;
+	ref->next_free = 0;
 }
 
-API void
-E_PlayAudios(E_PlayingAudio* audios, int32* audio_count, float32 volume)
+static void
+E_DeallocPlayingSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
+{
+	// TODO(ljre)
+}
+
+//~ Internal API
+static void
+E_InitAudio_(void)
 {
 	Trace();
+	E_AudioState* audio = global_engine.audio;
+	Arena* arena = global_engine.audio_thread_arena;
 	
-	Assert(!global_engine.outputed_sound_this_frame);
-	global_engine.outputed_sound_this_frame = true;
+	const int32 max_loaded_sounds = E_Limits_MaxLoadedSounds;
+	const int32 max_playing_sounds = E_Limits_MaxPlayingSounds;
 	
-	// TODO(ljre): Better audio mixing!!!!
-	int32 channels;
-	int32 sample_count = 0;
-	int32 sample_rate;
-	int32 elapsed_frames;
+	audio->arena = arena;
 	
-	// NOTE(ljre): returned buffer is guaranteed to be zero'd
-	int16* samples = OS_RequestSoundBuffer(&sample_count, &channels, &sample_rate, &elapsed_frames);
-	int16* end_samples = samples + sample_count;
+	audio->loaded_sounds_table_size = max_loaded_sounds;
+	audio->loaded_sounds_table_first_free = 1;
+	audio->loaded_sounds_table = Arena_PushArray(arena, E_LoadedSoundRef_, max_loaded_sounds);
+	for (int32 i = 0; i < max_loaded_sounds-1; ++i)
+		audio->loaded_sounds_table[i].next_free = i+2;
 	
-	if (!samples)
+	audio->playing_sounds_table_size = max_playing_sounds;
+	audio->playing_sounds_table_first_free = 1;
+	audio->playing_sounds_table = Arena_PushArray(arena, E_PlayingSoundRef_, max_playing_sounds);
+	for (int32 i = 0; i < max_playing_sounds-1; ++i)
+		audio->playing_sounds_table[i].next_free = i+2;
+	
+	audio->playing_sounds_size = 0;
+	audio->playing_sounds_cap = max_playing_sounds;
+	audio->playing_sounds = Arena_PushArray(arena, E_PlayingSound_, max_playing_sounds);
+	
+	audio->loaded_sounds_size = 0;
+	audio->loaded_sounds_cap = max_loaded_sounds;
+	audio->loaded_sounds = Arena_PushArray(arena, E_LoadedSound_, max_loaded_sounds);
+	
+	OS_InitRWLock(&audio->lock);
+	
+	audio->ready = true;
+}
+
+static void
+E_DeinitAudio_(void)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// NOTE(ljre): maybe not :P
+}
+
+static void
+E_AudioThreadProc_(void* user_data, int16* out_buffer, int32 channels, int32 sample_rate, int32 sample_count)
+{
+	Trace();
+	E_AudioState* audio = user_data;
+	if (!audio->ready)
 		return;
 	
-	if (!audio_count)
-	{
-		OS_CloseSoundBuffer(samples);
-		return;
-	}
+	Arena_Savepoint scratch_save = Arena_Save(audio->arena);
+	const float32 flt_sample_rate = (float32)sample_rate;
+	const float32 default_master_volume = 0.25f;
 	
-	for Arena_TempScope(global_engine.scratch_arena) for (int32 i = 0; i < *audio_count; )
+	//- Working buffer
+	float32* working_samples = Arena_PushAligned(audio->arena, sizeof(float32)*sample_count, 16);
+	float32* temp_samples = Arena_PushDirtyAligned(audio->arena, sizeof(float32)*sample_count*2, 16);
+	int32 working_channels = channels;
+	int32 temp_channels;
+	
+	OS_LockExclusive(&audio->lock);
+	for (int32 i = 0; i < audio->playing_sounds_size;)
 	{
-		E_PlayingAudio* playing = &audios[i];
-		int16* it = samples;
-		int16* end_it = end_samples;
-		bool32 should_remove = false;
-		stb_vorbis* vorbis = playing->sound->vorbis;
+		E_PlayingSound_* playing = &audio->playing_sounds[i];
+		E_LoadedSound_* sound = &audio->loaded_sounds[audio->loaded_sounds_table[playing->sound.index].index];
+		float32 scale = (float32)sound->sample_rate / flt_sample_rate;
+		temp_channels = Min(working_channels, sound->channels);
 		
-		float32 scale = (float32)playing->sound->sample_rate / sample_rate;
-		int32 scaled_elapsed_frames = (int32)(elapsed_frames * scale);
-		
-		if (playing->frame_index < 0)
-			playing->frame_index = -playing->frame_index - 1;
-		else
-			playing->frame_index += scaled_elapsed_frames;
-		
-		int32 sam = playing->frame_index * playing->sound->channels;
-		if (!playing->loop)
-		{
-			if (sam >= playing->sound->sample_count)
-			{
-				end_it = it;
-				should_remove = true;
-			}
-			else if (sam + (int32)(sample_count*scale) > playing->sound->sample_count)
-				end_it = it + (playing->sound->sample_count - sam);
-		}
-		else
-			playing->frame_index %= playing->sound->sample_count / playing->sound->channels;
-		
-		int32 predecoded_samples_count = (int32)ceilf((end_it - it) / scale + 2);
-		int16* predecoded_samples = Arena_PushArray(global_engine.scratch_arena, int16, predecoded_samples_count);
+		int32 current_unscaled_frame = (int32)floorf(playing->current_scaled_frame * scale);
+		playing->current_scaled_frame += sample_count / working_channels;
 		
 		{
 			Trace(); TraceName(Str("stb_vorbis_seek"));
-			stb_vorbis_seek(vorbis, (int32)(playing->frame_index));
+			stb_vorbis_seek(sound->vorbis, current_unscaled_frame);
 		}
+		
+		Mem_Zero(temp_samples, sizeof(float32)*sample_count);
+		int32 frame_count;
 		
 		{
-			Trace(); TraceName(Str("stb_vorbis_get_samples_short_interleaved"));
-			stb_vorbis_get_samples_short_interleaved(vorbis, playing->sound->channels, predecoded_samples, predecoded_samples_count);
+			Trace(); TraceName(Str("stb_vorbis_get_samples_float_interleaved"));
+			frame_count = stb_vorbis_get_samples_float_interleaved(sound->vorbis, temp_channels, temp_samples, (int32)floorf((float32)sample_count * scale));
 		}
 		
-		float32 index = playing->frame_index / scale;
-		while (it < end_it)
+		frame_count = (int32)ceilf((float32)frame_count / scale);
+		
+		//- Mix
+		for (int32 frame_index = 0; frame_index < frame_count; ++frame_index)
 		{
-			float32 index_to_use = index * scale;
-			float32 left, right;
+			float32 index_to_use = (float32)frame_index * scale;
 			
-			left = InterpolateSample(index_to_use - playing->frame_index, playing->sound->channels, 0, predecoded_samples, predecoded_samples_count);
-			
-			if (playing->sound->channels > 1)
-				right = InterpolateSample(index_to_use - playing->frame_index, playing->sound->channels, 1, predecoded_samples, predecoded_samples_count);
-			else
-				right = left;
-			
-			left  = left  * playing->volume * volume;
-			right = right * playing->volume * volume;
-			
-			left  = glm_clamp(left,  INT16_MIN, INT16_MAX);
-			right = glm_clamp(right, INT16_MIN, INT16_MAX);
-			
-			if (channels == 2)
+			for (int32 channel_index = 0; channel_index < working_channels; ++channel_index)
 			{
-				*it++ += (int16)left;
-				*it++ += (int16)right;
+				int32 ch = Min(channel_index, temp_channels-1);
+				int32 ind = (int32)index_to_use;
+				
+				float32 sample_a = temp_samples[(ind+0)*temp_channels + ch];
+				float32 sample_b = temp_samples[(ind+1)*temp_channels + ch];
+				float32 t = index_to_use - floorf(index_to_use);
+				float32 sample = glm_lerp(sample_a, sample_b, t) * playing->volume;
+				
+				working_samples[frame_index*working_channels + channel_index] += sample;
 			}
-			else
-			{
-				int16 v = (int16)(left + right) / 2;
-				for (int32 j = channels; j > 0; --j)
-					*it++ += v;
-			}
-			
-			index += 1;
-			
-			if (index * scale > playing->sound->sample_count / playing->sound->channels)
-				index = 0;
 		}
 		
-		if (!should_remove)
-			++i;
+		if (playing->current_scaled_frame * scale >= sound->sample_count * sound->channels)
+		{
+			int32 last = --audio->playing_sounds_size;
+			
+			audio->playing_sounds_table[audio->playing_sounds[i].ref_index].index = 0;
+			audio->playing_sounds[i] = audio->playing_sounds[last];
+			audio->playing_sounds_table[audio->playing_sounds[i].ref_index].index = i+1;
+		}
 		else
-		{
-			int32 remaining = *audio_count - i;
-			if (remaining > 0)
-				Mem_Move(audios + i, audios + i + 1, sizeof(*audios) * (uintsize)remaining);
-			
-			--*audio_count;
-		}
+			++i;
+	}
+	OS_UnlockExclusive(&audio->lock);
+	
+	//- Cast samples to int16 with saturation.
+	int32 head = 0;
+	__m128 mul = _mm_set_ps(INT16_MAX, INT16_MAX, INT16_MAX, INT16_MAX);
+	mul = _mm_mul_ps(mul, _mm_set1_ps(default_master_volume));
+	
+	for (; head+8 <= sample_count; head += 8)
+	{
+		__m128i low_half  = _mm_cvtps_epi32(_mm_mul_ps(_mm_load_ps(&working_samples[head+0]), mul));
+		__m128i high_half = _mm_cvtps_epi32(_mm_mul_ps(_mm_load_ps(&working_samples[head+4]), mul));
+		
+		__m128i packed = _mm_packs_epi32(low_half, high_half);
+		_mm_storeu_si128((__m128i*)&out_buffer[head], packed);
 	}
 	
-	OS_CloseSoundBuffer(samples);
+	for (; head+1 <= sample_count; head += 1)
+	{
+		float32 sample = working_samples[head] * INT16_MAX;
+		
+		if (sample < INT16_MIN)
+			sample = INT16_MIN;
+		else if (sample > INT16_MAX)
+			sample = INT16_MAX;
+		
+		out_buffer[head] = (int16)sample;
+	}
+	
+	//- Done
+	Arena_Restore(scratch_save);
+}
+
+//~ API
+API bool
+E_LoadSound(Buffer ogg, E_SoundHandle* out_sound, E_SoundInfo* out_info)
+{
+	Trace();
+	SafeAssert(ogg.size <= INT32_MAX);
+	
+	E_AudioState* audio = global_engine.audio;
+	
+	int32 err;
+	stb_vorbis* vorbis = stb_vorbis_open_memory(ogg.data, (int32)ogg.size, &err, NULL);
+	if (!vorbis)
+		return false;
+	
+	stb_vorbis_info vorbis_info = stb_vorbis_get_info(vorbis);
+	int32 sample_count = stb_vorbis_stream_length_in_samples(vorbis);
+	float32 length = stb_vorbis_stream_length_in_seconds(vorbis);
+	
+	E_SoundHandle handle = { 0 };
+	E_SoundInfo info = {
+		.channels = vorbis_info.channels,
+		.sample_rate = vorbis_info.sample_rate,
+		.sample_count = sample_count,
+		.length = length,
+	};
+	E_LoadedSound_ loaded_sound = {
+		.vorbis = vorbis,
+		.channels = vorbis_info.channels,
+		.sample_rate = vorbis_info.sample_rate,
+		.sample_count = sample_count,
+	};
+	
+	bool ok = true;
+	OS_LockExclusive(&audio->lock);
+	{
+		if (!audio->loaded_sounds_table_first_free)
+			ok = false;
+		else
+		{
+			E_AllocSoundHandle_(audio, &handle);
+			int32 index = audio->loaded_sounds_size++;
+			audio->loaded_sounds[index] = loaded_sound;
+			audio->loaded_sounds_table[handle.index-1].index = index;
+		}
+	}
+	OS_UnlockExclusive(&audio->lock);
+	
+	if (ok)
+	{
+		*out_sound = handle;
+		
+		if (out_info)
+			*out_info = info;
+	}
+	else
+		stb_vorbis_close(vorbis);
+	
+	return ok;
+}
+
+API void
+E_UnloadSound(E_SoundHandle sound)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API bool
+E_IsValidSoundHandle(E_SoundHandle sound)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API bool
+E_QuerySoundInfo(E_SoundHandle sound, E_SoundInfo* out_info)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API E_PlayingSoundHandle
+E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	E_PlayingSoundHandle handle = { 0 };
+	E_PlayingSound_ playing = {
+		.sound = sound,
+		.current_scaled_frame = 0,
+		.volume = options->volume != 0.0f ? options->volume : 1.0f,
+		.speed = options->speed != 0.0f ? options->speed : 1.0f,
+	};
+	
+	OS_LockExclusive(&audio->lock);
+	
+	if (audio->playing_sounds_table_first_free)
+	{
+		E_AllocPlayingSoundHandle_(audio, &handle);
+		
+		int32 index = audio->playing_sounds_size++;
+		audio->playing_sounds[index] = playing;
+		audio->playing_sounds_table[handle.index-1].index = index;
+	}
+	
+	OS_UnlockExclusive(&audio->lock);
+	return handle;
+}
+
+API bool
+E_StopSound(E_PlayingSoundHandle playing_sound)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API bool
+E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSoundInfo* out_info)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API void
+E_StopAllSounds(E_SoundHandle* specific)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
+}
+
+API bool
+E_IsValidPlayingSoundHandle(E_PlayingSoundHandle playing_sound)
+{
+	Trace();
+	E_AudioState* audio = global_engine.audio;
+	
+	// TODO(ljre)
 }
