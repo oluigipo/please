@@ -153,7 +153,7 @@ E_DeinitAudio_(void)
 }
 
 static void
-E_AudioThreadProc_(void* user_data, int16* out_buffer, int32 channels, int32 sample_rate, int32 sample_count)
+E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count)
 {
 	Trace();
 	E_AudioState* audio = user_data;
@@ -230,7 +230,7 @@ E_AudioThreadProc_(void* user_data, int16* out_buffer, int32 channels, int32 sam
 	
 	//- Cast samples to int16 with saturation.
 	int32 head = 0;
-	__m128 mul = _mm_set_ps(INT16_MAX, INT16_MAX, INT16_MAX, INT16_MAX);
+	__m128 mul = _mm_set1_ps(INT16_MAX);
 	mul = _mm_mul_ps(mul, _mm_set1_ps(default_master_volume));
 	
 	for (; head+8 <= sample_count; head += 8)
@@ -244,7 +244,7 @@ E_AudioThreadProc_(void* user_data, int16* out_buffer, int32 channels, int32 sam
 	
 	for (; head+1 <= sample_count; head += 1)
 	{
-		float32 sample = working_samples[head] * INT16_MAX;
+		float32 sample = working_samples[head] * _mm_cvtss_f32(mul);
 		
 		if (sample < INT16_MIN)
 			sample = INT16_MIN;

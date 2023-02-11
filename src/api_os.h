@@ -250,7 +250,7 @@ enum OS_InitFlags
 typedef OS_InitFlags;
 
 void typedef OS_ThreadProc(void* arg);
-void typedef OS_AudioThreadProc(void* user_data, int16* out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
+void typedef OS_AudioThreadProc(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
 
 struct OS_InitDesc
 {

@@ -4,6 +4,14 @@
 #include "util_json.h"
 #include "util_gltf.h"
 
+#define G_EMBED_ASSETS
+
+#ifdef G_EMBED_ASSETS
+IncludeBinary(g_music_ogg, "music.ogg");
+IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
+IncludeBinary(g_corset_model, "assets/corset.glb");
+#endif
+
 static G_GlobalData* game;
 static E_GlobalData* engine;
 
@@ -69,12 +77,25 @@ G_Init(void)
 		},
 	};
 	
+#ifdef G_EMBED_ASSETS
+	desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
+#else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
+#endif
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	
 	{
 		Buffer ogg;
-		if (OS_ReadEntireFile(Str("music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size))
+		bool ok;
+		
+#ifdef G_EMBED_ASSETS
+		ogg = BufRange(g_music_ogg_begin, g_music_ogg_end);
+		ok = true;
+#else
+		ok = OS_ReadEntireFile(Str("music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+#endif
+		
+		if (ok)
 		{
 			SafeAssert(E_LoadSound(ogg, &game->music, NULL));
 			E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f });
