@@ -147,7 +147,7 @@ G_Scene3DInit(void)
 	{
 		Buffer gltf_data = { 0 };
 		
-#ifdef G_EMBED_ASSETS
+#ifdef CONFIG_ENABLE_EMBED
 		gltf_data = BufRange(g_corset_model_begin, g_corset_model_end);
 #else
 		SafeAssert(OS_ReadEntireFile(Str("assets/corset.glb"), engine->scratch_arena, (void**)&gltf_data.data, &gltf_data.size));

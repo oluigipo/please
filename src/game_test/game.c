@@ -4,9 +4,7 @@
 #include "util_json.h"
 #include "util_gltf.h"
 
-#define G_EMBED_ASSETS
-
-#ifdef G_EMBED_ASSETS
+#ifdef CONFIG_ENABLE_EMBED
 IncludeBinary(g_music_ogg, "music.ogg");
 IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
 IncludeBinary(g_corset_model, "assets/corset.glb");
@@ -77,7 +75,7 @@ G_Init(void)
 		},
 	};
 	
-#ifdef G_EMBED_ASSETS
+#ifdef CONFIG_ENABLE_EMBED
 	desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
 #else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
@@ -88,7 +86,7 @@ G_Init(void)
 		Buffer ogg;
 		bool ok;
 		
-#ifdef G_EMBED_ASSETS
+#ifdef CONFIG_ENABLE_EMBED
 		ogg = BufRange(g_music_ogg_begin, g_music_ogg_end);
 		ok = true;
 #else

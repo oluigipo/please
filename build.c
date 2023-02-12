@@ -82,6 +82,7 @@ struct
 	bool m32;
 	bool steam;
 	bool lto;
+	bool embed;
 	Cstr* extra_flags;
 }
 static g_opts = {
@@ -340,6 +341,8 @@ CompileTu(struct Build_Tu* tu)
 		Append(&head, end, " %sCONFIG_ENABLE_STEAM", f_define);
 	if (g_opts.lto)
 		Append(&head, end, " %s", f_lto);
+	if (g_opts.embed)
+		Append(&head, end, " %sCONFIG_ENABLE_EMBED", f_define);
 	if (g_opts.m32)
 		Append(&head, end, " %s", f_m32);
 	else
@@ -428,6 +431,14 @@ main(int argc, char** argv)
 			g_opts.force_rebuild = true;
 		else if (strcmp(argv[i], "-lto") == 0)
 			g_opts.lto = true;
+		else if (strcmp(argv[i], "-embed") == 0)
+		{
+#if !defined(_MSC_VER) || defined(__clang__)
+			g_opts.embed = true;
+#else
+			fprintf(stderr, "[warning] msvc does not support '.incbin'.\n");
+#endif
+		}
 		else if (strcmp(argv[i], "--") == 0)
 		{
 			g_opts.extra_flags = (Cstr*)&argv[i + 1];
