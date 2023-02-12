@@ -7,14 +7,14 @@ The license note in the file LICENSE is valid just for some of the stuff in `src
 External code (inside `src/ext`) might have other licenses.
 
 ## Build
-Just do `cl build.c` or `clang build.c -o build.exe`. It will generate a `build.exe` file which you can run to build the projects. Notice that the build system will use the same compiler as you.
+Just do `cl build.c` or `clang build.c -o build.exe`. It will generate a `build.exe` file which you can run to build the projects. Notice that the build system will use the same compiler you did to build it.
 To build the project `game_test` with debug info and UBSan, you would do: `build game_test -g -ubsan`.
 A release build would look like: `build game_test -O2 -ndebug`.
 
 Just read `build.c` to check what flags you can input.
 
 ### tools required to build:
-* Clang or MSVC: C Compiler;
+* Clang or MSVC: C & C++ Compiler;
 * `fxc`: HLSL compiler;
 
 ### optional tools:
@@ -29,7 +29,7 @@ Just read `build.c` to check what flags you can input.
 * `src/gamepad_db_gen`: A simple tool to parse SDL's `gamecontrollerdb.txt` and generate a `gamepad_map_database.inc`;
 
 ## APIs Used
-* Graphics: Direct3D 11, OpenGL 3.3;
+* Graphics: Direct3D 11 (level 9_3), OpenGL 3.3;
 * Gamepad Input: DirectInput, XInput;
 * Audio: WASAPI, ALSA;
 * System: Win32, Linux (X11);
