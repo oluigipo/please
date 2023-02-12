@@ -1,16 +1,21 @@
+// TODO(ljre): There are locks and unlocks everywhere.
+//
+//             The point is to just mix and output audio from another thread that wakes up ~2 times per frame,
+//             but if they actually try to access the same stuff at the same time, it'll be *expensive*!
+
 struct E_LoadedSoundRef_
 {
 	int32 generation;
-	int32 next_free;
-	int32 index;
+	int32 next_free;  // NOTE(ljre): 1-indexed
+	int32 index; // NOTE(ljre): 1-indexed
 }
 typedef E_LoadedSoundRef_;
 
 struct E_PlayingSoundRef_
 {
 	int32 generation;
-	int32 next_free;
-	int32 index;
+	int32 next_free;  // NOTE(ljre): 1-indexed
+	int32 index; // NOTE(ljre): 1-indexed
 }
 typedef E_PlayingSoundRef_;
 
@@ -39,13 +44,15 @@ struct E_AudioState
 {
 	OS_RWLock lock;
 	bool volatile ready;
+	int32 system_sample_rate;
+	int32 system_channels;
 	
 	int32 loaded_sounds_table_size;
-	int32 volatile loaded_sounds_table_first_free;
+	int32 volatile loaded_sounds_table_first_free; // NOTE(ljre): 1-indexed
 	E_LoadedSoundRef_* loaded_sounds_table;
 	
 	int32 playing_sounds_table_size;
-	int32 volatile playing_sounds_table_first_free;
+	int32 volatile playing_sounds_table_first_free;  // NOTE(ljre): 1-indexed
 	E_PlayingSoundRef_* playing_sounds_table;
 	
 	// Audio thread data
@@ -69,8 +76,10 @@ E_AllocSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
 	int32 ref_index = audio->loaded_sounds_table_first_free;
 	E_LoadedSoundRef_* ref = &audio->loaded_sounds_table[ref_index-1];
 	
+	SafeAssert(ref_index > 0);
+	
 	*out_handle = (E_SoundHandle) {
-		.generation = (uint16)++ref->generation,
+		.generation = (uint16)ref->generation,
 		.index = (uint16)ref_index,
 	};
 	
@@ -79,9 +88,16 @@ E_AllocSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
 }
 
 static void
-E_DeallocSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
+E_DeallocSoundHandle_(E_AudioState* audio, E_SoundHandle handle)
 {
-	// TODO(ljre)
+	int32 ref_index = handle.index;
+	E_LoadedSoundRef_* ref = &audio->loaded_sounds_table[ref_index-1];
+	
+	SafeAssert(ref_index > 0);
+	
+	++ref->generation;
+	ref->next_free = audio->loaded_sounds_table_first_free;
+	audio->loaded_sounds_table_first_free = ref_index;
 }
 
 static void
@@ -90,8 +106,10 @@ E_AllocPlayingSoundHandle_(E_AudioState* audio, E_PlayingSoundHandle* out_handle
 	int32 ref_index = audio->playing_sounds_table_first_free;
 	E_PlayingSoundRef_* ref = &audio->playing_sounds_table[ref_index-1];
 	
+	SafeAssert(ref_index > 0);
+	
 	*out_handle = (E_PlayingSoundHandle) {
-		.generation = (uint16)++ref->generation,
+		.generation = (uint16)ref->generation,
 		.index = (uint16)ref_index,
 	};
 	
@@ -100,14 +118,21 @@ E_AllocPlayingSoundHandle_(E_AudioState* audio, E_PlayingSoundHandle* out_handle
 }
 
 static void
-E_DeallocPlayingSoundHandle_(E_AudioState* audio, E_SoundHandle* out_handle)
+E_DeallocPlayingSoundHandle_(E_AudioState* audio, E_PlayingSoundHandle handle)
 {
-	// TODO(ljre)
+	int32 ref_index = handle.index;
+	E_PlayingSoundRef_* ref = &audio->playing_sounds_table[ref_index-1];
+	
+	SafeAssert(ref_index > 0);
+	
+	++ref->generation;
+	ref->next_free = audio->playing_sounds_table_first_free;
+	audio->playing_sounds_table_first_free = ref_index;
 }
 
 //~ Internal API
 static void
-E_InitAudio_(void)
+E_InitAudio_(const OS_InitOutput* init_output)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
@@ -117,6 +142,8 @@ E_InitAudio_(void)
 	const int32 max_playing_sounds = E_Limits_MaxPlayingSounds;
 	
 	audio->arena = arena;
+	audio->system_sample_rate = init_output->audiothread_sample_rate;
+	audio->system_channels = init_output->audiothread_channels;
 	
 	audio->loaded_sounds_table_size = max_loaded_sounds;
 	audio->loaded_sounds_table_first_free = 1;
@@ -150,6 +177,7 @@ E_DeinitAudio_(void)
 	E_AudioState* audio = global_engine.audio;
 	
 	// NOTE(ljre): maybe not :P
+	audio->ready = false;
 }
 
 static void
@@ -174,6 +202,13 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	for (int32 i = 0; i < audio->playing_sounds_size;)
 	{
 		E_PlayingSound_* playing = &audio->playing_sounds[i];
+		if (Unlikely(!playing->sound.index
+			|| audio->loaded_sounds_table[playing->sound.index-1].generation != playing->sound.generation
+			|| audio->loaded_sounds_table[playing->sound.index-1].next_free != 0))
+		{
+			goto lbl_remove;
+		}
+		
 		E_LoadedSound_* sound = &audio->loaded_sounds[audio->loaded_sounds_table[playing->sound.index].index];
 		float32 scale = (float32)sound->sample_rate / flt_sample_rate;
 		temp_channels = Min(working_channels, sound->channels);
@@ -217,9 +252,12 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 		
 		if (playing->current_scaled_frame * scale >= sound->sample_count * sound->channels)
 		{
-			int32 last = --audio->playing_sounds_size;
+			lbl_remove:;
+			E_DeallocPlayingSoundHandle_(audio, (E_PlayingSoundHandle) {
+				.index = (uint16)(audio->playing_sounds[i].ref_index + 1),
+			});
 			
-			audio->playing_sounds_table[audio->playing_sounds[i].ref_index].index = 0;
+			int32 last = --audio->playing_sounds_size;
 			audio->playing_sounds[i] = audio->playing_sounds[last];
 			audio->playing_sounds_table[audio->playing_sounds[i].ref_index].index = i+1;
 		}
@@ -324,7 +362,17 @@ E_UnloadSound(E_SoundHandle sound)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	
-	// TODO(ljre)
+	if (E_IsValidSoundHandle(sound))
+	{
+		OS_LockExclusive(&audio->lock);
+		
+		int32 index = audio->loaded_sounds_table[sound.index-1].index;
+		stb_vorbis_close(audio->loaded_sounds[index].vorbis);
+		Mem_Zero(&audio->loaded_sounds[index], sizeof(E_LoadedSound_));
+		E_DeallocSoundHandle_(audio, sound);
+		
+		OS_UnlockExclusive(&audio->lock);
+	}
 }
 
 API bool
@@ -333,7 +381,14 @@ E_IsValidSoundHandle(E_SoundHandle sound)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	
-	// TODO(ljre)
+	if (!sound.index || sound.index > E_Limits_MaxLoadedSounds)
+		return false;
+	if (audio->loaded_sounds_table[sound.index-1].generation != sound.generation)
+		return false;
+	if (audio->loaded_sounds_table[sound.index-1].next_free)
+		return false;
+	
+	return true;
 }
 
 API bool
@@ -341,8 +396,22 @@ E_QuerySoundInfo(E_SoundHandle sound, E_SoundInfo* out_info)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	bool result = false;
 	
-	// TODO(ljre)
+	if (E_IsValidSoundHandle(sound))
+	{
+		result = true;
+		
+		E_LoadedSound_* loaded_sound = &audio->loaded_sounds[audio->loaded_sounds_table[sound.index-1].index];
+		*out_info = (E_SoundInfo) {
+			.channels = loaded_sound->channels,
+			.sample_rate = loaded_sound->sample_rate,
+			.sample_count = loaded_sound->sample_count,
+			.length = (float32)loaded_sound->sample_count / (float32)loaded_sound->sample_rate,
+		};
+	}
+	
+	return result;
 }
 
 API E_PlayingSoundHandle
@@ -364,6 +433,8 @@ E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options)
 	{
 		E_AllocPlayingSoundHandle_(audio, &handle);
 		
+		playing.ref_index = handle.index-1;
+		
 		int32 index = audio->playing_sounds_size++;
 		audio->playing_sounds[index] = playing;
 		audio->playing_sounds_table[handle.index-1].index = index;
@@ -378,8 +449,27 @@ E_StopSound(E_PlayingSoundHandle playing_sound)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	bool result = false;
 	
-	// TODO(ljre)
+	if (playing_sound.index && playing_sound.index <= E_Limits_MaxPlayingSounds)
+	{
+		OS_LockExclusive(&audio->lock);
+		
+		if (audio->playing_sounds_table[playing_sound.index-1].generation == playing_sound.generation
+			&& !audio->playing_sounds_table[playing_sound.index-1].next_free)
+		{
+			int32 index = audio->playing_sounds_table[playing_sound.index-1].index;
+			int32 last = --audio->playing_sounds_size;
+			audio->playing_sounds[index] = audio->playing_sounds[last];
+			audio->playing_sounds_table[audio->playing_sounds[index].ref_index].index = index+1;
+			
+			E_DeallocPlayingSoundHandle_(audio, playing_sound);
+		}
+		
+		OS_UnlockExclusive(&audio->lock);
+	}
+	
+	return result;
 }
 
 API bool
@@ -387,8 +477,31 @@ E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSoundInfo* 
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	bool result = false;
 	
-	// TODO(ljre)
+	if (playing_sound.index && playing_sound.index <= E_Limits_MaxPlayingSounds)
+	{
+		OS_LockExclusive(&audio->lock);
+		
+		if (audio->playing_sounds_table[playing_sound.index-1].generation == playing_sound.generation
+			&& !audio->playing_sounds_table[playing_sound.index-1].next_free)
+		{
+			result = true;
+			
+			E_PlayingSound_* playing = &audio->playing_sounds[audio->playing_sounds_table[playing_sound.index-1].index];
+			
+			*out_info = (E_PlayingSoundInfo) {
+				.sound = playing->sound,
+				.at = playing->current_scaled_frame / (float32)audio->system_sample_rate,
+				.speed = playing->speed,
+				.volume = playing->volume,
+			};
+		}
+		
+		OS_UnlockExclusive(&audio->lock);
+	}
+	
+	return result;
 }
 
 API void
@@ -397,7 +510,18 @@ E_StopAllSounds(E_SoundHandle* specific)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	
-	// TODO(ljre)
+	OS_LockExclusive(&audio->lock);
+	
+	for (int32 i = 0; i < audio->playing_sounds_size; ++i)
+	{
+		E_DeallocPlayingSoundHandle_(audio, (E_PlayingSoundHandle) {
+			.index = (uint16)(audio->playing_sounds[i].ref_index + 1),
+		});
+	}
+	
+	audio->playing_sounds_size = 0;
+	
+	OS_UnlockExclusive(&audio->lock);
 }
 
 API bool
@@ -405,6 +529,21 @@ E_IsValidPlayingSoundHandle(E_PlayingSoundHandle playing_sound)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	bool result = true;
 	
-	// TODO(ljre)
+	if (!playing_sound.index || playing_sound.index > E_Limits_MaxPlayingSounds)
+		result = false;
+	else
+	{
+		OS_LockExclusive(&audio->lock);
+		
+		if (audio->playing_sounds_table[playing_sound.index-1].generation != playing_sound.generation)
+			result = false;
+		else if (audio->playing_sounds_table[playing_sound.index-1].next_free)
+			result = false;
+		
+		OS_UnlockExclusive(&audio->lock);
+	}
+	
+	return result;
 }

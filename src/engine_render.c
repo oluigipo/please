@@ -127,12 +127,12 @@ E_AppendResourceCmd_(RB_ResourceCommand* first, RB_ResourceCommand* last)
 }
 
 static void
-E_InitRender_(void)
+E_InitRender_(const OS_InitOutput* init_output)
 {
 	Trace();
 	
 	Arena* arena = global_engine.scratch_arena;
-	RB_Init(arena, global_engine.graphics_context);
+	RB_Init(arena, init_output->graphics_context);
 	
 	float32 quadvbuf[] = {
 		0.0f, 0.0f,

@@ -153,8 +153,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	
 	// NOTE(ljre): Init everything else
-	E_InitAudio_();
-	E_InitRender_();
+	E_InitAudio_(&output);
+	E_InitRender_(&output);
 	
 	// NOTE(ljre): Run
 	global_engine.last_frame_time = OS_GetTimeInSeconds();

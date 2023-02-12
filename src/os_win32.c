@@ -593,6 +593,8 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 			
 			out_output->window_state = config;
 			out_output->input_state = global_input_state;
+			out_output->audiothread_sample_rate = global_samples_per_second;
+			out_output->audiothread_channels = global_channels;
 			
 			if (desc->flags & OS_InitFlags_WindowAndGraphics)
 			{

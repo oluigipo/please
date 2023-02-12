@@ -276,6 +276,9 @@ struct OS_InitOutput
 	OS_WindowState window_state;
 	const OS_WindowGraphicsContext* graphics_context;
 	OS_InputState input_state;
+	
+	int32 audiothread_sample_rate;
+	int32 audiothread_channels;
 }
 typedef OS_InitOutput;
 
