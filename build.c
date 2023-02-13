@@ -380,7 +380,7 @@ CompileShader(struct Build_Shader* shader)
 	char* head = cmd;
 	char* end = cmd+sizeof(cmd);
 	
-	Append(&head, end, "fxc /nologo src/%s", shader->path);
+	Append(&head, end, "fxc /nologo /O3 src/%s", shader->path);
 	Append(&head, end, " /Fhinclude/%s", shader->output);
 	Append(&head, end, " /T%s /E%s", shader->profile, shader->entry_point);
 	
