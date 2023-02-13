@@ -187,7 +187,6 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		&global_direct3d.device,
 		NULL,
 		&global_direct3d.context);
-	SafeAssert(SUCCEEDED(hr));
 	
 	if (FAILED(hr))
 	{
