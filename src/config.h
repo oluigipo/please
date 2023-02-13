@@ -64,23 +64,29 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 #if defined(CONFIG_ENABLE_EMBED) && (defined(__clang__) || defined(__GNUC__))
 
 #ifdef _WIN32
-#define IncludeBinary_Section ".rdata, \"dr\""
+#   define IncludeBinary_Section ".rdata, \"dr\""
+#   ifdef _WIN64
+#       define IncludeBinary_Name(name) #name
+#   else
+#       define IncludeBinary_Name(name) "_" #name
+#   endif
 #else
-#define IncludeBinary_Section ".rodata"
+#   define IncludeBinary_Section ".rodata"
+#   define IncludeBinary_Name(name) #name
 #endif
 
 // this aligns start address to 16 and terminates byte array with explict 0
 // which is not really needed, feel free to change it to whatever you want/need
 #define IncludeBinary(name, file) \
 __asm__(".section " IncludeBinary_Section "\n" \
-".global " StrMacro(name) "_begin\n" \
+".global " IncludeBinary_Name(name) "_begin\n" \
 ".balign 16\n" \
-StrMacro(name) "_begin:\n" \
+IncludeBinary_Name(name) "_begin:\n" \
 ".incbin \"" file "\"\n" \
 \
-".global " StrMacro(name) "_end\n" \
+".global " IncludeBinary_Name(name) "_end\n" \
 ".balign 1\n" \
-StrMacro(name) "_end:\n" \
+IncludeBinary_Name(name) "_end:\n" \
 ".byte 0\n" \
 ); \
 extern __attribute__((aligned(16))) const unsigned char name ## _begin[]; \

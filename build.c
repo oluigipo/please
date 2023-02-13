@@ -132,7 +132,7 @@ static Cstr f_output = "-o";
 static Cstr f_output_obj = "-c -o";
 static Cstr f_analyze = "--analyze";
 static Cstr f_incfile = "-include";
-static Cstr f_m32 = "-m32 -msse2";
+static Cstr f_m32 = "-msse2";
 static Cstr f_m64 = "-march=x86-64";
 static Cstr f_lto = "-flto";
 
@@ -217,7 +217,7 @@ Append(char** head, char* end, Cstr fmt, ...)
 static Cstr
 GenTargetString(void)
 {
-	Cstr arch = g_opts.m32 ? "i386" : "x86_64";
+	Cstr arch = g_opts.m32 ? "i686" : "x86_64";
 	Cstr os = g_osinfo[g_opts.os].name;
 	
 	int amount = snprintf(NULL, 0, "%s-%s", arch, os);
@@ -225,6 +225,35 @@ GenTargetString(void)
 	snprintf(str, amount+1, "%s-%s", arch, os);
 	
 	return str;
+}
+
+static Cstr
+GenTargetArg(void)
+{
+#ifdef __clang__
+	static char* str = NULL;
+	
+	if (!str)
+	{
+		Cstr arch = g_opts.m32 ? "i686" : "x86_64";
+		Cstr os = NULL;
+		
+		switch (g_opts.os)
+		{
+			default: os = "unknown"; break;
+			case Build_Os_Windows: os = "pc-windows-msvc"; break;
+			case Build_Os_Linux: os = "linux-gnu"; break;
+		}
+		
+		int amount = snprintf(NULL, 0, "--target=%s-%s %s", arch, os, g_opts.m32 ? f_m32 : f_m64);
+		str = malloc(amount+1);
+		snprintf(str, amount+1, "--target=%s-%s %s", arch, os, g_opts.m32 ? f_m32 : f_m64);
+	}
+	
+	return str;
+#else
+	return g_opts.m32 ? f_m32 : f_m64;
+#endif
 }
 
 static int
@@ -370,6 +399,7 @@ CompileTu(struct Build_Tu* tu)
 	
 	Append(&head, end, "%s src/%s", tu->is_cpp ? f_cxx : f_cc, tu->path);
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
+	Append(&head, end, " %s", GenTargetArg());
 	
 	if (g_opts.analyze)
 		Append(&head, end, " %s", f_analyze);
@@ -393,10 +423,6 @@ CompileTu(struct Build_Tu* tu)
 		Append(&head, end, " %s", f_lto);
 	if (g_opts.embed)
 		Append(&head, end, " %sCONFIG_ENABLE_EMBED", f_define);
-	if (g_opts.m32)
-		Append(&head, end, " %s", f_m32);
-	else
-		Append(&head, end, " %s", f_m64);
 	
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
@@ -430,22 +456,20 @@ CompileExecutable(struct Build_Executable* exec)
 	char* end = cmd+sizeof(cmd);
 	
 	Append(&head, end, "%s %sbuild/%s-%s.%s", f_cc, f_output, g_target, exec->outname, g_osinfo[g_opts.os].exe);
-	
 	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
 		Append(&head, end, " build/%s-%s.%s", g_target, (*tu)->name, g_osinfo[g_opts.os].obj);
+	Append(&head, end, " %s", GenTargetArg());
 	
 	if (g_opts.do_rc)
 		Append(&head, end, " build/windows-resource-file.res");
 	if (g_opts.debug_info)
 		Append(&head, end, " %s", f_debuginfo);
+	if (g_opts.verbose)
+		Append(&head, end, " %s", f_verbose);
 	if (g_opts.lto)
 		Append(&head, end, " %s %s", f_lto, f_optimize[g_opts.optimize]);
 	if (g_opts.tracy)
 		Append(&head, end, " TracyClient.%s", g_osinfo[g_opts.os].obj);
-	if (g_opts.m32)
-		Append(&head, end, " %s", f_m32);
-	else
-		Append(&head, end, " %s", f_m64);
 	
 	Append(&head, end, " %s", f_ldflags);
 	

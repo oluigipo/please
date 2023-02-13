@@ -47,7 +47,11 @@ ReenableWarnings();
 #   pragma comment(lib, "hid.lib")
 #   pragma comment(lib, "ntdll.lib")
 #   if defined(CONFIG_ENABLE_STEAM)
-#       pragma comment(lib, "lib\\steam_api64.lib")
+#       if defined(_WIN64)
+#           pragma comment(lib, "lib\\steam_api64.lib")
+#       else
+#           pragma comment(lib, "lib\\steam_api.lib")
+#       endif
 #   endif
 #endif
 
@@ -503,6 +507,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		.lpszClassName = global_class_name,
 		.hInstance = global_instance,
 		.hCursor = LoadCursorA(NULL, IDC_ARROW),
+		.hIcon = LoadIconA(global_instance, MAKEINTRESOURCE(101)),
 	};
 	
 	if (!RegisterClassW(&window_class))
