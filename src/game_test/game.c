@@ -131,7 +131,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 			color[0] = color[1] = color[2] = 0.4f;
 	}
 	
-	E_PushRect(batch, NULL, &(E_RectBatchElem) {
+	E_PushRect(batch, &(E_RectBatchElem) {
 		.pos = { button_x, button_y },
 		.scaling[0][0] = button_width,
 		.scaling[1][1] = button_height,
@@ -142,7 +142,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 	
 	float32 scale = sinf((float32)OS_GetTimeInSeconds()) * 0.2f + 1.5f;
 	
-	E_PushText(batch, engine->frame_arena, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(scale, scale), GLM_VEC4_ONE);
+	E_PushText(batch, &game->font, text, vec2(button_x, button_y + button_height*0.25f), vec2(scale, scale), GLM_VEC4_ONE);
 	
 	button_y += button_height * 1.5f;
 	
@@ -183,6 +183,7 @@ G_UpdateAndRender(void)
 		{
 			float32 ui_y = 100.0f;
 			E_RectBatch batch = {
+				.arena = engine->frame_arena,
 				.textures[0] = NULL,
 				.textures[1] = &game->font.texture,
 				.count = 0,
@@ -208,7 +209,7 @@ G_UpdateAndRender(void)
 					(random>>43 & 255) / 255.0f,
 				};
 				
-				E_PushRect(&batch, NULL, &(E_RectBatchElem) {
+				E_PushRect(&batch, &(E_RectBatchElem) {
 					.pos = { engine->window_state->width*0.5f + x, engine->window_state->height*0.5f + y },
 					.scaling = {
 						{ size*cosf(angle), size*-sinf(angle) },

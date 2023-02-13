@@ -133,13 +133,14 @@ G_SnakeUpdateAndRender(void)
 	const float32 grid_base_y = (engine->window_state->height - s->grid_height * s->cell_height) * 0.5f;
 	
 	E_RectBatch batch = {
+		.arena = engine->frame_arena,
 		.textures[0] = NULL,
 		.textures[1] = &game->font.texture,
 		.count = 0,
 		.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 	};
 	
-	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
+	E_PushRect(&batch, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x,
 			grid_base_y,
@@ -153,7 +154,7 @@ G_SnakeUpdateAndRender(void)
 	vec3 col1 = { 0.5f, 0.9f, 0.5f };
 	vec3 col2 = { 0.5f, 0.5f, 0.9f };
 	
-	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
+	E_PushRect(&batch, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x + s->tail[0].x * s->cell_width + 1,
 			grid_base_y + s->tail[0].y * s->cell_height + 1,
@@ -183,10 +184,10 @@ G_SnakeUpdateAndRender(void)
 		};
 		
 		glm_vec3_lerp(col1, col2, scale, elem.color);
-		E_PushRect(&batch, NULL, &elem);
+		E_PushRect(&batch, &elem);
 	}
 	
-	E_PushRect(&batch, NULL, &(E_RectBatchElem) {
+	E_PushRect(&batch, &(E_RectBatchElem) {
 		.pos = {
 			grid_base_x + s->apple_x * s->cell_width + 2,
 			grid_base_y + s->apple_y * s->cell_height + 2,
@@ -200,7 +201,7 @@ G_SnakeUpdateAndRender(void)
 	
 	if (s->tail_size >= 12)
 	{
-		E_PushText(&batch, engine->frame_arena, &game->font, Str("yes, this is intentional"), vec2(grid_base_x, grid_base_y - 96.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
+		E_PushText(&batch, &game->font, Str("yes, this is intentional"), vec2(grid_base_x, grid_base_y - 96.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	}
 	
 	uint8 gibberish[20];
@@ -216,7 +217,7 @@ G_SnakeUpdateAndRender(void)
 	}
 	
 	String str = String_PrintfLocal(64, "%.*syou are %um long", gibberish_size, gibberish, s->tail_size);
-	E_PushText(&batch, engine->frame_arena, &game->font, str, vec2(grid_base_x, grid_base_y - 48.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
+	E_PushText(&batch, &game->font, str, vec2(grid_base_x, grid_base_y - 48.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	
 	E_DrawRectBatch(&batch, NULL);
 	

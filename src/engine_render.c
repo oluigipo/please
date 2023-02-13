@@ -746,9 +746,11 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 }
 
 API bool
-E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color)
+E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color)
 {
 	Trace();
+	
+	Arena* arena = batch->arena;
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
 	
 	int32 int_texindex = -1;
@@ -856,11 +858,10 @@ E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos
 }
 
 API void
-E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rect)
+E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 {
 	Trace();
-	if (!arena)
-		arena = global_engine.frame_arena;
+	Arena* arena = batch->arena;
 	
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
 	

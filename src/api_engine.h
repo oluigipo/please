@@ -140,15 +140,6 @@ struct E_Font
 }
 typedef E_Font;
 
-struct E_CachedBatch
-{
-	RB_Handle vbuffer;
-	RB_Handle ubuffer;
-	RB_Handle* samplers[RB_Limits_SamplersPerDrawCall];
-	uint32 instance_count;
-}
-typedef E_CachedBatch;
-
 struct E_Tex2dDesc
 {
 	Buffer encoded_image;
@@ -196,6 +187,7 @@ typedef E_RectBatchElem;
 
 struct E_RectBatch
 {
+	Arena* arena;
 	RB_Handle* textures[RB_Limits_SamplersPerDrawCall];
 	
 	uint32 count;
@@ -203,8 +195,8 @@ struct E_RectBatch
 }
 typedef E_RectBatch;
 
-API bool E_PushText(E_RectBatch* batch, Arena* arena, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
-API void E_PushRect(E_RectBatch* batch, Arena* arena, const E_RectBatchElem* rect);
+API bool E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
+API void E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
