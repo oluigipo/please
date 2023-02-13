@@ -282,7 +282,7 @@ struct E_PlaySoundOptions
 }
 typedef E_PlaySoundOptions;
 
-API E_PlayingSoundHandle E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options);
+API bool E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options, E_PlayingSoundHandle* out_playing);
 API bool E_StopSound(E_PlayingSoundHandle playing_sound);
 API bool E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSoundInfo* out_info);
 API void E_StopAllSounds(E_SoundHandle* specific);

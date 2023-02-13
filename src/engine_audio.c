@@ -414,11 +414,13 @@ E_QuerySoundInfo(E_SoundHandle sound, E_SoundInfo* out_info)
 	return result;
 }
 
-API E_PlayingSoundHandle
-E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options)
+API bool
+E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options, E_PlayingSoundHandle* out_playing)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	
+	bool result = false;
 	E_PlayingSoundHandle handle = { 0 };
 	E_PlayingSound_ playing = {
 		.sound = sound,
@@ -432,6 +434,7 @@ E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options)
 	if (audio->playing_sounds_table_first_free)
 	{
 		E_AllocPlayingSoundHandle_(audio, &handle);
+		result = true;
 		
 		playing.ref_index = handle.index-1;
 		
@@ -441,7 +444,11 @@ E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options)
 	}
 	
 	OS_UnlockExclusive(&audio->lock);
-	return handle;
+	
+	if (out_playing)
+		*out_playing = handle;
+	
+	return result;
 }
 
 API bool

@@ -96,7 +96,7 @@ G_Init(void)
 		if (ok)
 		{
 			SafeAssert(E_LoadSound(ogg, &game->music, NULL));
-			E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f });
+			SafeAssert(E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL));
 		}
 	}
 	
