@@ -59,9 +59,8 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 	
 	switch (uswizzle)
 	{
-		default:
-		case 0: break;
-		case 1: result = float4(1.0, 1.0, 1.0, result.x); break;
+		default: break;
+		//case 1: result = float4(1.0, 1.0, 1.0, result.x); break;
 		case 2:
 		{
 			float2 pos = (input.rawpos - 0.5) * 2.0;
@@ -88,7 +87,5 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 		} break;
 	}
 
-	result *= input.color;
-	
-	return result;
+	return result * input.color;
 }

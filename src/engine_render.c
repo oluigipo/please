@@ -3,8 +3,8 @@
 
 uint8 typedef BYTE;
 
-#include <d3d11_vshader_quad.inc>
-#include <d3d11_pshader_quad.inc>
+#include <d3d11_shader_quad_vs.inc>
+#include <d3d11_shader_quad_ps.inc>
 
 static RB_Handle g_render_quadvbuf;
 static RB_Handle g_render_quadibuf;
@@ -133,6 +133,14 @@ E_InitRender_(const OS_InitOutput* init_output)
 	
 	Arena* arena = global_engine.scratch_arena;
 	RB_Init(arena, init_output->graphics_context);
+	
+	// NOTE(ljre): Print capabilities
+	{
+		RB_Capabilities cap = { 0 };
+		RB_QueryCapabilities(&cap);
+		
+		OS_DebugLog("[RB] backend: %S\n[RB] driver: %S\nmax_texture_size: %i\n", cap.backend_api, cap.driver, cap.max_texture_size);
+	}
 	
 	float32 quadvbuf[] = {
 		0.0f, 0.0f,

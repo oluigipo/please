@@ -85,7 +85,7 @@ RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 	
 	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
 	
-	const uint8* driver_cstr = GL.glGetString(GL_RENDERER);
+	const uint8* driver_cstr = GL.glGetString(GL_VENDOR);
 	driver = StrMake(Mem_Strlen((char*)driver_cstr), driver_cstr);
 	
 	*out_capabilities = (RB_Capabilities) {
