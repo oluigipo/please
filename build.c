@@ -134,7 +134,7 @@ static Cstr f_analyze = "";
 static Cstr f_incfile = "/FI";
 static Cstr f_m32 = "/arch:SSE2";
 static Cstr f_m64 = "";
-static Cstr f_lto = "";
+static Cstr f_lto = "/GL";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
@@ -188,7 +188,7 @@ static bool
 NeedsRebuild(struct Build_Tu* tu)
 {
 	bool result = true;
-	char path[128];
+	char path[4096];
 	
 	snprintf(path, sizeof(path), "build/%s.obj", tu->name);
 	struct __stat64 stat_data;
@@ -239,7 +239,7 @@ NeedsRebuild(struct Build_Tu* tu)
 						continue;
 					}
 					
-					char depname[256] = { 0 };
+					char depname[4096] = { 0 };
 					int deplen = 0;
 					while (*head && *head != ' ' && *head != '\n' && *head != '\r')
 					{
@@ -277,7 +277,7 @@ CompileShader(struct Build_Shader* shader)
 	// NOTE(ljre): Rebuild only if needed
 	if (!g_opts.force_rebuild)
 	{
-		char path[256] = { 0 };
+		char path[4096] = { 0 };
 		struct __stat64 stat_data;
 		snprintf(path, sizeof(path), "src/%s", shader->path);
 		
