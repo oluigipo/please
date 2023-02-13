@@ -46,19 +46,23 @@ static inline int32 Mem_Compare(const void* left_, const void* right_, uintsize 
 static inline int32
 Mem_BitCtz64(uint64 i)
 {
-	Assume(i != 0);
 	int32 result;
 	
+	if (i == 0)
+		result = sizeof(i)*8;
+	else
+	{
 #if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_ctzll(i);
+		result = __builtin_ctzll(i);
 #elif defined(_MSC_VER)
-	_BitScanForward64(&result, i);
+		_BitScanForward64(&result, i);
 #else
-	result = 0;
-	
-	while ((i & 1<<result) == 0)
-		++result;
+		result = 0;
+		
+		while ((i & 1<<result) == 0)
+			++result;
 #endif
+	}
 	
 	return result;
 }
@@ -66,49 +70,57 @@ Mem_BitCtz64(uint64 i)
 static inline int32
 Mem_BitCtz32(uint32 i)
 {
-	Assume(i != 0);
 	int32 result;
 	
+	if (i == 0)
+		result = sizeof(i)*8;
+	else
+	{
 #if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_ctz(i);
+		result = __builtin_ctz(i);
 #elif defined(_MSC_VER)
-	_BitScanForward(&result, i);
+		_BitScanForward(&result, i);
 #else
-	result = 0;
-	
-	while ((i & 1<<result) == 0)
-		++result;
+		result = 0;
+		
+		while ((i & 1<<result) == 0)
+			++result;
 #endif
+	}
 	
 	return result;
 }
 
 static inline int32
 Mem_BitCtz16(uint16 i)
-{ return Mem_BitCtz32(i); }
+{ return i == 0 ? sizeof(i)*8 : Mem_BitCtz32(i); }
 
 static inline int32
 Mem_BitCtz8(uint8 i)
-{ return Mem_BitCtz32(i); }
+{ return i == 0 ? sizeof(i)*8 : Mem_BitCtz32(i); }
 
 //- Mem_BitClz
 static inline int32
 Mem_BitClz64(uint64 i)
 {
-	Assume(i != 0);
 	int32 result;
 	
+	if (i == 0)
+		result = sizeof(i)*8;
+	else
+	{
 #if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_clzll(i);
+		result = __builtin_clzll(i);
 #elif defined(_MSC_VER)
-	_BitScanReverse(&result, i);
-	result = 63 - result;
+		_BitScanReverse(&result, i);
+		result = 63 - result;
 #else
-	result = 0;
-	
-	while ((i & 1<<(63-result)) == 0)
-		++result;
+		result = 0;
+		
+		while ((i & 1<<(63-result)) == 0)
+			++result;
 #endif
+	}
 	
 	return result;
 }
@@ -116,31 +128,35 @@ Mem_BitClz64(uint64 i)
 static inline int32
 Mem_BitClz32(uint32 i)
 {
-	Assume(i != 0);
 	int32 result;
 	
+	if (i == 0)
+		result = sizeof(i)*8;
+	else
+	{
 #if defined(__GNUC__) || defined(__clang__)
-	result = __builtin_clz(i);
+		result = __builtin_clz(i);
 #elif defined(_MSC_VER)
-	_BitScanReverse(&result, i);
-	result = 31 - result;
+		_BitScanReverse(&result, i);
+		result = 31 - result;
 #else
-	result = 0;
-	
-	while ((i & 1<<(31-result)) == 0)
-		++result;
+		result = 0;
+		
+		while ((i & 1<<(31-result)) == 0)
+			++result;
 #endif
+	}
 	
 	return result;
 }
 
 static inline int32
 Mem_BitClz16(uint16 i)
-{ return Mem_BitClz32(i) - 16; }
+{ return i == 0 ? sizeof(i)*8 : Mem_BitClz32(i) - 16; }
 
 static inline int32
 Mem_BitClz8(uint8 i)
-{ return Mem_BitClz32(i) - 24; }
+{ return i == 0 ? sizeof(i)*8 : Mem_BitClz32(i) - 24; }
 
 //- Mem_PopCnt
 #ifdef __POPCNT__
