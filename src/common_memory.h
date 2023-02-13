@@ -273,7 +273,7 @@ Mem_Copy8(void* dst, const void* src, uintsize count)
 	const uint8* s = (const uint8*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 		*d++ = *s++;
@@ -286,7 +286,7 @@ Mem_Copy64(void* dst, const void* src, uintsize count)
 	const uint64* s = (const uint64*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 		*d++ = *s++;
@@ -299,7 +299,7 @@ Mem_Copy128U(void* dst, const void* src, uintsize count)
 	const __m128* s = (const __m128*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 		_mm_storeu_ps((float32*)d++, _mm_loadu_ps((const float32*)s++));
@@ -312,7 +312,7 @@ Mem_Copy128A(void* dst, const void* src, uintsize count)
 	const __m128* s = (const __m128*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 		_mm_store_ps((float32*)d++, _mm_load_ps((const float32*)s++));
@@ -325,7 +325,7 @@ Mem_Copy128Ux4(void* dst, const void* src, uintsize count)
 	const __m128* s = (const __m128*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 	{
@@ -346,7 +346,7 @@ Mem_Copy128Ax4(void* dst, const void* src, uintsize count)
 	const __m128* s = (const __m128*)src;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (count--)
 	{
@@ -426,7 +426,7 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	
 	// fallthrough
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	do
 	{
@@ -443,7 +443,7 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	while (size >= 128);
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 32) xmm2_by_xmm2:
 	{
@@ -453,7 +453,7 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 8) qword_by_qword:
 	{
@@ -462,7 +462,7 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size) one_by_one:
 	{
@@ -518,7 +518,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 			goto inc_by_xmm2;
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		do
 		{
@@ -538,7 +538,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		while (size >= 128);
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size >= 32) inc_by_xmm2:
 		{
@@ -551,7 +551,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size >= 8) inc_by_qword:
 		{
@@ -563,7 +563,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size) inc_by_one:
 		{
@@ -603,7 +603,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 			goto dec_by_xmm2;
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		do
 		{
@@ -620,7 +620,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		while (size >= 128);
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size >= 32) dec_by_xmm2:
 		{
@@ -630,7 +630,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size >= 8) dec_by_qword:
 		{
@@ -639,7 +639,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (size) dec_by_one:
 		{
@@ -689,7 +689,7 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 #endif
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	do
 	{
@@ -706,7 +706,7 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 	while (size >= 128);
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 32) xmm2_by_xmm2:
 	{
@@ -716,7 +716,7 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 8) qword_by_qword:
 	{
@@ -725,7 +725,7 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 1) one_by_one:
 	{
@@ -745,7 +745,7 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 	const uint8* right = (const uint8*)right_;
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 16)
 	{
@@ -774,7 +774,7 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size --> 0)
 	{
@@ -835,7 +835,7 @@ Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 		__m128i mask = _mm_set1_epi8(byte);
 		
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 		while (buf + 16 < end)
 		{
@@ -851,7 +851,7 @@ Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 	
 	// NOTE(ljre): Byte by byte
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (buf < end) by_byte:
 	{
@@ -899,7 +899,7 @@ Mem_Zero(void* restrict dst, uintsize size)
 #endif
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	do
 	{
@@ -917,7 +917,7 @@ Mem_Zero(void* restrict dst, uintsize size)
 	while (size >= 128);
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 32) by_xmm2:
 	{
@@ -928,7 +928,7 @@ Mem_Zero(void* restrict dst, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 8) by_qword:
 	{
@@ -938,7 +938,7 @@ Mem_Zero(void* restrict dst, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop vectorize(disable)
+#   pragma clang loop unroll(disable)
 #endif
 	while (size >= 1) by_byte:
 	{
