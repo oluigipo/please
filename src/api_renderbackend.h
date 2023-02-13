@@ -9,6 +9,15 @@ enum
 	RB_Limits_MaxVertexBuffersPerDrawCall = 4,
 };
 
+struct RB_Capabilities
+{
+	String backend_api;
+	String driver;
+	
+	int32 max_texture_size;
+}
+typedef RB_Capabilities;
+
 union RB_Handle
 { uint32 id; }
 typedef RB_Handle;
@@ -265,6 +274,7 @@ API void RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_
 API void RB_Deinit(Arena* scratch_arena);
 API bool RB_Present(Arena* scratch_arena, int32 vsync_count);
 
+API void RB_QueryCapabilities(RB_Capabilities* out_capabilities);
 API void RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands);
 API void RB_ExecuteDrawCommands(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height);
 

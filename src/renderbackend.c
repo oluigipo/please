@@ -152,6 +152,26 @@ RB_Present(Arena* scratch_arena, int32 vsync_count)
 }
 
 API void
+RB_QueryCapabilities(RB_Capabilities* out_capabilities)
+{
+	Trace();
+	
+	if (!g_graphics_context)
+		return;
+	
+	switch (g_graphics_context->api)
+	{
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: RB_CapabilitiesOpenGL_(out_capabilities); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D11
+		case OS_WindowGraphicsApi_Direct3D11: RB_CapabilitiesD3d11_(out_capabilities); break;
+#endif
+		default: break;
+	}
+}
+
+API void
 RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
 	Trace();

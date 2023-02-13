@@ -78,6 +78,24 @@ RB_DeinitOpenGL_(Arena* scratch_arena)
 }
 
 static void
+RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
+{
+	int32 max_texture_size;
+	String driver;
+	
+	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+	
+	const uint8* driver_cstr = GL.glGetString(GL_RENDERER);
+	driver = StrMake(Mem_Strlen((char*)driver_cstr), driver_cstr);
+	
+	*out_capabilities = (RB_Capabilities) {
+		.backend_api = StrInit("OpenGL 3.3"),
+		.driver = driver,
+		.max_texture_size = max_texture_size,
+	};
+}
+
+static void
 RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 {
 	Trace();

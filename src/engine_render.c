@@ -141,7 +141,7 @@ E_InitRender_(const OS_InitOutput* init_output)
 		1.0f, 1.0f,
 	};
 	
-	uint32 quadibuf[] = {
+	uint16 quadibuf[] = {
 		0, 1, 2,
 		2, 3, 1,
 	};
@@ -733,6 +733,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 			.vbuffer_strides = { sizeof(vec2), sizeof(E_RectBatchElem), },
 			.index_count = 6,
 			.instance_count = batch->count,
+			.index_type = RB_IndexType_Uint16,
 			.samplers = {
 				{ batch->textures[0] ? batch->textures[0] : &g_render_whitetex, },
 				{ batch->textures[1] ? batch->textures[1] : &g_render_whitetex, },

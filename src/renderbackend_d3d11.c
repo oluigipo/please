@@ -75,7 +75,7 @@ RB_InitD3d11_(Arena* scratch_arena)
 		.DepthBias = 0,
 		.SlopeScaledDepthBias = 0.0f,
 		.DepthBiasClamp = 0.0f,
-		.DepthClipEnable = false,
+		.DepthClipEnable = true,
 		.ScissorEnable = false,
 		.MultisampleEnable = false,
 		.AntialiasedLineEnable = false,
@@ -137,6 +137,47 @@ RB_InitD3d11_(Arena* scratch_arena)
 static void
 RB_DeinitD3d11_(Arena* scratch_arena)
 {
+}
+
+static void
+RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
+{
+	D3D_FEATURE_LEVEL feature_level = ID3D11Device_GetFeatureLevel(D3d11.device);
+	int32 max_texture_size;
+	String driver = StrInit("newer one?");
+	
+	switch (feature_level)
+	{
+		default:
+		if (0) case D3D_FEATURE_LEVEL_11_1: driver = Str("Feature Level 11_1");
+		if (0) case D3D_FEATURE_LEVEL_11_0: driver = Str("Feature Level 11_0");
+		{
+			max_texture_size = 16384;
+		} break;
+		
+		if (0) case D3D_FEATURE_LEVEL_10_1: driver = Str("Feature Level 10_1");
+		if (0) case D3D_FEATURE_LEVEL_10_0: driver = Str("Feature Level 10_0");
+		{
+			max_texture_size = 8192;
+		} break;
+		
+		if (0) case D3D_FEATURE_LEVEL_9_3: driver = Str("Feature Level 9_3");
+		{
+			max_texture_size = 4096;
+		} break;
+		
+		if (0) case D3D_FEATURE_LEVEL_9_2: driver = Str("Feature Level 9_2");
+		if (0) case D3D_FEATURE_LEVEL_9_1: driver = Str("Feature Level 9_1");
+		{
+			max_texture_size = 2048;
+		} break;
+	}
+	
+	*out_capabilities = (RB_Capabilities) {
+		.backend_api = StrInit("Direct3D 11"),
+		.driver = driver,
+		.max_texture_size = max_texture_size,
+	};
 }
 
 static void
@@ -450,7 +491,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 					.DepthBias = 0,
 					.SlopeScaledDepthBias = 0.0f,
 					.DepthBiasClamp = 0.0f,
-					.DepthClipEnable = false, //cmd->rasterizer.flag_depth_test,
+					.DepthClipEnable = true, //cmd->rasterizer.flag_depth_test,
 					.ScissorEnable = cmd->rasterizer.flag_scissor,
 					.MultisampleEnable = false,
 					.AntialiasedLineEnable = false,

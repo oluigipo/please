@@ -165,6 +165,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
 		D3D_FEATURE_LEVEL_9_3,
+		//D3D_FEATURE_LEVEL_9_2,
+		//D3D_FEATURE_LEVEL_9_1,
 	};
 #else
 	D3D_FEATURE_LEVEL feature_levels[] = {
@@ -172,6 +174,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
 		D3D_FEATURE_LEVEL_9_3,
+		//D3D_FEATURE_LEVEL_9_2,
+		//D3D_FEATURE_LEVEL_9_1,
 	};
 #endif
 	
@@ -183,6 +187,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		&global_direct3d.device,
 		NULL,
 		&global_direct3d.context);
+	SafeAssert(SUCCEEDED(hr));
 	
 	if (FAILED(hr))
 	{
