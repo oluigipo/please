@@ -14,6 +14,25 @@
 
 typedef const char* Cstr;
 
+enum Build_Os
+{
+	Build_Os_Null,
+	Build_Os_Windows,
+	Build_Os_Linux,
+};
+
+struct
+{
+	Cstr name;
+	Cstr obj;
+	Cstr exe;
+}
+static const g_osinfo[] = {
+	[Build_Os_Null] = { "unknown" },
+	[Build_Os_Windows] = { "windows", "obj", "exe" },
+	[Build_Os_Linux] = { "linux", "o", "" },
+};
+
 struct Build_Tu
 {
 	Cstr name;
@@ -68,6 +87,7 @@ static struct Build_Executable g_executables[] = {
 struct
 {
 	struct Build_Executable* exec;
+	enum Build_Os os;
 	int optimize;
 	bool asan;
 	bool ubsan;
@@ -86,6 +106,11 @@ struct
 	Cstr* extra_flags;
 }
 static g_opts = {
+#ifdef _WIN32
+	.os = Build_Os_Windows,
+#elif defined(__linux__)
+	.os = Build_Os_Linux,
+#endif
 	.exec = &g_executables[0],
 	.debug_mode = true,
 };
@@ -121,7 +146,7 @@ static Cstr f_rc = "llvm-rc";
 #elif defined(_MSC_VER)
 static Cstr f_cc = "cl /nologo /std:c11";
 static Cstr f_cxx = "cl /nologo /std:c++14 /GR- /EHa-";
-static Cstr f_cflags = "/Isrc /Iinclude";
+static Cstr f_cflags = "/Isrc /Iinclude /MT";
 static Cstr f_ldflags = "/link /incremental:no";
 static Cstr f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
 static Cstr f_warnings = "/W3";
@@ -146,19 +171,31 @@ static Cstr f_rc = "rc";
 #elif defined(__GNUC__)
 static Cstr f_cc = "gcc -std=c11";
 static Cstr f_cxx = "g++ -std=c++11 -fno-exceptions -fno-rtti";
-static Cstr f_cflags = "-Isrc -march=x86-64-v2 -static";
-static Cstr f_ldflags = "-mwindows";
+static Cstr f_cflags = "-Isrc -march=x86-64-v2";
+static Cstr f_ldflags = "";
 static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math" };
 static Cstr f_warnings = "-w";
 static Cstr f_debuginfo = "-g";
 static Cstr f_define = "-D";
 static Cstr f_verbose = "-v";
 static Cstr f_output = "-o";
+static Cstr f_output_obj = "-c -o";
 static Cstr f_analyze = "";
 static Cstr f_incfile = "-include";
-#error TODO
+static Cstr f_m32 = "-m32 -msse2";
+static Cstr f_m64 = "-march=x86-64";
+static Cstr f_lto = "-flto";
+
+static Cstr f_ldflags_graphic = "-mwindows";
+
+static Cstr f_hotcflags = "-DCONFIG_ENABLE_HOT";
+static Cstr f_hotldflags = "-r -lkernel32 -llibvcruntime -lucrt";
+
+static Cstr f_rc = "windres";
 
 #endif
+
+static Cstr g_target = "";
 
 static void
 Append(char** head, char* end, Cstr fmt, ...)
@@ -177,6 +214,19 @@ Append(char** head, char* end, Cstr fmt, ...)
 	*head += amount;
 }
 
+static Cstr
+GenTargetString(void)
+{
+	Cstr arch = g_opts.m32 ? "i386" : "x86_64";
+	Cstr os = g_osinfo[g_opts.os].name;
+	
+	int amount = snprintf(NULL, 0, "%s-%s", arch, os);
+	char* str = malloc(amount+1);
+	snprintf(str, amount+1, "%s-%s", arch, os);
+	
+	return str;
+}
+
 static int
 RunCommand(Cstr cmd)
 {
@@ -190,14 +240,14 @@ NeedsRebuild(struct Build_Tu* tu)
 	bool result = true;
 	char path[4096];
 	
-	snprintf(path, sizeof(path), "build/%s.obj", tu->name);
+	snprintf(path, sizeof(path), "build/%s-%s.%s", g_target, tu->name, g_osinfo[g_opts.os].obj);
 	struct __stat64 stat_data;
 	
 	if (_stat64(path, &stat_data) == 0)
 	{
 		uint64_t objtime = stat_data.st_mtime;
 		
-		snprintf(path, sizeof(path), "build/%s.obj.d", tu->name);
+		snprintf(path, sizeof(path), "build/%s-%s.%s.d", g_target, tu->name, g_osinfo[g_opts.os].obj);
 		FILE* file = fopen(path, "rb");
 		
 		if (file)
@@ -351,11 +401,11 @@ CompileTu(struct Build_Tu* tu)
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
 	
-#ifdef __clang__
-	Append(&head, end, " -MMD -MF build/%s.obj.d", tu->name);
+#if defined(__clang__) || defined(__GNUC__)
+	Append(&head, end, " -MMD -MF build/%s-%s.%s.d", g_target, tu->name, g_osinfo[g_opts.os].obj);
 #endif
 	
-	Append(&head, end, " %sbuild/%s.obj", f_output_obj, tu->name);
+	Append(&head, end, " %sbuild/%s-%s.%s", f_output_obj, g_target, tu->name, g_osinfo[g_opts.os].obj);
 	
 	return RunCommand(cmd) == 0;
 }
@@ -379,10 +429,10 @@ CompileExecutable(struct Build_Executable* exec)
 	char* head = cmd;
 	char* end = cmd+sizeof(cmd);
 	
-	Append(&head, end, "%s %sbuild/%s.exe", f_cc, f_output, exec->outname);
+	Append(&head, end, "%s %sbuild/%s-%s.%s", f_cc, f_output, g_target, exec->outname, g_osinfo[g_opts.os].exe);
 	
 	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
-		Append(&head, end, " build/%s.obj", (*tu)->name);
+		Append(&head, end, " build/%s-%s.%s", g_target, (*tu)->name, g_osinfo[g_opts.os].obj);
 	
 	if (g_opts.do_rc)
 		Append(&head, end, " build/windows-resource-file.res");
@@ -391,17 +441,51 @@ CompileExecutable(struct Build_Executable* exec)
 	if (g_opts.lto)
 		Append(&head, end, " %s %s", f_lto, f_optimize[g_opts.optimize]);
 	if (g_opts.tracy)
-		Append(&head, end, " TracyClient.obj");
+		Append(&head, end, " TracyClient.%s", g_osinfo[g_opts.os].obj);
+	if (g_opts.m32)
+		Append(&head, end, " %s", f_m32);
+	else
+		Append(&head, end, " %s", f_m64);
 	
 	Append(&head, end, " %s", f_ldflags);
 	
-	if (exec->is_graphic_program)
+	if (exec->is_graphic_program && g_opts.os == Build_Os_Windows)
 		Append(&head, end, " %s", f_ldflags_graphic);
 	
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
 	
 	return RunCommand(cmd) == 0;
+}
+
+static bool
+CreateBuildDirIfNeeded(void)
+{
+	bool result = false;
+	
+	switch (g_opts.os)
+	{
+		default: break;
+		case Build_Os_Windows: result = !RunCommand("cmd /c if not exist build mkdir build"); break;
+		case Build_Os_Linux: result = !RunCommand("if [ ! -d \"build\" ]; then mkdir build fi"); break;
+	}
+	
+	return result;
+}
+
+static bool
+ValidateFlags(void)
+{
+	bool result = false;
+	
+	if (g_opts.do_rc && g_opts.os != Build_Os_Windows)
+		fprintf(stderr, "[error] cannot use '-rc' if not building for windows.\n");
+	else if (g_opts.hot && g_opts.os != Build_Os_Windows)
+		fprintf(stderr, "[error] hot reloading only available on windows.\n");
+	else
+		result = true;
+	
+	return result;
 }
 
 int
@@ -470,6 +554,25 @@ main(int argc, char** argv)
 			else
 				fprintf(stderr, "[warning] invalid optimization flag '%s'.\n", argv[i]);
 		}
+		else if (strncmp(argv[i], "-os=", 4) == 0)
+		{
+			Cstr osname = argv[i] + 4;
+			enum Build_Os os = 0;
+			
+			for (int i = 1; i < ArrayLength(g_osinfo); ++i)
+			{
+				if (strcmp(osname, g_osinfo[i].name) == 0)
+				{
+					os = i;
+					break;
+				}
+			}
+			
+			if (!os)
+				fprintf(stderr, "[warning] unknown OS '%s'.\n", osname);
+			else
+				g_opts.os = os;
+		}
 		else if (argv[i][0] == '-')
 			fprintf(stderr, "[warning] unknown flag '%s'.\n", argv[i]);
 		else
@@ -492,9 +595,12 @@ main(int argc, char** argv)
 		}
 	}
 	
+	g_target = GenTargetString();
+	
 	bool ok = true;
 	
-	ok = ok && !RunCommand("cmd /c if not exist build mkdir build");
+	ok = ok && ValidateFlags();
+	ok = ok && CreateBuildDirIfNeeded();
 	if (g_opts.do_rc)
 		ok = ok && !RunCommand("llvm-rc windows-resource-file.rc /FO build\\windows-resource-file.res");
 	
