@@ -32,6 +32,9 @@ static E_GlobalData global_engine;
 //~ External
 DisableWarnings();
 
+#define memcpy Mem_Copy
+#define memset Mem_Set
+
 #define STBI_MALLOC(sz) OS_HeapAlloc(sz)
 #define STBI_REALLOC(p,newsz) OS_HeapRealloc(p,newsz)
 #define STBI_FREE(p) OS_HeapFree(p)
@@ -43,6 +46,9 @@ DisableWarnings();
 #define STBTT_malloc(x,u) ((u) ? Arena_PushDirtyAligned(u, x, 16) : OS_HeapAlloc(x))
 #define STBTT_free(x,u) ((u) ? (void)(x) : OS_HeapFree(x))
 #define STBTT_assert Assert
+#define STBTT_strlen Mem_Strlen
+#define STBTT_memcpy Mem_Copy
+#define STBTT_memset Mem_Set
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <ext/stb_truetype.h>

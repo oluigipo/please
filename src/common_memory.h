@@ -378,6 +378,8 @@ Mem_ZeroSafe(void* restrict dst, uintsize size)
 static inline void*
 Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 {
+	Trace();
+	
 	uint8* restrict d = (uint8*)dst;
 	const uint8* restrict s = (const uint8*)src;
 	
@@ -458,6 +460,8 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 static inline void*
 Mem_Move(void* dst, const void* src, uintsize size)
 {
+	Trace();
+	
 	uint8* d = (uint8*)dst;
 	const uint8* s = (const uint8*)src;
 	uintsize diff;
@@ -634,6 +638,8 @@ Mem_Move(void* dst, const void* src, uintsize size)
 static inline void*
 Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 {
+	Trace();
+	
 	uint8* restrict d = (uint8*)dst;
 	uint64 qword;
 	__m128i xmm;
@@ -717,6 +723,8 @@ Mem_Set(void* restrict dst, uint8 byte, uintsize size)
 static inline int32
 Mem_Compare(const void* left_, const void* right_, uintsize size)
 {
+	Trace();
+	
 	const uint8* left = (const uint8*)left_;
 	const uint8* right = (const uint8*)right_;
 	
@@ -767,6 +775,8 @@ Mem_Compare(const void* left_, const void* right_, uintsize size)
 static inline uintsize
 Mem_Strlen(const char* restrict cstr)
 {
+	Trace();
+	
 	const char* begin = cstr;
 	
 	while (*cstr)
@@ -778,6 +788,8 @@ Mem_Strlen(const char* restrict cstr)
 static inline int32
 Mem_Strcmp(const char* left, const char* right)
 {
+	Trace();
+	
 	for (;;)
 	{
 		if (*left != *right)
@@ -792,6 +804,8 @@ Mem_Strcmp(const char* left, const char* right)
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 {
+	Trace();
+	
 	const uint8* buf = (const uint8*)buffer;
 	const uint8* const end = buf + size;
 	
@@ -838,6 +852,8 @@ Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 static inline void*
 Mem_Zero(void* restrict dst, uintsize size)
 {
+	Trace();
+	
 	uint8* restrict d = (uint8*)dst;
 	__m128 mzero = _mm_setzero_ps();
 	
@@ -924,35 +940,35 @@ Mem_Zero(void* restrict dst, uintsize size)
 
 static inline void*
 Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
-{ return memcpy(dst, src, size); }
+{ Trace(); return memcpy(dst, src, size); }
 
 static inline void*
 Mem_Move(void* dst, const void* src, uintsize size)
-{ return memmove(dst, src, size); }
+{ Trace(); return memmove(dst, src, size); }
 
 static inline void*
 Mem_Set(void* restrict dst, uint8 byte, uintsize size)
-{ return memset(dst, byte, size); }
+{ Trace(); return memset(dst, byte, size); }
 
 static inline int32
 Mem_Compare(const void* left_, const void* right_, uintsize size)
-{ return memcmp(left_, right_, size); }
+{ Trace(); return memcmp(left_, right_, size); }
 
 static inline uintsize
 Mem_Strlen(const char* restrict cstr)
-{ return strlen(cstr); }
+{ Trace(); return strlen(cstr); }
 
 static inline int32
 Mem_Strcmp(const char* left, const char* right)
-{ return strcmp(left, right); }
+{ Trace(); return strcmp(left, right); }
 
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
-{ return memchr(buffer, byte, size); }
+{ Trace(); return memchr(buffer, byte, size); }
 
 static inline void*
 Mem_Zero(void* restrict dst, uintsize size)
-{ return memset(dst, 0, size); }
+{ Trace(); return memset(dst, 0, size); }
 
 #endif
 
