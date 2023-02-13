@@ -366,7 +366,7 @@ CompileShader(struct Build_Shader* shader)
 		if (_stat64(path, &stat_data) == 0)
 		{
 			uint64_t src_time = stat_data.st_mtime;
-			snprintf(path, sizeof(path), "include/%s", shader->output);
+			snprintf(path, sizeof(path), "include/%s_ps.inc", shader->output);
 			
 			if (_stat64(path, &stat_data) == 0)
 			{

@@ -1,6 +1,4 @@
 
-#define E_RENDER_ENABLE_SDF_GLYPHS
-
 uint8 typedef BYTE;
 
 #include <d3d11_shader_quad_vs.inc>
@@ -571,12 +569,12 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			stbtt_GetGlyphHMetrics(stb_fontinfo, glyph_font_index, &advance, &bearing);
 			stbtt_GetGlyphBitmapBox(stb_fontinfo, glyph_font_index, char_scale, char_scale, &x1, &y1, &x2, &y2);
 			
-#ifdef E_RENDER_ENABLE_SDF_GLYPHS
+			// NOTE(ljre): Extra padding -- giving more space to the SDF
 			x1 -= 4;
 			y1 -= 4;
 			x2 += 4;
 			y2 += 4;
-#endif
+			
 			int32 width = x2 - x1 + 1;
 			int32 height = y2 - y1 + 1;
 			
@@ -608,12 +606,9 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			uint8* base_ptr = bitmap + (x + y * tex_size);
 			int32 stride = tex_size;
 			
+			// NOTE(ljre): stbtt_GetGlyphSDF will alloc in the scratch arena.
 			for Arena_TempScope(global_engine.scratch_arena)
 			{
-#ifndef E_RENDER_ENABLE_SDF_GLYPHS
-				Trace(); TraceName(Str("stbtt_MakeGlyphBitmap"));
-				stbtt_MakeGlyphBitmap(stb_fontinfo, base_ptr, glyph->width, glyph->height, stride, char_scale, char_scale, glyph_font_index);
-#else
 				int32 xoff, yoff, w, h;
 				uint8* sdf;
 				
@@ -628,7 +623,6 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				
 				for (intsize y = 0; y < height-1; ++y)
 					Mem_Copy(base_ptr + y * stride, sdf + y * w, width-1);
-#endif
 			}
 		}
 	}
@@ -836,12 +830,6 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 		float32 x = curr_x + (float32)(glyph->xoff + glyph->bearing * font->char_scale) * scale[0];
 		float32 y = curr_y + (float32)(glyph->yoff + font->ascent * font->char_scale) * scale[1];
 		
-#ifdef E_RENDER_ENABLE_SDF_GLYPHS
-		float32 tex_kind = 4;
-#else
-		float32 tex_kind = 1;
-#endif
-		
 		++batch->count;
 		Arena_PushStructInit(arena, E_RectBatchElem, {
 			.pos = { x, y, },
@@ -850,7 +838,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = texindex,
-			.tex_kind = tex_kind,
+			.tex_kind = 4,
 			.texcoords = {
 				(float32)glyph->x * inv_bitmap_size,
 				(float32)glyph->y * inv_bitmap_size,
