@@ -6,6 +6,7 @@
 
 #ifdef CONFIG_ENABLE_EMBED
 IncludeBinary(g_music_ogg, "music.ogg");
+IncludeBinary(g_luigi_ogg, "luigi.ogg");
 IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
 IncludeBinary(g_corset_model, "assets/corset.glb");
 #endif
@@ -35,6 +36,7 @@ struct G_GlobalData
 	URng_State rng;
 	
 	E_SoundHandle music;
+	E_SoundHandle sound_luigi;
 	
 	union
 	{
@@ -98,6 +100,16 @@ G_Init(void)
 			SafeAssert(E_LoadSound(ogg, &game->music, NULL));
 			SafeAssert(E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL));
 		}
+		
+#ifdef CONFIG_ENABLE_EMBED
+		ogg = BufRange(g_luigi_ogg_begin, g_luigi_ogg_end);
+		ok = true;
+#else
+		ok = OS_ReadEntireFile(Str("luigi.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+#endif
+		
+		if (ok)
+			SafeAssert(E_LoadSound(ogg, &game->sound_luigi, NULL));
 	}
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
@@ -161,6 +173,9 @@ G_UpdateAndRender(void)
 	
 	if (engine->window_state->should_close || OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
+	
+	if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Space) && E_IsValidSoundHandle(game->sound_luigi))
+		E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL);
 	
 	E_DrawClear(0.2f, 0.0f, 0.4f, 1.0f);
 	

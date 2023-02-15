@@ -525,7 +525,6 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 	
 	bool ok = true;
 	
-	if (desc->flags & OS_InitFlags_WindowAndGraphics)
 	{
 		bool created_window = false;
 		
@@ -560,7 +559,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		ok = ok && created_window;
 	}
 	
-	if (desc->flags & OS_InitFlags_WorkerThreads)
+	if (desc->workerthreads_count > 0)
 	{
 		SafeAssert(desc->workerthreads_count < 16);
 		SafeAssert(desc->workerthreads_proc);
@@ -585,7 +584,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		
 		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if ((desc->flags & OS_InitFlags_AudioThread) && !Win32_InitAudio(desc->audiothread_proc, desc->audiothread_user_data))
+		if (desc->audiothread_proc && !Win32_InitAudio(desc->audiothread_proc, desc->audiothread_user_data))
 			OS_DebugLog("Failed to initialize audio.");
 		
 		ok = ok && Win32_InitInput();
@@ -601,11 +600,8 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 			out_output->audiothread_sample_rate = global_samples_per_second;
 			out_output->audiothread_channels = global_channels;
 			
-			if (desc->flags & OS_InitFlags_WindowAndGraphics)
-			{
-				out_output->graphics_context = &global_graphics_context;
-				ShowWindow(global_window, SW_SHOWDEFAULT);
-			}
+			out_output->graphics_context = &global_graphics_context;
+			ShowWindow(global_window, SW_SHOWDEFAULT);
 		}
 	}
 	

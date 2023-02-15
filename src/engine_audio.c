@@ -209,7 +209,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 			goto lbl_remove;
 		}
 		
-		E_LoadedSound_* sound = &audio->loaded_sounds[audio->loaded_sounds_table[playing->sound.index].index];
+		E_LoadedSound_* sound = &audio->loaded_sounds[audio->loaded_sounds_table[playing->sound.index-1].index];
 		float32 scale = (float32)sound->sample_rate / flt_sample_rate;
 		temp_channels = Min(working_channels, sound->channels);
 		

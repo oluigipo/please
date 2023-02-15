@@ -67,6 +67,7 @@ typedef OS_ButtonState;
 
 static_assert(sizeof(OS_ButtonState) == 1);
 
+// TODO(ljre): Properly support buffered sequence of inputs.
 enum OS_KeyboardKey
 {
 	OS_KeyboardKey_Any = 0,
@@ -213,7 +214,7 @@ OS_ConnectedGamepadsIndices(const OS_InputState* input, int32 out_indices[OS_Lim
 	uint64 bits = input->connected_gamepads;
 	int32 count = 0;
 	
-	while (bits)
+	while (bits && count < OS_Limits_MaxGamepadCount)
 	{
 		out_indices[count++] = Mem_BitCtz64(bits);
 		bits &= bits-1;
@@ -225,13 +226,13 @@ OS_ConnectedGamepadsIndices(const OS_InputState* input, int32 out_indices[OS_Lim
 //~ Window State
 struct OS_WindowState
 {
-	bool should_close;
-	bool resized_by_user;
+	bool should_close : 1;
+	bool resized_by_user : 1;
 	
-	bool show_cursor;
-	bool lock_cursor;
-	bool center_window;
-	bool fullscreen;
+	bool show_cursor : 1;
+	bool lock_cursor : 1;
+	bool center_window : 1;
+	bool fullscreen : 1;
 	
 	int32 x, y, width, height;
 	uint8 title[OS_Limits_MaxWindowTitleLength];
@@ -239,33 +240,21 @@ struct OS_WindowState
 typedef OS_WindowState;
 
 //~ Init
-enum OS_InitFlags
-{
-	OS_InitFlags_Null = 0,
-	
-	OS_InitFlags_WindowAndGraphics = 1,
-	OS_InitFlags_AudioThread = 2,
-	OS_InitFlags_WorkerThreads = 4,
-}
-typedef OS_InitFlags;
-
 void typedef OS_ThreadProc(void* arg);
 void typedef OS_AudioThreadProc(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
 
 struct OS_InitDesc
 {
-	OS_InitFlags flags;
-	
-	// OS_InitFlags_WindowAndGraphics
+	// Window & Graphcis
 	OS_WindowState window_initial_state;
 	OS_WindowGraphicsApi window_desired_api;
 	
-	// OS_InitFlags_WorkerThreads
+	// Worker threads
 	int32 workerthreads_count;
 	void** workerthreads_args;
 	OS_ThreadProc* workerthreads_proc;
 	
-	// OS_InitFlags_AudioThread
+	// Audio thread
 	OS_AudioThreadProc* audiothread_proc;
 	void* audiothread_user_data;
 }

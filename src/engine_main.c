@@ -47,8 +47,6 @@ OS_UserMain(const OS_UserMainArgs* args)
 	window_state.center_window = true;
 	
 	OS_InitDesc init_desc = {
-		.flags = OS_InitFlags_WindowAndGraphics | OS_InitFlags_WorkerThreads | OS_InitFlags_AudioThread,
-		
 		.window_initial_state = window_state,
 		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
 		
@@ -70,10 +68,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		else if (!Mem_Strcmp(argv[i], "-d3d11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
 		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
-		{
-			init_desc.flags &= ~OS_InitFlags_WorkerThreads;
 			init_desc.workerthreads_count = 0;
-		}
 	}
 	
 	// NOTE(ljre): Init basic stuff
@@ -148,7 +143,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 	*global_engine.window_state = output.window_state;
 	*global_engine.input = output.input_state;
 	global_engine.graphics_context = output.graphics_context;
-	global_engine.multithreaded = (init_desc.flags & OS_InitFlags_WorkerThreads);
+	global_engine.worker_thread_count = init_desc.workerthreads_count;
 	
 	OS_PollEvents(global_engine.window_state, global_engine.input);
 	

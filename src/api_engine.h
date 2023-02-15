@@ -60,12 +60,12 @@ struct E_GlobalData
 	float64 last_frame_time;
 	
 	bool running : 1;
-	bool multithreaded : 1;
 	
 	// NOTE(ljre): Convenience lock for mutating global engine data. Should only be used if the main thread is
 	//             currently waiting and individual worker threads needs to access global resources.
 	OS_RWLock mt_lock;
 	
+	intsize worker_thread_count;
 	E_ThreadWorkQueue* thread_work_queue;
 	E_ThreadCtx worker_threads[E_Limits_MaxWorkerThreadCount];
 };
