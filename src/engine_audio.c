@@ -194,10 +194,22 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	
 	//- Working buffer
 	float32* working_samples = Arena_PushAligned(audio->arena, sizeof(float32)*sample_count, 16);
-	float32* temp_samples = Arena_PushDirtyAligned(audio->arena, sizeof(float32)*sample_count*2, 16);
 	int32 working_channels = channels;
-	int32 temp_channels;
+	int32 working_sample_count = sample_count;
 	
+	struct ThingToMix
+	{
+		float32* samples;
+		int32 channels;
+		int32 frame_count;
+		float32 scale;
+		float32 volume;
+	};
+	
+	struct ThingToMix things_to_mix[E_Limits_MaxPlayingSounds] = { 0 };
+	int32 things_to_mix_count = 0;
+	
+	//- Figure out what we need to mix
 	OS_LockExclusive(&audio->lock);
 	for (int32 i = 0; i < audio->playing_sounds_size;)
 	{
@@ -211,7 +223,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 		
 		E_LoadedSound_* sound = &audio->loaded_sounds[audio->loaded_sounds_table[playing->sound.index-1].index];
 		float32 scale = (float32)sound->sample_rate / flt_sample_rate;
-		temp_channels = Min(working_channels, sound->channels);
+		int32 temp_channels = Min(working_channels, sound->channels);
 		
 		int32 current_unscaled_frame = (int32)floorf(playing->current_scaled_frame * scale);
 		playing->current_scaled_frame += sample_count / working_channels;
@@ -221,34 +233,24 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 			stb_vorbis_seek(sound->vorbis, current_unscaled_frame);
 		}
 		
-		Mem_Zero(temp_samples, sizeof(float32)*sample_count);
+		int32 sample_count = (int32)ceilf((float32)working_sample_count * scale);
+		float32* samples = Arena_PushAligned(audio->arena, sizeof(float32)*sample_count, 16);
+		
 		int32 frame_count;
 		
 		{
 			Trace(); TraceName(Str("stb_vorbis_get_samples_float_interleaved"));
-			frame_count = stb_vorbis_get_samples_float_interleaved(sound->vorbis, temp_channels, temp_samples, (int32)floorf((float32)sample_count * scale));
+			frame_count = stb_vorbis_get_samples_float_interleaved(sound->vorbis, temp_channels, samples, sample_count);
 		}
 		
 		frame_count = (int32)ceilf((float32)frame_count / scale);
 		
-		//- Mix
-		for (int32 frame_index = 0; frame_index < frame_count; ++frame_index)
-		{
-			float32 index_to_use = (float32)frame_index * scale;
-			
-			for (int32 channel_index = 0; channel_index < working_channels; ++channel_index)
-			{
-				int32 ch = Min(channel_index, temp_channels-1);
-				int32 ind = (int32)index_to_use;
-				
-				float32 sample_a = temp_samples[(ind+0)*temp_channels + ch];
-				float32 sample_b = temp_samples[(ind+1)*temp_channels + ch];
-				float32 t = index_to_use - floorf(index_to_use);
-				float32 sample = glm_lerp(sample_a, sample_b, t) * playing->volume;
-				
-				working_samples[frame_index*working_channels + channel_index] += sample;
-			}
-		}
+		struct ThingToMix* thing = &things_to_mix[things_to_mix_count++];
+		thing->samples = samples;
+		thing->channels = temp_channels;
+		thing->frame_count = frame_count;
+		thing->scale = scale;
+		thing->volume = playing->volume;
 		
 		if (playing->current_scaled_frame * scale >= sound->sample_count * sound->channels)
 		{
@@ -265,6 +267,32 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 			++i;
 	}
 	OS_UnlockExclusive(&audio->lock);
+	
+	//- Actual mixing
+	for (int32 i = 0; i < things_to_mix_count; ++i)
+	{
+		struct ThingToMix* thing = &things_to_mix[i];
+		Trace(); TraceName(Str("Actual Mixing"));
+		
+		// TODO(ljre): Vectorize this loop just ~~to learn~~for the meme? :kekw
+		for (int32 frame_index = 0; frame_index < thing->frame_count; ++frame_index)
+		{
+			float32 index_to_use = (float32)frame_index * thing->scale;
+			
+			for (int32 channel_index = 0; channel_index < working_channels; ++channel_index)
+			{
+				int32 ch = Min(channel_index, thing->channels-1);
+				int32 ind = (int32)index_to_use;
+				
+				float32 sample_a = thing->samples[(ind+0)*thing->channels + ch];
+				float32 sample_b = thing->samples[(ind+1)*thing->channels + ch];
+				float32 t = index_to_use - floorf(index_to_use);
+				float32 sample = glm_lerp(sample_a, sample_b, t) * thing->volume;
+				
+				working_samples[frame_index*working_channels + channel_index] += sample;
+			}
+		}
+	}
 	
 	//- Cast samples to int16 with saturation.
 	int32 head = 0;
