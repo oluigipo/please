@@ -67,10 +67,12 @@ static const String RB_resource_cmd_names[] = {
 	[RB_ResourceCommandKind_MakeRenderTarget] = StrInit("RB_ResourceCommandKind_MakeRenderTarget"),
 	[RB_ResourceCommandKind_MakeBlendState] = StrInit("RB_ResourceCommandKind_MakeBlendState"),
 	[RB_ResourceCommandKind_MakeRasterizerState] = StrInit("RB_ResourceCommandKind_MakeRasterizerState"),
+	//
 	[RB_ResourceCommandKind_UpdateVertexBuffer] = StrInit("RB_ResourceCommandKind_UpdateVertexBuffer"),
 	[RB_ResourceCommandKind_UpdateIndexBuffer] = StrInit("RB_ResourceCommandKind_UpdateIndexBuffer"),
 	[RB_ResourceCommandKind_UpdateUniformBuffer] = StrInit("RB_ResourceCommandKind_UpdateUniformBuffer"),
 	[RB_ResourceCommandKind_UpdateTexture2D] = StrInit("RB_ResourceCommandKind_UpdateTexture2D"),
+	//
 	[RB_ResourceCommandKind_FreeTexture2D] = StrInit("RB_ResourceCommandKind_FreeTexture2D"),
 	[RB_ResourceCommandKind_FreeVertexBuffer] = StrInit("RB_ResourceCommandKind_FreeVertexBuffer"),
 	[RB_ResourceCommandKind_FreeIndexBuffer] = StrInit("RB_ResourceCommandKind_FreeIndexBuffer"),
@@ -97,6 +99,10 @@ static const String RB_draw_cmd_names[] = {
 #   include "api_os_d3d11.h"
 #   include "renderbackend_d3d11.c"
 #endif
+#ifdef CONFIG_ENABLE_D3D9C
+#   include "api_os_d3d9c.h"
+#   include "renderbackend_d3d9c.c"
+#endif
 
 API void
 RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context)
@@ -113,6 +119,9 @@ RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context)
 #endif
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_InitD3d11_(scratch_arena); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: RB_InitD3d9c_(scratch_arena); break;
 #endif
 		default: break;
 	}
@@ -133,6 +142,9 @@ RB_Deinit(Arena* scratch_arena)
 #endif
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_DeinitD3d11_(scratch_arena); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: RB_DeinitD3d9c_(scratch_arena); break;
 #endif
 		default: break;
 	}
@@ -167,6 +179,9 @@ RB_QueryCapabilities(RB_Capabilities* out_capabilities)
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_CapabilitiesD3d11_(out_capabilities); break;
 #endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: RB_CapabilitiesD3d9c_(out_capabilities); break;
+#endif
 		default: break;
 	}
 }
@@ -187,6 +202,9 @@ RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands)
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_ResourceD3d11_(scratch_arena, commands); break;
 #endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: RB_ResourceD3d9c_(scratch_arena, commands); break;
+#endif
 		default: break;
 	}
 }
@@ -206,6 +224,9 @@ RB_ExecuteDrawCommands(Arena* scratch_arena, RB_DrawCommand* commands, int32 def
 #endif
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_DrawD3d11_(scratch_arena, commands, default_width, default_height); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: RB_DrawD3d9c_(scratch_arena, commands, default_width, default_height); break;
 #endif
 		default: break;
 	}

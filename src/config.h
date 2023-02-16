@@ -22,6 +22,7 @@
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
 #   define CONFIG_ENABLE_D3D11
+#   define CONFIG_ENABLE_D3D9C
 #   ifdef _WIN64
 #       define COMMON_DONT_USE_CRT
 #   endif

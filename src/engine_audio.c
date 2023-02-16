@@ -130,6 +130,10 @@ E_DeallocPlayingSoundHandle_(E_AudioState* audio, E_PlayingSoundHandle handle)
 	audio->playing_sounds_table_first_free = ref_index;
 }
 
+static bool
+E_IsSameSoundHandle_(E_SoundHandle left, E_SoundHandle right)
+{ return left.generation == right.generation && left.index == right.index; }
+
 //~ Internal API
 static void
 E_InitAudio_(const OS_InitOutput* init_output)
@@ -225,7 +229,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 		float32 scale = (float32)sound->sample_rate / flt_sample_rate;
 		int32 temp_channels = Min(working_channels, sound->channels);
 		
-		int32 current_unscaled_frame = (int32)floorf(playing->current_scaled_frame * scale);
+		int32 current_unscaled_frame = (int32)(playing->current_scaled_frame * scale);
 		playing->current_scaled_frame += sample_count / working_channels;
 		
 		{
@@ -286,7 +290,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 				
 				float32 sample_a = thing->samples[(ind+0)*thing->channels + ch];
 				float32 sample_b = thing->samples[(ind+1)*thing->channels + ch];
-				float32 t = index_to_use - floorf(index_to_use);
+				float32 t = index_to_use - (int32)(index_to_use);
 				float32 sample = glm_lerp(sample_a, sample_b, t) * thing->volume;
 				
 				working_samples[frame_index*working_channels + channel_index] += sample;
@@ -299,6 +303,9 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	__m128 mul = _mm_set1_ps(INT16_MAX);
 	mul = _mm_mul_ps(mul, _mm_set1_ps(default_master_volume));
 	
+#ifdef __clang__
+#   pragma clang loop unroll(disable)
+#endif
 	for (; head+8 <= sample_count; head += 8)
 	{
 		__m128i low_half  = _mm_cvtps_epi32(_mm_mul_ps(_mm_load_ps(&working_samples[head+0]), mul));
@@ -308,6 +315,9 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 		_mm_storeu_si128((__m128i*)&out_buffer[head], packed);
 	}
 	
+#ifdef __clang__
+#   pragma clang loop unroll(disable)
+#endif
 	for (; head+1 <= sample_count; head += 1)
 	{
 		float32 sample = working_samples[head] * _mm_cvtss_f32(mul);
@@ -549,9 +559,12 @@ E_StopAllSounds(E_SoundHandle* specific)
 	
 	for (int32 i = 0; i < audio->playing_sounds_size; ++i)
 	{
-		E_DeallocPlayingSoundHandle_(audio, (E_PlayingSoundHandle) {
-			.index = (uint16)(audio->playing_sounds[i].ref_index + 1),
-		});
+		if (!specific || E_IsSameSoundHandle_(*specific, audio->playing_sounds[i].sound))
+		{
+			E_DeallocPlayingSoundHandle_(audio, (E_PlayingSoundHandle) {
+				.index = (uint16)(audio->playing_sounds[i].ref_index + 1),
+			});
+		}
 	}
 	
 	audio->playing_sounds_size = 0;

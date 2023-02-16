@@ -38,6 +38,8 @@ static IDXGIInfoQueue* global_direct3d_info_queue;
 static void
 Win32_DestroyD3d11Window(void)
 {
+	Trace();
+	
 	if (global_direct3d.context)
 		ID3D11DeviceContext_Release(global_direct3d.context);
 	if (global_direct3d.swapchain)
@@ -51,6 +53,8 @@ Win32_DestroyD3d11Window(void)
 static bool
 Win32_D3d11SwapBuffers(int32 vsync_count)
 {
+	Trace();
+	
 	int32 to_d3d11 = Min(vsync_count, 0);
 	IDXGISwapChain_Present(global_direct3d.swapchain, 0, 0);
 	bool ok = true;
@@ -108,14 +112,12 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		config->width, config->height,
 		NULL, NULL, global_instance, NULL);
 	
-	SafeAssert(window);
 	if (!window)
 		return false;
 	
 	HDC hdc = NULL;//GetDC(window);
 	
 	HMODULE library = Win32_LoadLibrary("d3d11.dll");
-	SafeAssert(library);
 	if (!library)
 	{
 		DestroyWindow(window);
@@ -123,7 +125,6 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	}
 	
 	D3D11CreateDeviceAndSwapChain = (void*)GetProcAddress(library, "D3D11CreateDeviceAndSwapChain");
-	SafeAssert(D3D11CreateDeviceAndSwapChain);
 	if (!D3D11CreateDeviceAndSwapChain)
 	{
 		DestroyWindow(window);
@@ -168,8 +169,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
 		D3D_FEATURE_LEVEL_9_3,
-		D3D_FEATURE_LEVEL_9_2,
-		D3D_FEATURE_LEVEL_9_1,
+		//D3D_FEATURE_LEVEL_9_2,
+		//D3D_FEATURE_LEVEL_9_1,
 	};
 #else
 	D3D_FEATURE_LEVEL feature_levels[] = {
@@ -177,8 +178,8 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
 		D3D_FEATURE_LEVEL_9_3,
-		D3D_FEATURE_LEVEL_9_2,
-		D3D_FEATURE_LEVEL_9_1,
+		//D3D_FEATURE_LEVEL_9_2,
+		//D3D_FEATURE_LEVEL_9_1,
 	};
 #endif
 	
@@ -190,7 +191,6 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 		&global_direct3d.device,
 		NULL,
 		&global_direct3d.context);
-	SafeAssert(SUCCEEDED(hr));
 	if (FAILED(hr))
 	{
 		DestroyWindow(window);

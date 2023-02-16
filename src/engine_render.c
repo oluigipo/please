@@ -898,3 +898,67 @@ E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_w
 	
 	return true;
 }
+
+API void
+E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size)
+{
+	Trace();
+	vec2 size = { 0 };
+	
+	float32 scale_x = font->char_scale * scale[0];
+	float32 scale_y = font->char_scale * scale[1];
+	
+	float32 curr_x = 0.0f;
+	float32 curr_y = 0.0f;
+	
+	float32 max_x = 0.0f;
+	
+	int32 index = 0;
+	uint32 codepoint;
+	while (codepoint = String_Decode(text, &index), codepoint)
+	{
+		if (codepoint == ' ')
+		{
+			curr_x += (float32)font->space_advance * scale_x;
+			continue;
+		}
+		
+		if (codepoint == '\n')
+		{
+			max_x = glm_max(max_x, curr_x);
+			curr_x = 0.0f;
+			curr_y += (float32)(font->ascent - font->descent + font->line_gap) * scale_y;
+			continue;
+		}
+		
+		if (codepoint <= 32)
+			continue;
+		
+		// Hashmap find
+		uint64 hash = Hash_IntHash64(codepoint);
+		int32 index = (int32)hash;
+		E_FontGlyphEntry* glyph = NULL;
+		
+		for (;;)
+		{
+			index = Hash_Msi(font->glyphmap_log2cap, hash, index);
+			glyph = &font->glyphmap[index];
+			
+			if (!glyph->codepoint)
+			{
+				glyph = &font->invalid_glyph;
+				break;
+			}
+			
+			if (glyph->codepoint == codepoint)
+				break;
+		}
+		
+		curr_x += (float32)glyph->advance * scale_x;
+	}
+	
+	size[0] = glm_max(max_x, curr_x);
+	size[1] = curr_y + (float32)(font->ascent - font->descent + font->line_gap) * scale_y;
+	
+	glm_vec2_copy(size, *out_size);
+}

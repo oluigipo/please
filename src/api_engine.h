@@ -205,6 +205,7 @@ API void E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* la
 API void E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last);
 
 API bool E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_width, int32* out_height);
+API void E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size);
 
 //- Worker Thread API
 void typedef E_ThreadWorkProc(E_ThreadCtx* ctx, void* data);

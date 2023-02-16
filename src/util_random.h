@@ -10,9 +10,16 @@ struct URng_State
 }
 typedef URng_State;
 
+static void    URng_Init(URng_State* state, uint64 seed);
+static uint64  URng_UInt64(URng_State* state);
+static float64 URng_Float64(URng_State* state);
+static float32 URng_Float32Range(URng_State* state, float32 start, float32 end);
+static int32   URng_Int32Range(URng_State* state, int32 start, int32 end);
+static uint32  URng_UInt32(URng_State* state);
+
 //~ Functions
 static inline uint64
-BitRotateLeft(const uint64 x, int32 k)
+URng_BitRotateLeft_(const uint64 x, int32 k)
 {
 	return (x << k) | (x >> (64 - k));
 }
@@ -24,11 +31,11 @@ URng_UInt64(URng_State* state)
 {
 	const uint64 s0 = state->seed[0];
 	uint64 s1 = state->seed[1];
-	const uint64 result = BitRotateLeft(s0 + s1, 17) + s0;
+	const uint64 result = URng_BitRotateLeft_(s0 + s1, 17) + s0;
 	
 	s1 ^= s0;
-	state->seed[0] = BitRotateLeft(s0, 49) ^ s1 ^ (s1 << 21); // a, b
-	state->seed[1] = BitRotateLeft(s1, 28); // c
+	state->seed[0] = URng_BitRotateLeft_(s0, 49) ^ s1 ^ (s1 << 21); // a, b
+	state->seed[1] = URng_BitRotateLeft_(s1, 28); // c
 	
 	return result;
 }

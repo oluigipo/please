@@ -3,6 +3,7 @@
 #include "util_random.h"
 #include "util_json.h"
 #include "util_gltf.h"
+#include "util_debugui.h"
 
 #ifdef CONFIG_ENABLE_EMBED
 IncludeBinary(g_music_ogg, "music.ogg");
@@ -246,6 +247,23 @@ G_UpdateAndRender(void)
 				game->state = G_GlobalState_Stress;
 			if (G_MenuButton(&batch, &ui_y, Str("Quit")))
 				engine->running = false;
+			
+			UDebugUI_State debugui = UDebugUI_Begin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(0.5f, 0.5f));
+			
+			static bool unfolded = false;
+			if (UDebugUI_PushFoldable(&debugui, Str("Foldable"), &unfolded))
+			{
+				if (UDebugUI_PushButton(&debugui, Str("Close")))
+					engine->running = false;
+				
+				float32 t = fmodf((float32)OS_GetTimeInSeconds(), 1.0f);
+				UDebugUI_PushTextF(&debugui, "Progress bar: %.2f%%", t*100.0f);
+				UDebugUI_PushProgressBar(&debugui, 200.0f, t, vec3(0.0f, 0.8f, 0.0f));
+				
+				UDebugUI_PopFoldable(&debugui);
+			}
+			
+			UDebugUI_End(&debugui);
 			
 			E_DrawRectBatch(&batch, NULL);
 		} break;

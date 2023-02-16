@@ -37,11 +37,13 @@ enum OS_WindowGraphicsApi
 	
 	OS_WindowGraphicsApi_OpenGL,
 	OS_WindowGraphicsApi_Direct3D11,
+	OS_WindowGraphicsApi_Direct3D9c,
 }
 typedef OS_WindowGraphicsApi;
 
 struct OS_OpenGlApi typedef OS_OpenGlApi;
 struct OS_D3d11Api typedef OS_D3d11Api;
+struct OS_D3d9cApi typedef OS_D3d9cApi;
 
 struct OS_WindowGraphicsContext
 {
@@ -51,6 +53,7 @@ struct OS_WindowGraphicsContext
 	{
 		const OS_OpenGlApi* opengl;
 		const OS_D3d11Api* d3d11;
+		const OS_D3d9cApi* d3d9c;
 	};
 	
 	bool (*present_and_vsync)(int32 vsync_count);

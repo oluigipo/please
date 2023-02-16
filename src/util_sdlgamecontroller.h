@@ -54,6 +54,9 @@ struct USdldb_Controller
 }
 typedef USdldb_Controller;
 
+static bool USdldb_ParseEntry(String line, USdldb_Controller* out_controller, String* out_platform);
+
+//- Implementation
 static USdldb_Object
 USdldb_FindObjectFromName_(String name)
 {

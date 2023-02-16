@@ -226,6 +226,13 @@ static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t*
 { return false; }
 #endif
 
+#ifdef CONFIG_ENABLE_D3D9C
+#   include "os_win32_d3d9c.c"
+#else
+static bool Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
+{ return false; }
+#endif
+
 //~ NOTE(ljre): Functions
 static LRESULT CALLBACK
 WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
@@ -489,6 +496,20 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		}
 	}
 	
+	switch (global_graphics_context.api)
+	{
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: Win32_DestroyOpenGLWindow(); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D11
+		case OS_WindowGraphicsApi_Direct3D11: Win32_DestroyD3d11Window(); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D9C
+		case OS_WindowGraphicsApi_Direct3D9c: Win32_DestroyD3d9cWindow(); break;
+#endif
+		default: break;
+	}
+	
 	//TraceDeinit();
 	//ExitProcess(result);
 	
@@ -548,12 +569,15 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 				
 				case OS_WindowGraphicsApi_OpenGL: created_window = Win32_CreateOpenGLWindow(&config, window_name); break;
 				case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&config, window_name); break;
+				case OS_WindowGraphicsApi_Direct3D9c: created_window = Win32_CreateD3d9cWindow(&config, window_name); break;
 			}
 			
 			if (!created_window)
 				created_window = Win32_CreateD3d11Window(&config, window_name);
 			if (!created_window)
 				created_window = Win32_CreateOpenGLWindow(&config, window_name);
+			if (!created_window)
+				created_window = Win32_CreateD3d9cWindow(&config, window_name);
 		}
 		
 		ok = ok && created_window;
