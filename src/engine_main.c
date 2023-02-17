@@ -48,6 +48,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 	
 	OS_InitDesc init_desc = {
 		.window_initial_state = window_state,
+		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
+		//.window_desired_api = OS_WindowGraphicsApi_Direct3D11,
 		//.window_desired_api = OS_WindowGraphicsApi_Direct3D9c,
 		
 		.workerthreads_count = Min(E_Limits_MaxWorkerThreadCount, args->cpu_core_count/2),

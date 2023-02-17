@@ -213,6 +213,7 @@ G_Scene3DInit(void)
 			.buffer = {
 				.memory = ibuffer_data,
 				.size = ibuffer_size,
+				.index_type = s->tree_model_index_type,
 			},
 		});
 		
@@ -348,7 +349,6 @@ G_Scene3DUpdateAndRender(void)
 					sizeof(float32)*3,
 				},
 				
-				.index_type = s->tree_model_index_type,
 				.index_count = s->tree_model_index_count,
 				.instance_count = 1,
 				

@@ -93,6 +93,13 @@ enum RB_CullMode
 }
 typedef RB_CullMode;
 
+enum RB_IndexType
+{
+	RB_IndexType_Uint32 = 0,
+	RB_IndexType_Uint16, // apparently gltf needs this
+}
+typedef RB_IndexType;
+
 enum RB_ResourceCommandKind
 {
 	RB_ResourceCommandKind_Null = 0,
@@ -152,6 +159,7 @@ struct RB_ResourceCommand
 		{
 			Buffer d3d_vs_blob, d3d_ps_blob;
 			String gl_vs_src, gl_fs_src;
+			Buffer d3d9c_vs_blob, d3d9c_ps_blob;
 			
 			RB_LayoutDesc input_layout[RB_Limits_InputsPerShader];
 		}
@@ -164,6 +172,9 @@ struct RB_ResourceCommand
 			
 			// used if 'flag_subregion' is set and not on init.
 			uintsize offset;
+			
+			// used if on 'RB_ResourceCommandKind_MakeIndexBuffer'.
+			RB_IndexType index_type;
 		}
 		buffer;
 		
@@ -205,14 +216,6 @@ struct RB_SamplerDesc
 	RB_Handle* handle;
 }
 typedef RB_SamplerDesc;
-
-enum RB_IndexType
-{
-	RB_IndexType_Uint32 = 0,
-	RB_IndexType_Uint16, // apparently gltf needs this
-	//RB_IndexType_Uint8, // but now this?????
-}
-typedef RB_IndexType;
 
 enum RB_DrawCommandKind
 {
@@ -260,7 +263,6 @@ struct RB_DrawCommand
 			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
 			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
 			
-			RB_IndexType index_type;
 			uint32 index_count;
 			uint32 instance_count;
 			

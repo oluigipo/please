@@ -37,6 +37,7 @@ typedef RB_D3d11Shader_;
 struct RB_D3d11Buffer_
 {
 	ID3D11Buffer* buffer;
+	DXGI_FORMAT index_type; // only if index buffer
 }
 typedef RB_D3d11Buffer_;
 
@@ -297,6 +298,16 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				RB_D3d11Buffer_* pool_data = RB_PoolAlloc_(&g_d3d11_bufferpool, &handle.id);
 				pool_data->buffer = buffer;
+				
+				if (cmd->kind == RB_ResourceCommandKind_MakeIndexBuffer)
+				{
+					switch (cmd->buffer.index_type)
+					{
+						default: SafeAssert(false); break;
+						case RB_IndexType_Uint16: pool_data->index_type = DXGI_FORMAT_R16_UINT; break;
+						case RB_IndexType_Uint32: pool_data->index_type = DXGI_FORMAT_R32_UINT; break;
+					}
+				}
 			} break;
 			
 			case RB_ResourceCommandKind_MakeShader:
@@ -766,7 +777,7 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				SafeAssert(cmd->drawcall.ibuffer && cmd->drawcall.ibuffer->id);
 				RB_D3d11Buffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.ibuffer->id);
 				
-				ID3D11Buffer* ibuffer = ibuffer_pool_data->buffer;;
+				ID3D11Buffer* ibuffer = ibuffer_pool_data->buffer;
 				
 				uint32 vbuffer_count = 0;
 				ID3D11Buffer* vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
@@ -819,13 +830,7 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				}
 				
 				// Index Type
-				DXGI_FORMAT index_type = DXGI_FORMAT_R32_UINT;
-				switch (cmd->drawcall.index_type)
-				{
-					case RB_IndexType_Uint16: index_type = DXGI_FORMAT_R16_UINT; break;
-					case RB_IndexType_Uint32: index_type = DXGI_FORMAT_R32_UINT; break;
-					default: SafeAssert(false);
-				}
+				DXGI_FORMAT index_type = ibuffer_pool_data->index_type;
 				
 				// Draw
 				if (input_layout != curr_input_layout)

@@ -1,5 +1,12 @@
 #define GL (*g_graphics_context->opengl)
 
+struct RB_OpenGLBuffer_
+{
+	uint32 id;
+	uint32 index_type; // used if index buffer.
+}
+typedef RB_OpenGLBuffer_;
+
 struct RB_OpenGLShader_
 {
 	uint32 program_id;
@@ -35,6 +42,7 @@ typedef RB_OpenGLRasterizer_;
 static RB_PoolOf_(RB_OpenGLShader_, 64) g_ogl_shaderpool;
 static RB_PoolOf_(RB_OpenGLBlend_, 16) g_ogl_blendpool;
 static RB_PoolOf_(RB_OpenGLRasterizer_, 16) g_ogl_rasterizerpool;
+static RB_PoolOf_(RB_OpenGLBuffer_, 512) g_ogl_bufferpool;
 
 #ifdef CONFIG_DEBUG
 static void APIENTRY
@@ -164,7 +172,17 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				GL.glBufferData(kind, cmd->buffer.size, cmd->buffer.memory, usage);
 				GL.glBindBuffer(kind, 0);
 				
-				handle.id = id;
+				RB_OpenGLBuffer_* pool_data = RB_PoolAlloc_(&g_ogl_bufferpool, &handle.id);
+				pool_data->id = id;
+				
+				if (cmd->kind == RB_ResourceCommandKind_MakeIndexBuffer)
+				{
+					switch (cmd->buffer.index_type)
+					{
+						case RB_IndexType_Uint16: pool_data->index_type = GL_UNSIGNED_SHORT; break;
+						case RB_IndexType_Uint32: pool_data->index_type = GL_UNSIGNED_INT; break;
+					}
+				}
 			} break;
 			
 			case RB_ResourceCommandKind_MakeShader:
@@ -316,7 +334,9 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				Assert(handle.id);
 				
-				uint32 id = handle.id;
+				RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, handle.id);
+				
+				uint32 id = pool_data->id;
 				uint32 usage = GL_DYNAMIC_DRAW;
 				
 				GL.glBindBuffer(kind, id);
@@ -365,10 +385,12 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			{
 				Assert(handle.id);
 				
-				uint32 id = handle.id;
+				RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, handle.id);
 				
+				uint32 id = pool_data->id;
 				GL.glDeleteBuffers(1, &id);
 				
+				RB_PoolFree_(&g_ogl_bufferpool, handle.id);
 				handle.id = 0;
 			} break;
 			
@@ -393,6 +415,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				Assert(handle.id);
 				
 				RB_PoolFree_(&g_ogl_blendpool, handle.id);
+				handle.id = 0;
 			} break;
 			
 			case RB_ResourceCommandKind_FreeRasterizerState:
@@ -400,6 +423,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				Assert(handle.id);
 				
 				RB_PoolFree_(&g_ogl_rasterizerpool, handle.id);
+				handle.id = 0;
 			} break;
 		}
 		
@@ -531,15 +555,21 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				SafeAssert(cmd->drawcall.shader && cmd->drawcall.ibuffer);
 				
 				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->drawcall.shader->id);
+				RB_OpenGLBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_ogl_bufferpool, cmd->drawcall.ibuffer->id);
 				
 				const uint32 shader = shader_pool_data->program_id;
-				const uint32 ibuffer = cmd->drawcall.ibuffer->id;
+				uint32 ibuffer = ibuffer_pool_data->id;
 				uint32 vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
 				
 				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vbuffers); ++i)
 				{
 					if (cmd->drawcall.vbuffers[i])
-						vbuffers[i] = cmd->drawcall.vbuffers[i]->id;
+					{
+						uint32 index = cmd->drawcall.vbuffers[i]->id;
+						RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, index);
+						
+						vbuffers[i] = pool_data->id;
+					}
 				}
 				
 				// Vertex Layout
@@ -678,14 +708,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				}
 				
 				// Index type
-				uint32 index_type = GL_UNSIGNED_INT;
-				
-				switch (cmd->drawcall.index_type)
-				{
-					case RB_IndexType_Uint32: index_type = GL_UNSIGNED_INT; break;
-					case RB_IndexType_Uint16: index_type = GL_UNSIGNED_SHORT; break;
-					default: SafeAssert(false); break;
-				}
+				uint32 index_type = ibuffer_pool_data->index_type;
 				
 				// Draw Call
 				uint32 index_count = cmd->drawcall.index_count;

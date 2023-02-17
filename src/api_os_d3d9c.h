@@ -15,6 +15,10 @@
 #define far
 #define near
 
+#ifdef CONFIG_DEBUG
+#   define D3D_DEBUG_INFO
+#endif
+
 //#include <d3d9.h>
 #include <d3d9helper.h>
 
