@@ -9,10 +9,10 @@
 
 API void* OS_VirtualReserve(uintsize size);
 API bool OS_VirtualCommit(void* ptr, uintsize size);
-API void OS_VirtualFree(void* ptr, uintsize size);
+API void OS_VirtualRelease(void* ptr, uintsize size);
 #define Arena_OsReserve_(size) OS_VirtualReserve(size)
 #define Arena_OsCommit_(ptr, size) OS_VirtualCommit(ptr, size)
-#define Arena_OsFree_(ptr, size) OS_VirtualFree(ptr, size)
+#define Arena_OsFree_(ptr, size) OS_VirtualRelease(ptr, size)
 
 API void OS_ExitWithErrorMessage(const char* fmt, ...);
 #define SafeAssert_OnFailure(expr, file, line, func) \

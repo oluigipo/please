@@ -174,10 +174,10 @@ static Cstr f_rc = "rc";
 #elif defined(__GNUC__)
 static Cstr f_cc = "gcc -std=c11";
 static Cstr f_cxx = "g++ -std=c++11 -fno-exceptions -fno-rtti";
-static Cstr f_cflags = "-Isrc -march=x86-64-v2";
-static Cstr f_ldflags = "";
-static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math" };
-static Cstr f_warnings = "-w";
+static Cstr f_cflags = "-Isrc -Iinclude";
+static Cstr f_ldflags = "-lntdll";
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -fno-strict-aliasing" };
+static Cstr f_warnings = "-Wall";
 static Cstr f_debuginfo = "-g";
 static Cstr f_define = "-D";
 static Cstr f_verbose = "-v";

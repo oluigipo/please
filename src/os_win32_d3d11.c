@@ -3,7 +3,7 @@
 #define near
 #define far
 
-#if defined(CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 #   include <dxgidebug.h>
 #endif
 
@@ -30,7 +30,7 @@ ProcD3D11CreateDeviceAndSwapChain(
 static OS_D3d11Api global_direct3d;
 static ProcD3D11CreateDeviceAndSwapChain* D3D11CreateDeviceAndSwapChain;
 
-#if defined(CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 static IDXGIInfoQueue* global_direct3d_info_queue;
 #endif
 
@@ -59,7 +59,7 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 	IDXGISwapChain_Present(global_direct3d.swapchain, 0, 0);
 	bool ok = true;
 	
-#if defined(CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 	// NOTE(ljre): Check for debug messages
 	if (global_direct3d_info_queue)
 	{
@@ -161,7 +161,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	
 	UINT flags = 0;
 	
-#if defined(CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
 	
 	D3D_FEATURE_LEVEL feature_levels[] = {
@@ -233,7 +233,7 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	SafeAssert(SUCCEEDED(hr));
 	ID3D11Texture2D_Release(depth_stencil);
 	
-#if defined(CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 	// NOTE(ljre): Load debugging thingy
 	{
 		HMODULE library = Win32_LoadLibrary("dxgidebug.dll");

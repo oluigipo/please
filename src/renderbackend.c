@@ -1,3 +1,6 @@
+#include "config.h"
+#include "api_os.h"
+
 static const OS_WindowGraphicsContext* g_graphics_context;
 
 #define RB_PoolOf_(T, size_) struct { uint32 size; uint32 first_free; T data[size_]; }

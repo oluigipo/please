@@ -19,8 +19,11 @@
 #   define D3D_DEBUG_INFO
 #endif
 
-//#include <d3d9.h>
-#include <d3d9helper.h>
+#ifdef __GNUC__
+#   include <d3d9.h>
+#else
+#   include <d3d9helper.h>
+#endif
 
 struct OS_D3d9cApi
 {
