@@ -67,6 +67,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
 		else if (!Mem_Strcmp(argv[i], "-d3d11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
+		else if (!Mem_Strcmp(argv[i], "-d3d9c"))
+			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D9c;
 		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
 			init_desc.workerthreads_count = 0;
 	}

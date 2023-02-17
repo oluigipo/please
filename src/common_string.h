@@ -147,8 +147,8 @@ String_EndsWith(String check, String s)
 		return false;
 	
 	String substr = {
-		.size = s.size,
-		.data = check.data + (check.size - s.size),
+		s.size,
+		check.data + (check.size - s.size),
 	};
 	
 	return Mem_Compare(substr.data, s.data, substr.size) == 0;

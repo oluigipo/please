@@ -55,7 +55,7 @@ Mem_BitCtz64(uint64 i)
 #if defined(__GNUC__) || defined(__clang__)
 		result = __builtin_ctzll(i);
 #elif defined(_MSC_VER)
-		_BitScanForward64(&result, i);
+		_BitScanForward64((unsigned long*)&result, i);
 #else
 		result = 0;
 		
@@ -79,7 +79,7 @@ Mem_BitCtz32(uint32 i)
 #if defined(__GNUC__) || defined(__clang__)
 		result = __builtin_ctz(i);
 #elif defined(_MSC_VER)
-		_BitScanForward(&result, i);
+		_BitScanForward((unsigned long*)&result, i);
 #else
 		result = 0;
 		
@@ -112,7 +112,7 @@ Mem_BitClz64(uint64 i)
 #if defined(__GNUC__) || defined(__clang__)
 		result = __builtin_clzll(i);
 #elif defined(_MSC_VER)
-		_BitScanReverse(&result, i);
+		_BitScanReverse((unsigned long*)&result, i);
 		result = 63 - result;
 #else
 		result = 0;
@@ -137,7 +137,7 @@ Mem_BitClz32(uint32 i)
 #if defined(__GNUC__) || defined(__clang__)
 		result = __builtin_clz(i);
 #elif defined(_MSC_VER)
-		_BitScanReverse(&result, i);
+		_BitScanReverse((unsigned long*)&result, i);
 		result = 31 - result;
 #else
 		result = 0;
@@ -388,9 +388,6 @@ Mem_ZeroSafe(void* restrict dst, uintsize size)
 //
 //             GCC only does this at -O3, which we don't care about. MSVC is ok.
 
-// NOTE(ljre): the *_by_* labels lead directly inside the loop since the (size >= N) condition should
-//             already be met.
-
 static inline void*
 Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 {
@@ -399,75 +396,94 @@ Mem_Copy(void* restrict dst, const void* restrict src, uintsize size)
 	uint8* restrict d = (uint8*)dst;
 	const uint8* restrict s = (const uint8*)src;
 	
-	if (Unlikely(size == 0))
-		return dst;
-	if (size < 8)
-		goto one_by_one;
-	if (size < 32)
-		goto qword_by_qword;
-	if (size < 128)
-		goto xmm2_by_xmm2;
-	
-	// NOTE(ljre): Simply use 'rep movsb'.
+	if (size >= 32)
+	{
+		// NOTE(ljre): Simply use 'rep movsb'.
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
-	if (Unlikely(size >= 2048))
-	{
+		if (Unlikely(size >= 4096))
+		{
 #   if defined(__clang__) || defined(__GNUC__)
-		__asm__ __volatile__ (
-			"rep movsb"
-			: "+D"(d), "+S"(s), "+c"(size)
-			:: "memory");
+			__asm__ __volatile__ (
+				"rep movsb"
+				: "+D"(d), "+S"(s), "+c"(size)
+				:: "memory");
 #   else
-		__movsb(d, s, size);
+			__movsb(d, s, size);
 #   endif
-		return dst;
-	}
+			return dst;
+		}
 #endif
-	
-	// fallthrough
+		
 #ifdef __clang__
 #   pragma clang loop unroll(disable)
 #endif
-	do
-	{
-		size -= 128;
-		_mm_storeu_si128((__m128i*)(d+size+  0), _mm_loadu_si128((__m128i*)(s+size+  0)));
-		_mm_storeu_si128((__m128i*)(d+size+ 16), _mm_loadu_si128((__m128i*)(s+size+ 16)));
-		_mm_storeu_si128((__m128i*)(d+size+ 32), _mm_loadu_si128((__m128i*)(s+size+ 32)));
-		_mm_storeu_si128((__m128i*)(d+size+ 48), _mm_loadu_si128((__m128i*)(s+size+ 48)));
-		_mm_storeu_si128((__m128i*)(d+size+ 64), _mm_loadu_si128((__m128i*)(s+size+ 64)));
-		_mm_storeu_si128((__m128i*)(d+size+ 80), _mm_loadu_si128((__m128i*)(s+size+ 80)));
-		_mm_storeu_si128((__m128i*)(d+size+ 96), _mm_loadu_si128((__m128i*)(s+size+ 96)));
-		_mm_storeu_si128((__m128i*)(d+size+112), _mm_loadu_si128((__m128i*)(s+size+112)));
-	}
-	while (size >= 128);
-	
+		while (size >= 128)
+		{
+			size -= 128;
+			_mm_storeu_si128((__m128i*)(d+size+  0), _mm_loadu_si128((__m128i*)(s+size+  0)));
+			_mm_storeu_si128((__m128i*)(d+size+ 16), _mm_loadu_si128((__m128i*)(s+size+ 16)));
+			_mm_storeu_si128((__m128i*)(d+size+ 32), _mm_loadu_si128((__m128i*)(s+size+ 32)));
+			_mm_storeu_si128((__m128i*)(d+size+ 48), _mm_loadu_si128((__m128i*)(s+size+ 48)));
+			_mm_storeu_si128((__m128i*)(d+size+ 64), _mm_loadu_si128((__m128i*)(s+size+ 64)));
+			_mm_storeu_si128((__m128i*)(d+size+ 80), _mm_loadu_si128((__m128i*)(s+size+ 80)));
+			_mm_storeu_si128((__m128i*)(d+size+ 96), _mm_loadu_si128((__m128i*)(s+size+ 96)));
+			_mm_storeu_si128((__m128i*)(d+size+112), _mm_loadu_si128((__m128i*)(s+size+112)));
+		}
+		
 #ifdef __clang__
 #   pragma clang loop unroll(disable)
 #endif
-	while (size >= 32) xmm2_by_xmm2:
-	{
-		size -= 32;
-		_mm_storeu_si128((__m128i*)(d+size+ 0), _mm_loadu_si128((__m128i*)(s+size+ 0)));
-		_mm_storeu_si128((__m128i*)(d+size+16), _mm_loadu_si128((__m128i*)(s+size+16)));
+		while (size >= 32)
+		{
+			size -= 32;
+			_mm_storeu_si128((__m128i*)(d+size+ 0), _mm_loadu_si128((__m128i*)(s+size+ 0)));
+			_mm_storeu_si128((__m128i*)(d+size+16), _mm_loadu_si128((__m128i*)(s+size+16)));
+		}
 	}
 	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (size >= 8) qword_by_qword:
+	switch (size)
 	{
-		size -= 8;
-		*(uint64*)(d+size) = *(uint64*)(s+size);
-	}
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (size) one_by_one:
-	{
-		size -= 1;
-		d[size] = s[size];
+		case 0: break;
+		
+		case 31:        _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 15:        *(uint64*)d = *(uint64*)s; d += 8; s += 8;
+		case  7: lbl_7: *(uint32*)d = *(uint32*)s; d += 4; s += 4;
+		case  3: lbl_3: *(uint16*)d = *(uint16*)s; d += 2; s += 2;
+		case  1: lbl_1: *d = *s; break;
+		
+		case 30:        _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 14:        *(uint64*)d = *(uint64*)s; d += 8; s += 8;
+		case  6: lbl_6: *(uint32*)d = *(uint32*)s; d += 4; s += 4;
+		case  2: lbl_2: *(uint16*)d = *(uint16*)s; d += 2; s += 2; break;
+		
+		case 29:        _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 13:        *(uint64*)d = *(uint64*)s; d += 8; s += 8;
+		case  5: lbl_5: *(uint32*)d = *(uint32*)s; d += 4; s += 4; goto lbl_1;
+		
+		case 28:        _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 12:        *(uint64*)d = *(uint64*)s; d += 8; s += 8;
+		case  4: lbl_4: *(uint32*)d = *(uint32*)s; break;
+		
+		case 27: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 11: *(uint64*)d = *(uint64*)s; d += 8; s += 8; goto lbl_3;
+		
+		case 26: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case 10: *(uint64*)d = *(uint64*)s; d += 8; s += 8; goto lbl_2;
+		
+		case 25: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case  9: *(uint64*)d = *(uint64*)s; d += 8; s += 8; goto lbl_1;
+		
+		case 24: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16;
+		case  8: *(uint64*)d = *(uint64*)s; break;
+		
+		case 23: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_7;
+		case 22: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_6;
+		case 21: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_5;
+		case 20: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_4;
+		case 19: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_3;
+		case 18: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_2;
+		case 17: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); d += 16; s += 16; goto lbl_1;
+		case 16: _mm_storeu_si128((__m128i*)d, _mm_loadu_si128((__m128i*)s)); break;
 	}
 	
 	return dst;
@@ -497,14 +513,14 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		// NOTE(ljre): Forward copy.
 		
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
-		if (Unlikely(size >= 2048))
+		if (Unlikely(size >= 4096))
 		{
 #   if defined(__clang__) || defined(__GNUC__)
 			__asm__ __volatile__("rep movsb"
 				:"+D"(d), "+S"(s), "+c"(size)
 				:: "memory");
 #   else
-			__movsb(dst, src, size);
+			__movsb(d, s, size);
 #   endif
 			return dst;
 		}
@@ -576,8 +592,10 @@ Mem_Move(void* dst, const void* src, uintsize size)
 		// NOTE(ljre): Backwards copy.
 		
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
-		if (Unlikely(size >= 2048))
+		if (Unlikely(size >= 4096))
 		{
+			d += size-1;
+			s += size-1;
 #   if defined(__clang__) || defined(__GNUC__)
 			__asm__ __volatile__("std\n"
 				"rep movsb\n"
@@ -588,7 +606,7 @@ Mem_Move(void* dst, const void* src, uintsize size)
 			// TODO(ljre): maybe reconsider this? I couldn't find a way for MSVC to directly
 			//     generate 'std' & 'cld' instructions. (SeT Direction flag & CLear Direction flag)
 			__writeeflags(__readeflags() | 0x0400);
-			__movsb(dst, src, size);
+			__movsb(d, s, size);
 			__writeeflags(__readeflags() & ~(uint64)0x0400);
 #   endif
 			return dst;
