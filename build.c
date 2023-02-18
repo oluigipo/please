@@ -34,6 +34,17 @@ static const g_osinfo[] = {
 	[Build_Os_Linux] = { "linux", "o", "" },
 };
 
+struct
+{
+	Cstr name;
+	Cstr def;
+}
+static const g_oslayerdefs[] = {
+	{ "windows", "WIN32" },
+	{ "linux", "LINUX" },
+	{ "sdl", "SDL" },
+};
+
 struct Build_Tu
 {
 	Cstr name;
@@ -86,6 +97,7 @@ struct
 {
 	struct Build_Executable* exec;
 	enum Build_Os os;
+	Cstr osdef;
 	int optimize;
 	bool asan;
 	bool ubsan;
@@ -107,8 +119,10 @@ struct
 static g_opts = {
 #ifdef _WIN32
 	.os = Build_Os_Windows,
+	.osdef = "WIN32",
 #elif defined(__linux__)
 	.os = Build_Os_Linux,
+	.osdef = "LINUX",
 #endif
 	.exec = &g_executables[0],
 	.debug_mode = true,
@@ -413,6 +427,7 @@ CompileTu(struct Build_Tu* tu)
 	Append(&head, end, "%s src/%s", tu->is_cpp ? f_cxx : f_cc, tu->path);
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
 	Append(&head, end, " %s", GenTargetArg());
+	Append(&head, end, " %sCONFIG_OSLAYER_%s", f_define, g_opts.osdef);
 	
 	if (g_opts.analyze)
 		Append(&head, end, " %s", f_analyze);
@@ -592,24 +607,67 @@ main(int argc, char** argv)
 			else
 				fprintf(stderr, "[warning] invalid optimization flag '%s'.\n", argv[i]);
 		}
+		else if (strcmp(argv[i], "-profile=steam") == 0)
+		{
+			g_opts.lto = true;
+			g_opts.steam = true;
+			g_opts.do_rc = true;
+			g_opts.optimize = 2;
+			g_opts.debug_mode = false;
+#if !defined(_MSC_VER) || defined(__clang__)
+			g_opts.embed = true;
+#endif
+		}
+		else if (strcmp(argv[i], "-profile=release") == 0)
+		{
+			g_opts.lto = true;
+			g_opts.do_rc = true;
+			g_opts.optimize = 2;
+			g_opts.debug_mode = false;
+#if !defined(_MSC_VER) || defined(__clang__)
+			g_opts.embed = true;
+#endif
+		}
 		else if (strncmp(argv[i], "-os=", 4) == 0)
 		{
 			Cstr osname = argv[i] + 4;
+			int osnamelen = strlen(osname);
 			enum Build_Os os = 0;
+			
+			Cstr platform_layer = strchr(osname, ',');
+			if (platform_layer)
+				osnamelen = platform_layer++ - osname;
+			else
+				platform_layer = osname;
 			
 			for (int i = 1; i < ArrayLength(g_osinfo); ++i)
 			{
-				if (strcmp(osname, g_osinfo[i].name) == 0)
+				if (strncmp(osname, g_osinfo[i].name, osnamelen) == 0)
 				{
 					os = i;
 					break;
 				}
 			}
 			
+			Cstr osdef = NULL;
+			for (int i = 0; i < ArrayLength(g_oslayerdefs); ++i)
+			{
+				if (strcmp(platform_layer, g_oslayerdefs[i].name) == 0)
+				{
+					osdef = g_oslayerdefs[i].def;
+					break;
+				}
+			}
+			
 			if (!os)
 				fprintf(stderr, "[warning] unknown OS '%s'.\n", osname);
+			else if (!osdef)
+				fprintf(stderr, "[warning] unknown platform layer '%s'.\n", osdef);
 			else
+			{
 				g_opts.os = os;
+				g_opts.osdef = osdef;
+			}
 		}
 		else if (argv[i][0] == '-')
 			fprintf(stderr, "[warning] unknown flag '%s'.\n", argv[i]);

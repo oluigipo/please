@@ -17,8 +17,19 @@
 #   define API
 #endif
 
+//- Identify platform if build system didn't tell us
+#if !defined(CONFIG_OSLAYER_WIN32) && !defined(CONFIG_OSLAYER_LINUX) && !defined(CONFIG_OSLAYER_SDL)
+#   if defined(_WIN32)
+#       define CONFIG_OSLAYER_WIN32
+#   elif defined(__linux__)
+#       define CONFIG_OSLAYER_LINUX
+#   else
+#       error "unsupported system"
+#   endif
+#endif
+
 //- Platform specific stuff
-#if defined(_WIN32)
+#if defined(CONFIG_OSLAYER_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
 #   define CONFIG_ENABLE_D3D11
@@ -26,7 +37,7 @@
 #   ifdef _WIN64
 #       define COMMON_DONT_USE_CRT
 #   endif
-#elif defined(__linux__)
+#elif defined(CONFIG_OSLAYER_LINUX)
 #   define CONFIG_ENABLE_OPENGL
 #endif
 
