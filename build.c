@@ -3,6 +3,7 @@
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <direct.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -499,12 +500,11 @@ CreateBuildDirIfNeeded(void)
 {
 	bool result = false;
 	
-	switch (g_opts.os)
-	{
-		default: break;
-		case Build_Os_Windows: result = !RunCommand("cmd /c if not exist build mkdir build"); break;
-		case Build_Os_Linux: result = !RunCommand("if [ ! -d \"build\" ]; then mkdir build fi"); break;
-	}
+	struct _stat64 info;
+	if (_stat64("build", &info))
+		result = !_mkdir("build");
+	else if (info.st_mode & _S_IFDIR)
+		result = true;
 	
 	return result;
 }

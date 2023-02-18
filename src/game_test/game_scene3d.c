@@ -202,6 +202,18 @@ G_Scene3DInit(void)
 			},
 		});
 		
+		//- Misc
+		SafeAssert(prim->mode == 4); // GL_TRIANGLES
+		s->tree_model_index_count = gltf.accessors[prim->indices].count;
+		glm_mat4_copy(gltf.nodes[gltf.scenes[gltf.scene].nodes[0]].transform, s->tree_model_base_transform);
+		
+		switch (gltf.accessors[prim->indices].component_type)
+		{
+			case 0x1403: s->tree_model_index_type = RB_IndexType_Uint16; break;
+			case 0x1405: s->tree_model_index_type = RB_IndexType_Uint32; break;
+			default: SafeAssert(false); break;
+		}
+		
 		//- Index buffer
 		view = &gltf.buffer_views[gltf.accessors[prim->indices].buffer_view];
 		intsize ibuffer_size = view->byte_length;
@@ -216,18 +228,6 @@ G_Scene3DInit(void)
 				.index_type = s->tree_model_index_type,
 			},
 		});
-		
-		//- Misc
-		SafeAssert(prim->mode == 4); // GL_TRIANGLES
-		s->tree_model_index_count = gltf.accessors[prim->indices].count;
-		glm_mat4_copy(gltf.nodes[gltf.scenes[gltf.scene].nodes[0]].transform, s->tree_model_base_transform);
-		
-		switch (gltf.accessors[prim->indices].component_type)
-		{
-			case 0x1403: s->tree_model_index_type = RB_IndexType_Uint16; break;
-			case 0x1405: s->tree_model_index_type = RB_IndexType_Uint32; break;
-			default: SafeAssert(false); break;
-		}
 		
 		//- Material
 		SafeAssert(prim->material != -1);

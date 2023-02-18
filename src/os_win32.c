@@ -48,9 +48,9 @@ ReenableWarnings();
 #   pragma comment(lib, "ntdll.lib")
 #   if defined(CONFIG_ENABLE_STEAM)
 #       if defined(_WIN64)
-#           pragma comment(lib, "lib\\steam_api64.lib")
+#           pragma comment(lib, "lib\\x86_64-windows-steam_api.lib")
 #       else
-#           pragma comment(lib, "lib\\steam_api.lib")
+#           pragma comment(lib, "lib\\i686-windows-steam_api.lib")
 #       endif
 #   endif
 #endif
@@ -69,6 +69,11 @@ static bool global_lock_cursor;
 static HDC global_hdc;
 static LPWSTR global_class_name = L"WindowClassName";
 static HANDLE global_worker_threads[E_Limits_MaxWorkerThreadCount];
+
+#if 0
+int __declspec(dllexport) NvOptimusEnablement = 1;
+int __declspec(dllexport) AmdPowerXpressRequestHighPerformance = 1;
+#endif
 
 //~ NOTE(ljre): Utils
 static uint64
