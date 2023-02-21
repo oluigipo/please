@@ -40,7 +40,7 @@ static Storage Storage_MakeFromMemory(Buffer backbuffer, uint32 max_allocations)
 static bool Storage_Alloc(Storage* storage, uintsize desired_size, Storage_Handle* out_handle, void** out_buffer, uintsize* out_size);
 static bool Storage_Fetch(Storage* storage, Storage_Handle handle, void** out_buffer, uintsize* out_size);
 static bool Storage_Dealloc(Storage* storage, Storage_Handle handle);
-static void Storage_Defrag(Storage* storage);
+static void Storage_Defrag(Storage* storage, Arena* scratch_arena);
 
 //~ Implementation
 static Storage
@@ -108,7 +108,7 @@ Storage_Alloc(Storage* storage, uintsize desired_size, Storage_Handle* out_handl
 			if (storage->block_first_free)
 			{
 				alloc_index = storage->block_first_free-1;
-				storage->block_first_free = blocks[alloc_index].next_free;
+				storage->block_first_free = blocks[alloc_index].next_free-1;
 			}
 			else if (storage->block_count < storage->block_cap)
 				alloc_index = storage->block_count++;
@@ -202,7 +202,7 @@ Storage_Dealloc(Storage* storage, Storage_Handle handle)
 	
 	if (found)
 	{
-		wanted_block->next_free = (uint16)storage->block_first_free;
+		wanted_block->next_free = (uint16)storage->block_first_free + 1;
 		storage->block_first_free = handle.index;
 		
 		wanted_block->generation++;
@@ -215,12 +215,57 @@ Storage_Dealloc(Storage* storage, Storage_Handle handle)
 }
 
 static void
-Storage_Defrag(Storage* storage)
+Storage_Defrag(Storage* storage, Arena* scratch_arena)
 {
 	Trace();
 	SafeAssert(storage && storage->backbuffer);
 	
-	// TODO(ljre)
+	Storage_Block* storage_blocks = (Storage_Block*)storage->backbuffer;
+	Arena_Savepoint scratch_save = Arena_Save(scratch_arena);
+	
+	// Set blocks
+	Storage_Block** blocks_array = Arena_PushArray(scratch_arena, Storage_Block*, storage->block_count);
+	int32 block_count = 0;
+	
+	for (int32 i = 0; i < storage->block_count; ++i)
+	{
+		if (storage_blocks[i].next_free == 0)
+			blocks_array[block_count++] = &storage_blocks[i];
+	}
+	
+	// Sort by offset
+	for (int32 i = 1; i < block_count; ++i)
+	{
+		for (int32 j = i; j < block_count-1; j++)
+		{
+			if (blocks_array[j]->offset > blocks_array[j+1]->offset)
+			{
+				Storage_Block* temp = blocks_array[j];
+				blocks_array[j] = blocks_array[j+1];
+				blocks_array[j+1] = temp;
+			}
+		}
+	}
+	
+	// Compact them
+	for (int32 i = 0; i < block_count-1; ++i)
+	{
+		if (blocks_array[i]->free_size > 0)
+		{
+			uint32 move_size = blocks_array[i+1]->size;
+			uint32 target_offset = blocks_array[i]->offset + blocks_array[i]->size;
+			uint32 source_offset = blocks_array[i+1]->offset;
+			
+			Mem_Move(storage->backbuffer + target_offset, storage->backbuffer + source_offset, move_size);
+			
+			blocks_array[i+1]->offset = target_offset;
+			blocks_array[i+1]->free_size += blocks_array[i]->free_size;
+			blocks_array[i]->free_size = 0;
+		}
+	}
+	
+	// Done
+	Arena_Restore(scratch_save);
 }
 
 #endif //COMMON_STORAGE_H
