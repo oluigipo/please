@@ -236,7 +236,7 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 	// Sort by offset
 	for (int32 i = 1; i < block_count; ++i)
 	{
-		for (int32 j = i; j < block_count-1; j++)
+		for (int32 j = 1; j < block_count-i; j++)
 		{
 			if (blocks_array[j]->offset > blocks_array[j+1]->offset)
 			{
@@ -256,7 +256,7 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 			uint32 target_offset = blocks_array[i]->offset + blocks_array[i]->size;
 			uint32 source_offset = blocks_array[i+1]->offset;
 			
-			Mem_Move(storage->backbuffer + target_offset, storage->backbuffer + source_offset, move_size);
+			Mem_Move(storage->backbuffer + storage->memory_offset + target_offset, storage->backbuffer + storage->memory_offset + source_offset, move_size);
 			
 			blocks_array[i+1]->offset = target_offset;
 			blocks_array[i+1]->free_size += blocks_array[i]->free_size;
