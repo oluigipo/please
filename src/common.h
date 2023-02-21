@@ -16,5 +16,6 @@
 #include "common_arena.h"
 #include "common_hash.h"
 #include "common_math.h"
+#include "common_storage.h"
 
 #endif //COMMON_H
