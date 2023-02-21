@@ -889,7 +889,10 @@ E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_w
 	if (!temp_data)
 		return false;
 	
-	void* pixels = Arena_PushMemoryAligned(output_arena, temp_data, width*height*4, alignof(uint32));
+	uintsize total_size = width*height*4;
+	void* pixels = Arena_PushDirtyAligned(output_arena, total_size, 16);
+	Mem_Copy(pixels, temp_data, total_size);
+	
 	stbi_image_free(temp_data);
 	
 	*out_pixels = pixels;

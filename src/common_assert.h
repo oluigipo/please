@@ -33,7 +33,7 @@ SafeAssert_OnFailure(#__VA_ARGS__, __FILE__, __LINE__, __func__); \
 #   endif
 
 #   define Assert(...) do { \
-if (!(__VA_ARGS__)) { \
+if (Unlikely(!(__VA_ARGS__))) { \
 if (Assert_IsDebuggerPresent_()) \
 Debugbreak(); \
 Assert_OnFailure(#__VA_ARGS__, __FILE__, __LINE__, __func__); \
