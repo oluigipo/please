@@ -29,7 +29,7 @@
 #endif
 
 //- Platform specific stuff
-#if defined(CONFIG_OSLAYER_WIN32)
+#if defined(_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
 #   define CONFIG_ENABLE_D3D11
@@ -37,7 +37,7 @@
 #   ifdef _WIN64
 #       define COMMON_DONT_USE_CRT
 #   endif
-#elif defined(CONFIG_OSLAYER_LINUX)
+#elif defined(__linux__)
 #   define CONFIG_ENABLE_OPENGL
 #endif
 
