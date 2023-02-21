@@ -6,7 +6,16 @@
 #include "api_renderbackend.h"
 
 DisableWarnings();
+// NOTE(ljre): CGLM crashes we're building with AVX or AVX2 enabled because alignment.
+#pragma push_macro("__AVX__")
+#pragma push_macro("__AVX2__")
+#undef __AVX__
+#undef __AVX2__
+
 #include <ext/cglm/cglm.h>
+
+#pragma pop_macro("__AVX__")
+#pragma pop_macro("__AVX2__")
 ReenableWarnings();
 
 #define vec2(...) (vec2) { __VA_ARGS__ }
