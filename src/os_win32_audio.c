@@ -33,9 +33,15 @@ struct
 {
 	IMMDeviceEnumerator* device_enumerator;
 	
+	// NOTE(ljre): If the device we're outputting sound to is removed, this boolean is set. It means that we
+	//             should output to the default device provided by IMMDeviceEnumerator_GetDefaultAudioEndpoint.
+	//
+	//             We probably need a way to tell if the device we were outputting to is back, and so set this
+	//             to false.
 	bool should_try_to_keep_on_default_endpoint;
 	
-	uint32 device_id_counter;
+	uint32 device_id_counter; // NOTE(ljre): Generative counter for device's IDs.
+	
 	int32 active_device_index;
 	int32 device_count;
 	Win32_AudioDevice devices[32];
@@ -46,6 +52,10 @@ struct
 	HANDLE thread;
 	
 	OS_RWLock client_lock;
+	
+	// NOTE(ljre): All of these will change if the output device has changed. The audio thread might be sad for
+	//             a bit because the event it was waiting on was suddenly closed, but then it should try again
+	//             with the new event handle set by the main thread.
 	
 	HANDLE volatile event;
 	int32 volatile sample_rate;
@@ -143,6 +153,10 @@ Win32_EnumerateAudioEndpoints_(void)
 		LPWSTR dev_id = g_audio.devices[i].dev_id;
 		bool should_remove = false;
 		
+		// NOTE(ljre): If a device was unplugged, IMMDevice_GetState() on that device will segfault.
+		//             Getting a new IMMDevice from the enumerator _and then_ calling IMMDevice_GetState()
+		//             works as expected. I don't know why this happens.
+		
 		IMMDevice* tmp;
 		if (!SUCCEEDED(IMMDeviceEnumerator_GetDevice(g_audio.device_enumerator, dev_id, &tmp)))
 			should_remove = true;
@@ -159,13 +173,20 @@ Win32_EnumerateAudioEndpoints_(void)
 		
 		if (should_remove)
 		{
+			// NOTE(ljre): If uncommented, segfault. Maybe the string is already free'd when the device is
+			//             unplugged? Either way, this code should run so infrequently that it shouldn't be
+			//             a problem.
+			
 			//CoTaskMemFree(dev_id);
+			
 			IMMDevice_Release(immdevice);
 			
 			if (g_audio.active_device_index == i)
 			{
 				g_audio.active_device_index = UINT32_MAX;
 				g_audio.should_try_to_keep_on_default_endpoint = true;
+				
+				global_os_state.audio.current_device_id = 0;
 			}
 			else if (g_audio.active_device_index > i && g_audio.active_device_index != UINT32_MAX)
 				--g_audio.active_device_index;
@@ -279,6 +300,9 @@ Win32_EnumerateAudioEndpoints_(void)
 		collection = NULL;
 		
 		//- Update infos
+		global_os_state.audio.device_count = g_audio.device_count;
+		global_os_state.audio.devices = g_audio.devices_info;
+		
 		for (int32 i = 0; i < g_audio.device_count; ++i)
 		{
 			Win32_AudioDevice* device = &g_audio.devices[i];
@@ -453,19 +477,23 @@ Win32_ChangeAudioEndpoint_(uint32 id)
 			IAudioClient_Release(g_audio.client);
 		}
 		
-		if (g_audio.event)
-			CloseHandle(g_audio.event);
-		
+		g_audio.active_device_index = device_index;
 		g_audio.client = audio_client;
 		g_audio.render_client = audio_render_client;
 		g_audio.frame_pull_rate = new_frame_pull_rate;
 		g_audio.sample_rate = new_sample_rate;
 		g_audio.channels = new_channels;
+		
+		// NOTE(ljre): Making sure there's always a valid event assigned to 'g_audio.event'...
+		HANDLE old_event = g_audio.event;
 		g_audio.event = event;
+		
+		if (old_event)
+			CloseHandle(old_event);
 		
 		OS_UnlockExclusive(&g_audio.client_lock);
 		
-		g_audio.active_device_index = device_index;
+		global_os_state.audio.current_device_id = id;
 	}
 	
 	return result;
@@ -486,20 +514,20 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 	
 	hr = CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&g_audio.device_enumerator);
 	if (!SUCCEEDED(hr))
-		goto lbl_error;
+		return Win32_DeinitAudio(), false;
 	
 	if (!Win32_EnumerateAudioEndpoints_())
-		goto lbl_error;
+		return Win32_DeinitAudio(), false;
 	
 	if (!Win32_ChangeAudioEndpoint_(Win32_FindDefaultAudioEndpoint_()))
-		goto lbl_error;
+		return Win32_DeinitAudio(), false;
 	
 	OS_InitRWLock(&g_audio.client_lock);
 	g_audio.thread_proc = init_desc->audiothread_proc;
 	g_audio.thread_userdata = init_desc->audiothread_user_data;
 	g_audio.thread = CreateThread(NULL, 0, Win32_AudioThreadProc_, NULL, 0, NULL);
 	if (!g_audio.thread)
-		goto lbl_error;
+		return Win32_DeinitAudio(), false;
 	
 	SetThreadPriority(g_audio.thread, THREAD_PRIORITY_TIME_CRITICAL);
 	
@@ -512,21 +540,18 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 	os_state->audio.current_device_id = g_audio.devices[g_audio.active_device_index].id;
 	
 	return true;
-	
-	lbl_error:
-	{
-		Win32_DeinitAudio();
-		return false;
-	}
 }
 
 static void
 Win32_DeinitAudio(void)
 {
-	// TODO(ljre): Release devices
+	Trace();
 	
-	if (g_audio.thread)
+	if (global_os_state.audio.initialized_successfully)
 	{
+		global_os_state.audio.initialized_successfully = false;
+		
+		// TODO(ljre): Release devices
 		TerminateThread(g_audio.thread, 0);
 		CloseHandle(g_audio.thread);
 		//IAudioClient_Stop(global_audio_client);
@@ -540,12 +565,17 @@ Win32_DeinitAudio(void)
 static void
 Win32_UpdateAudioEndpointIfNeeded(void)
 {
-	Win32_EnumerateAudioEndpoints_();
-	uint32 default_endpoint_id = Win32_FindDefaultAudioEndpoint_();
+	Trace();
 	
-	if (g_audio.active_device_index == UINT32_MAX ||
-		g_audio.should_try_to_keep_on_default_endpoint && g_audio.devices[g_audio.active_device_index].id != default_endpoint_id)
+	if (global_os_state.audio.initialized_successfully)
 	{
-		Win32_ChangeAudioEndpoint_(default_endpoint_id);
+		Win32_EnumerateAudioEndpoints_();
+		uint32 default_endpoint_id = Win32_FindDefaultAudioEndpoint_();
+		
+		if (g_audio.active_device_index == UINT32_MAX ||
+			g_audio.should_try_to_keep_on_default_endpoint && g_audio.devices[g_audio.active_device_index].id != default_endpoint_id)
+		{
+			Win32_ChangeAudioEndpoint_(default_endpoint_id);
+		}
 	}
 }
