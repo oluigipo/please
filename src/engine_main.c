@@ -21,7 +21,7 @@ E_FinishFrame(void)
 	}
 	
 	TraceFrameEnd();
-	RB_Present(global_engine.scratch_arena, 1);
+	RB_Present(global_engine.scratch_arena, global_engine.enable_vsync ? 1 : 0);
 	TraceFrameBegin();
 	
 	Arena_Clear(global_engine.frame_arena);
@@ -37,6 +37,8 @@ API int32
 OS_UserMain(const OS_UserMainArgs* args)
 {
 	Trace();
+	
+	global_engine.enable_vsync = true;
 	
 	// NOTE(ljre): Desired initial state
 	OS_WindowState window_state = args->default_window_state;
@@ -73,6 +75,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D9c;
 		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
 			init_desc.workerthreads_count = 0;
+		else if (!Mem_Strcmp(argv[i], "-no-vsync"))
+			global_engine.enable_vsync = false;
 	}
 	
 	// NOTE(ljre): Init basic stuff

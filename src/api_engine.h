@@ -67,6 +67,7 @@ struct E_GlobalData
 	float64 last_frame_time;
 	
 	bool running : 1;
+	bool enable_vsync : 1;
 	
 	// NOTE(ljre): Convenience lock for mutating global engine data. Should only be used if the main thread is
 	//             currently waiting and individual worker threads needs to access global resources.

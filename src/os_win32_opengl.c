@@ -475,6 +475,8 @@ LoadOpenGLFunctions(void)
 static void
 Win32_DestroyOpenGLWindow(void)
 {
+	Trace();
+	
 	global_opengl.wglMakeCurrent(global_hdc, NULL);
 	global_opengl.wglDeleteContext(global_opengl.context);
 	DestroyWindow(global_window);
@@ -483,9 +485,11 @@ Win32_DestroyOpenGLWindow(void)
 static bool
 Win32_OpenGLSwapBuffers(int32 vsync_count)
 {
+	Trace();
+	
 	//global_opengl.vtable.glFlush();
-	global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
-	//SwapBuffers(global_hdc);
+	//global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
+	SwapBuffers(global_hdc);
 	
 	bool vsynced = false;
 	
@@ -647,6 +651,8 @@ Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 		Win32_DestroyOpenGLWindow();
 		return false;
 	}
+	
+	global_opengl.wglSwapIntervalEXT(0);
 	
 	// Globals
 	global_window = window;
