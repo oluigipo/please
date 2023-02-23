@@ -498,6 +498,10 @@ CompileExecutable(struct Build_Executable* exec)
 		Append(&head, end, " %s %s", f_lto, f_optimize[g_opts.optimize]);
 	if (g_opts.tracy)
 		Append(&head, end, " TracyClient.%s", g_osinfo[g_opts.os].obj);
+	if (g_opts.asan)
+		Append(&head, end, " -fsanitize=address");
+	if (g_opts.ubsan)
+		Append(&head, end, " -fsanitize=undefined -fno-sanitize=alignment");
 	
 	Append(&head, end, " %s", f_ldflags);
 	
