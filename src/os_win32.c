@@ -179,25 +179,8 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 	
 	//- NOTE(ljre): Window Title
 	{
-		uintsize new_size = 0;
-		for (int32 i = 0; i < ArrayLength(inout_state->title); ++i)
-		{
-			if (!inout_state->title[i])
-			{
-				new_size = i;
-				break;
-			}
-		}
-		
-		uintsize old_size = 0;
-		for (int32 i = 0; i < ArrayLength(global_window_state.title); ++i)
-		{
-			if (!global_window_state.title[i])
-			{
-				old_size = i;
-				break;
-			}
-		}
+		uintsize new_size = Mem_Strnlen((const char*)inout_state->title, ArrayLength(inout_state->title));
+		uintsize old_size = Mem_Strnlen((const char*)global_window_state.title, ArrayLength(global_window_state.title));
 		
 		String new_title = StrMake(new_size, inout_state->title);
 		String old_title = StrMake(old_size, global_window_state.title);
