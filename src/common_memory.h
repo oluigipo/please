@@ -30,6 +30,7 @@ static inline void Mem_Copy128Ax4(void* dst, const void* src, uintsize count);
 
 static inline uintsize Mem_Strlen(const char* restrict cstr);
 static inline int32 Mem_Strcmp(const char* left, const char* right);
+static inline char* Mem_Strstr(const char* left, const char* right);
 static inline const void* Mem_FindByte(const void* buffer, uint8 byte, uintsize size);
 static inline void* Mem_Zero(void* restrict dst, uintsize size);
 static inline void* Mem_ZeroSafe(void* restrict dst, uintsize size);
@@ -835,6 +836,29 @@ Mem_Strcmp(const char* left, const char* right)
 	}
 }
 
+static inline char*
+Mem_Strstr(const char* left, const char* right)
+{
+	Trace();
+	
+	for (; *left; ++left)
+	{
+		const char* it_left = left;
+		const char* it_right = right;
+		
+		while (*it_left == *it_right)
+		{
+			if (!*it_left)
+				return (char*)it_left;
+			
+			++it_left;
+			++it_right;
+		}
+	}
+	
+	return NULL;
+}
+
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)
 {
@@ -995,6 +1019,10 @@ Mem_Strlen(const char* restrict cstr)
 static inline int32
 Mem_Strcmp(const char* left, const char* right)
 { Trace(); return strcmp(left, right); }
+
+static inline char*
+Mem_Strstr(const char* left, const char* right)
+{ Trace(); return strstr(left, right); }
 
 static inline const void*
 Mem_FindByte(const void* buffer, uint8 byte, uintsize size)

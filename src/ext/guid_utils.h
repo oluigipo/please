@@ -59,7 +59,7 @@ IsXInputDevice(const GUID* guid)
             break;
         
         name[sizeof(name) - 1] = '\0';
-        if (strstr(name, "IG_"))
+        if (Mem_Strstr(name, "IG_"))
             return true;
     }
     
@@ -73,10 +73,10 @@ ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize
     if (Mem_Compare(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
     {
         String_PrintfBuffer(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
-			(uint8) instance->guidProduct.Data1,
-			(uint8) (instance->guidProduct.Data1 >> 8),
-			(uint8) (instance->guidProduct.Data1 >> 16),
-			(uint8) (instance->guidProduct.Data1 >> 24));
+		(uint8) instance->guidProduct.Data1,
+		(uint8) (instance->guidProduct.Data1 >> 8),
+		(uint8) (instance->guidProduct.Data1 >> 16),
+		(uint8) (instance->guidProduct.Data1 >> 24));
     }
     else
     {

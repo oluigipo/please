@@ -64,6 +64,8 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 	if (global_direct3d_info_queue)
 	{
 		static uint64 next = 0;
+		
+		Arena* scratch_arena = Win32_GetThreadScratchArena();
 		uint64 message_count = IDXGIInfoQueue_GetNumStoredMessages(global_direct3d_info_queue, DXGI_DEBUG_ALL);
 		
 		for (uint64 i = next; i < message_count; ++i)
@@ -71,9 +73,9 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 			SIZE_T message_length;
 			if (S_OK == IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, NULL, &message_length))
 			{
-				for Arena_TempScope(global_scratch_arena)
+				for Arena_TempScope(scratch_arena)
 				{
-					DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(global_scratch_arena, message_length);
+					DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(scratch_arena, message_length);
 					
 					IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, message, &message_length);
 					OS_DebugMessageBox("%.*s", message->DescriptionByteLength, message->pDescription);
@@ -98,6 +100,58 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 	}
 	
 	return ok;
+}
+
+static void
+Win32_D3d11ResizeWindow(void)
+{
+	ID3D11DeviceContext_ClearState(global_direct3d.context);
+	ID3D11RenderTargetView_Release(global_direct3d.target);
+	global_direct3d.target = NULL;
+	
+	HRESULT hr;
+	
+	hr = IDXGISwapChain_ResizeBuffers(global_direct3d.swapchain, 0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+	SafeAssert(SUCCEEDED(hr));
+	
+	ID3D11Texture2D* backbuffer;
+	hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Texture2D, (void**)&backbuffer);
+	SafeAssert(SUCCEEDED(hr));
+	
+	D3D11_TEXTURE2D_DESC backbuffer_desc;
+	ID3D11Texture2D_GetDesc(backbuffer, &backbuffer_desc);
+	
+	hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, (ID3D11Resource*)backbuffer, NULL, &global_direct3d.target);
+	SafeAssert(SUCCEEDED(hr));
+	
+	ID3D11Resource_Release(backbuffer);
+	
+	ID3D11DepthStencilView_Release(global_direct3d.depth_stencil);
+	global_direct3d.depth_stencil = NULL;
+	
+	D3D11_TEXTURE2D_DESC depth_stencil_desc = {
+		.Width = backbuffer_desc.Width,
+		.Height = backbuffer_desc.Height,
+		.MipLevels = 1,
+		.ArraySize = 1,
+		.Format = DXGI_FORMAT_D24_UNORM_S8_UINT,
+		.SampleDesc = {
+			.Count = 1,
+			.Quality = 0,
+		},
+		.Usage = D3D11_USAGE_DEFAULT,
+		.BindFlags = D3D11_BIND_DEPTH_STENCIL,
+		.CPUAccessFlags = 0,
+		.MiscFlags = 0,
+	};
+	
+	ID3D11Texture2D* depth_stencil;
+	hr = ID3D11Device_CreateTexture2D(global_direct3d.device, &depth_stencil_desc, NULL, &depth_stencil);
+	SafeAssert(SUCCEEDED(hr));
+	hr = ID3D11Device_CreateDepthStencilView(global_direct3d.device, (ID3D11Resource*)depth_stencil, NULL, &global_direct3d.depth_stencil);
+	SafeAssert(SUCCEEDED(hr));
+	
+	ID3D11Texture2D_Release(depth_stencil);
 }
 
 static bool

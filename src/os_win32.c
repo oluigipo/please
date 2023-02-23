@@ -56,7 +56,6 @@ ReenableWarnings();
 #endif
 
 //~ NOTE(ljre): Globals
-static Arena* global_scratch_arena;
 static OS_WindowState global_window_state;
 static OS_WindowGraphicsContext global_graphics_context;
 static HINSTANCE global_instance;
@@ -113,6 +112,7 @@ Win32_StringToWide(Arena* output_arena, String str)
 static HMODULE
 Win32_LoadLibrary(const char* name)
 {
+	Trace();
 	HMODULE result = LoadLibraryA(name);
 	
 	if (result)
@@ -121,10 +121,22 @@ Win32_LoadLibrary(const char* name)
 	return result;
 }
 
+static Arena*
+Win32_GetThreadScratchArena(void)
+{
+	static thread_local Arena* this_arena;
+	
+	if (!this_arena)
+		this_arena = Arena_Create(64 << 10, 64 << 10);
+	
+	return this_arena;
+}
+
 static void
 Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 {
 	Trace();
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
 	//- NOTE(ljre): Simple-idk-how-to-call-it data.
 	{
@@ -192,9 +204,9 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 		
 		if (!String_Equals(old_title, new_title))
 		{
-			for Arena_TempScope(global_scratch_arena)
+			for Arena_TempScope(scratch_arena)
 			{
-				wchar_t* name = Win32_StringToWide(global_scratch_arena, new_title);
+				wchar_t* name = Win32_StringToWide(scratch_arena, new_title);
 				SetWindowTextW(global_window, name);
 			}
 		}
@@ -222,6 +234,8 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 #else
 static bool Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 { return false; }
+static void Win32_OpenGLResizeWindow(void)
+{}
 #endif
 
 #ifdef CONFIG_ENABLE_D3D11
@@ -229,6 +243,8 @@ static bool Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t
 #else
 static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 { return false; }
+static void Win32_D3d11ResizeWindow(void)
+{}
 #endif
 
 #ifdef CONFIG_ENABLE_D3D9C
@@ -236,6 +252,8 @@ static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t*
 #else
 static bool Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 { return false; }
+static void Win32_D3d9cResizeWindow(void)
+{}
 #endif
 
 //~ NOTE(ljre): Functions
@@ -264,58 +282,14 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			
 			global_window_state.resized_by_user = true;
 			
-#ifdef CONFIG_ENABLE_D3D11
-			if (global_graphics_context.api == OS_WindowGraphicsApi_Direct3D11)
+			switch (global_graphics_context.api)
 			{
-				ID3D11DeviceContext_ClearState(global_direct3d.context);
-				ID3D11RenderTargetView_Release(global_direct3d.target);
-				global_direct3d.target = NULL;
+				case OS_WindowGraphicsApi_Null: break;
 				
-				HRESULT hr;
-				
-				hr = IDXGISwapChain_ResizeBuffers(global_direct3d.swapchain, 0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
-				SafeAssert(SUCCEEDED(hr));
-				
-				ID3D11Texture2D* backbuffer;
-				hr = IDXGISwapChain_GetBuffer(global_direct3d.swapchain, 0, &IID_ID3D11Texture2D, (void**)&backbuffer);
-				SafeAssert(SUCCEEDED(hr));
-				
-				D3D11_TEXTURE2D_DESC backbuffer_desc;
-				ID3D11Texture2D_GetDesc(backbuffer, &backbuffer_desc);
-				
-				hr = ID3D11Device_CreateRenderTargetView(global_direct3d.device, (ID3D11Resource*)backbuffer, NULL, &global_direct3d.target);
-				SafeAssert(SUCCEEDED(hr));
-				
-				ID3D11Resource_Release(backbuffer);
-				
-				ID3D11DepthStencilView_Release(global_direct3d.depth_stencil);
-				global_direct3d.depth_stencil = NULL;
-				
-				D3D11_TEXTURE2D_DESC depth_stencil_desc = {
-					.Width = backbuffer_desc.Width,
-					.Height = backbuffer_desc.Height,
-					.MipLevels = 1,
-					.ArraySize = 1,
-					.Format = DXGI_FORMAT_D24_UNORM_S8_UINT,
-					.SampleDesc = {
-						.Count = 1,
-						.Quality = 0,
-					},
-					.Usage = D3D11_USAGE_DEFAULT,
-					.BindFlags = D3D11_BIND_DEPTH_STENCIL,
-					.CPUAccessFlags = 0,
-					.MiscFlags = 0,
-				};
-				
-				ID3D11Texture2D* depth_stencil;
-				hr = ID3D11Device_CreateTexture2D(global_direct3d.device, &depth_stencil_desc, NULL, &depth_stencil);
-				SafeAssert(SUCCEEDED(hr));
-				hr = ID3D11Device_CreateDepthStencilView(global_direct3d.device, (ID3D11Resource*)depth_stencil, NULL, &global_direct3d.depth_stencil);
-				SafeAssert(SUCCEEDED(hr));
-				
-				ID3D11Texture2D_Release(depth_stencil);
+				case OS_WindowGraphicsApi_OpenGL: Win32_OpenGLResizeWindow(); break;
+				case OS_WindowGraphicsApi_Direct3D11: Win32_D3d11ResizeWindow(); break;
+				case OS_WindowGraphicsApi_Direct3D9c: Win32_D3d9cResizeWindow(); break;
 			}
-#endif
 		} break;
 		
 		case WM_SYSKEYDOWN:
@@ -463,7 +437,6 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	
 	global_process_started_time = Win32_GetTimer();
 	global_instance = instance;
-	global_scratch_arena = Arena_Create(128 << 10, 128 << 10);
 	
 	//- Run
 	OS_UserMainArgs args = {
@@ -526,6 +499,7 @@ API bool
 OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 {
 	Trace();
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
 	WNDCLASSW window_class = {
 		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
@@ -554,7 +528,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 	{
 		bool created_window = false;
 		
-		for Arena_TempScope(global_scratch_arena)
+		for Arena_TempScope(scratch_arena)
 		{
 			uintsize size = 0;
 			for (int32 i = 0; i < ArrayLength(config.title); ++i)
@@ -566,7 +540,7 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 				}
 			}
 			
-			wchar_t* window_name = Win32_StringToWide(global_scratch_arena, StrMake(size, config.title));
+			wchar_t* window_name = Win32_StringToWide(scratch_arena, StrMake(size, config.title));
 			
 			switch (desc->window_desired_api)
 			{
@@ -660,12 +634,14 @@ OS_PollEvents(OS_WindowState* inout_state, OS_InputState* out_input)
 API void
 OS_ExitWithErrorMessage(const char* fmt, ...)
 {
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	
 	va_list args;
 	va_start(args, fmt);
-	String str = Arena_VPrintf(global_scratch_arena, fmt, args);
+	String str = Arena_VPrintf(scratch_arena, fmt, args);
 	va_end(args);
 	
-	wchar_t* wstr = Win32_StringToWide(global_scratch_arena, str);
+	wchar_t* wstr = Win32_StringToWide(scratch_arena, str);
 	MessageBoxW(NULL, wstr, L"Fatal Error!", MB_OK);
 	exit(1);
 	/* no return */
@@ -675,11 +651,12 @@ API void
 OS_MessageBox(String title, String message)
 {
 	Trace();
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
-	for Arena_TempScope(global_scratch_arena)
+	for Arena_TempScope(scratch_arena)
 	{
-		wchar_t* wtitle = Win32_StringToWide(global_scratch_arena, title);
-		wchar_t* wmessage = Win32_StringToWide(global_scratch_arena, message);
+		wchar_t* wtitle = Win32_StringToWide(scratch_arena, title);
+		wchar_t* wmessage = Win32_StringToWide(scratch_arena, message);
 		
 		MessageBoxW(NULL, wmessage, wtitle, MB_OK);
 	}
@@ -741,11 +718,11 @@ OS_HeapFree(void* ptr)
 }
 
 API void*
-OS_VirtualReserve(uintsize size)
+OS_VirtualReserve(void* address, uintsize size)
 {
 	Trace();
 	
-	return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+	return VirtualAlloc(address, size, MEM_RESERVE, PAGE_READWRITE);
 }
 
 API bool
@@ -822,11 +799,12 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 {
 	Trace(); TraceText(path);
 	
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	HANDLE handle;
 	
-	for Arena_TempScope(global_scratch_arena)
+	for Arena_TempScope(scratch_arena)
 	{
-		LPWSTR wpath = Win32_StringToWide(global_scratch_arena, path);
+		LPWSTR wpath = Win32_StringToWide(scratch_arena, path);
 		handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 	}
 	
@@ -882,11 +860,12 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 {
 	Trace(); TraceText(path);
 	
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	HANDLE handle;
 	
-	for Arena_TempScope(global_scratch_arena)
+	for Arena_TempScope(scratch_arena)
 	{
-		LPWSTR wpath = Win32_StringToWide(global_scratch_arena, path);
+		LPWSTR wpath = Win32_StringToWide(scratch_arena, path);
 		handle = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 	}
 	
@@ -1162,14 +1141,16 @@ OS_InterlockedDecrement32(volatile int32* ptr)
 API void
 OS_DebugMessageBox(const char* fmt, ...)
 {
-	for Arena_TempScope(global_scratch_arena)
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	
+	for Arena_TempScope(scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String str = Arena_VPrintf(global_scratch_arena, fmt, args);
+		String str = Arena_VPrintf(scratch_arena, fmt, args);
 		va_end(args);
 		
-		wchar_t* wstr = Win32_StringToWide(global_scratch_arena, str);
+		wchar_t* wstr = Win32_StringToWide(scratch_arena, str);
 		MessageBoxW(NULL, wstr, L"OS_DebugMessageBox", MB_OK);
 	}
 }
@@ -1177,24 +1158,8 @@ OS_DebugMessageBox(const char* fmt, ...)
 API void
 OS_DebugLog(const char* fmt, ...)
 {
-	for Arena_TempScope(global_scratch_arena)
-	{
-		va_list args;
-		va_start(args, fmt);
-		String str = Arena_VPrintf(global_scratch_arena, fmt, args);
-		Arena_PushData(global_scratch_arena, &""); // null terminator
-		va_end(args);
-		
-		if (IsDebuggerPresent())
-			OutputDebugStringA((const char*)str.data);
-		else
-			fwrite(str.data, 1, str.size, stderr);
-	}
-}
-
-API void
-OS_DebugThreadLog(Arena* scratch_arena, const char* fmt, ...)
-{
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	
 	for Arena_TempScope(scratch_arena)
 	{
 		va_list args;
@@ -1205,6 +1170,8 @@ OS_DebugThreadLog(Arena* scratch_arena, const char* fmt, ...)
 		
 		if (IsDebuggerPresent())
 			OutputDebugStringA((const char*)str.data);
+		else
+			fwrite(str.data, 1, str.size, stderr);
 	}
 }
 #endif //CONFIG_DEBUG

@@ -32,6 +32,12 @@ Win32_D3d9cSwapBuffers(int32 vsync_count)
 	return ok;
 }
 
+static void
+Win32_D3d9cResizeWindow(void)
+{
+	
+}
+
 static bool
 Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 {

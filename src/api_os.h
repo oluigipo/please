@@ -7,10 +7,10 @@
 #include "common_defs.h"
 #include "common_types.h"
 
-API void* OS_VirtualReserve(uintsize size);
+API void* OS_VirtualReserve(void* address, uintsize size);
 API bool OS_VirtualCommit(void* ptr, uintsize size);
 API void OS_VirtualRelease(void* ptr, uintsize size);
-#define Arena_OsReserve_(size) OS_VirtualReserve(size)
+#define Arena_OsReserve_(size) OS_VirtualReserve(0, size)
 #define Arena_OsCommit_(ptr, size) OS_VirtualCommit(ptr, size)
 #define Arena_OsFree_(ptr, size) OS_VirtualRelease(ptr, size)
 
@@ -303,7 +303,7 @@ API void* OS_HeapAlloc(uintsize size);
 API void* OS_HeapRealloc(void* ptr, uintsize size);
 API void OS_HeapFree(void* ptr);
 
-API void* OS_VirtualReserve(uintsize size);
+API void* OS_VirtualReserve(void* address, uintsize size);
 API bool OS_VirtualCommit(void* ptr, uintsize size);
 API void OS_VirtualDecommit(void* ptr, uintsize size);
 API void OS_VirtualRelease(void* ptr, uintsize size);
@@ -319,11 +319,9 @@ API void* OS_LoadGameLibrary(void);
 #ifdef CONFIG_DEBUG
 API void OS_DebugMessageBox(const char* fmt, ...);
 API void OS_DebugLog(const char* fmt, ...);
-API void OS_DebugThreadLog(Arena* scratch_arena, const char* fmt, ...);
 #else
 #   define OS_DebugMessageBox(...) ((void)0)
 #   define OS_DebugLog(...) ((void)0)
-#   define OS_DebugThreadLog(...) ((void)0)
 #endif
 
 //- Threading stuff

@@ -80,14 +80,14 @@ OS_UserMain(const OS_UserMainArgs* args)
 		const uintsize pagesize = 16ull << 20;
 		const uintsize sz_scratch     = 16ull << 20;
 		const uintsize sz_frame       = 64ull << 20;
-		const uintsize sz_persistent  = 128ull << 20;
+		const uintsize sz_persistent  = 256ull << 20;
 		const uintsize sz_audiothread = 256ull << 10;
 		
 		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent + sz_audiothread;
 		for (int32 i = 0; i < init_desc.workerthreads_count; ++i)
 			game_memory_size += sz_scratch;
 		
-		void* game_memory = OS_VirtualReserve(game_memory_size);
+		void* game_memory = OS_VirtualReserve(NULL, game_memory_size);
 		
 		global_engine.game_memory = game_memory;
 		global_engine.game_memory_size = game_memory_size;

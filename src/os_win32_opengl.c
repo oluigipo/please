@@ -500,6 +500,12 @@ Win32_OpenGLSwapBuffers(int32 vsync_count)
 	return vsynced;
 }
 
+static void
+Win32_OpenGLResizeWindow(void)
+{
+	
+}
+
 static bool
 Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 {

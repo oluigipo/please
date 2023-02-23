@@ -73,7 +73,7 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 //- IncludeBinary
 
 // https://gist.github.com/mmozeiko/ed9655cf50341553d282
-#if defined(CONFIG_ENABLE_EMBED) && (defined(__clang__) || defined(__GNUC__))
+#if defined(__clang__) || defined(__GNUC__)
 
 #ifdef _WIN32
 #   define IncludeBinary_Section ".rdata, \"dr\""
@@ -104,6 +104,6 @@ IncludeBinary_Name(name) "_end:\n" \
 extern __attribute__((aligned(16))) const unsigned char name ## _begin[]; \
 extern                              const unsigned char name ## _end[]
 
-#endif //defined(CONFIG_ENABLE_EMBED) && (defined(__clang__) || defined(__GNUC__))
+#endif //defined(__clang__) || defined(__GNUC__)
 
 #endif //CONFIG_H

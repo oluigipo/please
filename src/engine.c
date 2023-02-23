@@ -35,6 +35,8 @@ DisableWarnings();
 
 #define memcpy Mem_Copy
 #define memset Mem_Set
+#define memcmp Mem_Compare
+#define assert Assert
 
 #define STBI_MALLOC(sz) OS_HeapAlloc(sz)
 #define STBI_REALLOC(p,newsz) OS_HeapRealloc(p,newsz)
@@ -55,6 +57,7 @@ DisableWarnings();
 #undef STB_VORBIS_HEADER_ONLY
 #define STB_VORBIS_NO_PUSHDATA_API
 #define STB_VORBIS_MAX_CHANNELS 8
+//#define STB_VORBIS_NO_CRT
 #define malloc(sz) OS_HeapAlloc(sz)
 #define realloc(p,sz) OS_HeapRealloc(p,sz)
 #define free(p) OS_HeapFree(p)

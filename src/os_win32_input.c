@@ -671,27 +671,33 @@ DirectInputEnumObjectsCallback(const DIDEVICEOBJECTINSTANCEW* object, void* user
 	return DIENUM_CONTINUE;
 }
 
-static int32
-SortGamepadCompare(const void* a, const void* b)
+static void
+SortGamepadObjectInt(int32* array, intsize count)
 {
-	int32 left  = *(const int32*)a;
-	int32 right = *(const int32*)b;
-	
-	return left - right;
+	for (intsize i = 0; i < count; ++i)
+	{
+		for (intsize j = 0; j < count-1-i; ++j)
+		{
+			if (array[j] > array[j+1])
+			{
+				int32 tmp = array[j];
+				array[j] = array[j+1];
+				array[j+1] = tmp;
+			}
+		}
+	}
 }
 
 static void
 SortGamepadObjects(Win32_Gamepad* gamepad)
 {
-	qsort(gamepad->dinput.buttons, (uintsize)gamepad->dinput.button_count, sizeof(int32), SortGamepadCompare);
-	qsort(gamepad->dinput.axes, (uintsize)gamepad->dinput.axis_count, sizeof(int32), SortGamepadCompare);
-	qsort(gamepad->dinput.povs, (uintsize)gamepad->dinput.pov_count, sizeof(int32), SortGamepadCompare);
+	SortGamepadObjectInt(gamepad->dinput.buttons, gamepad->dinput.button_count);
+	SortGamepadObjectInt(gamepad->dinput.axes, gamepad->dinput.axis_count);
+	SortGamepadObjectInt(gamepad->dinput.povs, gamepad->dinput.pov_count);
 	
 	// Cleanup
 	for (int32 i = 0; i < gamepad->dinput.axis_count; ++i)
-	{
 		gamepad->dinput.axes[i] &= ~0x40000000;
-	}
 }
 
 static BOOL CALLBACK
