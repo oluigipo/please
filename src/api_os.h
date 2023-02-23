@@ -263,16 +263,41 @@ struct OS_InitDesc
 }
 typedef OS_InitDesc;
 
-struct OS_InitOutput
+struct OS_AudioDeviceInfo
 {
-	OS_WindowState window_state;
-	const OS_WindowGraphicsContext* graphics_context;
-	OS_InputState input_state;
+	String interface_name;
+	String description;
+	String name;
 	
-	int32 audiothread_sample_rate;
-	int32 audiothread_channels;
+	uint32 id;
 }
-typedef OS_InitOutput;
+typedef OS_AudioDeviceInfo;
+
+struct OS_AudioState
+{
+	// Mutable
+	uint32 current_device_id;
+	
+	// Specified by platform layer
+	bool initialized_successfully;
+	int32 mix_sample_rate;
+	int32 mix_channels;
+	int32 mix_frame_pull_rate;
+	
+	int32 device_count;
+	const OS_AudioDeviceInfo* devices;
+}
+typedef OS_AudioState;
+
+struct OS_State
+{
+	const OS_WindowGraphicsContext* graphics_context;
+	
+	OS_WindowState window;
+	OS_InputState input;
+	OS_AudioState audio;
+}
+typedef OS_State;
 
 struct OS_UserMainArgs
 {
@@ -288,8 +313,8 @@ typedef OS_UserMainArgs;
 //~ Functions
 API int32 OS_UserMain(const OS_UserMainArgs* args);
 
-API bool OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output);
-API void OS_PollEvents(OS_WindowState* inout_state, OS_InputState* out_input);
+API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
+API void OS_PollEvents(void);
 API bool OS_WaitForVsync(void);
 
 API void OS_ExitWithErrorMessage(const char* fmt, ...);

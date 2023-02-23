@@ -30,6 +30,7 @@ DisableWarnings();
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
+#include <Functiondiscoverykeys_devpkey.h>
 
 #undef near
 #undef far
@@ -46,6 +47,7 @@ ReenableWarnings();
 #   pragma comment(lib, "gdi32.lib")
 #   pragma comment(lib, "hid.lib")
 #   pragma comment(lib, "ntdll.lib")
+#   pragma comment(lib, "ole32.lib")
 #   if defined(CONFIG_ENABLE_STEAM)
 #       if defined(_WIN64)
 #           pragma comment(lib, "lib\\x86_64-windows-steam_api.lib")
@@ -56,12 +58,12 @@ ReenableWarnings();
 #endif
 
 //~ NOTE(ljre): Globals
-static OS_WindowState global_window_state;
 static OS_WindowGraphicsContext global_graphics_context;
+static OS_State global_os_state;
+
 static HINSTANCE global_instance;
 static uint64 global_process_started_time;
 static uint64 global_time_frequency;
-static OS_InputState global_input_state;
 static RECT global_monitor;
 static HWND global_window;
 static bool global_lock_cursor;
@@ -140,13 +142,13 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 	
 	//- NOTE(ljre): Simple-idk-how-to-call-it data.
 	{
-		inout_state->should_close = global_window_state.should_close;
-		inout_state->resized_by_user = global_window_state.resized_by_user;
+		inout_state->should_close = global_os_state.window.should_close;
+		inout_state->resized_by_user = global_os_state.window.resized_by_user;
 		
-		if (global_window_state.resized_by_user)
+		if (global_os_state.window.resized_by_user)
 		{
-			inout_state->width = global_window_state.width;
-			inout_state->height = global_window_state.height;
+			inout_state->width = global_os_state.window.width;
+			inout_state->height = global_os_state.window.height;
 		}
 	}
 	
@@ -159,7 +161,7 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 		int32 width = inout_state->width;
 		int32 height = inout_state->height;
 		
-		if (width != global_window_state.width || height != global_window_state.height)
+		if (width != global_os_state.window.width || height != global_os_state.window.height)
 			flags &= ~(UINT)SWP_NOSIZE;
 		
 		if (inout_state->center_window)
@@ -170,7 +172,7 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 			
 			flags &= ~(UINT)SWP_NOMOVE;
 		}
-		else if (x != global_window_state.x || y != global_window_state.y)
+		else if (x != global_os_state.window.x || y != global_os_state.window.y)
 			flags &= ~(UINT)SWP_NOMOVE;
 		
 		if (flags)
@@ -180,10 +182,10 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 	//- NOTE(ljre): Window Title
 	{
 		uintsize new_size = Mem_Strnlen((const char*)inout_state->title, ArrayLength(inout_state->title));
-		uintsize old_size = Mem_Strnlen((const char*)global_window_state.title, ArrayLength(global_window_state.title));
+		uintsize old_size = Mem_Strnlen((const char*)global_os_state.window.title, ArrayLength(global_os_state.window.title));
 		
 		String new_title = StrMake(new_size, inout_state->title);
-		String old_title = StrMake(old_size, global_window_state.title);
+		String old_title = StrMake(old_size, global_os_state.window.title);
 		
 		if (!String_Equals(old_title, new_title))
 		{
@@ -197,15 +199,15 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 	
 	//- NOTE(ljre): Cursor
 	{
-		if (inout_state->show_cursor != global_window_state.show_cursor)
+		if (inout_state->show_cursor != global_os_state.window.show_cursor)
 			ShowCursor(inout_state->show_cursor);
 		
 		global_lock_cursor = inout_state->lock_cursor;
 	}
 	
 	//- NOTE(ljre): Sync
-	global_window_state = *inout_state;
-	global_window_state.resized_by_user = false;
+	global_os_state.window = *inout_state;
+	global_os_state.window.resized_by_user = false;
 }
 
 //~ NOTE(ljre): Files
@@ -255,15 +257,15 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_QUIT:
 		{
 			if (global_window == window)
-				global_window_state.should_close = true;
+				global_os_state.window.should_close = true;
 		} break;
 		
 		case WM_SIZE:
 		{
-			global_window_state.width = LOWORD(lparam);
-			global_window_state.height = HIWORD(lparam);
+			global_os_state.window.width = LOWORD(lparam);
+			global_os_state.window.height = HIWORD(lparam);
 			
-			global_window_state.resized_by_user = true;
+			global_os_state.window.resized_by_user = true;
 			
 			switch (global_graphics_context.api)
 			{
@@ -306,7 +308,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
-				global_window_state.should_close = true;
+				global_os_state.window.should_close = true;
 		} break;
 		
 		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, OS_MouseButton_Left, false); break;
@@ -325,6 +327,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_DEVICECHANGE:
 		{
 			Win32_CheckForGamepads();
+			Win32_UpdateAudioEndpointIfNeeded();
 		} break;
 		
 		default:
@@ -479,7 +482,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 
 //~ NOTE(ljre): API
 API bool
-OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
+OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 {
 	Trace();
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
@@ -568,9 +571,11 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 			DBT_DEVTYP_DEVICEINTERFACE
 		};
 		
+		OS_State* os_state = &global_os_state;
+		
 		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if (desc->audiothread_proc && !Win32_InitAudio(desc->audiothread_proc, desc->audiothread_user_data))
+		if (desc->audiothread_proc && !Win32_InitAudio(desc, os_state))
 			OS_DebugLog("Failed to initialize audio.");
 		
 		ok = ok && Win32_InitInput();
@@ -579,14 +584,12 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 		{
 			config.resized_by_user = false;
 			config.should_close = false;
-			global_window_state = config;
 			
-			out_output->window_state = config;
-			out_output->input_state = global_input_state;
-			out_output->audiothread_sample_rate = global_samples_per_second;
-			out_output->audiothread_channels = global_channels;
+			os_state->window = config;
+			os_state->input = (OS_InputState) { 0 };
+			os_state->graphics_context = &global_graphics_context;
+			*out_state = os_state;
 			
-			out_output->graphics_context = &global_graphics_context;
 			ShowWindow(global_window, SW_SHOWDEFAULT);
 		}
 	}
@@ -595,14 +598,14 @@ OS_Init(const OS_InitDesc* desc, OS_InitOutput* out_output)
 }
 
 API void
-OS_PollEvents(OS_WindowState* inout_state, OS_InputState* out_input)
+OS_PollEvents(void)
 {
 	Trace();
 	
-	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)out_input);
+	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)&global_os_state.input);
 	
-	Win32_UpdateInputEarly(out_input);
-	Win32_UpdateWindowStateIfNeeded(inout_state);
+	Win32_UpdateInputEarly(&global_os_state.input);
+	Win32_UpdateWindowStateIfNeeded(&global_os_state.window);
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -611,7 +614,7 @@ OS_PollEvents(OS_WindowState* inout_state, OS_InputState* out_input)
 		DispatchMessageW(&message);
 	}
 	
-	Win32_UpdateInputLate(out_input);
+	Win32_UpdateInputLate(&global_os_state.input);
 }
 
 API void

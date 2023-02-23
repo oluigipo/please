@@ -136,7 +136,7 @@ E_IsSameSoundHandle_(E_SoundHandle left, E_SoundHandle right)
 
 //~ Internal API
 static void
-E_InitAudio_(const OS_InitOutput* init_output)
+E_InitAudio_(void)
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
@@ -146,8 +146,8 @@ E_InitAudio_(const OS_InitOutput* init_output)
 	const int32 max_playing_sounds = E_Limits_MaxPlayingSounds;
 	
 	audio->arena = arena;
-	audio->system_sample_rate = init_output->audiothread_sample_rate;
-	audio->system_channels = init_output->audiothread_channels;
+	audio->system_sample_rate = global_engine.os->audio.mix_sample_rate;
+	audio->system_channels = global_engine.os->audio.mix_channels;
 	
 	audio->loaded_sounds_table_size = max_loaded_sounds;
 	audio->loaded_sounds_table_first_free = 1;

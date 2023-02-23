@@ -967,22 +967,22 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 		GetCursorPos(&mouse);
 		ScreenToClient(global_window, &mouse);
 		
-		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_window_state.width);
-		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_window_state.height);
+		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_os_state.window.width);
+		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_os_state.window.height);
 		
 		static bool prev_update_mouse_pos = false;
 		bool update_mouse_pos = (GetForegroundWindow() == global_window);
 		
 		if (global_lock_cursor && update_mouse_pos)
 		{
-			mouse.x = global_window_state.width/2;
-			mouse.y = global_window_state.height/2;
+			mouse.x = global_os_state.window.width/2;
+			mouse.y = global_os_state.window.height/2;
 			
 			ClientToScreen(global_window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
 			
-			out_input_data->mouse.old_pos[0] = (float32)(global_window_state.width/2);
-			out_input_data->mouse.old_pos[1] = (float32)(global_window_state.height/2);
+			out_input_data->mouse.old_pos[0] = (float32)(global_os_state.window.width/2);
+			out_input_data->mouse.old_pos[1] = (float32)(global_os_state.window.height/2);
 			
 			if (!prev_update_mouse_pos)
 			{

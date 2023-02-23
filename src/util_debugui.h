@@ -58,8 +58,8 @@ UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
 	E_PushText(state->batch, state->font, text, state->current_pos, state->scale, GLM_VEC4_ONE);
 	
 	vec2 mouse;
-	glm_vec2_copy(state->engine->input->mouse.pos, mouse);
-	if (OS_IsPressed(state->engine->input->mouse, OS_MouseButton_Left)
+	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
+	if (OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left)
 		&& mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] >= mouse[0]
 		&& mouse[1] >= state->current_pos[1] && state->current_pos[1] + size[1] >= mouse[1])
 	{
@@ -123,11 +123,11 @@ UDebugUI_PushButton(UDebugUI_State* state, String text)
 	state->max_width = glm_max(width + state->xoffset, state->max_width);
 	
 	vec2 mouse;
-	glm_vec2_copy(state->engine->input->mouse.pos, mouse);
+	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
 	bool is_over = (mouse[0] >= bbox[0] && bbox[2] >= mouse[0] && mouse[1] >= bbox[1] && bbox[3] >= mouse[1]);
-	bool result = is_over && OS_IsReleased(state->engine->input->mouse, OS_MouseButton_Left);
+	bool result = is_over && OS_IsReleased(state->engine->os->input.mouse, OS_MouseButton_Left);
 	
-	float32 color = is_over && OS_IsDown(state->engine->input->mouse, OS_MouseButton_Left) ? 0.3f : 0.2f;
+	float32 color = is_over && OS_IsDown(state->engine->os->input.mouse, OS_MouseButton_Left) ? 0.3f : 0.2f;
 	
 	E_PushRect(state->batch, &(E_RectBatchElem) {
 		.pos = { bbox[0], bbox[1] },

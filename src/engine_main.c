@@ -14,7 +14,7 @@ E_FinishFrame(void)
 	
 	if (global_engine.draw_command_list)
 	{
-		RB_ExecuteDrawCommands(global_engine.scratch_arena, global_engine.draw_command_list, global_engine.window_state->width, global_engine.window_state->height);
+		RB_ExecuteDrawCommands(global_engine.scratch_arena, global_engine.draw_command_list, global_engine.os->window.width, global_engine.os->window.height);
 		
 		global_engine.draw_command_list = NULL;
 		global_engine.last_draw_command = NULL;
@@ -25,7 +25,7 @@ E_FinishFrame(void)
 	TraceFrameBegin();
 	
 	Arena_Clear(global_engine.frame_arena);
-	OS_PollEvents(global_engine.window_state, global_engine.input);
+	OS_PollEvents();
 	
 	float64 current_time = OS_GetTimeInSeconds();
 	global_engine.delta_time = (float32)(current_time - global_engine.last_frame_time);
@@ -126,8 +126,6 @@ OS_UserMain(const OS_UserMainArgs* args)
 		}
 		
 		// NOTE(ljre): Allocate structs
-		global_engine.input = Arena_PushStruct(global_engine.persistent_arena, OS_InputState);
-		global_engine.window_state = Arena_PushStructData(global_engine.persistent_arena, OS_WindowState, &window_state);
 		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
 		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, E_AudioState);
 		
@@ -138,22 +136,17 @@ OS_UserMain(const OS_UserMainArgs* args)
 	
 	init_desc.audiothread_user_data = global_engine.audio;
 	
-	OS_InitOutput output;
-	
-	if (!OS_Init(&init_desc, &output))
+	if (!OS_Init(&init_desc, &global_engine.os))
 		OS_ExitWithErrorMessage("Failed to initialize platform layer.");
 	
 	// NOTE(ljre): Init global_engine structure
-	*global_engine.window_state = output.window_state;
-	*global_engine.input = output.input_state;
-	global_engine.graphics_context = output.graphics_context;
 	global_engine.worker_thread_count = init_desc.workerthreads_count;
 	
-	OS_PollEvents(global_engine.window_state, global_engine.input);
+	OS_PollEvents();
 	
 	// NOTE(ljre): Init everything else
-	E_InitAudio_(&output);
-	E_InitRender_(&output);
+	E_InitAudio_();
+	E_InitRender_();
 	
 	// NOTE(ljre): Run
 	global_engine.last_frame_time = OS_GetTimeInSeconds();

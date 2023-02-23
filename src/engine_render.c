@@ -125,12 +125,12 @@ E_AppendResourceCmd_(RB_ResourceCommand* first, RB_ResourceCommand* last)
 }
 
 static void
-E_InitRender_(const OS_InitOutput* init_output)
+E_InitRender_(void)
 {
 	Trace();
 	
 	Arena* arena = global_engine.scratch_arena;
-	RB_Init(arena, init_output->graphics_context);
+	RB_Init(arena, global_engine.os->graphics_context);
 	
 	// NOTE(ljre): Print capabilities
 	{
@@ -697,7 +697,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	{
 		cam = &(E_Camera2D) {
 			.pos = { 0.0f, 0.0f },
-			.size = { (float32)global_engine.window_state->width, (float32)global_engine.window_state->height },
+			.size = { (float32)global_engine.os->window.width, (float32)global_engine.os->window.height },
 			.zoom = 1.0f,
 			.angle = 0.0f,
 		};

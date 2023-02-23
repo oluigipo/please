@@ -66,13 +66,13 @@ G_SnakeUpdateAndRender(void)
 	s->time_scale = glm_max(s->time_scale - 0.1f, 1.0f);
 	
 	//- NOTE(ljre): Update
-	if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Left) && s->previous_direction != 0)
+	if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Left) && s->previous_direction != 0)
 		s->direction = 2;
-	else if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Right) && s->previous_direction != 2)
+	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Right) && s->previous_direction != 2)
 		s->direction = 0;
-	else if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Up) && s->previous_direction != 3)
+	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Up) && s->previous_direction != 3)
 		s->direction = 1;
-	else if (OS_IsPressed(engine->input->keyboard, OS_KeyboardKey_Down) && s->previous_direction != 1)
+	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Down) && s->previous_direction != 1)
 		s->direction = 3;
 	
 	if (s->period >= 0.1f)
@@ -129,8 +129,8 @@ G_SnakeUpdateAndRender(void)
 	}
 	
 	//- NOTE(ljre): Draw
-	const float32 grid_base_x = (engine->window_state->width - s->grid_width * s->cell_width) * 0.5f;
-	const float32 grid_base_y = (engine->window_state->height - s->grid_height * s->cell_height) * 0.5f;
+	const float32 grid_base_x = (engine->os->window.width - s->grid_width * s->cell_width) * 0.5f;
+	const float32 grid_base_y = (engine->os->window.height - s->grid_height * s->cell_height) * 0.5f;
 	
 	E_RectBatch batch = {
 		.arena = engine->frame_arena,

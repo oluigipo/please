@@ -52,9 +52,7 @@ struct E_GlobalData
 	Arena* audio_thread_arena;
 	G_GlobalData* game;
 	
-	const OS_WindowGraphicsContext* graphics_context;
-	OS_WindowState* window_state;
-	OS_InputState* input;
+	OS_State* os;
 	E_AudioState* audio;
 	
 	RB_ResourceCommand* resource_command_list;
