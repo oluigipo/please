@@ -564,10 +564,10 @@ E_StopAllSounds(E_SoundHandle* specific)
 			E_DeallocPlayingSoundHandle_(audio, (E_PlayingSoundHandle) {
 				.index = (uint16)(audio->playing_sounds[i].ref_index + 1),
 			});
+			
+			audio->playing_sounds[i].sound = (E_SoundHandle) { 0 };
 		}
 	}
-	
-	audio->playing_sounds_size = 0;
 	
 	OS_UnlockExclusive(&audio->lock);
 }
