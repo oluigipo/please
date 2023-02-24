@@ -3,8 +3,8 @@
 
 #define Arena_PushStruct(arena, Type) \
 ((Type*)Arena_PushAligned(arena, sizeof(Type), alignof(Type)))
-#define Arena_PushStructData(arena, Type, data) \
-((Type*)Mem_Copy(Arena_PushStruct(arena, Type), data, sizeof(Type)))
+#define Arena_PushStructData(arena, Type, ...) \
+((Type*)Mem_Copy(Arena_PushDirtyAligned(arena, sizeof(Type), alignof(Type)), __VA_ARGS__, sizeof(Type)))
 #define Arena_PushStructInit(arena, Type, ...) \
 ((Type*)Arena_PushMemoryAligned(arena, &(Type) __VA_ARGS__, sizeof(Type), alignof(Type)))
 #define Arena_PushArray(arena, Type, count) \

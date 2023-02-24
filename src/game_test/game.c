@@ -256,9 +256,31 @@ G_UpdateAndRender(void)
 				if (UDebugUI_PushButton(&debugui, Str("Close")))
 					engine->running = false;
 				
-				float32 t = fmodf((float32)OS_GetTimeInSeconds(), 1.0f);
-				UDebugUI_PushTextF(&debugui, "Progress bar: %.2f%%", t*100.0f);
-				UDebugUI_PushProgressBar(&debugui, 200.0f, t, vec3(0.0f, 0.8f, 0.0f));
+				struct
+				{
+					Arena* arena;
+					String name;
+				}
+				arenas[] = {
+					{ engine->persistent_arena, StrInit("Persistent") },
+					{ engine->scratch_arena, StrInit("Scratch") },
+					{ engine->frame_arena, StrInit("Frame") },
+					{ engine->audio_thread_arena, StrInit("Audio Thread") },
+				};
+				
+				for (int32 i = 0; i < ArrayLength(arenas); ++i)
+				{
+					float32 t1 = (float32)arenas[i].arena->offset / (float32)arenas[i].arena->commited;
+					float32 t2 = (float32)arenas[i].arena->commited / (float32)arenas[i].arena->reserved;
+					
+					float32 mb_offset = (float32)arenas[i].arena->offset / (1024 * 1024);
+					float32 mb_commited = (float32)arenas[i].arena->commited / (1024 * 1024);
+					float32 mb_reserved = (float32)arenas[i].arena->reserved / (1024 * 1024);
+					
+					UDebugUI_PushTextF(&debugui, "Arena '%S' (%.2fMiB / %.2fMiB / %.2fMiB):", arenas[i].name, mb_offset, mb_commited, mb_reserved);
+					UDebugUI_PushProgressBar(&debugui, 300.0f, t1, vec3(0.1f, 0.8f, 0.1f));
+					UDebugUI_PushProgressBar(&debugui, 300.0f, t2, vec3(0.1f, 0.8f, 0.1f));
+				}
 				
 				UDebugUI_PopFoldable(&debugui);
 			}
