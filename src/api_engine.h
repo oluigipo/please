@@ -62,6 +62,7 @@ struct E_GlobalData
 	
 	void* game_memory;
 	uintsize game_memory_size;
+	uintsize peak_frame_arena;
 	
 	float32 delta_time;
 	float64 last_frame_time;

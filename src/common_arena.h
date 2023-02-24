@@ -10,7 +10,7 @@
 #define Arena_PushArray(arena, Type, count) \
 ((Type*)Arena_PushAligned(arena, sizeof(Type)*(count), alignof(Type)))
 #define Arena_PushArrayData(arena, Type, data, count) \
-((Type*)Mem_Copy(Arena_PushArray(arena, Type, count), data, sizeof(Type)*(count)))
+((Type*)Mem_Copy(Arena_PushDirtyAligned(arena, sizeof(Type)*(count), alignof(Type)), data, sizeof(Type)*(count)))
 #define Arena_PushData(arena, data) \
 Mem_Copy(Arena_PushDirtyAligned(arena, sizeof*(data), 1), data, sizeof*(data))
 #define Arena_PushDataArray(arena, data, count) \
@@ -29,6 +29,7 @@ struct Arena
 	uintsize commited;
 	uintsize offset;
 	uintsize page_size;
+	uintsize peak;
 	
 	alignas(16) uint8 memory[];
 }
@@ -106,6 +107,7 @@ Arena_Create(uintsize reserved, uintsize page_size)
 		result->commited = page_size;
 		result->offset = 0;
 		result->page_size = page_size;
+		result->peak = 0;
 	}
 	
 	return result;
@@ -123,6 +125,7 @@ Arena_FromMemory(void* memory, uintsize size)
 	result->commited = size;
 	result->offset = 0;
 	result->page_size = 0;
+	result->peak = 0;
 	
 	return result;
 }
@@ -141,6 +144,7 @@ Arena_FromUncommitedMemory(void* memory, uintsize reserved, uintsize page_size)
 	result->commited = page_size;
 	result->offset = 0;
 	result->page_size = page_size;
+	result->peak = 0;
 	
 	return result;
 }
@@ -182,6 +186,7 @@ Arena_PushDirtyAligned(Arena* arena, uintsize size, uintsize alignment)
 	
 	void* result = arena->memory + arena->offset;
 	arena->offset += size;
+	arena->peak = Max(arena->peak, arena->offset);
 	
 	return result;
 }

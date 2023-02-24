@@ -251,36 +251,15 @@ G_UpdateAndRender(void)
 			UDebugUI_State debugui = UDebugUI_Begin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(0.5f, 0.5f));
 			
 			static bool unfolded = false;
-			if (UDebugUI_PushFoldable(&debugui, Str("Foldable"), &unfolded))
+			if (UDebugUI_PushFoldable(&debugui, Str("Options"), &unfolded))
 			{
-				if (UDebugUI_PushButton(&debugui, Str("Close")))
-					engine->running = false;
+				if (UDebugUI_PushButton(&debugui, Str("Stop music")))
+					E_StopAllSounds(&game->music);
 				
-				struct
-				{
-					Arena* arena;
-					String name;
-				}
-				arenas[] = {
-					{ engine->persistent_arena, StrInit("Persistent") },
-					{ engine->scratch_arena, StrInit("Scratch") },
-					{ engine->frame_arena, StrInit("Frame") },
-					{ engine->audio_thread_arena, StrInit("Audio Thread") },
-				};
-				
-				for (int32 i = 0; i < ArrayLength(arenas); ++i)
-				{
-					float32 t1 = (float32)arenas[i].arena->offset / (float32)arenas[i].arena->commited;
-					float32 t2 = (float32)arenas[i].arena->commited / (float32)arenas[i].arena->reserved;
-					
-					float32 mb_offset = (float32)arenas[i].arena->offset / (1024 * 1024);
-					float32 mb_commited = (float32)arenas[i].arena->commited / (1024 * 1024);
-					float32 mb_reserved = (float32)arenas[i].arena->reserved / (1024 * 1024);
-					
-					UDebugUI_PushTextF(&debugui, "Arena '%S' (%.2fMiB / %.2fMiB / %.2fMiB):", arenas[i].name, mb_offset, mb_commited, mb_reserved);
-					UDebugUI_PushProgressBar(&debugui, 300.0f, t1, vec3(0.1f, 0.8f, 0.1f));
-					UDebugUI_PushProgressBar(&debugui, 300.0f, t2, vec3(0.1f, 0.8f, 0.1f));
-				}
+				UDebugUI_PushArenaInfo(&debugui, engine->persistent_arena, Str("Persistent"));
+				UDebugUI_PushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
+				UDebugUI_PushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
+				UDebugUI_PushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
 				
 				UDebugUI_PopFoldable(&debugui);
 			}

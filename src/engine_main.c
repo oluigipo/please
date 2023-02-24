@@ -24,6 +24,7 @@ E_FinishFrame(void)
 	RB_Present(global_engine.scratch_arena, global_engine.enable_vsync ? 1 : 0);
 	TraceFrameBegin();
 	
+	global_engine.peak_frame_arena = global_engine.frame_arena->offset;
 	Arena_Clear(global_engine.frame_arena);
 	OS_PollEvents();
 	
