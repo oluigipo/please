@@ -91,669 +91,361 @@ String_PrintfSize(const char* fmt, ...)
 #define String__STDSP_SPECIAL 0x7000
 static int32 String__stbsp__real_to_str(char const** start, uint32* len, char* out, int32* decimal_pos, float64 value, uint32 frac_digits);
 
-// TODO(ljre): Organize this function.
+static inline void
+String_WriteBuf_(char** p, char* end, uintsize* count, const char* restrict buf, intsize bufsize)
+{
+	Assert(bufsize >= 0);
+	
+	if (Likely(bufsize > 0))
+	{
+		if (end)
+		{
+			bufsize = Min(end - *p, bufsize);
+			Mem_Copy(*p, buf, bufsize);
+			*p += bufsize;
+		}
+		
+		*count += bufsize;
+	}
+}
+
+static inline void
+String_FillBuf_(char** p, char* end, uintsize* count, char fill, intsize fillsize)
+{
+	Assert(fillsize >= 0);
+	
+	if (Likely(fillsize > 0))
+	{
+		if (end)
+		{
+			fillsize = Min(end - *p, fillsize);
+			Mem_Set(*p, (uint8)fill, fillsize);
+			*p += fillsize;
+		}
+		
+		*count += fillsize;
+	}
+}
+
 static uintsize
 String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_list args)
 {
-	uintsize result = 0;
+	uintsize count = 0;
 	const char* fmt_end = fmt + Mem_Strlen(fmt);
 	
-	if (!buf || buf_size == 0)
+	SafeAssert(!buf ? buf_size == 0 : true);
+	
+	char* p = buf;
+	char* p_end = buf + buf_size;
+	
+	while (*fmt)
 	{
-		// NOTE(ljre): Just calculates the size.
+		//- Copy leading chars
+		const char* percent_addr = (const char*)Mem_FindByte(fmt, '%', fmt_end - fmt);
 		
-		while (*fmt)
+		if (percent_addr)
 		{
-			// NOTE(ljre): Leading chars.
+			String_WriteBuf_(&p, p_end, &count, fmt, percent_addr - fmt);
+			fmt = percent_addr;
+		}
+		else
+		{
+			String_WriteBuf_(&p, p_end, &count, fmt, fmt_end - fmt);
+			fmt = fmt_end;
+			break;
+		}
+		
+		if (*fmt != '%')
+			break;
+		++fmt;
+		
+		//- Parse padding
+		int32 leading_padding = -1;
+		int32 trailling_padding = -1;
+		
+		if (*fmt >= '0' && *fmt <= '9')
+		{
+			leading_padding = 0;
+			
+			do
 			{
-				const char* ch = (const char*)Mem_FindByte(fmt, '%', fmt_end - fmt);
+				leading_padding *= 10;
+				leading_padding += *fmt - '0';
+				++fmt;
+			}
+			while (*fmt >= '0' && *fmt <= '9');
+		}
+		
+		if (*fmt == '.')
+		{
+			++fmt;
+			trailling_padding = 0;
+			
+			if (*fmt == '*')
+			{
+				trailling_padding = va_arg(args, int32);
+				++fmt;
+			}
+			else while (*fmt >= '0' && *fmt <= '9')
+			{
+				trailling_padding *= 10;
+				trailling_padding += *fmt - '0';
+				++fmt;
+			}
+		}
+		
+		//- Parse format specifier
+		char tmpbuf[128] = { 0 };
+		const char* write_buf = tmpbuf;
+		intsize write_count = 0;
+		
+		bool handled_write = false;
+		char prefix_char = 0;
+		char padding_char = ' ';
+		
+		switch (*fmt++)
+		{
+			default: write_count = 1; tmpbuf[0] = fmt[-1]; Assert(false); break;
+			case '%': write_count = 1; tmpbuf[0] = '%'; break;
+			case '0': write_count = 1; tmpbuf[0] = 0; break;
+			case 'c':
+			{
+				int32 arg = va_arg(args, int32);
+				write_count = 1;
+				tmpbuf[0] = (char)arg;
+			} break;
+			
+			//case 'i':
+			//case 'I':
+			{
+				int64 arg;
+				const char* intmin;
 				
-				if (ch)
+				if (0) case 'i': { arg = va_arg(args, int32); intmin = "-2147483648";          }
+				if (0) case 'I': { arg = va_arg(args, int64); intmin = "-9223372036854775808"; }
+				
+				padding_char = '0';
+				
+				if (arg == INT_MIN)
 				{
-					result += ch - fmt;
-					fmt = ch;
+					write_buf = intmin;
+					write_count = Mem_Strlen(intmin);
+					
+					break;
+				}
+				else if (arg < 0)
+				{
+					arg = -arg;
+					prefix_char = '-';
+				}
+				else if (arg == 0)
+				{
+					tmpbuf[0] = '0';
+					write_count = 1;
+					
+					break;
+				}
+				
+				int32 index = sizeof(tmpbuf);
+				
+				while (index > 0 && arg > 0)
+				{
+					tmpbuf[--index] = (arg % 10) + '0';
+					arg /= 10;
+				}
+				
+				write_count = sizeof(tmpbuf) - index;
+				write_buf = tmpbuf + index;
+			} break;
+			
+			//case 'u':
+			//case 'U':
+			//case 'z':
+			{
+				uint64 arg;
+				
+				if (0) case 'u': arg = va_arg(args, uint32);
+				if (0) case 'U': arg = va_arg(args, uint64);
+				if (0) case 'z': arg = va_arg(args, uintsize);
+				
+				padding_char = '0';
+				
+				if (arg == 0)
+				{
+					tmpbuf[0] = '0';
+					write_count = 1;
+					break;
+				}
+				
+				int32 index = sizeof(tmpbuf);
+				
+				while (index > 0 && arg > 0)
+				{
+					tmpbuf[--index] = (arg % 10) + '0';
+					arg /= 10;
+				}
+				
+				write_count = sizeof(tmpbuf) - index;
+				write_buf = tmpbuf + index;
+			} break;
+			
+			//case 'x':
+			//case 'X':
+			//case 'p':
+			{
+				uint64 arg;
+				
+				if (0) case 'x': arg = va_arg(args, uint32);
+				if (0) case 'X': arg = va_arg(args, uint64);
+				if (0) case 'p': arg = va_arg(args, uintptr);
+				
+				padding_char = '0';
+				
+				if (arg == 0)
+				{
+					tmpbuf[0] = '0';
+					write_count = 1;
+					break;
+				}
+				
+				const char* chars = "0123456789ABCDEF";
+				int32 index = sizeof(tmpbuf);
+				
+				while (index > 0 && arg > 0)
+				{
+					tmpbuf[--index] = chars[arg & 0xf];
+					arg >>= 4;
+				}
+				
+				write_count = sizeof(tmpbuf) - index;
+				write_buf = tmpbuf + index;
+			} break;
+			
+			case 's':
+			{
+				const char* arg = va_arg(args, const char*);
+				uintsize len;
+				
+				if (!arg)
+				{
+					arg = "(null)";
+					len = 6;
+				}
+				else
+					len = Mem_Strlen(arg);
+				
+				if (trailling_padding >= 0)
+				{
+					len = Min(len, trailling_padding);
+					trailling_padding = -1;
+				}
+				
+				write_buf = arg;
+				write_count = len;
+			} break;
+			
+			case 'S':
+			{
+				String arg = va_arg(args, String);
+				
+				if (trailling_padding >= 0)
+				{
+					arg.size = Min(arg.size, trailling_padding);
+					trailling_padding = -1;
+				}
+				
+				write_buf = (const char*)arg.data;
+				write_count = (intsize)arg.size;
+			} break;
+			
+			case 'f':
+			{
+				float64 arg = va_arg(args, float64);
+				
+				if (trailling_padding == -1)
+					trailling_padding = 8;
+				
+				char* start;
+				uint32 length;
+				int32 decimal_pos;
+				
+				bool negative = String__stbsp__real_to_str((const char**)&start, &length, tmpbuf+sizeof(tmpbuf)-64, &decimal_pos, arg, trailling_padding);
+				
+				if (decimal_pos == String__STDSP_SPECIAL)
+				{
+					if (start[0] == 'I' && negative)
+					{
+						write_buf = "-Inf";
+						write_count = 4;
+					}
+					else
+					{
+						write_buf = start;
+						write_count = 3;
+					}
+					
+					break;
+				}
+				
+				padding_char = '0';
+				if (negative)
+					prefix_char = '-';
+				
+				if (decimal_pos <= 0)
+				{
+					start -= -decimal_pos + 2;
+					length += -decimal_pos + 2;
+					
+					write_buf = start;
+					write_count = length;
+					
+					*start++ = '0';
+					*start++ = '.';
+					
+					while (decimal_pos++ < 0)
+						*start++ = '0';
 				}
 				else
 				{
-					result += fmt_end - fmt;
-					fmt = fmt_end;
-					break;
-				}
-			}
-			
-			if (*fmt != '%')
-				break;
-			++fmt;
-			
-			int32 leading_padding = -1;
-			int32 trailling_padding = -1;
-			
-			if (*fmt >= '0' && *fmt <= '9')
-			{
-				leading_padding = 0;
-				
-				do
-				{
-					leading_padding *= 10;
-					leading_padding += *fmt - '0';
-					++fmt;
-				}
-				while (*fmt >= '0' && *fmt <= '9');
-			}
-			
-			if (*fmt == '.')
-			{
-				++fmt;
-				trailling_padding = 0;
-				
-				if (*fmt == '*')
-				{
-					trailling_padding = va_arg(args, int32);
-					++fmt;
-				}
-				else while (*fmt >= '0' && *fmt <= '9')
-				{
-					trailling_padding *= 10;
-					trailling_padding += *fmt - '0';
-					++fmt;
-				}
-			}
-			
-			intsize count = 0;
-			
-			switch (*fmt++)
-			{
-				default: ++count; Assert(false); break;
-				case 'c': case '%': case '0': ++count; break;
-				
-				case 'i':
-				{
-					int32 arg = va_arg(args, int32);
-					
-					if (arg == INT_MIN)
-					{
-						count += ArrayLength("-2147483648") - 1;
-						break;
-					}
-					else if (arg < 0)
-					{
-						count += 1;
-						arg = -arg;
-					}
-					else if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg /= 10;
-					}
-				} break;
-				
-				case 'I':
-				{
-					int64 arg = va_arg(args, int64);
-					
-					if (arg == INT64_MIN)
-					{
-						count += ArrayLength("-9223372036854775808") - 1;
-						break;
-					}
-					else if (arg < 0)
-					{
-						count += 1;
-						arg = -arg;
-					}
-					else if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg /= 10;
-					}
-				} break;
-				
-				case 'u':
-				{
-					uint32 arg = va_arg(args, uint32);
-					
-					if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg /= 10;
-					}
-				} break;
-				
-				case 'U':
-				{
-					uint64 arg = va_arg(args, uint64);
-					
-					if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg /= 10;
-					}
-				} break;
-				
-				case 'z':
-				{
-					uintsize arg = va_arg(args, uintsize);
-					
-					if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg /= 10;
-					}
-				} break;
-				
-				case 'x': case 'X':
-				{
-					uint32 arg = va_arg(args, uint32);
-					
-					if (arg == 0)
-					{
-						count += 1;
-						break;
-					}
-					
-					while (arg > 0)
-					{
-						++count;
-						arg >>= 4;
-					}
-				} break;
-				
-				case 's':
-				{
-					const char* arg = va_arg(args, const char*);
-					uintsize len;
-					
-					if (trailling_padding == -1)
-						len = Mem_Strlen(arg);
-					else
-					{
-						const char* off = (const char*)Mem_FindByte(arg, 0, trailling_padding);
-						len = off ? off - arg : trailling_padding;
-					}
-					
-					count += len;
-				} break;
-				
-				case 'S':
-				{
-					String arg = va_arg(args, String);
-					
-					count += arg.size;
-				} break;
-				
-				case 'p':
-				{
-					count += sizeof(void*) * 8;
-				} break;
-				
-				case 'f':
-				{
-					float64 arg = va_arg(args, float64);
-					
-					const char* start;
-					uint32 length;
-					char tmpbuf[64];
-					int32 decimal_pos;
-					
-					bool neg = String__stbsp__real_to_str(&start, &length, tmpbuf, &decimal_pos, arg, trailling_padding);
-					
-					count += length + (length > decimal_pos) + neg;
-				} break;
-			}
-			
-			if (leading_padding != -1)
-				count = Max(count, leading_padding);
-			
-			result += count;
-		}
-	}
-	else
-	{
-		char* const begin = buf;
-		char* const end = buf + buf_size;
-		char* p = begin;
-		
-		while (p < end && *fmt)
-		{
-			// NOTE(ljre): Copy all leading chars up to '%'
-			{
-				const char* ch = (const char*)Mem_FindByte(fmt, '%', fmt_end - fmt);
-				if (!ch)
-					ch = fmt_end;
-				
-				intsize count = Min(ch - fmt, end - p);
-				Mem_Copy(p, fmt, count);
-				p += count;
-				
-				fmt = ch;
-			}
-			
-			if (p >= end)
-				break;
-			if (*fmt != '%')
-				continue;
-			++fmt;
-			
-			// TODO(ljre): properly implement (leading|trailling)_padding!!!
-			int32 leading_padding = -1;
-			int32 trailling_padding = -1;
-			
-			(void)leading_padding;
-			
-			if (*fmt >= '0' && *fmt <= '9')
-			{
-				leading_padding = 0;
-				
-				do
-				{
-					leading_padding *= 10;
-					leading_padding += *fmt - '0';
-					++fmt;
-				}
-				while (*fmt >= '0' && *fmt <= '9');
-			}
-			
-			if (*fmt == '.')
-			{
-				++fmt;
-				trailling_padding = 0;
-				
-				if (*fmt == '*')
-				{
-					trailling_padding = va_arg(args, int32);
-					++fmt;
-				}
-				else while (*fmt >= '0' && *fmt <= '9')
-				{
-					trailling_padding *= 10;
-					trailling_padding += *fmt - '0';
-					++fmt;
-				}
-			}
-			
-			switch (*fmt++)
-			{
-				default: *p++ = fmt[-1]; Assert(false); break;
-				case '%': *p++ = '%'; break;
-				case '0': *p++ = 0;   break;
-				case 'c':
-				{
-					int32 arg = va_arg(args, int32);
-					*p++ = (uint8)arg;
-				} break;
-				
-				//- NOTE(ljre): Signed decimal int.
-				case 'i':
-				{
-					int32 arg = va_arg(args, int32);
-					bool negative = false;
-					
-					// NOTE(ljre): Handle special case for INT_MIN
-					if (arg == INT_MIN)
-					{
-						char intmin[] = "-2147483648";
-						
-						intsize count = Min(end - p, ArrayLength(intmin)-1);
-						Mem_Copy(p, intmin, count);
-						p += count;
-						
-						break;
-					}
-					else if (arg < 0)
-					{
-						arg = -arg; // NOTE(ljre): this would break if 'arg == INT_MIN'
-						negative = true;
-					}
-					else if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = (arg % 10) + '0';
-						arg /= 10;
-					}
-					
-					if (p < end && negative)
-						*p++ = '-';
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				case 'I':
-				{
-					int64 arg = va_arg(args, int64);
-					bool negative = false;
-					
-					// NOTE(ljre): Handle special case for INT_MIN
-					if (arg == INT64_MIN)
-					{
-						char intmin[] = "-9223372036854775808";
-						
-						intsize count = Min(end - p, ArrayLength(intmin)-1);
-						Mem_Copy(p, intmin, count);
-						p += count;
-						
-						break;
-					}
-					else if (arg < 0)
-					{
-						arg = -arg; // NOTE(ljre): this would break if 'arg == INT64_MIN'
-						negative = true;
-					}
-					else if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = (arg % 10) + '0';
-						arg /= 10;
-					}
-					
-					if (p < end && negative)
-						*p++ = '-';
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): Unsigned decimal int.
-				case 'u':
-				{
-					uint32 arg = va_arg(args, uint32);
-					
-					if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = (arg % 10) + '0';
-						arg /= 10;
-					}
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				case 'U':
-				{
-					uint64 arg = va_arg(args, uint64);
-					
-					if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = (arg % 10) + '0';
-						arg /= 10;
-					}
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): size_t format.
-				case 'z':
-				{
-					uintsize arg = va_arg(args, uintsize);
-					
-					if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = (arg % 10) + '0';
-						arg /= 10;
-					}
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): Unsigned hexadecimal int.
-				case 'x':
-				{
-					const char* chars = "0123456789abcdef";
-					
-					uint32 arg = va_arg(args, uint32);
-					
-					if (arg == 0)
-					{
-						intsize rem = Min(end - p, (leading_padding != -1) ? leading_padding : 1);
-						while (rem --> 0)
-							*p++ = '0';
-						
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = chars[arg & 0xf];
-						arg >>= 4;
-					}
-					
-					if (leading_padding != -1)
-					{
-						intsize diff = leading_padding - (ArrayLength(tmpbuf) - index);
-						diff = Min(end - p, diff);
-						
-						while (diff --> 0)
-							*p++ = '0';
-					}
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				case 'X':
-				{
-					const char* chars = "0123456789abcdef";
-					
-					uint64 arg = va_arg(args, uint64);
-					
-					if (arg == 0)
-					{
-						*p++ = '0';
-						break;
-					}
-					
-					char tmpbuf[32];
-					int32 index = sizeof(tmpbuf);
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = chars[arg & 0xf];
-						arg >>= 4;
-					}
-					
-					intsize count = Min(end - p, ArrayLength(tmpbuf) - index);
-					Mem_Copy(p, tmpbuf + index, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): Strings.
-				case 's':
-				{
-					const char* arg = va_arg(args, const char*);
-					uintsize len;
-					
-					if (trailling_padding == -1)
-						len = Mem_Strlen(arg);
-					else
-					{
-						const char* off = (const char*)Mem_FindByte(arg, 0, trailling_padding);
-						len = off ? off - arg : trailling_padding;
-					}
-					
-					intsize count = Min(end - p, len);
-					Mem_Copy(p, arg, count);
-					p += count;
-				} break;
-				
-				case 'S':
-				{
-					String arg = va_arg(args, String);
-					
-					intsize count = Min(end - p, arg.size);
-					Mem_Copy(p, arg.data, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): Pointer.
-				case 'p':
-				{
-					uintptr arg = (uintptr)va_arg(args, void*);
-					char tmpbuf[sizeof(void*) * 8 / 16];
-					int32 index = sizeof(tmpbuf);
-					
-					Mem_Set(tmpbuf, '0', sizeof(tmpbuf));
-					
-					while (index > 0 && arg > 0)
-					{
-						tmpbuf[--index] = arg & 0xf;
-						arg >>= 4;
-					}
-					
-					intsize count = Min(end - p, sizeof(tmpbuf));
-					Mem_Copy(p, tmpbuf, count);
-					p += count;
-				} break;
-				
-				//- NOTE(ljre): Floating-point.
-				case 'f':
-				{
-					float64 arg = va_arg(args, float64);
-					
-					if (trailling_padding == -1)
-						trailling_padding = 8;
-					
-					const char* start;
-					uint32 length;
-					char tmpbuf[64];
-					int32 decimal_pos;
-					
-					intsize count;
-					bool neg = String__stbsp__real_to_str(&start, &length, tmpbuf, &decimal_pos, arg, trailling_padding);
-					
-					if (decimal_pos == String__STDSP_SPECIAL)
-					{
-						count = Min(end - p, 3 + neg);
-						if (neg && count--)
-							*p++ = '-';
-						
-						*p++ = start[0];
-						*p++ = start[1];
-						*p++ = start[2];
-						
-						break;
-					}
+					handled_write = true;
+					if (negative)
+						String_FillBuf_(&p, p_end, &count, '-', 1);
 					
 					if (length <= decimal_pos)
 					{
-						count = Min(end - p, length);
-						Mem_Copy(p, start, count);
-						p += count;
+						if (leading_padding != -1 && decimal_pos < leading_padding)
+							String_FillBuf_(&p, p_end, &count, '0', leading_padding - decimal_pos);
 						
-						count = Min(end - p, decimal_pos - length);
-						while (count --> 0)
-							*p++ = '0';
-						
-						const char* mem = ".00";
-						count = Min(end - p, 3);
-						while (count --> 0)
-							*p++ = *mem++;
+						String_WriteBuf_(&p, p_end, &count, start, length);
+						String_FillBuf_(&p, p_end, &count, '0', decimal_pos - length);
+						String_FillBuf_(&p, p_end, &count, '.', 1);
+						String_FillBuf_(&p, p_end, &count, '0', 2);
 					}
 					else
 					{
-						count = Min(end - p, decimal_pos);
-						Mem_Copy(p, start, count);
-						p += count;
+						if (leading_padding != -1 && length - decimal_pos < leading_padding)
+							String_FillBuf_(&p, p_end, &count, '0', leading_padding - (length - decimal_pos));
 						
-						if (p >= end)
-							break;
-						*p++ = '.';
-						
-						count = Min(end - p, length - decimal_pos);
-						Mem_Copy(p, start + decimal_pos, count);
-						p += count;
+						String_WriteBuf_(&p, p_end, &count, start, decimal_pos);
+						String_FillBuf_(&p, p_end, &count, '.', 1);
+						String_WriteBuf_(&p, p_end, &count, start + decimal_pos, length - decimal_pos);
 					}
-				} break;
-			}
+				}
+			} break;
 		}
 		
-		result = p - begin;
+		if (!handled_write)
+		{
+			if (prefix_char)
+				String_WriteBuf_(&p, p_end, &count, &prefix_char, 1);
+			if (leading_padding != -1 && write_count < leading_padding)
+				String_FillBuf_(&p, p_end, &count, padding_char, leading_padding - write_count);
+			if (write_count)
+				String_WriteBuf_(&p, p_end, &count, write_buf, write_count);
+		}
 	}
 	
-	return result;
+	return count;
 }
 
 //~ NOTE(ljre): All this code is derived from stb_sprint! Licensed under Unlicense.
