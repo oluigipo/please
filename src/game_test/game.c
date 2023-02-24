@@ -256,10 +256,27 @@ G_UpdateAndRender(void)
 				if (UDebugUI_PushButton(&debugui, Str("Stop music")))
 					E_StopAllSounds(&game->music);
 				
-				UDebugUI_PushArenaInfo(&debugui, engine->persistent_arena, Str("Persistent"));
-				UDebugUI_PushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
-				UDebugUI_PushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
-				UDebugUI_PushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
+				static bool caps_unfolded = false;
+				if (UDebugUI_PushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))
+				{
+					RB_Capabilities caps = { 0 };
+					RB_QueryCapabilities(&caps);
+					
+					UDebugUI_PushTextF(&debugui, "API: %S\nDriver: %S\nMaxTextureSize: %i", caps.backend_api, caps.driver, caps.max_texture_size);
+					
+					UDebugUI_PopFoldable(&debugui);
+				}
+				
+				static bool arenas_unfolded = false;
+				if (UDebugUI_PushFoldable(&debugui, Str("Arenas Info"), &arenas_unfolded))
+				{
+					UDebugUI_PushArenaInfo(&debugui, engine->persistent_arena, Str("Persistent"));
+					UDebugUI_PushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
+					UDebugUI_PushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
+					UDebugUI_PushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
+					
+					UDebugUI_PopFoldable(&debugui);
+				}
 				
 				UDebugUI_PopFoldable(&debugui);
 			}

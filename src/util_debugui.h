@@ -55,20 +55,36 @@ UDebugUI_Begin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos,
 static bool
 UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
 {
+	const float32 dot_size = 32.0f * glm_min(state->scale[0], state->scale[1]);
+	const float32 dot_pad = 4.0f * glm_min(state->scale[0], state->scale[1]);
+	const float32 dot_color = *is_unfolded ? 0.8f : 0.1f;
+	
 	vec2 size = { 0 };
 	E_CalcTextSize(state->font, text, state->scale, &size);
-	state->max_width = glm_max(size[0] + state->xoffset, state->max_width);
-	
-	E_PushText(state->batch, state->font, text, state->current_pos, state->scale, GLM_VEC4_ONE);
+	state->max_width = glm_max(size[0] + state->xoffset + dot_size, state->max_width);
 	
 	vec2 mouse;
 	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
 	if (OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left)
-		&& mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] >= mouse[0]
+		&& mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] + dot_size >= mouse[0]
 		&& mouse[1] >= state->current_pos[1] && state->current_pos[1] + size[1] >= mouse[1])
 	{
 		*is_unfolded ^= 1;
 	}
+	
+	E_PushRect(state->batch, &(E_RectBatchElem) {
+		.pos = {
+			state->current_pos[0] + dot_pad,
+			state->current_pos[1] + (size[1] - dot_size) + dot_pad,
+		},
+		.scaling[0][0] = dot_size - dot_pad*2,
+		.scaling[1][1] = dot_size - dot_pad*2,
+		.tex_kind = 3.0f,
+		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.color = { dot_color, dot_color, dot_color, 1.0f },
+	});
+	
+	E_PushText(state->batch, state->font, text, vec2(state->current_pos[0] + dot_size, state->current_pos[1]), state->scale, GLM_VEC4_ONE);
 	
 	if (*is_unfolded)
 	{
@@ -113,7 +129,7 @@ UDebugUI_PushButton(UDebugUI_State* state, String text)
 	vec2 size = { 0 };
 	E_CalcTextSize(state->font, text, state->scale, &size);
 	
-	const float32 padding = 4.0f;
+	const float32 padding = 4.0f * glm_min(state->scale[0], state->scale[1]);
 	float32 width = size[0] + padding*2;
 	float32 height = size[1] + padding;
 	
@@ -158,7 +174,9 @@ UDebugUI_PushSlider(UDebugUI_State* state, float32 min, float32 max, float32* va
 static void
 UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3* colors, int32 bar_count)
 {
-	float32 height = 8.0f;
+	width *= state->scale[0];
+	const float32 height = 8.0f * state->scale[1];
+	
 	state->max_width = glm_max(width + state->xoffset, state->max_width);
 	
 	E_PushRect(state->batch, &(E_RectBatchElem) {
