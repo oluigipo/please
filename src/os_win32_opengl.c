@@ -477,9 +477,9 @@ Win32_DestroyOpenGLWindow(void)
 {
 	Trace();
 	
-	global_opengl.wglMakeCurrent(global_hdc, NULL);
+	global_opengl.wglMakeCurrent(g_win32.hdc, NULL);
 	global_opengl.wglDeleteContext(global_opengl.context);
-	DestroyWindow(global_window);
+	DestroyWindow(g_win32.window);
 }
 
 static bool
@@ -488,8 +488,8 @@ Win32_OpenGLSwapBuffers(int32 vsync_count)
 	Trace();
 	
 	//global_opengl.vtable.glFlush();
-	//global_opengl.wglSwapLayerBuffers(global_hdc, WGL_SWAP_MAIN_PLANE);
-	SwapBuffers(global_hdc);
+	//global_opengl.wglSwapLayerBuffers(g_win32.hdc, WGL_SWAP_MAIN_PLANE);
+	SwapBuffers(g_win32.hdc);
 	
 	bool vsynced = false;
 	
@@ -516,10 +516,10 @@ Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 	Trace();
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW);// & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
-	HWND window = CreateWindowExW(0, global_class_name, title, style,
+	HWND window = CreateWindowExW(0, g_win32.class_name, title, style,
 		config->x, config->y,
 		config->width, config->height,
-		NULL, NULL, global_instance, NULL);
+		NULL, NULL, g_win32.instance, NULL);
 	
 	if (!window)
 		return false;
@@ -655,11 +655,11 @@ Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 	global_opengl.wglSwapIntervalEXT(0);
 	
 	// Globals
-	global_window = window;
-	global_hdc = hdc;
-	global_graphics_context.api = OS_WindowGraphicsApi_OpenGL;
-	global_graphics_context.opengl = &global_opengl.vtable;
-	global_graphics_context.present_and_vsync = Win32_OpenGLSwapBuffers;
+	g_win32.window = window;
+	g_win32.hdc = hdc;
+	g_graphics_context.api = OS_WindowGraphicsApi_OpenGL;
+	g_graphics_context.opengl = &global_opengl.vtable;
+	g_graphics_context.present_and_vsync = Win32_OpenGLSwapBuffers;
 	
 	return true;
 }

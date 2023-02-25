@@ -8,8 +8,8 @@
 #ifdef CONFIG_ENABLE_EMBED
 IncludeBinary(g_music_ogg, "music.ogg");
 IncludeBinary(g_luigi_ogg, "luigi.ogg");
-IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
-IncludeBinary(g_corset_model, "assets/corset.glb");
+//IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
+//IncludeBinary(g_corset_model, "assets/corset.glb");
 #endif
 
 static G_GlobalData* game;
@@ -78,11 +78,11 @@ G_Init(void)
 		},
 	};
 	
-#ifdef CONFIG_ENABLE_EMBED
-	desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
-#else
+	//#ifdef CONFIG_ENABLE_EMBED
+	//desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
+	//#else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
-#endif
+	//#endif
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	
 	{
@@ -255,6 +255,8 @@ G_UpdateAndRender(void)
 			{
 				if (UDebugUI_PushButton(&debugui, Str("Stop music")))
 					E_StopAllSounds(&game->music);
+				if (UDebugUI_PushButton(&debugui, Str("luigi")))
+					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
 				
 				static bool caps_unfolded = false;
 				if (UDebugUI_PushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))
@@ -274,6 +276,33 @@ G_UpdateAndRender(void)
 					UDebugUI_PushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
 					UDebugUI_PushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
 					UDebugUI_PushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
+					
+					UDebugUI_PopFoldable(&debugui);
+				}
+				
+				static bool audiodev_unfolded = false;
+				if (UDebugUI_PushFoldable(&debugui, Str("Audio Devices"), &audiodev_unfolded))
+				{
+					UDebugUI_PushTextF(&debugui, "Current playing device ID: %u", engine->os->audio.current_device_id);
+					UDebugUI_PushTextF(&debugui, "Sample Rate: %i", engine->os->audio.mix_sample_rate);
+					UDebugUI_PushTextF(&debugui, "Channels: %i", engine->os->audio.mix_channels);
+					UDebugUI_PushTextF(&debugui, "Frame Pull Rate: %i", engine->os->audio.mix_frame_pull_rate);
+					UDebugUI_PushVerticalSpacing(&debugui, 24.0f);
+					UDebugUI_PushTextF(&debugui, "Devices:");
+					
+					static bool devs_unfolded[32];
+					for (int32 i = 0; i < Min(engine->os->audio.device_count, ArrayLength(devs_unfolded)); ++i)
+					{
+						const OS_AudioDeviceInfo* dev = &engine->os->audio.devices[i];
+						String text = String_PrintfLocal(256, "ID %u", dev->id);
+						
+						if (UDebugUI_PushFoldable(&debugui, text, &devs_unfolded[i]))
+						{
+							UDebugUI_PushTextF(&debugui, "Name: %S\nDescription: %S\nInterface: %S", dev->name, dev->description, dev->interface_name);
+							
+							UDebugUI_PopFoldable(&debugui);
+						}
+					}
 					
 					UDebugUI_PopFoldable(&debugui);
 				}

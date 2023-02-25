@@ -147,11 +147,11 @@ G_Scene3DInit(void)
 	{
 		Buffer gltf_data = { 0 };
 		
-#ifdef CONFIG_ENABLE_EMBED
-		gltf_data = BufRange(g_corset_model_begin, g_corset_model_end);
-#else
+		//#ifdef CONFIG_ENABLE_EMBED
+		//gltf_data = BufRange(g_corset_model_begin, g_corset_model_end);
+		//#else
 		SafeAssert(OS_ReadEntireFile(Str("assets/corset.glb"), engine->scratch_arena, (void**)&gltf_data.data, &gltf_data.size));
-#endif
+		//#endif
 		
 		UGltf_JsonRoot gltf = { 0 };
 		SafeAssert(UGltf_Parse(gltf_data.data, gltf_data.size, engine->scratch_arena, &gltf));

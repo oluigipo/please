@@ -27,6 +27,7 @@ static bool UDebugUI_PushButton(UDebugUI_State* state, String text);
 static void UDebugUI_PushSlider(UDebugUI_State* state, float32 min, float32 max, float32* value);
 static void UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3* colors, int32 bar_count);
 static void UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String optional_name);
+static void UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing);
 static void UDebugUI_End(UDebugUI_State* state);
 
 //~ Implementation
@@ -65,9 +66,9 @@ UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
 	
 	vec2 mouse;
 	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
-	if (OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left)
-		&& mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] + dot_size >= mouse[0]
-		&& mouse[1] >= state->current_pos[1] && state->current_pos[1] + size[1] >= mouse[1])
+	if (OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left) &&
+		mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] + dot_size >= mouse[0] &&
+		mouse[1] >= state->current_pos[1] && state->current_pos[1] + size[1] >= mouse[1])
 	{
 		*is_unfolded ^= 1;
 	}
@@ -152,7 +153,7 @@ UDebugUI_PushButton(UDebugUI_State* state, String text)
 	E_PushRect(state->batch, &(E_RectBatchElem) {
 		.pos = { bbox[0], bbox[1] },
 		.tex_kind = 3,
-		.scaling[0][0] = width,
+		.scaling[0][0] = width + padding,
 		.scaling[1][1] = height,
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { color, color, color, 1.0f },
@@ -272,6 +273,12 @@ UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String name)
 	
 	state->xoffset -= state->tab_size;
 	state->current_pos[0] -= state->tab_size;
+}
+
+static void
+UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing)
+{
+	state->current_pos[1] += spacing * state->scale[1];
 }
 
 static void

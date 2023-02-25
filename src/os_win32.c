@@ -58,18 +58,22 @@ ReenableWarnings();
 #endif
 
 //~ NOTE(ljre): Globals
-static OS_WindowGraphicsContext global_graphics_context;
-static OS_State global_os_state;
+static OS_WindowGraphicsContext g_graphics_context;
+static OS_State g_os;
 
-static HINSTANCE global_instance;
-static uint64 global_process_started_time;
-static uint64 global_time_frequency;
-static RECT global_monitor;
-static HWND global_window;
-static bool global_lock_cursor;
-static HDC global_hdc;
-static LPWSTR global_class_name = L"WindowClassName";
-static HANDLE global_worker_threads[E_Limits_MaxWorkerThreadCount];
+struct
+{
+	HINSTANCE instance;
+	uint64 process_started_time;
+	uint64 time_frequency;
+	RECT monitor;
+	HWND window;
+	bool lock_cursor;
+	HDC hdc;
+	LPCWSTR class_name;
+	HANDLE worker_threads[E_Limits_MaxWorkerThreadCount];
+}
+static g_win32;
 
 #if 0
 int __declspec(dllexport) NvOptimusEnablement = 1;
@@ -142,13 +146,13 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 	
 	//- NOTE(ljre): Simple-idk-how-to-call-it data.
 	{
-		inout_state->should_close = global_os_state.window.should_close;
-		inout_state->resized_by_user = global_os_state.window.resized_by_user;
+		inout_state->should_close = g_os.window.should_close;
+		inout_state->resized_by_user = g_os.window.resized_by_user;
 		
-		if (global_os_state.window.resized_by_user)
+		if (g_os.window.resized_by_user)
 		{
-			inout_state->width = global_os_state.window.width;
-			inout_state->height = global_os_state.window.height;
+			inout_state->width = g_os.window.width;
+			inout_state->height = g_os.window.height;
 		}
 	}
 	
@@ -161,53 +165,53 @@ Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
 		int32 width = inout_state->width;
 		int32 height = inout_state->height;
 		
-		if (width != global_os_state.window.width || height != global_os_state.window.height)
+		if (width != g_os.window.width || height != g_os.window.height)
 			flags &= ~(UINT)SWP_NOSIZE;
 		
 		if (inout_state->center_window)
 		{
-			inout_state->x = x = (global_monitor.right - global_monitor.left) / 2 - width / 2;
-			inout_state->y = y = (global_monitor.bottom - global_monitor.top) / 2 - height / 2;
+			inout_state->x = x = (g_win32.monitor.right - g_win32.monitor.left) / 2 - width / 2;
+			inout_state->y = y = (g_win32.monitor.bottom - g_win32.monitor.top) / 2 - height / 2;
 			inout_state->center_window = false;
 			
 			flags &= ~(UINT)SWP_NOMOVE;
 		}
-		else if (x != global_os_state.window.x || y != global_os_state.window.y)
+		else if (x != g_os.window.x || y != g_os.window.y)
 			flags &= ~(UINT)SWP_NOMOVE;
 		
 		if (flags)
-			SetWindowPos(global_window, NULL, x, y, width, height, flags | SWP_NOZORDER);
+			SetWindowPos(g_win32.window, NULL, x, y, width, height, flags | SWP_NOZORDER);
 	}
 	
 	//- NOTE(ljre): Window Title
 	{
 		uintsize new_size = Mem_Strnlen((const char*)inout_state->title, ArrayLength(inout_state->title));
-		uintsize old_size = Mem_Strnlen((const char*)global_os_state.window.title, ArrayLength(global_os_state.window.title));
+		uintsize old_size = Mem_Strnlen((const char*)g_os.window.title, ArrayLength(g_os.window.title));
 		
 		String new_title = StrMake(new_size, inout_state->title);
-		String old_title = StrMake(old_size, global_os_state.window.title);
+		String old_title = StrMake(old_size, g_os.window.title);
 		
 		if (!String_Equals(old_title, new_title))
 		{
 			for Arena_TempScope(scratch_arena)
 			{
 				wchar_t* name = Win32_StringToWide(scratch_arena, new_title);
-				SetWindowTextW(global_window, name);
+				SetWindowTextW(g_win32.window, name);
 			}
 		}
 	}
 	
 	//- NOTE(ljre): Cursor
 	{
-		if (inout_state->show_cursor != global_os_state.window.show_cursor)
+		if (inout_state->show_cursor != g_os.window.show_cursor)
 			ShowCursor(inout_state->show_cursor);
 		
-		global_lock_cursor = inout_state->lock_cursor;
+		g_win32.lock_cursor = inout_state->lock_cursor;
 	}
 	
 	//- NOTE(ljre): Sync
-	global_os_state.window = *inout_state;
-	global_os_state.window.resized_by_user = false;
+	g_os.window = *inout_state;
+	g_os.window.resized_by_user = false;
 }
 
 //~ NOTE(ljre): Files
@@ -256,18 +260,18 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		case WM_DESTROY:
 		case WM_QUIT:
 		{
-			if (global_window == window)
-				global_os_state.window.should_close = true;
+			if (g_win32.window == window)
+				g_os.window.should_close = true;
 		} break;
 		
 		case WM_SIZE:
 		{
-			global_os_state.window.width = LOWORD(lparam);
-			global_os_state.window.height = HIWORD(lparam);
+			g_os.window.width = LOWORD(lparam);
+			g_os.window.height = HIWORD(lparam);
 			
-			global_os_state.window.resized_by_user = true;
+			g_os.window.resized_by_user = true;
 			
-			switch (global_graphics_context.api)
+			switch (g_graphics_context.api)
 			{
 				case OS_WindowGraphicsApi_Null: break;
 				
@@ -308,7 +312,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
-				global_os_state.window.should_close = true;
+				g_os.window.should_close = true;
 		} break;
 		
 		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, OS_MouseButton_Left, false); break;
@@ -386,7 +390,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	{
 		LARGE_INTEGER value;
 		QueryPerformanceFrequency(&value);
-		global_time_frequency = value.QuadPart;
+		g_win32.time_frequency = value.QuadPart;
 	}
 	
 	{
@@ -396,7 +400,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		};
 		
 		SafeAssert(GetMonitorInfoA(monitor, &info));
-		global_monitor = info.rcWork;
+		g_win32.monitor = info.rcWork;
 	}
 	
 #ifdef CONFIG_DEBUG
@@ -421,8 +425,8 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		cpu_core_count = system_info.dwNumberOfProcessors;
 	}
 	
-	global_process_started_time = Win32_GetTimer();
-	global_instance = instance;
+	g_win32.process_started_time = Win32_GetTimer();
+	g_win32.instance = instance;
 	
 	//- Run
 	OS_UserMainArgs args = {
@@ -451,16 +455,16 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	//Win32_DeinitSimpleAudio();
 	Win32_DeinitAudio();
 	
-	for (int32 i = 0; i < ArrayLength(global_worker_threads); ++i)
+	for (int32 i = 0; i < ArrayLength(g_win32.worker_threads); ++i)
 	{
-		if (global_worker_threads[i])
+		if (g_win32.worker_threads[i])
 		{
-			TerminateThread(global_worker_threads[i], 0);
-			global_worker_threads[i] = NULL;
+			TerminateThread(g_win32.worker_threads[i], 0);
+			g_win32.worker_threads[i] = NULL;
 		}
 	}
 	
-	switch (global_graphics_context.api)
+	switch (g_graphics_context.api)
 	{
 #ifdef CONFIG_ENABLE_OPENGL
 		case OS_WindowGraphicsApi_OpenGL: Win32_DestroyOpenGLWindow(); break;
@@ -487,13 +491,15 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	Trace();
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
+	g_win32.class_name = L"WindowClassName";
+	
 	WNDCLASSW window_class = {
 		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
 		.lpfnWndProc = WindowProc,
-		.lpszClassName = global_class_name,
-		.hInstance = global_instance,
+		.lpszClassName = g_win32.class_name,
+		.hInstance = g_win32.instance,
 		.hCursor = LoadCursorA(NULL, IDC_ARROW),
-		.hIcon = LoadIconA(global_instance, MAKEINTRESOURCE(101)),
+		.hIcon = LoadIconA(g_win32.instance, MAKEINTRESOURCE(101)),
 	};
 	
 	if (!RegisterClassW(&window_class))
@@ -503,8 +509,8 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	
 	if (config.center_window)
 	{
-		config.x = (global_monitor.right - global_monitor.left - config.width) / 2;
-		config.y = (global_monitor.bottom - global_monitor.top - config.height) / 2;
+		config.x = (g_win32.monitor.right - g_win32.monitor.left - config.width) / 2;
+		config.y = (g_win32.monitor.bottom - g_win32.monitor.top - config.height) / 2;
 		
 		config.center_window = false;
 	}
@@ -560,7 +566,7 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 			args[1] = desc->workerthreads_args[i];
 			
 			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, args, 0, NULL);
-			global_worker_threads[i] = handle;
+			g_win32.worker_threads[i] = handle;
 		}
 	}
 	
@@ -571,9 +577,9 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 			DBT_DEVTYP_DEVICEINTERFACE
 		};
 		
-		OS_State* os_state = &global_os_state;
+		OS_State* os_state = &g_os;
 		
-		if (!RegisterDeviceNotification(global_window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
+		if (!RegisterDeviceNotification(g_win32.window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
 		if (desc->audiothread_proc && !Win32_InitAudio(desc, os_state))
 			OS_DebugLog("Failed to initialize audio.");
@@ -587,10 +593,10 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 			
 			os_state->window = config;
 			os_state->input = (OS_InputState) { 0 };
-			os_state->graphics_context = &global_graphics_context;
+			os_state->graphics_context = &g_graphics_context;
 			*out_state = os_state;
 			
-			ShowWindow(global_window, SW_SHOWDEFAULT);
+			ShowWindow(g_win32.window, SW_SHOWDEFAULT);
 		}
 	}
 	
@@ -602,10 +608,10 @@ OS_PollEvents(void)
 {
 	Trace();
 	
-	SetWindowLongPtrW(global_window, GWLP_USERDATA, (LONG_PTR)&global_os_state.input);
+	SetWindowLongPtrW(g_win32.window, GWLP_USERDATA, (LONG_PTR)&g_os.input);
 	
-	Win32_UpdateInputEarly(&global_os_state.input);
-	Win32_UpdateWindowStateIfNeeded(&global_os_state.window);
+	Win32_UpdateInputEarly(&g_os.input);
+	Win32_UpdateWindowStateIfNeeded(&g_os.window);
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -614,7 +620,7 @@ OS_PollEvents(void)
 		DispatchMessageW(&message);
 	}
 	
-	Win32_UpdateInputLate(&global_os_state.input);
+	Win32_UpdateInputLate(&g_os.input);
 }
 
 API void
@@ -769,15 +775,15 @@ OS_CurrentPosixTime(void)
 API uint64
 OS_CurrentTick(uint64* out_ticks_per_second)
 {
-	*out_ticks_per_second = global_time_frequency;
-	return Win32_GetTimer() - global_process_started_time;
+	*out_ticks_per_second = g_win32.time_frequency;
+	return Win32_GetTimer() - g_win32.process_started_time;
 }
 
 API float64
 OS_GetTimeInSeconds(void)
 {
 	int64 time = Win32_GetTimer();
-	return (float64)(time - global_process_started_time) / (float64)global_time_frequency;
+	return (float64)(time - g_win32.process_started_time) / (float64)g_win32.time_frequency;
 }
 
 API bool
@@ -969,7 +975,7 @@ OS_LoadGameLibrary(void)
 			
 			result = GetProcAddress(library, "G_Main");
 			
-			SetForegroundWindow(global_window);
+			SetForegroundWindow(g_win32.window);
 		}
 	}
 	

@@ -259,7 +259,7 @@ LoadDirectInput(void)
 	
 	if (loaded)
 	{
-		HRESULT result = DirectInput8Create(global_instance, DIRECTINPUT_VERSION, &IID_IDirectInput8W, (void**)&global_dinput, NULL);
+		HRESULT result = DirectInput8Create(g_win32.instance, DIRECTINPUT_VERSION, &IID_IDirectInput8W, (void**)&global_dinput, NULL);
 		
 		global_dinput_enabled = (result == DI_OK);
 	}
@@ -747,7 +747,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 	if (DI_OK != IDirectInput8_CreateDevice(global_dinput, guid, &gamepad->dinput.device, NULL))
 		goto _failure;
 	
-	if (DI_OK != IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, global_window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))
+	if (DI_OK != IDirectInputDevice8_SetCooperativeLevel(gamepad->dinput.device, g_win32.window, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE))
 		goto _failure;
 	
 	if (DI_OK != IDirectInputDevice8_SetDataFormat(gamepad->dinput.device, &c_dfDIJoystick2))
@@ -965,24 +965,24 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 		
 		POINT mouse;
 		GetCursorPos(&mouse);
-		ScreenToClient(global_window, &mouse);
+		ScreenToClient(g_win32.window, &mouse);
 		
-		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)global_os_state.window.width);
-		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)global_os_state.window.height);
+		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)g_os.window.width);
+		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)g_os.window.height);
 		
 		static bool prev_update_mouse_pos = false;
-		bool update_mouse_pos = (GetForegroundWindow() == global_window);
+		bool update_mouse_pos = (GetForegroundWindow() == g_win32.window);
 		
-		if (global_lock_cursor && update_mouse_pos)
+		if (g_win32.lock_cursor && update_mouse_pos)
 		{
-			mouse.x = global_os_state.window.width/2;
-			mouse.y = global_os_state.window.height/2;
+			mouse.x = g_os.window.width/2;
+			mouse.y = g_os.window.height/2;
 			
-			ClientToScreen(global_window, &mouse);
+			ClientToScreen(g_win32.window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
 			
-			out_input_data->mouse.old_pos[0] = (float32)(global_os_state.window.width/2);
-			out_input_data->mouse.old_pos[1] = (float32)(global_os_state.window.height/2);
+			out_input_data->mouse.old_pos[0] = (float32)(g_os.window.width/2);
+			out_input_data->mouse.old_pos[1] = (float32)(g_os.window.height/2);
 			
 			if (!prev_update_mouse_pos)
 			{

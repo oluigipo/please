@@ -186,7 +186,7 @@ Win32_EnumerateAudioEndpoints_(void)
 				g_audio.active_device_index = UINT32_MAX;
 				g_audio.should_try_to_keep_on_default_endpoint = true;
 				
-				global_os_state.audio.current_device_id = 0;
+				g_os.audio.current_device_id = 0;
 			}
 			else if (g_audio.active_device_index > i && g_audio.active_device_index != UINT32_MAX)
 				--g_audio.active_device_index;
@@ -221,8 +221,8 @@ Win32_EnumerateAudioEndpoints_(void)
 			IMMDevice* immdevice = NULL;
 			LPWSTR dev_id;
 			
-			if (!SUCCEEDED(IMMDeviceCollection_Item(collection, i, &immdevice))
-				|| !SUCCEEDED(IMMDevice_GetId(immdevice, &dev_id)))
+			if (!SUCCEEDED(IMMDeviceCollection_Item(collection, i, &immdevice)) ||
+				!SUCCEEDED(IMMDevice_GetId(immdevice, &dev_id)))
 			{
 				if (immdevice)
 					IMMDevice_Release(immdevice);
@@ -300,8 +300,8 @@ Win32_EnumerateAudioEndpoints_(void)
 		collection = NULL;
 		
 		//- Update infos
-		global_os_state.audio.device_count = g_audio.device_count;
-		global_os_state.audio.devices = g_audio.devices_info;
+		g_os.audio.device_count = g_audio.device_count;
+		g_os.audio.devices = g_audio.devices_info;
 		
 		for (int32 i = 0; i < g_audio.device_count; ++i)
 		{
@@ -493,7 +493,7 @@ Win32_ChangeAudioEndpoint_(uint32 id)
 		
 		OS_UnlockExclusive(&g_audio.client_lock);
 		
-		global_os_state.audio.current_device_id = id;
+		g_os.audio.current_device_id = id;
 	}
 	
 	return result;
@@ -547,19 +547,27 @@ Win32_DeinitAudio(void)
 {
 	Trace();
 	
-	if (global_os_state.audio.initialized_successfully)
+	if (g_audio.thread)
 	{
-		global_os_state.audio.initialized_successfully = false;
-		
-		// TODO(ljre): Release devices
 		TerminateThread(g_audio.thread, 0);
 		CloseHandle(g_audio.thread);
-		//IAudioClient_Stop(global_audio_client);
-		CloseHandle(g_audio.event);
-		//IAudioClient_Release(global_audio_client);
-		//IMMDevice_Release(global_audio_device);
-		IMMDeviceEnumerator_Release(g_audio.device_enumerator);
 	}
+	
+	if (g_audio.event)
+		CloseHandle(g_audio.event);
+	if (g_audio.render_client)
+		IAudioRenderClient_Release(g_audio.render_client);
+	if (g_audio.client)
+		IAudioClient_Release(g_audio.client);
+	if (g_audio.device_enumerator)
+		IMMDeviceEnumerator_Release(g_audio.device_enumerator);
+	for (int32 i = 0; i < g_audio.device_count; ++i)
+	{
+		CoTaskMemFree(g_audio.devices[i].dev_id);
+		IMMDevice_Release(g_audio.devices[i].immdevice);
+	}
+	
+	Mem_Zero(&g_audio, sizeof(g_audio));
 }
 
 static void
@@ -567,7 +575,7 @@ Win32_UpdateAudioEndpointIfNeeded(void)
 {
 	Trace();
 	
-	if (global_os_state.audio.initialized_successfully)
+	if (g_os.audio.initialized_successfully)
 	{
 		Win32_EnumerateAudioEndpoints_();
 		uint32 default_endpoint_id = Win32_FindDefaultAudioEndpoint_();

@@ -47,7 +47,7 @@ Win32_DestroyD3d11Window(void)
 	if (global_direct3d.device)
 		ID3D11Device_Release(global_direct3d.device);
 	
-	DestroyWindow(global_window);
+	DestroyWindow(g_win32.window);
 }
 
 static bool
@@ -161,10 +161,10 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	
 	DWORD style = (WS_OVERLAPPEDWINDOW); // & ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
 	HWND window = CreateWindowExW(
-		0, global_class_name, title, style,
+		0, g_win32.class_name, title, style,
 		config->x, config->y,
 		config->width, config->height,
-		NULL, NULL, global_instance, NULL);
+		NULL, NULL, g_win32.instance, NULL);
 	
 	if (!window)
 		return false;
@@ -303,11 +303,11 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	}
 #endif
 	
-	global_window = window;
-	global_hdc = hdc;
-	global_graphics_context.d3d11 = &global_direct3d;
-	global_graphics_context.api = OS_WindowGraphicsApi_Direct3D11;
-	global_graphics_context.present_and_vsync = Win32_D3d11SwapBuffers;
+	g_win32.window = window;
+	g_win32.hdc = hdc;
+	g_graphics_context.d3d11 = &global_direct3d;
+	g_graphics_context.api = OS_WindowGraphicsApi_Direct3D11;
+	g_graphics_context.present_and_vsync = Win32_D3d11SwapBuffers;
 	
 	return true;
 }

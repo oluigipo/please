@@ -16,7 +16,7 @@ Win32_DestroyD3d9cWindow(void)
 	if (global_d3d9c.d3d9)
 		IDirect3D9_Release(global_d3d9c.d3d9);
 	
-	DestroyWindow(global_window);
+	DestroyWindow(g_win32.window);
 }
 
 static bool
@@ -56,9 +56,9 @@ Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 		return false;
 	
 	HWND window = CreateWindowExW(
-		0, global_class_name, title, WS_OVERLAPPEDWINDOW,
+		0, g_win32.class_name, title, WS_OVERLAPPEDWINDOW,
 		config->x, config->y, config->width, config->height,
-		NULL, NULL, global_instance, NULL);
+		NULL, NULL, g_win32.instance, NULL);
 	if (!window)
 	{
 		IDirect3D9_Release(d3d9);
@@ -95,10 +95,10 @@ Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 	
 	global_d3d9c.d3d9 = d3d9;
 	global_d3d9c.device = device;
-	global_window = window;
-	global_graphics_context.d3d9c = &global_d3d9c;
-	global_graphics_context.api = OS_WindowGraphicsApi_Direct3D9c;
-	global_graphics_context.present_and_vsync = Win32_D3d9cSwapBuffers;
+	g_win32.window = window;
+	g_graphics_context.d3d9c = &global_d3d9c;
+	g_graphics_context.api = OS_WindowGraphicsApi_Direct3D9c;
+	g_graphics_context.present_and_vsync = Win32_D3d9cSwapBuffers;
 	
 	return true;
 }
