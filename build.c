@@ -128,8 +128,8 @@ static g_opts = {
 	.debug_mode = true,
 };
 
-static Cstr g_shader_main_profile_vs = "vs_4_0_level_9_3";
-static Cstr g_shader_main_profile_ps = "ps_4_0_level_9_3";
+static Cstr g_shader_main_profile_vs = "vs_4_0";
+static Cstr g_shader_main_profile_ps = "ps_4_0";
 static Cstr g_shader_compat_profile_vs = "vs_4_0_level_9_1";
 static Cstr g_shader_compat_profile_ps = "ps_4_0_level_9_1";
 

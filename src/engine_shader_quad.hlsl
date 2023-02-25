@@ -45,22 +45,23 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 {
 	float4 result = 0;
 	float2 uv = input.texcoords.xy;
+	float2 texsize;
 	uint uindex = abs(int(input.texcoords.z));
 	uint uswizzle = abs(int(input.texcoords.w));
 
 	switch (uindex)
 	{
 		default:
-		case 0: result = textures[0].Sample(samplers[0], uv); break;
-		case 1: result = textures[1].Sample(samplers[1], uv); break;
-		case 2: result = textures[2].Sample(samplers[2], uv); break;
-		case 3: result = textures[3].Sample(samplers[3], uv); break;
+		case 0: result = textures[0].Sample(samplers[0], uv); textures[0].GetDimensions(texsize.x, texsize.y); break;
+		case 1: result = textures[1].Sample(samplers[1], uv); textures[1].GetDimensions(texsize.x, texsize.y); break;
+		case 2: result = textures[2].Sample(samplers[2], uv); textures[2].GetDimensions(texsize.x, texsize.y); break;
+		case 3: result = textures[3].Sample(samplers[3], uv); textures[3].GetDimensions(texsize.x, texsize.y); break;
 	}
 	
 	switch (uswizzle)
 	{
 		default: break;
-		//case 1: result = float4(1.0, 1.0, 1.0, result.x); break;
+		case 1: result = float4(1.0, 1.0, 1.0, result.x); break;
 		case 2:
 		{
 			float2 pos = (input.rawpos - 0.5) * 2.0;
@@ -83,6 +84,14 @@ float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
 			float m = min(input.rawscale.x, input.rawscale.y);
 			float inv = 1.0 / m;
 			float a = (result.x - 0.5 + inv) * (m * 0.5);
+			result = float4(1.0, 1.0, 1.0, a);
+		} break;
+		case 5:
+		{
+			float2 density = fwidth(uv) * texsize;
+			float m = min(density.x, density.y);
+			float inv = 1.0 / m;
+			float a = (result.x - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;
 			result = float4(1.0, 1.0, 1.0, a);
 		} break;
 	}

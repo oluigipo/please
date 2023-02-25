@@ -248,7 +248,8 @@ G_UpdateAndRender(void)
 			if (G_MenuButton(&batch, &ui_y, Str("Quit")))
 				engine->running = false;
 			
-			UDebugUI_State debugui = UDebugUI_Begin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(0.5f, 0.5f));
+			float32 scl = 0.5f;
+			UDebugUI_State debugui = UDebugUI_Begin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(scl, scl));
 			
 			static bool unfolded = false;
 			if (UDebugUI_PushFoldable(&debugui, Str("Options"), &unfolded))

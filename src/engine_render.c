@@ -54,13 +54,14 @@ static const char g_render_gl_quadfshader[] =
 "\n"
 "void main() {\n"
 "    vec4 color = vec4(1.0);\n"
+"    vec2 texsize;\n"
 "    \n"
 "    switch (int(vTexIndex.x)) {\n"
 "        default:\n"
-"        case 0: color = texture(uTexture[0], vTexcoords); break;\n"
-"        case 1: color = texture(uTexture[1], vTexcoords); break;\n"
-"        case 2: color = texture(uTexture[2], vTexcoords); break;\n"
-"        case 3: color = texture(uTexture[3], vTexcoords); break;\n"
+"        case 0: color = texture(uTexture[0], vTexcoords); texsize = textureSize(uTexture[0], 0); break;\n"
+"        case 1: color = texture(uTexture[1], vTexcoords); texsize = textureSize(uTexture[1], 0); break;\n"
+"        case 2: color = texture(uTexture[2], vTexcoords); texsize = textureSize(uTexture[2], 0); break;\n"
+"        case 3: color = texture(uTexture[3], vTexcoords); texsize = textureSize(uTexture[3], 0); break;\n"
 "    }\n"
 "    \n"
 "    switch (int(vTexIndex.y)) {\n"
@@ -86,6 +87,13 @@ static const char g_render_gl_quadfshader[] =
 "            float m = min(vRawScale.x, vRawScale.y);\n"
 "            float inv = 1.0 / m;\n"
 "            float a = (color.x - 0.5 + inv) * (m * 0.5);\n"
+"            color = vec4(1.0, 1.0, 1.0, a);\n"
+"        } break;\n"
+"        case 5: {\n"
+"            vec2 density = fwidth(vTexcoords) * texsize;\n"
+"            float m = min(density.x, density.y);\n"
+"            float inv = 1.0 / m;\n"
+"            float a = (color.x - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;\n"
 "            color = vec4(1.0, 1.0, 1.0, a);\n"
 "        } break;\n"
 "    }\n"
@@ -838,7 +846,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = texindex,
-			.tex_kind = 4,
+			.tex_kind = 5,
 			.texcoords = {
 				(float32)glyph->x * inv_bitmap_size,
 				(float32)glyph->y * inv_bitmap_size,
