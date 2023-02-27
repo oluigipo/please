@@ -27,11 +27,12 @@ struct
 	Cstr name;
 	Cstr obj;
 	Cstr exe;
+	Cstr dll;
 }
 static const g_osinfo[] = {
 	[Build_Os_Null] = { "unknown" },
-	[Build_Os_Windows] = { "windows", "obj", "exe" },
-	[Build_Os_Linux] = { "linux", "o", "" },
+	[Build_Os_Windows] = { "windows", "obj", "exe", "dll" },
+	[Build_Os_Linux] = { "linux", "o", "", "so" },
 };
 
 struct
@@ -64,8 +65,10 @@ struct Build_Executable
 	Cstr name;
 	Cstr outname;
 	bool is_graphic_program;
+	bool is_dll;
 	struct Build_Tu** tus;
 	struct Build_Shader* shaders;
+	Cstr* defines;
 };
 
 static struct Build_Tu tu_os = { "os", "os.c" };
@@ -90,7 +93,7 @@ static struct Build_Executable g_executables[] = {
 		.name = "gamepad_db_gen",
 		.outname = "gamepad_db_gen",
 		.tus = (struct Build_Tu*[]) { &tu_gamepad_db_gen, NULL },
-	},
+	}
 };
 
 struct
@@ -105,7 +108,6 @@ struct
 	bool debug_mode;
 	bool verbose;
 	bool tracy;
-	bool hot;
 	bool force_rebuild;
 	bool analyze;
 	bool do_rc;
@@ -153,13 +155,11 @@ static Cstr f_incfile = "-include";
 static Cstr f_m32 = "-msse2";
 static Cstr f_m64 = "-march=x86-64";
 static Cstr f_lto = "-flto";
+static Cstr f_dll = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
-static Cstr f_hotcflags = "-DCONFIG_ENABLE_HOT -Wno-dll-attribute-on-redeclaration";
-static Cstr f_hotldflags = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
-
-static Cstr f_rc = "llvm-rc";
+static Cstr f_rc = "llvm-rc windows-resource-file.rc /FO build\\windows-resource-file.res";
 
 #elif defined(_MSC_VER)
 static Cstr f_cc = "cl /nologo /std:c11";
@@ -178,13 +178,11 @@ static Cstr f_incfile = "/FI";
 static Cstr f_m32 = "/arch:SSE2";
 static Cstr f_m64 = "";
 static Cstr f_lto = "/GL";
+static Cstr f_dll = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
-static Cstr f_hotcflags = "/DCONFIG_ENABLE_HOT";
-static Cstr f_hotldflags = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
-
-static Cstr f_rc = "rc";
+static Cstr f_rc = "rc windows-resource-file.rc /FO build\\windows-resource-file.res";
 
 #elif defined(__GNUC__)
 static Cstr f_cc = "gcc -std=c11";
@@ -203,17 +201,15 @@ static Cstr f_incfile = "-include";
 static Cstr f_m32 = "-m32 -msse2";
 static Cstr f_m64 = "-march=x86-64";
 static Cstr f_lto = "-flto";
+static Cstr f_dll = "-r -lkernel32 -llibvcruntime -lucrt";
 
 static Cstr f_ldflags_graphic = "-mwindows";
-
-static Cstr f_hotcflags = "-DCONFIG_ENABLE_HOT";
-static Cstr f_hotldflags = "-r -lkernel32 -llibvcruntime -lucrt";
-
-static Cstr f_rc = "windres";
+static Cstr f_rc = "windres windows-resource-file.rc -o build/windows-resource-file.res";
 
 #endif
 
 static Cstr g_target = "";
+static Cstr g_self = "";
 
 static void
 Append(char** head, char* end, Cstr fmt, ...)
@@ -313,7 +309,7 @@ NeedsRebuild(struct Build_Tu* tu)
 			
 			//- Parse
 			{
-				// NOTE(ljre): File should begin with the output name
+				// NOTE(ljre): Check if file begins with output name
 				const char* path_head = path;
 				while (*path_head == *head)
 				{
@@ -321,43 +317,69 @@ NeedsRebuild(struct Build_Tu* tu)
 					++head;
 				}
 				
-				if (*head++ != ':')
-					goto lbl_done;
-				
-				while (*head)
+				// NOTE(ljre): If it does, and then has a ':' right after it, then we have a Makefile-like
+				//             depfile.
+				if (*head++ == ':')
 				{
-					while (*head == ' ' || *head == '\t' || *head == '\r' || *head == '\n')
-						++head;
-					if (!*head)
-						break;
-					if (*head == '\\' && (head[1] == '\n' || head[1] == '\r' && head[2] == '\n'))
+					while (*head)
 					{
-						head += 2 + (head[1] == '\r');
-						continue;
-					}
-					
-					char depname[4096] = { 0 };
-					int deplen = 0;
-					while (*head && *head != ' ' && *head != '\n' && *head != '\r')
-					{
-						if (*head == '\\' && head[1] == ' ')
+						while (*head == ' ' || *head == '\t' || *head == '\r' || *head == '\n')
+							++head;
+						if (!*head)
+							break;
+						if (*head == '\\' && (head[1] == '\n' || head[1] == '\r' && head[2] == '\n'))
 						{
-							depname[deplen++] = ' ';
-							head += 2;
+							head += 2 + (head[1] == '\r');
+							continue;
 						}
-						else
-							depname[deplen++] = *head++;
+						
+						char depname[4096] = { 0 };
+						int deplen = 0;
+						while (*head && *head != ' ' && *head != '\n' && *head != '\r')
+						{
+							if (*head == '\\' && head[1] == ' ')
+							{
+								depname[deplen++] = ' ';
+								head += 2;
+							}
+							else
+								depname[deplen++] = *head++;
+						}
+						
+						if (_stat64(depname, &stat_data) != 0)
+							goto lbl_done;
+						if (stat_data.st_mtime > objtime)
+							goto lbl_done;
 					}
-					
-					if (_stat64(depname, &stat_data) != 0)
-						goto lbl_done;
-					if (stat_data.st_mtime > objtime)
-						goto lbl_done;
 				}
-				
-				// Did we get here? cool, then we don't need to rebuild it!
-				result = false;
+				else
+				{
+					// NOTE(ljre): Otherwise, it must be MSVC's /showInclude filtered output
+					head = buf;
+					
+					while (*head)
+					{
+						while (*head == '\n')
+							++head;
+						if (!*head)
+							break;
+						
+						char depname[4096] = { 0 };
+						int deplen = 0;
+						
+						while (*head && *head != '\n')
+							depname[deplen++] = *head++;
+						
+						if (_stat64(depname, &stat_data) != 0)
+							goto lbl_done;
+						if (stat_data.st_mtime > objtime)
+							goto lbl_done;
+					}
+				}
 			}
+			
+			// Did we get here? cool, then we don't need to rebuild it!
+			result = false;
 			
 			//- Done Parsing
 			lbl_done:;
@@ -366,6 +388,20 @@ NeedsRebuild(struct Build_Tu* tu)
 	}
 	
 	return result;
+}
+
+static bool
+FileNeedsRebuild(Cstr dep, Cstr output)
+{
+	struct __stat64 dep_stat, output_stat;
+	
+	if (_stat64(dep, &dep_stat) == 0 && _stat64(output, &output_stat) == 0)
+	{
+		if (dep_stat.st_mtime <= output_stat.st_mtime)
+			return false;
+	}
+	
+	return true;
 }
 
 static bool
@@ -415,7 +451,7 @@ CompileShader(struct Build_Shader* shader)
 }
 
 static bool
-CompileTu(struct Build_Tu* tu)
+CompileTu(struct Build_Tu* tu, Cstr* defines)
 {
 	char cmd[4096] = { 0 };
 	char* head = cmd;
@@ -452,6 +488,8 @@ CompileTu(struct Build_Tu* tu)
 	if (g_opts.embed)
 		Append(&head, end, " %sCONFIG_ENABLE_EMBED", f_define);
 	
+	for (Cstr* it = defines; it && *it; ++it)
+		Append(&head, end, " %s%s", f_define, *it);
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
 	
@@ -460,6 +498,10 @@ CompileTu(struct Build_Tu* tu)
 #endif
 	
 	Append(&head, end, " %sbuild/%s-%s.%s", f_output_obj, g_target, tu->name, g_osinfo[g_opts.os].obj);
+	
+#if defined(_MSC_VER) && !defined(__clang__)
+	Append(&head, end, " /showIncludes | \"%s\" --redirect-msvc-show-includes build/%s-%s.%s.d src/%s", g_self, g_target, tu->name, g_osinfo[g_opts.os].obj, tu->path);
+#endif
 	
 	return RunCommand(cmd) == 0;
 }
@@ -475,7 +517,7 @@ CompileExecutable(struct Build_Executable* exec)
 	
 	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
 	{
-		if (!CompileTu(*tu))
+		if (!CompileTu(*tu, exec->defines))
 			return false;
 	}
 	
@@ -483,12 +525,17 @@ CompileExecutable(struct Build_Executable* exec)
 	char* head = cmd;
 	char* end = cmd+sizeof(cmd);
 	
-	Append(&head, end, "%s %sbuild/%s-%s.%s", f_cc, f_output, g_target, exec->outname, g_osinfo[g_opts.os].exe);
+	Append(&head, end, "%s %sbuild/%s-%s.", f_cc, f_output, g_target, exec->outname);
+	if (exec->is_dll)
+		Append(&head, end, "%s", g_osinfo[g_opts.os].dll);
+	else
+		Append(&head, end, "%s", g_osinfo[g_opts.os].exe);
+	
 	for (struct Build_Tu** tu = exec->tus; *tu; ++tu)
 		Append(&head, end, " build/%s-%s.%s", g_target, (*tu)->name, g_osinfo[g_opts.os].obj);
 	Append(&head, end, " %s", GenTargetArg());
 	
-	if (g_opts.do_rc)
+	if (g_opts.do_rc && !exec->is_dll)
 		Append(&head, end, " build/windows-resource-file.res");
 	if (g_opts.debug_info)
 		Append(&head, end, " %s", f_debuginfo);
@@ -505,11 +552,28 @@ CompileExecutable(struct Build_Executable* exec)
 	
 	Append(&head, end, " %s", f_ldflags);
 	
+	if (exec->is_dll)
+		Append(&head, end, " %s", f_dll);
 	if (exec->is_graphic_program && g_opts.os == Build_Os_Windows)
 		Append(&head, end, " %s", f_ldflags_graphic);
 	
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
 		Append(&head, end, " \"%s\"", *argv);
+	
+	return RunCommand(cmd) == 0;
+}
+
+static bool
+CompileWindowsResourceFile(void)
+{
+	if (!FileNeedsRebuild("windows-resource-file.rc", "build\\windows-resource-file.res"))
+		return true;
+	
+	char cmd[4096] = { 0 };
+	char* head = cmd;
+	char* end = cmd+sizeof(cmd);
+	
+	Append(&head, end, "%s", f_rc);
 	
 	return RunCommand(cmd) == 0;
 }
@@ -535,17 +599,22 @@ ValidateFlags(void)
 	
 	if (g_opts.do_rc && g_opts.os != Build_Os_Windows)
 		fprintf(stderr, "[error] cannot use '-rc' if not building for windows.\n");
-	else if (g_opts.hot && g_opts.os != Build_Os_Windows)
-		fprintf(stderr, "[error] hot reloading only available on windows.\n");
 	else
 		result = true;
 	
 	return result;
 }
 
+static int RedirectMsvcShowIncludes(int argc, char** argv);
+
 int
 main(int argc, char** argv)
 {
+	g_self = argv[0];
+	
+	if (argc >= 2 && strcmp(argv[1], "--redirect-msvc-show-includes") == 0)
+		return RedirectMsvcShowIncludes(argc, argv);
+	
 	for (int i = 1; i < argc; ++i)
 	{
 		if (strcmp(argv[i], "-g") == 0)
@@ -584,14 +653,6 @@ main(int argc, char** argv)
 		{
 			g_opts.extra_flags = (Cstr*)&argv[i + 1];
 			break;
-		}
-		else if (strcmp(argv[i], "-hot") == 0)
-		{
-#ifdef __clang__
-			g_opts.hot = true;
-#else
-			fprintf(stderr, "[warning] hot reloading only supported with clang for now.\n");
-#endif
 		}
 		else if (strcmp(argv[i], "-analyze") == 0)
 		{
@@ -702,9 +763,45 @@ main(int argc, char** argv)
 	ok = ok && ValidateFlags();
 	ok = ok && CreateBuildDirIfNeeded();
 	if (g_opts.do_rc)
-		ok = ok && !RunCommand("llvm-rc windows-resource-file.rc /FO build\\windows-resource-file.res");
-	
+		ok = ok && CompileWindowsResourceFile();
 	ok = ok && CompileExecutable(g_opts.exec);
 	
 	return !ok;
+}
+
+static int
+RedirectMsvcShowIncludes(int argc, char** argv)
+{
+	if (argc < 4)
+		return 1;
+	
+	FILE* output = fopen(argv[2], "wb");
+	if (!output)
+		return 1;
+	
+	fputs(argv[3], output);
+	fputc('\n', output);
+	
+	char line[4096];
+	int linecount = 0;
+	
+	while (fgets(line, sizeof(line), stdin))
+	{
+		const char prefix[] = "Note: including file:";
+		
+		if (strncmp(line, prefix, sizeof(prefix)-1) != 0)
+			fputs(line, stdout);
+		else
+		{
+			char* substr = line + sizeof(prefix)-1;
+			while (substr[0] == ' ')
+				++substr;
+			
+			if (!strstr(substr, "Windows Kits") && !strstr(substr, "\\VC\\Tools\\MSVC\\"))
+				fputs(substr, output);
+		}
+	}
+	
+	fclose(output);
+	return 0;
 }
