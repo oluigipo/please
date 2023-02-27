@@ -69,7 +69,11 @@ _Pragma("GCC diagnostic pop")
 #   define alignas(x) _Alignas(x)
 #   define alignof(x) _Alignof(x)
 #   define static_assert(...) _Static_assert(__VA_ARGS__, "static_assert")
-#   define thread_local _Thread_local
+#   ifdef _MSC_VER
+#       define thread_local __declspec(thread)
+#   else
+#       define thread_local _Thread_local
+#   endif
 #   define externC_ extern
 #endif
 

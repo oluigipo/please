@@ -216,7 +216,7 @@ Win32_EnumerateAudioEndpoints_(void)
 		if (!SUCCEEDED(IMMDeviceCollection_GetCount(collection, &count)))
 			count = 0;
 		
-		for (int32 i = 0; i < count; ++i)
+		for (uint32 i = 0; i < count; ++i)
 		{
 			IMMDevice* immdevice = NULL;
 			LPWSTR dev_id;

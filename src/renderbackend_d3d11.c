@@ -671,10 +671,10 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 	ID3D11DepthStencilState* curr_depthstate = g_d3d11_depth_state;
 	
 	D3D11_VIEWPORT viewport = {
-		.TopLeftX = 0,
-		.TopLeftY = 0,
-		.Width = default_width,
-		.Height = default_height,
+		.TopLeftX = 0.0f,
+		.TopLeftY = 0.0f,
+		.Width = (float32)default_width,
+		.Height = (float32)default_height,
 		.MinDepth = 0.0f,
 		.MaxDepth = 1.0f,
 	};

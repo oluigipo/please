@@ -95,7 +95,7 @@ Storage_Alloc(Storage* storage, uintsize desired_size, Storage_Handle* out_handl
 	Storage_Block* blocks = (Storage_Block*)storage->backbuffer;
 	uint32 actual_desired_size = AlignUp((uint32)desired_size, Storage_GRANULARITY-1);
 	
-	for (int32 i = 0; i < storage->block_count; ++i)
+	for (intsize i = 0; i < storage->block_count; ++i)
 	{
 		Storage_Block* block = &blocks[i];
 		if (block->next_free != 0)
@@ -185,7 +185,7 @@ Storage_Dealloc(Storage* storage, Storage_Handle handle)
 		return false;
 	
 	bool found = false;
-	for (int32 i = 0; i < storage->block_count; ++i)
+	for (intsize i = 0; i < storage->block_count; ++i)
 	{
 		Storage_Block* block = &blocks[i];
 		
@@ -227,16 +227,16 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 	Storage_Block** blocks_array = Arena_PushArray(scratch_arena, Storage_Block*, storage->block_count);
 	int32 block_count = 0;
 	
-	for (int32 i = 0; i < storage->block_count; ++i)
+	for (intsize i = 0; i < storage->block_count; ++i)
 	{
 		if (storage_blocks[i].next_free == 0)
 			blocks_array[block_count++] = &storage_blocks[i];
 	}
 	
 	// Sort by offset
-	for (int32 i = 1; i < block_count; ++i)
+	for (intsize i = 1; i < block_count; ++i)
 	{
-		for (int32 j = 1; j < block_count-i; j++)
+		for (intsize j = 1; j < block_count-i; j++)
 		{
 			if (blocks_array[j]->offset > blocks_array[j+1]->offset)
 			{
@@ -248,7 +248,7 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 	}
 	
 	// Compact them
-	for (int32 i = 0; i < block_count-1; ++i)
+	for (intsize i = 0; i < block_count-1; ++i)
 	{
 		if (blocks_array[i]->free_size > 0)
 		{

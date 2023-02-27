@@ -591,7 +591,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					
 					uint32 loc = layout->gl_location;
 					uint32 stride = cmd->drawcall.vbuffer_strides[layout->vbuffer_index];
-					uint32 offset = cmd->drawcall.vbuffer_offsets[layout->vbuffer_index] + layout->offset;
+					uintptr offset = cmd->drawcall.vbuffer_offsets[layout->vbuffer_index] + layout->offset;
 					
 					switch (layout->kind)
 					{

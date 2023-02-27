@@ -82,6 +82,7 @@ G_Init(void)
 	//desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
 	//#else
 	SafeAssert(OS_ReadEntireFile(Str("C:/Windows/Fonts/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
+	//SafeAssert(OS_ReadEntireFile(Str("C:/Users/luigi/AppData/Local/Microsoft/Windows/Fonts/PxPlus_IBM_VGA8 (1).ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
 	//#endif
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	

@@ -411,7 +411,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 					if (negative)
 						String_FillBuf_(&p, p_end, &count, '-', 1);
 					
-					if (length <= decimal_pos)
+					if ((int32)length <= decimal_pos)
 					{
 						if (leading_padding != -1 && decimal_pos < leading_padding)
 							String_FillBuf_(&p, p_end, &count, '0', leading_padding - decimal_pos);
@@ -423,7 +423,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 					}
 					else
 					{
-						if (leading_padding != -1 && length - decimal_pos < leading_padding)
+						if (leading_padding != -1 && (int32)length - decimal_pos < leading_padding)
 							String_FillBuf_(&p, p_end, &count, '0', leading_padding - (length - decimal_pos));
 						
 						String_WriteBuf_(&p, p_end, &count, start, decimal_pos);

@@ -468,7 +468,7 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				pshader = shader_pool_data->pixel_shader;
 				vdecl = shader_pool_data->vertex_declaration;
 				
-				for (int32 i = 0; i < shader_pool_data->divisor_count; ++i)
+				for (intsize i = 0; i < shader_pool_data->divisor_count; ++i)
 				{
 					if (shader_pool_data->divisors[i])
 						divisors[i] = shader_pool_data->divisors[i] | (D3DSTREAMSOURCE_INSTANCEDATA);

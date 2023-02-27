@@ -21,13 +21,6 @@ static inline uint64 Mem_ByteSwap64(uint64 x);
 static inline uint32 Mem_ByteSwap32(uint32 x);
 static inline uint16 Mem_ByteSwap16(uint16 x);
 
-static inline void Mem_Copy8(void* dst, const void* src, uintsize count);
-static inline void Mem_Copy64(void* dst, const void* src, uintsize count);
-static inline void Mem_Copy128U(void* dst, const void* src, uintsize count);
-static inline void Mem_Copy128A(void* dst, const void* src, uintsize count);
-static inline void Mem_Copy128Ux4(void* dst, const void* src, uintsize count);
-static inline void Mem_Copy128Ax4(void* dst, const void* src, uintsize count);
-
 static inline uintsize Mem_Strlen(const char* restrict cstr);
 static inline uintsize Mem_Strnlen(const char* restrict cstr, uintsize limit);
 static inline int32 Mem_Strcmp(const char* left, const char* right);
@@ -267,101 +260,7 @@ Mem_ByteSwap64(uint64 x)
 	return result;
 }
 
-//- NOTE(ljre): Mem_CopyN
-static inline void
-Mem_Copy8(void* dst, const void* src, uintsize count)
-{
-	uint8* d = (uint8*)dst;
-	const uint8* s = (const uint8*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-		*d++ = *s++;
-}
-
-static inline void
-Mem_Copy64(void* dst, const void* src, uintsize count)
-{
-	uint64* d = (uint64*)dst;
-	const uint64* s = (const uint64*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-		*d++ = *s++;
-}
-
-static inline void
-Mem_Copy128U(void* dst, const void* src, uintsize count)
-{
-	__m128* d = (__m128*)dst;
-	const __m128* s = (const __m128*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-		_mm_storeu_ps((float32*)d++, _mm_loadu_ps((const float32*)s++));
-}
-
-static inline void
-Mem_Copy128A(void* dst, const void* src, uintsize count)
-{
-	__m128* d = (__m128*)dst;
-	const __m128* s = (const __m128*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-		_mm_store_ps((float32*)d++, _mm_load_ps((const float32*)s++));
-}
-
-static inline void
-Mem_Copy128Ux4(void* dst, const void* src, uintsize count)
-{
-	__m128* d = (__m128*)dst;
-	const __m128* s = (const __m128*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-	{
-		_mm_storeu_ps((float32*)(d+0), _mm_loadu_ps((const float32*)(s+0)));
-		_mm_storeu_ps((float32*)(d+1), _mm_loadu_ps((const float32*)(s+1)));
-		_mm_storeu_ps((float32*)(d+2), _mm_loadu_ps((const float32*)(s+2)));
-		_mm_storeu_ps((float32*)(d+3), _mm_loadu_ps((const float32*)(s+3)));
-		
-		d += 4;
-		s += 4;
-	}
-}
-
-static inline void
-Mem_Copy128Ax4(void* dst, const void* src, uintsize count)
-{
-	__m128* d = (__m128*)dst;
-	const __m128* s = (const __m128*)src;
-	
-#ifdef __clang__
-#   pragma clang loop unroll(disable)
-#endif
-	while (count--)
-	{
-		_mm_store_ps((float32*)(d+0), _mm_load_ps((const float32*)(s+0)));
-		_mm_store_ps((float32*)(d+1), _mm_load_ps((const float32*)(s+1)));
-		_mm_store_ps((float32*)(d+2), _mm_load_ps((const float32*)(s+2)));
-		_mm_store_ps((float32*)(d+3), _mm_load_ps((const float32*)(s+3)));
-		
-		d += 4;
-		s += 4;
-	}
-}
-
+//-
 #if defined(_MSC_VER) && !defined(__clang__)
 #   pragma optimize("", off)
 #endif
@@ -373,8 +272,6 @@ Mem_ZeroSafe(void* restrict dst, uintsize size)
 	__asm__ __volatile__ ("" : "+d"(dst) :: "memory");
 #elif defined(_MSC_VER)
 	_ReadWriteBarrier();
-#else
-	// TODO
 #endif
 	return dst;
 }

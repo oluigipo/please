@@ -517,7 +517,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	
 	int32 tex_currline = 0;
 	int32 tex_currcol = 0;
-	int32 tex_linesize = (int32)ceilf((bbox_y2 - bbox_y1) * char_scale);
+	int32 tex_linesize = (int32)ceilf((bbox_y2 - bbox_y1) * char_scale + 0.5f);
 	
 	for (int32 i = -1; i < (int32)ArrayLength(desc->prebake_ranges); ++i)
 	{
@@ -561,7 +561,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 					if (!glyph->codepoint)
 					{
 						++glyphmap_count;
-						SafeAssert(glyphmap_count <= (1 << glyphmap_log2cap));
+						SafeAssert(glyphmap_count <= (1u << glyphmap_log2cap));
 						break;
 					}
 				}
@@ -584,8 +584,8 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			x2 += 4;
 			y2 += 4;
 			
-			int32 width = x2 - x1 + 1;
-			int32 height = y2 - y1 + 1;
+			int32 width = x2 - x1;
+			int32 height = y2 - y1;
 			
 			if (tex_currcol + width >= tex_size)
 			{
@@ -628,10 +628,10 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 						&w, &h, &xoff, &yoff);
 				}
 				
-				SafeAssert(w == width-1 && h == height-1);
+				SafeAssert(w == width && h == height);
 				
-				for (intsize y = 0; y < height-1; ++y)
-					Mem_Copy(base_ptr + y * stride, sdf + y * w, width-1);
+				for (intsize y = 0; y < height; ++y)
+					Mem_Copy(base_ptr + y * stride, sdf + y * w, width);
 			}
 		}
 	}

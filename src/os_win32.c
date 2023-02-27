@@ -357,9 +357,6 @@ Win32_ThreadProc_(void* user_data)
 }
 
 //~ NOTE(ljre): Entry point
-#ifdef CONFIG_ENABLE_HOT
-API
-#endif
 int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 {
@@ -935,7 +932,7 @@ OS_LoadGameLibrary(void)
 	static uint64 saved_last_update;
 	static void* saved_result;
 	
-	const char* const dll_name = "./build/hot-game.dll";
+	const char* const dll_name = "./build/x86_64-windows-gamehot.dll";
 	void* result = saved_result;
 	
 	if (!library)
@@ -951,9 +948,10 @@ OS_LoadGameLibrary(void)
 			saved_last_update = GetFileLastWriteTime(dll_name);
 		
 		library = Win32_LoadLibrary(target_dll_path);
-		Assert(library);
+		SafeAssert(library);
 		
 		result = GetProcAddress(library, "G_Main");
+		SafeAssert(result);
 	}
 	else
 	{
@@ -971,9 +969,10 @@ OS_LoadGameLibrary(void)
 				saved_last_update = last_update;
 			
 			library = Win32_LoadLibrary(target_dll_path);
-			Assert(library);
+			SafeAssert(library);
 			
 			result = GetProcAddress(library, "G_Main");
+			SafeAssert(result);
 			
 			SetForegroundWindow(g_win32.window);
 		}

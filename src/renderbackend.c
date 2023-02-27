@@ -94,13 +94,13 @@ static const String RB_draw_cmd_names[] = {
 	[RB_DrawCommandKind_DrawCall] = StrInit("RB_DrawCommandKind_DrawCall"),
 };
 
-#ifdef CONFIG_ENABLE_OPENGL
-#   include "api_os_opengl.h"
-#   include "renderbackend_opengl.c"
-#endif
 #ifdef CONFIG_ENABLE_D3D11
 #   include "api_os_d3d11.h"
 #   include "renderbackend_d3d11.c"
+#endif
+#ifdef CONFIG_ENABLE_OPENGL
+#   include "api_os_opengl.h"
+#   include "renderbackend_opengl.c"
 #endif
 #ifdef CONFIG_ENABLE_D3D9C
 #   include "api_os_d3d9c.h"
