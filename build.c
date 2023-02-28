@@ -144,7 +144,8 @@ static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static -fno-strict
 static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
-"-Wno-assume -Wno-unused-command-line-argument -Wno-int-to-void-pointer-cast -Wno-void-pointer-to-int-cast";
+"-Wno-assume -Wno-unused-command-line-argument -Wno-int-to-void-pointer-cast -Wno-void-pointer-to-int-cast "
+"";
 static Cstr f_debuginfo = "-g";
 static Cstr f_define = "-D";
 static Cstr f_verbose = "-v";
@@ -317,7 +318,7 @@ NeedsRebuild(struct Build_Tu* tu)
 					++head;
 				}
 				
-				// NOTE(ljre): If it does, and then has a ':' right after it, then we have a Makefile-like
+				// NOTE(ljre): If it does and then has a ':' right after it, then we have a Makefile-like
 				//             depfile.
 				if (*head++ == ':')
 				{
