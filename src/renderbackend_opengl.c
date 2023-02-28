@@ -667,13 +667,16 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				
 				if (cmd->drawcall.ubuffer)
 				{
-					GL.glBindBuffer(GL_UNIFORM_BUFFER, cmd->drawcall.ubuffer->id);
+					uint32 index = cmd->drawcall.ubuffer->id;
+					RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, index);
+					
+					GL.glBindBuffer(GL_UNIFORM_BUFFER, pool_data->id);
 					
 					int32 location = GL.glGetUniformBlockIndex(shader, "UniformBuffer");
 					SafeAssert(location != -1);
 					
 					GL.glUniformBlockBinding(shader, location, 0);
-					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, cmd->drawcall.ubuffer->id);
+					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, pool_data->id);
 					
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
 				}
