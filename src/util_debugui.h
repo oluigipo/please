@@ -28,6 +28,7 @@ static void UDebugUI_PushSlider(UDebugUI_State* state, float32 min, float32 max,
 static void UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3* colors, int32 bar_count);
 static void UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String optional_name);
 static void UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing);
+static String UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap, intsize* buffer_size, bool* is_selected, float32 min_width);
 static void UDebugUI_End(UDebugUI_State* state);
 
 //~ Implementation
@@ -279,6 +280,103 @@ static void
 UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing)
 {
 	state->current_pos[1] += spacing * state->scale[1];
+}
+
+static String
+UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap, intsize* buffer_size, bool* is_selected, float32 min_width)
+{
+	String text = StrMake(*buffer_size, buffer);
+	vec2 text_size;
+	E_CalcTextSize(state->font, (text.size == 0 ? Str("!") : text), state->scale, &text_size);
+	text_size[0] = glm_max(text_size[0], min_width);
+	
+	const float32 padding = 4.0f * glm_min(state->scale[0], state->scale[1]);
+	vec4 bbox = {
+		state->current_pos[0],
+		state->current_pos[1],
+		state->current_pos[0] + text_size[0] + padding*2,
+		state->current_pos[1] + text_size[1] + padding*2,
+	};
+	
+	vec2 mouse;
+	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
+	
+	bool is_over = (mouse[0] >= bbox[0] && bbox[2] >= mouse[0] && mouse[1] >= bbox[1] && bbox[3] >= mouse[1]);
+	bool is_pressed = OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left);
+	
+	if (is_pressed)
+		*is_selected = is_over;
+	
+	if (*is_selected)
+	{
+		intsize size = *buffer_size;
+		
+		for (intsize i = 0; i < state->engine->os->input.codepoints_count; ++i)
+		{
+			uint32 codepoint = state->engine->os->input.codepoints[i];
+			
+			if (codepoint == '\b')
+			{
+				if (size > 0)
+				{
+					if (buffer[size-1] & 0x80)
+						while (size > 0 && (buffer[--size] & 0xb0) != 0x80);
+					else
+						--size;
+				}
+			}
+			else if (codepoint == 0x7f/*DEL*/)
+			{
+				bool beginning = (buffer[size-1] == ' ');
+				
+				while (size > 0 && (buffer[size-1] == ' ') == beginning)
+					--size;
+			}
+			else
+			{
+				if (codepoint == '\r')
+					codepoint = '\n';
+				
+				int32 required_size = String_EncodedCodepointSize(codepoint);
+				
+				if (size + required_size <= buffer_cap)
+				{
+					String_Encode(buffer + size, required_size, codepoint);
+					size += required_size;
+				}
+				else
+					break;
+			}
+		}
+		
+		*buffer_size = size;
+		
+		text = StrMake(size, buffer);
+		E_CalcTextSize(state->font, (text.size == 0 ? Str("!") : text), state->scale, &text_size);
+		text_size[0] = glm_max(text_size[0], min_width);
+		
+		bbox[2] = state->current_pos[0] + text_size[0] + padding*2;
+		bbox[3] = state->current_pos[1] + text_size[1] + padding*2;
+	}
+	
+	E_RectBatchElem* elem = E_PushRect(state->batch, &(E_RectBatchElem) {
+		.pos = { bbox[0], bbox[1] },
+		.tex_kind = 3,
+		.scaling[0][0] = bbox[2] - bbox[0],
+		.scaling[1][1] = bbox[3] - bbox[1],
+		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.color = { 0.2f, 0.2f, 0.2f, 1.0f },
+	});
+	
+	if (*is_selected)
+		glm_vec4_copy(vec4(0.3f, 0.3f, 0.3f, 1.0f), elem->color);
+	
+	E_PushText(state->batch, state->font, text, vec2(bbox[0] + padding, bbox[1] + padding), state->scale, GLM_VEC4_ONE);
+	
+	state->max_width = glm_max(bbox[2] - state->start_pos[0], state->max_width);
+	state->current_pos[1] += (bbox[3] - bbox[1]) + state->elems_spacing;
+	
+	return text;
 }
 
 static void

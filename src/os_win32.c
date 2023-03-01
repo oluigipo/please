@@ -281,6 +281,20 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			}
 		} break;
 		
+		case WM_CHAR:
+		{
+			if ((wparam < 32 && wparam != '\r' && wparam != '\t' && wparam != '\b') ||
+			(wparam > 0x7f && wparam <= 0xa0))
+				break;
+			
+			uint32 codepoint = (uint32)wparam;
+			int32 repeat_count = (lparam & 0xffff);
+			(void)repeat_count;
+			
+			if (input->codepoints_count < ArrayLength(input->codepoints))
+				input->codepoints[input->codepoints_count++] = codepoint;
+		} break;
+		
 		case WM_SYSKEYDOWN:
 		case WM_SYSKEYUP:
 		case WM_KEYUP:

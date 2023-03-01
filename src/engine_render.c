@@ -862,7 +862,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	return true;
 }
 
-API void
+API E_RectBatchElem*
 E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 {
 	Trace();
@@ -871,7 +871,7 @@ E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
 	
 	++batch->count;
-	Arena_PushStructData(arena, E_RectBatchElem, rect);
+	return Arena_PushStructData(arena, E_RectBatchElem, rect);
 }
 
 API void

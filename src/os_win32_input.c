@@ -953,6 +953,10 @@ Win32_UpdateInputEarly(OS_InputState* out_input_data)
 		out_input_data->mouse.buttons[i].changes = 0;
 	
 	out_input_data->mouse.scroll = 0;
+	
+	// NOTE(ljre): Update text
+	out_input_data->codepoints_count = 0;
+	Mem_Zero(out_input_data->codepoints, sizeof(out_input_data->codepoints));
 }
 
 static inline void

@@ -35,7 +35,7 @@ String_Decode(String str, int32* index)
 		return 0;
 	
 	int32 size =  Mem_BitClz8(~byte);
-	if (Unlikely(size == 1 || size > 4 || head + size > end))
+	if (Unlikely(size == 1 || size > 4 || head + size - 1 > end))
 		return 0;
 	
 	uint32 result = 0;

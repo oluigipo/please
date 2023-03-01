@@ -205,7 +205,7 @@ struct E_RectBatch
 typedef E_RectBatch;
 
 API bool E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
-API void E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
+API E_RectBatchElem* E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);

@@ -176,9 +176,6 @@ G_UpdateAndRender(void)
 	if (engine->os->window.should_close || OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
 	
-	if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Space) && E_IsValidSoundHandle(game->sound_luigi))
-		E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL);
-	
 	E_DrawClear(0.2f, 0.0f, 0.4f, 1.0f);
 	
 	if (game->previous_state != game->state)
@@ -259,6 +256,15 @@ G_UpdateAndRender(void)
 					E_StopAllSounds(&game->music);
 				if (UDebugUI_PushButton(&debugui, Str("luigi")))
 					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
+				
+				{
+					static uint8 buffer[128] = "Click me!";
+					static intsize size = 9;
+					static bool selected = false;
+					
+					UDebugUI_PushTextF(&debugui, "Text Input:");
+					UDebugUI_PushTextField(&debugui, buffer, sizeof(buffer), &size, &selected, 200.0f);
+				}
 				
 				static bool caps_unfolded = false;
 				if (UDebugUI_PushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))

@@ -28,6 +28,7 @@ enum
 	OS_Limits_MaxGamepadCount = 16,
 	OS_Limits_MaxWindowTitleLength = 64,
 	OS_Limits_MaxBufferedInput = 256,
+	OS_Limits_MaxCodepointsPerFrame = 64,
 };
 
 //~ Graphics Context
@@ -187,9 +188,12 @@ struct OS_InputState
 {
 	OS_KeyboardState keyboard;
 	OS_MouseState mouse;
-	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
 	
-	uint16 connected_gamepads;
+	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
+	uint16 connected_gamepads; // NOTE(ljre): Bitset
+	
+	int16 codepoints_count;
+	uint32 codepoints[OS_Limits_MaxCodepointsPerFrame];
 }
 typedef OS_InputState;
 
