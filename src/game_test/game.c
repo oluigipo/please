@@ -257,14 +257,12 @@ G_UpdateAndRender(void)
 				if (UDebugUI_PushButton(&debugui, Str("luigi")))
 					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
 				
-				{
-					static uint8 buffer[128] = "Click me!";
-					static intsize size = 9;
-					static bool selected = false;
-					
-					UDebugUI_PushTextF(&debugui, "Text Input:");
-					UDebugUI_PushTextField(&debugui, buffer, sizeof(buffer), &size, &selected, 200.0f);
-				}
+				static uint8 buffer[128] = "Click me!";
+				static intsize size = 9;
+				static bool selected = false;
+				
+				UDebugUI_PushTextF(&debugui, "Text Input:");
+				UDebugUI_PushTextField(&debugui, buffer, sizeof(buffer), &size, &selected, 200.0f);
 				
 				static bool caps_unfolded = false;
 				if (UDebugUI_PushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))

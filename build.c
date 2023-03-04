@@ -140,7 +140,7 @@ static Cstr f_cc = "clang -std=c11";
 static Cstr f_cxx = "clang++ -std=c++11 -fno-exceptions -fno-rtti";
 static Cstr f_cflags = "-Isrc -Iinclude";
 static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
-static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -static -fno-strict-aliasing", };
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -static -fno-strict-aliasing", };
 static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
@@ -167,7 +167,7 @@ static Cstr f_cc = "cl /nologo /std:c11";
 static Cstr f_cxx = "cl /nologo /std:c++14 /GR- /EHa-";
 static Cstr f_cflags = "/Isrc /Iinclude /MT";
 static Cstr f_ldflags = "/link /incremental:no";
-static Cstr f_optimize[3] = { "/Og", "/Os", "/O2 /fp:fast" };
+static Cstr f_optimize[3] = { "/Og", "/Os", "/O2" };
 static Cstr f_warnings = "/W3";
 static Cstr f_debuginfo = "/Zi";
 static Cstr f_define = "/D";
@@ -190,7 +190,7 @@ static Cstr f_cc = "gcc -std=c11";
 static Cstr f_cxx = "g++ -std=c++11 -fno-exceptions -fno-rtti";
 static Cstr f_cflags = "-Isrc -Iinclude";
 static Cstr f_ldflags = "-lntdll";
-static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -ffast-math -fno-strict-aliasing" };
+static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -fno-strict-aliasing" };
 static Cstr f_warnings = "-Wall";
 static Cstr f_debuginfo = "-g";
 static Cstr f_define = "-D";

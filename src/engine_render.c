@@ -411,7 +411,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 		void* allocated = stbi_load_from_memory(data, size, &width, &height, &(int32) { 0 }, 4);
 		channels = 4;
 		
-		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, allocated, width*height*channels, 4);
+		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, allocated, (intsize)width*height*channels, 4);
 		stbi_image_free(allocated);
 		
 		if (!pixels)
@@ -427,7 +427,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 		channels = desc->raw_image_channel_count;
 		
 		SafeAssert(data && size);
-		SafeAssert(size == width*height*channels);
+		SafeAssert(size == (intsize)width*height*channels);
 		
 		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, data, size, 4);
 	}
@@ -519,7 +519,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	int32 tex_currcol = 0;
 	int32 tex_linesize = (int32)ceilf((bbox_y2 - bbox_y1) * char_scale + 0.5f);
 	
-	for (int32 i = -1; i < (int32)ArrayLength(desc->prebake_ranges); ++i)
+	for (intsize i = -1; i < ArrayLength(desc->prebake_ranges); ++i)
 	{
 		uint32 range_begin;
 		uint32 range_end;
@@ -529,11 +529,11 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			range_end = range_begin = 0xFFFD;
 		else
 		{
+			if (!desc->prebake_ranges[i].begin)
+				break;
+			
 			range_begin = Max(' '+1, desc->prebake_ranges[i].begin);
 			range_end = desc->prebake_ranges[i].end;
-			
-			if (!range_begin)
-				break;
 		}
 		
 		for (uint32 codepoint = range_begin; codepoint <= range_end; ++codepoint)
@@ -931,6 +931,12 @@ E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size)
 		if (codepoint == ' ')
 		{
 			curr_x += (float32)font->space_advance * scale_x;
+			continue;
+		}
+		
+		if (codepoint == '\t')
+		{
+			curr_x += (float32)font->space_advance * scale_x * 4.0f;
 			continue;
 		}
 		
