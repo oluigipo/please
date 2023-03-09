@@ -9,9 +9,9 @@ External code (inside `src/ext`) might have other licenses.
 ## Build
 Just do `cl build.c` or `clang build.c -o build.exe`. It will generate a `build.exe` file which you can run to build the projects. Notice that the build system will use the same compiler you did to build it.
 To build the project `game_test` with debug info and UBSan, you would do: `build game_test -g -ubsan`.
-A release build would look like: `build game_test -O2 -ndebug`.
+A release build would look like: `build game_test -O2 -ndebug -rc`.
 
-Just read `build.c` to check what flags you can input.
+Run `build --help` for help.
 
 ### tools required to build:
 * Clang or MSVC: C & C++ Compiler;
