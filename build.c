@@ -20,30 +20,24 @@ enum Build_Os
 	Build_Os_Null,
 	Build_Os_Windows,
 	Build_Os_Linux,
-};
-
-struct
-{
-	Cstr name;
-	Cstr obj;
-	Cstr exe;
-	Cstr dll;
-}
-static const g_osinfo[] = {
-	[Build_Os_Null] = { "unknown" },
-	[Build_Os_Windows] = { "windows", "obj", "exe", "dll" },
-	[Build_Os_Linux] = { "linux", "o", "", "so" },
+	Build_Os_Win32OnLinux,
+	Build_Os_Sdl2OnLinux,
 };
 
 struct
 {
 	Cstr name;
 	Cstr def;
+	Cstr obj;
+	Cstr exe; // NOTE(ljre): String already has '.' prefix (e.g. ".exe")
+	Cstr dll;
 }
-static const g_oslayerdefs[] = {
-	{ "windows", "WIN32" },
-	{ "linux", "LINUX" },
-	{ "sdl", "SDL" },
+static const g_osinfo[] = {
+	[Build_Os_Null] = { "unknown" },
+	[Build_Os_Windows] = { "windows", "WIN32", "obj", ".exe", "dll" },
+	[Build_Os_Linux] = { "linux", "LINUX", "o", "", "so" },
+	[Build_Os_Win32OnLinux] = { "win32linux", "WIN32LINUX", "obj", ".exe", "dll" },
+	[Build_Os_Sdl2OnLinux] = { "sdl2linux", "SDL2LINUX", "o", "", "so" },
 };
 
 struct Build_Tu
@@ -102,7 +96,6 @@ struct
 {
 	struct Build_Executable* exec;
 	enum Build_Os os;
-	Cstr osdef;
 	int optimize;
 	bool asan;
 	bool ubsan;
@@ -122,10 +115,11 @@ struct
 static g_opts = {
 #ifdef _WIN32
 	.os = Build_Os_Windows,
-	.osdef = "WIN32",
+#   if !defined(_WIN64)
+	.m32 = true,
+#   endif
 #elif defined(__linux__)
 	.os = Build_Os_Linux,
-	.osdef = "LINUX",
 #endif
 	.exec = &g_executables[0],
 	.debug_mode = true,
@@ -254,6 +248,8 @@ GenTargetArg(void)
 			default: os = "unknown"; break;
 			case Build_Os_Windows: os = "pc-windows-msvc"; break;
 			case Build_Os_Linux: os = "linux-gnu"; break;
+			case Build_Os_Win32OnLinux: os = "pc-windows-msvc"; break;
+			case Build_Os_Sdl2OnLinux: os = "linux-gnu"; break;
 		}
 		
 		int amount = snprintf(NULL, 0, "--target=%s-%s %s", arch, os, g_opts.m32 ? f_m32 : f_m64);
@@ -457,7 +453,8 @@ CompileTu(struct Build_Tu* tu, Cstr* defines)
 	Append(&head, end, "%s src/%s", tu->is_cpp ? f_cxx : f_cc, tu->path);
 	Append(&head, end, " %s %s", f_cflags, f_warnings);
 	Append(&head, end, " %s", GenTargetArg());
-	Append(&head, end, " %sCONFIG_OSLAYER_%s", f_define, g_opts.osdef);
+	Append(&head, end, " %sCONFIG_OS_%s", f_define, g_osinfo[g_opts.os].def);
+	Append(&head, end, " %sCONFIG_M%s", f_define, g_opts.m32 ? "32" : "64");
 	
 	if (g_opts.analyze)
 		Append(&head, end, " %s", f_analyze);
@@ -519,9 +516,9 @@ CompileExecutable(struct Build_Executable* exec)
 	char* head = cmd;
 	char* end = cmd+sizeof(cmd);
 	
-	Append(&head, end, "%s %sbuild/%s-%s.", f_cc, f_output, g_target, exec->outname);
+	Append(&head, end, "%s %sbuild/%s-%s", f_cc, f_output, g_target, exec->outname);
 	if (exec->is_dll)
-		Append(&head, end, "%s", g_osinfo[g_opts.os].dll);
+		Append(&head, end, ".%s", g_osinfo[g_opts.os].dll);
 	else
 		Append(&head, end, "%s", g_osinfo[g_opts.os].exe);
 	
@@ -548,7 +545,7 @@ CompileExecutable(struct Build_Executable* exec)
 	
 	if (exec->is_dll)
 		Append(&head, end, " %s", f_dll);
-	if (exec->is_graphic_program && g_opts.os == Build_Os_Windows)
+	if (exec->is_graphic_program && (g_opts.os == Build_Os_Windows || g_opts.os == Build_Os_Win32OnLinux))
 		Append(&head, end, " %s", f_ldflags_graphic);
 	
 	for (Cstr* argv = g_opts.extra_flags; argv && *argv; ++argv)
@@ -591,7 +588,7 @@ ValidateFlags(void)
 {
 	bool result = false;
 	
-	if (g_opts.do_rc && g_opts.os != Build_Os_Windows)
+	if (g_opts.do_rc && g_opts.os != Build_Os_Windows && g_opts.os != Build_Os_Win32OnLinux)
 		fprintf(stderr, "[error] cannot use '-rc' if not building for windows.\n");
 	else
 		result = true;
@@ -600,6 +597,7 @@ ValidateFlags(void)
 }
 
 static int RedirectMsvcShowIncludes(int argc, char** argv);
+static int PrintHelp(void);
 
 int
 main(int argc, char** argv)
@@ -611,7 +609,9 @@ main(int argc, char** argv)
 	
 	for (int i = 1; i < argc; ++i)
 	{
-		if (strcmp(argv[i], "-g") == 0)
+		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "/?") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
+			return PrintHelp();
+		else if (strcmp(argv[i], "-g") == 0)
 			g_opts.debug_info = true;
 		else if (strcmp(argv[i], "-ndebug") == 0)
 			g_opts.debug_mode = false;
@@ -691,12 +691,6 @@ main(int argc, char** argv)
 			int osnamelen = strlen(osname);
 			enum Build_Os os = 0;
 			
-			Cstr platform_layer = strchr(osname, ',');
-			if (platform_layer)
-				osnamelen = platform_layer++ - osname;
-			else
-				platform_layer = osname;
-			
 			for (int i = 1; i < ArrayLength(g_osinfo); ++i)
 			{
 				if (strncmp(osname, g_osinfo[i].name, osnamelen) == 0)
@@ -706,24 +700,11 @@ main(int argc, char** argv)
 				}
 			}
 			
-			Cstr osdef = NULL;
-			for (int i = 0; i < ArrayLength(g_oslayerdefs); ++i)
-			{
-				if (strcmp(platform_layer, g_oslayerdefs[i].name) == 0)
-				{
-					osdef = g_oslayerdefs[i].def;
-					break;
-				}
-			}
-			
 			if (!os)
 				fprintf(stderr, "[warning] unknown OS '%s'.\n", osname);
-			else if (!osdef)
-				fprintf(stderr, "[warning] unknown platform layer '%s'.\n", osdef);
 			else
 			{
 				g_opts.os = os;
-				g_opts.osdef = osdef;
 			}
 		}
 		else if (argv[i][0] == '-')
@@ -795,5 +776,48 @@ RedirectMsvcShowIncludes(int argc, char** argv)
 	}
 	
 	fclose(output);
+	return 0;
+}
+
+static int
+PrintHelp(void)
+{
+	g_target = GenTargetString();
+	
+	fprintf(stdout,
+		"usage: %s PROJECT_NAME [OPTIONS...]\n"
+		"default project: %s\n"
+		"\n"
+		"C Compiler:    %s\n"
+		"C++ Compiler:  %s\n"
+		"Target:        %s\n"
+		"\n"
+		"OPTIONS:\n"
+		"    -g                  Generate debug info (e.g. PDB files)\n"
+		"    -ndebug             Don't define CONFIG_DEBUG macro\n"
+		"    -asan               Use address sanitizer\n"
+		"    -ubsan              Use undefined behaviour sanitizer\n"
+		"    -rc                 Generate and link .res file on windows target\n"
+		"    -m32                Target i686 code (32-bit mode), so ARCH becomes i686 instead of x86_64\n"
+		"    -v                  Verbose output (clang and gcc: pass -v flag)\n"
+		"    -tracy              Use TracyC++ instrumentation (requires TracyClient.obj and Clang)\n"
+		"    -steam              Enable Steam API (requires include/steam/ and lib/steam_api[64].lib)\n"
+		"    -rebuild            Force rebuild\n"
+		"    -lto                Enable link-time optimizations\n"
+		"    -embed              Embed assets in executable file (doesn't work on MSVC)\n"
+		"    -analyze            Run static analyzer instead of compiling (requires Clang)\n"
+		"    -O0 -O1 -O2         Optimization flags\n"
+		"    -profile=steam      alias for: -lto -rc -O2 -ndebug -embed -steam\n"
+		"    -profile=release    alias for: -lto -rc -O2 -ndebug -embed\n"
+		"",
+		g_self, g_opts.exec->name, f_cc, f_cxx, g_target);
+	
+	for (int i = 1; i < ArrayLength(g_osinfo); ++i)
+	{
+		fprintf(stdout,
+			"    -os=%s   \tDefines CONFIG_OS_%s\n"
+			"", g_osinfo[i].name, g_osinfo[i].def);
+	}
+	
 	return 0;
 }

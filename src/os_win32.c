@@ -49,10 +49,10 @@ ReenableWarnings();
 #   pragma comment(lib, "ntdll.lib")
 #   pragma comment(lib, "ole32.lib")
 #   if defined(CONFIG_ENABLE_STEAM)
-#       if defined(_WIN64)
-#           pragma comment(lib, "lib\\x86_64-windows-steam_api.lib")
+#       if defined(CONFIG_M64)
+#           pragma comment(lib, "lib\\steam_api64.lib")
 #       else
-#           pragma comment(lib, "lib\\i686-windows-steam_api.lib")
+#           pragma comment(lib, "lib\\steam_api.lib")
 #       endif
 #   endif
 #endif

@@ -18,26 +18,29 @@
 #endif
 
 //- Identify platform if build system didn't tell us
-#if !defined(CONFIG_OSLAYER_WIN32) && !defined(CONFIG_OSLAYER_LINUX) && !defined(CONFIG_OSLAYER_SDL)
+#if !defined(CONFIG_OS_WIN32) && !defined(CONFIG_OS_LINUX) && !defined(CONFIG_OS_WIN32LINUX) && !defined(CONFIG_OS_SDL2LINUX)
 #   if defined(_WIN32)
-#       define CONFIG_OSLAYER_WIN32
+#       define CONFIG_OS_WIN32
 #   elif defined(__linux__)
-#       define CONFIG_OSLAYER_LINUX
+#       define CONFIG_OS_LINUX
 #   else
 #       error "unsupported system"
 #   endif
 #endif
 
 //- Platform specific stuff
-#if defined(_WIN32)
+#if defined(CONFIG_OS_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
 #   define CONFIG_ENABLE_D3D11
 #   define CONFIG_ENABLE_D3D9C
-#   ifdef _WIN64
+#   if defined(CONFIG_M64)
 #       define COMMON_DONT_USE_CRT
 #   endif
-#elif defined(__linux__)
+#elif defined(CONFIG_OS_WIN32LINUX)
+#   define _CRT_SECURE_NO_WARNINGS
+#   define CONFIG_ENABLE_OPENGL
+#elif defined(CONFIG_OS_LINUX) || defined(CONFIG_OS_SDL2LINUX)
 #   define CONFIG_ENABLE_OPENGL
 #endif
 
