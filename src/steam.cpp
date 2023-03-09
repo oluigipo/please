@@ -14,6 +14,10 @@ struct S_ScratchScope_
 	{ Arena_Restore(savepoint); }
 };
 
+void*
+operator new(size_t size, void* ptr)
+{ return ptr; }
+
 DisableWarnings(); // NOTE(ljre): -Winvalid-offsetof
 struct S_Callbacks_
 {
@@ -116,8 +120,8 @@ S_Init(uint64 desired_app_id)
 		g_steam.utils = SteamUtils();
 		g_steam.stats = SteamUserStats();
 		
-		static S_Callbacks_ local_callbacks;
-		g_steam.callbacks = &local_callbacks;
+		alignas(S_Callbacks_) static uint8 local_callbacks[sizeof(S_Callbacks_)];
+		g_steam.callbacks = new(local_callbacks) S_Callbacks_();
 		
 		const char* name = g_steam.friends->GetPersonaName();
 		uintsize name_size = Mem_Strlen(name);
