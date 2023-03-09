@@ -45,9 +45,8 @@ ReenableWarnings();
 #   pragma comment(lib, "kernel32.lib")
 #   pragma comment(lib, "user32.lib")
 #   pragma comment(lib, "gdi32.lib")
-#   pragma comment(lib, "hid.lib")
+//#   pragma comment(lib, "hid.lib")
 #   pragma comment(lib, "ntdll.lib")
-#   pragma comment(lib, "ole32.lib")
 #   if defined(CONFIG_ENABLE_STEAM)
 #       if defined(CONFIG_M64)
 #           pragma comment(lib, "lib\\steam_api64.lib")
@@ -395,7 +394,18 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		}
 		
 		if (!ok)
-			SetProcessDPIAware();
+		{
+			library = LoadLibraryA("user32.dll");
+			
+			if (library)
+			{
+				BOOL (WINAPI* set_process_dpi_aware)(void);
+				
+				set_process_dpi_aware = (void*)GetProcAddress(library, "SetProcessDPIAware");
+				if (set_process_dpi_aware)
+					ok = set_process_dpi_aware();
+			}
+		}
 	}
 	
 	{
@@ -999,6 +1009,7 @@ OS_LoadGameLibrary(void)
 }
 #endif //CONFIG_ENABLE_HOT
 
+#if 1
 static_assert(sizeof(OS_RWLock) == sizeof(SRWLOCK));
 
 API void
@@ -1032,13 +1043,54 @@ OS_UnlockExclusive(OS_RWLock* lock)
 API void
 OS_DeinitRWLock(OS_RWLock* lock)
 {}
+#else
+API void
+OS_InitRWLock(OS_RWLock* lock)
+{
+	CRITICAL_SECTION* csec = OS_HeapAlloc(sizeof(*csec));
+	InitializeCriticalSection(csec);
+	lock->ptr_ = csec;
+}
+
+API void
+OS_LockShared(OS_RWLock* lock)
+{ EnterCriticalSection(lock->ptr_); }
+
+API void
+OS_LockExclusive(OS_RWLock* lock)
+{ EnterCriticalSection(lock->ptr_); }
+
+API bool
+OS_TryLockShared(OS_RWLock* lock)
+{ return TryEnterCriticalSection(lock->ptr_); }
+
+API bool
+OS_TryLockExclusive(OS_RWLock* lock)
+{ return TryEnterCriticalSection(lock->ptr_); }
+
+API void
+OS_UnlockShared(OS_RWLock* lock)
+{ LeaveCriticalSection(lock->ptr_); }
+
+API void
+OS_UnlockExclusive(OS_RWLock* lock)
+{ LeaveCriticalSection(lock->ptr_); }
+
+API void
+OS_DeinitRWLock(OS_RWLock* lock)
+{
+	DeleteCriticalSection(lock->ptr_);
+	OS_HeapFree(lock->ptr_);
+	lock->ptr_ = NULL;
+}
+#endif
 
 API void
 OS_InitSemaphore(OS_Semaphore* sem, int32 max_count)
 {
 	Trace();
 	
-	HANDLE handle = CreateSemaphore(NULL, 0, max_count, NULL);
+	HANDLE handle = CreateSemaphoreA(NULL, 0, max_count, NULL);
 	SafeAssert(handle);
 	
 	sem->ptr = handle;

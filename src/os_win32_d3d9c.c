@@ -43,25 +43,28 @@ Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 {
 	Trace();
 	
+	HWND window = CreateWindowExW(
+		0, g_win32.class_name, title, WS_OVERLAPPEDWINDOW,
+		config->x, config->y, config->width, config->height,
+		NULL, NULL, g_win32.instance, NULL);
+	if (!window)
+		return false;
+	
 	HMODULE library = Win32_LoadLibrary("d3d9.dll");
 	if (!library)
 		return false;
 	
 	ProcDirect3DCreate9* create_proc = (void*)GetProcAddress(library, "Direct3DCreate9");
 	if (!create_proc)
+	{
+		DestroyWindow(window);
 		return false;
+	}
 	
 	IDirect3D9* d3d9 = create_proc(D3D_SDK_VERSION);
 	if (!d3d9)
-		return false;
-	
-	HWND window = CreateWindowExW(
-		0, g_win32.class_name, title, WS_OVERLAPPEDWINDOW,
-		config->x, config->y, config->width, config->height,
-		NULL, NULL, g_win32.instance, NULL);
-	if (!window)
 	{
-		IDirect3D9_Release(d3d9);
+		DestroyWindow(window);
 		return false;
 	}
 	
@@ -85,7 +88,7 @@ Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 	IDirect3DDevice9* device;
 	HRESULT hr = IDirect3D9_CreateDevice(
 		d3d9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window,
-		D3DCREATE_HARDWARE_VERTEXPROCESSING, &present_params, &device);
+		D3DCREATE_SOFTWARE_VERTEXPROCESSING, &present_params, &device);
 	if (!SUCCEEDED(hr))
 	{
 		IDirect3D9_Release(d3d9);

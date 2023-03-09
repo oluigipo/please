@@ -1,9 +1,13 @@
 
-#define CoCreateInstance global_proc_CoCreateInstance
-#define CoInitializeEx global_proc_CoInitializeEx
+#define CoCreateInstance g_proc_CoCreateInstance
+#define CoInitializeEx g_proc_CoInitializeEx
+#define CoTaskMemFree g_proc_CoTaskMemFree
+#define PropVariantClear g_proc_PropVariantClear
 
 typedef HRESULT WINAPI ProcCoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID* ppv);
 typedef HRESULT WINAPI ProcCoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
+typedef void WINAPI ProcCoTaskMemFree(LPVOID pv);
+typedef HRESULT WINAPI ProcPropVariantClear(PROPVARIANT* pvar);
 
 #ifndef AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
 #   define AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM 0x80000000
@@ -28,6 +32,8 @@ typedef Win32_AudioDevice;
 //~ Globals
 static ProcCoCreateInstance* CoCreateInstance;
 static ProcCoInitializeEx* CoInitializeEx;
+static ProcCoTaskMemFree* CoTaskMemFree;
+static ProcPropVariantClear* PropVariantClear;
 
 struct
 {
@@ -77,8 +83,10 @@ Win32_LoadComLibrary_(void)
 	
 	CoCreateInstance = (void*)GetProcAddress(library, "CoCreateInstance");
 	CoInitializeEx = (void*)GetProcAddress(library, "CoInitializeEx");
+	CoTaskMemFree = (void*)GetProcAddress(library, "CoTaskMemFree");
+	PropVariantClear = (void*)GetProcAddress(library, "PropVariantClear");
 	
-	if (CoCreateInstance && CoInitializeEx)
+	if (CoCreateInstance && CoInitializeEx && CoTaskMemFree && PropVariantClear)
 	{
 		CoInitializeEx(NULL, COINIT_SPEED_OVER_MEMORY);
 		return true;
@@ -507,6 +515,8 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 {
 	Trace();
 	
+	OS_InitRWLock(&g_audio.client_lock);
+	
 	if (!Win32_LoadComLibrary_())
 		return false;
 	
@@ -522,7 +532,6 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 	if (!Win32_ChangeAudioEndpoint_(Win32_FindDefaultAudioEndpoint_()))
 		return Win32_DeinitAudio(), false;
 	
-	OS_InitRWLock(&g_audio.client_lock);
 	g_audio.thread_proc = init_desc->audiothread_proc;
 	g_audio.thread_userdata = init_desc->audiothread_user_data;
 	g_audio.thread = CreateThread(NULL, 0, Win32_AudioThreadProc_, NULL, 0, NULL);

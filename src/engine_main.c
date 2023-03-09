@@ -98,6 +98,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		global_engine.game_memory_size = game_memory_size;
 		global_engine.delta_time = 1.0f;
 		global_engine.running = true;
+		global_engine.worker_thread_count = init_desc.workerthreads_count;
 		
 		// NOTE(ljre): Reserving pieces of the game memory to different arenas
 		{
@@ -143,9 +144,6 @@ OS_UserMain(const OS_UserMainArgs* args)
 	
 	if (!OS_Init(&init_desc, &global_engine.os))
 		OS_ExitWithErrorMessage("Failed to initialize platform layer.");
-	
-	// NOTE(ljre): Init global_engine structure
-	global_engine.worker_thread_count = init_desc.workerthreads_count;
 	
 	OS_PollEvents();
 	

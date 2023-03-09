@@ -475,7 +475,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	
 	stb_fontinfo->userdata = global_engine.scratch_arena;
 	
-	int32 tex_size = desc->bitmap_size ? desc->bitmap_size : 1024;
+	int32 tex_size = desc->bitmap_size ? desc->bitmap_size : 512;
 	uint8* bitmap;
 	
 	{
@@ -667,7 +667,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	RB_ResourceCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeTexture2D,
 		.handle = &out_font->texture,
-		.flag_dynamic = true,
+		//.flag_dynamic = true,
 		.texture_2d = {
 			.pixels = bitmap,
 			.width = tex_size,
