@@ -29,7 +29,7 @@ Run `build --help` for help.
 * `src/gamepad_db_gen`: A simple tool to parse SDL's `gamecontrollerdb.txt` and generate a `gamepad_map_database.inc`;
 
 ## APIs Used
-* Graphics: Direct3D 11 (level 9_3), OpenGL 3.3;
+* Graphics: Direct3D 11, OpenGL 3.3, and Direct3D 9c;
 * Gamepad Input: DirectInput, XInput;
 * Audio: WASAPI, ALSA;
 * System: Win32, Linux (X11);
