@@ -11,6 +11,8 @@ SafeAssert_OnFailure(#__VA_ARGS__, __FILE__, __LINE__, __func__); \
 struct RB_D3d9cTexture2D_
 {
 	IDirect3DTexture9* texture;
+	int32 width, height;
+	bool linear_filtering;
 }
 typedef RB_D3d9cTexture2D_;
 
@@ -27,18 +29,22 @@ typedef RB_D3d9cShader_;
 struct RB_D3d9cVertexBuffer_
 {
 	IDirect3DVertexBuffer9* vertex_buffer;
+	uintsize size;
 }
 typedef RB_D3d9cVertexBuffer_;
 
 struct RB_D3d9cIndexBuffer_
 {
 	IDirect3DIndexBuffer9* index_buffer;
+	uintsize size;
+	D3DFORMAT format;
 }
 typedef RB_D3d9cIndexBuffer_;
 
 struct RB_D3d9cUniformBuffer_
 {
-	vec4 floats[32];
+	uintsize size;
+	float32 floats[32 * 4];
 }
 typedef RB_D3d9cUniformBuffer_;
 
@@ -123,6 +129,9 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				RB_D3d9cTexture2D_* pool_data = RB_PoolAlloc_(&g_d3d9c_texpool, &handle.id);
 				pool_data->texture = texture;
+				pool_data->width = cmd->texture_2d.width;
+				pool_data->height = cmd->texture_2d.height;
+				pool_data->linear_filtering = cmd->texture_2d.flag_linear_filtering;
 			} break;
 			
 			case RB_ResourceCommandKind_MakeVertexBuffer:
@@ -144,6 +153,7 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				RB_D3d9cVertexBuffer_* pool_data = RB_PoolAlloc_(&g_d3d9c_vbufpool, &handle.id);
 				pool_data->vertex_buffer = vbuffer;
+				pool_data->size = cmd->buffer.size;
 			} break;
 			
 			case RB_ResourceCommandKind_MakeIndexBuffer:
@@ -173,14 +183,19 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				RB_D3d9cIndexBuffer_* pool_data = RB_PoolAlloc_(&g_d3d9c_ibufpool, &handle.id);
 				pool_data->index_buffer = ibuffer;
+				pool_data->size = cmd->buffer.size;
+				pool_data->format = format;
 			} break;
 			
 			case RB_ResourceCommandKind_MakeUniformBuffer:
 			{
 				RB_D3d9cUniformBuffer_* pool_data = RB_PoolAlloc_(&g_d3d9c_ubufpool, &handle.id);
 				
-				// TODO
-				(void)pool_data;
+				SafeAssert(cmd->buffer.size <= sizeof(pool_data->floats));
+				
+				pool_data->size = cmd->buffer.size;
+				if (cmd->buffer.memory)
+					Mem_Copy(pool_data->floats, cmd->buffer.memory, cmd->buffer.size);
 			} break;
 			
 			case RB_ResourceCommandKind_MakeShader:
@@ -232,7 +247,7 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 								.Type = (BYTE)decl_type,
 								.Method = D3DDECLMETHOD_DEFAULT,
 								.Usage = D3DDECLUSAGE_TEXCOORD,
-								.UsageIndex = 0,
+								.UsageIndex = (BYTE)element_count,
 							};
 							
 							elements[element_count++] = element;
@@ -246,7 +261,7 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 								.Type = D3DDECLTYPE_FLOAT2,
 								.Method = D3DDECLMETHOD_DEFAULT,
 								.Usage = D3DDECLUSAGE_TEXCOORD,
-								.UsageIndex = 1,
+								.UsageIndex = (BYTE)element_count,
 							};
 							
 							elements[element_count++] = element; ++element.UsageIndex; element.Offset += sizeof(float32[2]);
@@ -261,7 +276,7 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 								.Type = D3DDECLTYPE_FLOAT3,
 								.Method = D3DDECLMETHOD_DEFAULT,
 								.Usage = D3DDECLUSAGE_TEXCOORD,
-								.UsageIndex = 1,
+								.UsageIndex = (BYTE)element_count,
 							};
 							
 							elements[element_count++] = element; ++element.UsageIndex; element.Offset += sizeof(float32[3]);
@@ -274,10 +289,10 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 							D3DVERTEXELEMENT9 element = {
 								.Stream = (WORD)curr_layout.vbuffer_index,
 								.Offset = (WORD)curr_layout.offset,
-								.Type = D3DDECLTYPE_FLOAT3,
+								.Type = D3DDECLTYPE_FLOAT4,
 								.Method = D3DDECLMETHOD_DEFAULT,
 								.Usage = D3DDECLUSAGE_TEXCOORD,
-								.UsageIndex = 1,
+								.UsageIndex = (BYTE)element_count,
 							};
 							
 							elements[element_count++] = element; ++element.UsageIndex; element.Offset += sizeof(float32[4]);
@@ -302,83 +317,148 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			
 			case RB_ResourceCommandKind_MakeRenderTarget:
 			{
-				SafeAssert(false);
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_MakeBlendState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_MakeRasterizerState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			//-
 			
 			case RB_ResourceCommandKind_UpdateVertexBuffer:
 			{
+				SafeAssert(!cmd->flag_subregion); // TODO(ljre)
 				
+				RB_D3d9cVertexBuffer_* pool_data = RB_PoolFetch_(&g_d3d9c_vbufpool, handle.id);
+				IDirect3DVertexBuffer9* vbuffer = pool_data->vertex_buffer;
+				
+				if (cmd->buffer.size >= pool_data->size)
+				{
+					// Vertex buffer is too small, so recreate it
+					
+					DWORD usage = D3DUSAGE_DYNAMIC;
+					UINT length = (UINT)cmd->buffer.size;
+					D3DPOOL pool = D3DPOOL_DEFAULT;
+					
+					IDirect3DVertexBuffer9* new_vbuffer;
+					D3d9cCall(IDirect3DDevice9_CreateVertexBuffer(D3d9c.device, length, usage, 0, pool, &new_vbuffer, NULL));
+					
+					IDirect3DVertexBuffer9_Release(vbuffer);
+					vbuffer = new_vbuffer;
+					
+					pool_data->vertex_buffer = vbuffer;
+					pool_data->size = cmd->buffer.size;
+				}
+				
+				if (cmd->buffer.memory)
+				{
+					void* mem;
+					
+					D3d9cCall(IDirect3DVertexBuffer9_Lock(vbuffer, 0, 0, &mem, 0));
+					Mem_Copy(mem, cmd->buffer.memory, cmd->buffer.size);
+					D3d9cCall(IDirect3DVertexBuffer9_Unlock(vbuffer));
+				}
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateIndexBuffer:
 			{
+				SafeAssert(!cmd->flag_subregion); // TODO(ljre)
 				
+				RB_D3d9cIndexBuffer_* pool_data = RB_PoolFetch_(&g_d3d9c_ibufpool, handle.id);
+				IDirect3DIndexBuffer9* ibuffer = pool_data->index_buffer;
+				
+				if (cmd->buffer.size >= pool_data->size)
+				{
+					// Index buffer is too small, so recreate it
+					DWORD usage = D3DUSAGE_DYNAMIC;
+					D3DPOOL pool = D3DPOOL_DEFAULT;
+					UINT length = (UINT)cmd->buffer.size;
+					D3DFORMAT format = pool_data->format;
+					
+					IDirect3DIndexBuffer9* new_ibuffer;
+					D3d9cCall(IDirect3DDevice9_CreateIndexBuffer(D3d9c.device, length, usage, format, pool, &new_ibuffer, NULL));
+					
+					IDirect3DIndexBuffer9_Release(ibuffer);
+					ibuffer = new_ibuffer;
+					
+					pool_data->index_buffer = ibuffer;
+					pool_data->size = cmd->buffer.size;
+				}
+				
+				if (cmd->buffer.memory)
+				{
+					void* mem;
+					
+					D3d9cCall(IDirect3DIndexBuffer9_Lock(ibuffer, 0, 0, &mem, 0));
+					Mem_Copy(mem, cmd->buffer.memory, cmd->buffer.size);
+					D3d9cCall(IDirect3DIndexBuffer9_Unlock(ibuffer));
+				}
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateUniformBuffer:
 			{
+				RB_D3d9cUniformBuffer_* pool_data = RB_PoolFetch_(&g_d3d9c_ubufpool, handle.id);
 				
+				SafeAssert(cmd->buffer.size <= sizeof(pool_data->floats));
+				
+				pool_data->size = cmd->buffer.size;
+				if (cmd->buffer.memory)
+					Mem_Copy(pool_data->floats, cmd->buffer.memory, cmd->buffer.size);
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateTexture2D:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			//-
 			
 			case RB_ResourceCommandKind_FreeTexture2D:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeVertexBuffer:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeIndexBuffer:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeUniformBuffer:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeShader:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeRenderTarget:
 			{
-				SafeAssert(false);
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeBlendState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_ResourceCommandKind_FreeRasterizerState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
-			
 		}
 		
 		*cmd->handle = handle;
@@ -401,6 +481,10 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 	
 	D3d9cCall(IDirect3DDevice9_BeginScene(D3d9c.device));
 	D3d9cCall(IDirect3DDevice9_SetViewport(D3d9c.device, &viewport));
+	D3d9cCall(IDirect3DDevice9_SetRenderState(D3d9c.device, D3DRS_CULLMODE, D3DCULL_CW));
+	D3d9cCall(IDirect3DDevice9_SetRenderState(D3d9c.device, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA));
+	D3d9cCall(IDirect3DDevice9_SetRenderState(D3d9c.device, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA));
+	D3d9cCall(IDirect3DDevice9_SetRenderState(D3d9c.device, D3DRS_ALPHABLENDENABLE, TRUE));
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
@@ -434,17 +518,17 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 			
 			case RB_DrawCommandKind_ApplyBlendState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_DrawCommandKind_ApplyRasterizerState:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_DrawCommandKind_ApplyRenderTarget:
 			{
-				
+				SafeAssert(false); // TODO(ljre)
 			} break;
 			
 			case RB_DrawCommandKind_DrawCall:
@@ -473,7 +557,7 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 					if (shader_pool_data->divisors[i])
 						divisors[i] = shader_pool_data->divisors[i] | (D3DSTREAMSOURCE_INSTANCEDATA);
 					else
-						divisors[i] = (UINT)cmd->drawcall.index_count | (D3DSTREAMSOURCE_INDEXEDDATA);
+						divisors[i] = (UINT)cmd->drawcall.instance_count | (D3DSTREAMSOURCE_INDEXEDDATA);
 				}
 				
 				//- Buffers
@@ -482,7 +566,7 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				RB_D3d9cIndexBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ibufpool, cmd->drawcall.ibuffer->id);
 				ibuffer = ibuffer_pool_data->index_buffer;
 				
-				for (int32 i = 0; i < ArrayLength(vbuffers); ++i)
+				for (intsize i = 0; i < ArrayLength(vbuffers); ++i)
 				{
 					if (!cmd->drawcall.vbuffers[i])
 						break;
@@ -494,30 +578,51 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				}
 				
 				//- Textures
-				for (int32 i = 0; i < ArrayLength(textures); ++i)
+				UINT filtering[ArrayLength(textures)] = { 0 };
+				float32 texsizes[ArrayLength(textures)*2] = { 0 };
+				int32 texsizes_count = sizeof(texsizes) / (sizeof(float32)*4);
+				
+				for (intsize i = 0; i < ArrayLength(textures); ++i)
 				{
 					if (!cmd->drawcall.samplers[i].handle)
 						break;
 					
 					RB_D3d9cTexture2D_* pool_data = RB_PoolFetch_(&g_d3d9c_texpool, cmd->drawcall.samplers[i].handle->id);
 					textures[i] = (IDirect3DBaseTexture9*)pool_data->texture;
+					texsizes[2*i+0] = (float32)pool_data->width;
+					texsizes[2*i+1] = (float32)pool_data->height;
+					filtering[i] = pool_data->linear_filtering ? D3DTEXF_LINEAR : D3DTEXF_POINT;
 				}
+				
+				//- Constants
+				RB_D3d9cUniformBuffer_* ubuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ubufpool, cmd->drawcall.ubuffer->id);
+				uintsize vec4_count = ubuffer_pool_data->size / sizeof(vec4);
+				const float32* floats = ubuffer_pool_data->floats;
+				
+				// NOTE(ljre): Don't use D3d9cCall() since we don't care if this fails
+				IDirect3DDevice9_SetVertexShaderConstantF(D3d9c.device, 0, floats, vec4_count);
+				IDirect3DDevice9_SetPixelShaderConstantF(D3d9c.device, 0, texsizes, texsizes_count);
+				IDirect3DDevice9_SetPixelShaderConstantF(D3d9c.device, texsizes_count, floats, vec4_count);
 				
 				//- Draw call
 				UINT index_count = (UINT)cmd->drawcall.index_count;
-				UINT instance_count = (UINT)cmd->drawcall.instance_count;
 				
 				D3d9cCall(IDirect3DDevice9_SetVertexShader(D3d9c.device, vshader));
 				D3d9cCall(IDirect3DDevice9_SetPixelShader(D3d9c.device, pshader));
 				D3d9cCall(IDirect3DDevice9_SetVertexDeclaration(D3d9c.device, vdecl));
 				for (int32 i = 0; i < ArrayLength(vbuffers) && vbuffers[i]; ++i)
+				{
 					D3d9cCall(IDirect3DDevice9_SetStreamSource(D3d9c.device, (UINT)i, vbuffers[i], offsets[i], strides[i]));
-				for (int32 i = 0; i < ArrayLength(divisors) && divisors[i]; ++i)
 					D3d9cCall(IDirect3DDevice9_SetStreamSourceFreq(D3d9c.device, (UINT)i, divisors[i]));
+				}
 				for (int32 i = 0; i < ArrayLength(textures) && textures[i]; ++i)
+				{
 					D3d9cCall(IDirect3DDevice9_SetTexture(D3d9c.device, (UINT)i, textures[i]));
+					D3d9cCall(IDirect3DDevice9_SetSamplerState(D3d9c.device, (UINT)i, D3DSAMP_MAGFILTER, filtering[i]));
+					D3d9cCall(IDirect3DDevice9_SetSamplerState(D3d9c.device, (UINT)i, D3DSAMP_MINFILTER, filtering[i]));
+				}
 				D3d9cCall(IDirect3DDevice9_SetIndices(D3d9c.device, ibuffer));
-				D3d9cCall(IDirect3DDevice9_DrawIndexedPrimitive(D3d9c.device, D3DPT_TRIANGLELIST, 0, 0, index_count, 0, instance_count));
+				D3d9cCall(IDirect3DDevice9_DrawIndexedPrimitive(D3d9c.device, D3DPT_TRIANGLELIST, 0, 0, 4, 0, index_count/2));
 			} break;
 		}
 	}

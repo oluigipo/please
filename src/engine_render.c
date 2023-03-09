@@ -3,6 +3,8 @@ uint8 typedef BYTE;
 
 #include <d3d11_shader_quad_vs.inc>
 #include <d3d11_shader_quad_ps.inc>
+#include <d3d9c_shader_quad_vs.inc>
+#include <d3d9c_shader_quad_ps.inc>
 
 static RB_Handle g_render_quadvbuf;
 static RB_Handle g_render_quadibuf;
@@ -157,7 +159,7 @@ E_InitRender_(void)
 	
 	uint16 quadibuf[] = {
 		0, 1, 2,
-		2, 3, 1,
+		2, 1, 3,
 	};
 	
 	uint32 whitetex[] = {
@@ -246,10 +248,12 @@ E_InitRender_(void)
 			.kind = RB_ResourceCommandKind_MakeShader,
 			.handle = &g_render_quadshader,
 			.shader = {
-				.d3d_vs_blob = Buf(g_D3d11Shader_QuadVertex),
-				.d3d_ps_blob = Buf(g_D3d11Shader_QuadPixel),
+				.d3d_vs_blob = BufInit(g_D3d11Shader_QuadVertex),
+				.d3d_ps_blob = BufInit(g_D3d11Shader_QuadPixel),
 				.gl_vs_src = StrInit(g_render_gl_quadvshader),
 				.gl_fs_src = StrInit(g_render_gl_quadfshader),
+				.d3d9c_vs_blob = BufInit(g_vs30_D3d9cShader_QuadVertex),
+				.d3d9c_ps_blob = BufInit(g_ps30_D3d9cShader_QuadPixel),
 				
 				.input_layout = {
 					[0] = {

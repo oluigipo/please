@@ -58,6 +58,7 @@ struct Build_Shader
 	Cstr path;
 	Cstr output;
 	Cstr vertex, pixel;
+	Cstr profile;
 };
 
 struct Build_Executable
@@ -84,8 +85,9 @@ static struct Build_Executable g_executables[] = {
 		.is_graphic_program = true,
 		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d", "scene3d_d3d_vs", "scene3d_d3d_ps" },
-			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel" },
+			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d", "scene3d_d3d_vs", "scene3d_d3d_ps", "4_0" },
+			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0" },
+			{ "engine_shader_quad_d3d9c.hlsl", "d3d9c_shader_quad", "D3d9cShader_QuadVertex", "D3d9cShader_QuadPixel", "3_0" },
 			{ NULL },
 		},
 	},
@@ -115,7 +117,6 @@ struct
 	bool steam;
 	bool lto;
 	bool embed;
-	bool hlsl_compat;
 	Cstr* extra_flags;
 }
 static g_opts = {
@@ -129,11 +130,6 @@ static g_opts = {
 	.exec = &g_executables[0],
 	.debug_mode = true,
 };
-
-static Cstr g_shader_main_profile_vs = "vs_4_0";
-static Cstr g_shader_main_profile_ps = "ps_4_0";
-static Cstr g_shader_compat_profile_vs = "vs_4_0_level_9_1";
-static Cstr g_shader_compat_profile_ps = "ps_4_0_level_9_1";
 
 #ifdef __clang__
 static Cstr f_cc = "clang -std=c11";
@@ -436,16 +432,13 @@ CompileShader(struct Build_Shader* shader)
 	char* end = cmd+sizeof(cmd);
 	bool ok = true;
 	
-	Cstr vs_profile = g_opts.hlsl_compat ? g_shader_compat_profile_vs : g_shader_main_profile_vs;
-	Cstr ps_profile = g_opts.hlsl_compat ? g_shader_compat_profile_ps : g_shader_main_profile_ps;
-	
 	Append(&head, end, "fxc /nologo /O3 src/%s /Fhinclude/%s_vs.inc", shader->path, shader->output);
-	Append(&head, end, " /T%s /E%s", vs_profile, shader->vertex);
+	Append(&head, end, " /Tvs_%s /E%s", shader->profile, shader->vertex);
 	ok = ok && RunCommand(cmd) == 0;
 	
 	head = cmd;
 	Append(&head, end, "fxc /nologo /O3 src/%s /Fhinclude/%s_ps.inc", shader->path, shader->output);
-	Append(&head, end, " /T%s /E%s", ps_profile, shader->pixel);
+	Append(&head, end, " /Tps_%s /E%s", shader->profile, shader->pixel);
 	ok = ok && RunCommand(cmd) == 0;
 	
 	return ok;
@@ -640,8 +633,6 @@ main(int argc, char** argv)
 			g_opts.force_rebuild = true;
 		else if (strcmp(argv[i], "-lto") == 0)
 			g_opts.lto = true;
-		else if (strcmp(argv[i], "-hlsl-9_1-compat") == 0)
-			g_opts.hlsl_compat = true;
 		else if (strcmp(argv[i], "-embed") == 0)
 		{
 #if !defined(_MSC_VER) || defined(__clang__)
