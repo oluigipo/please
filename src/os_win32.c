@@ -229,18 +229,9 @@ static void Win32_OpenGLResizeWindow(void)
 #ifdef CONFIG_ENABLE_D3D11
 #   include "os_win32_d3d11.c"
 #else
-static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
+static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title, int32 desired_feature_level)
 { return false; }
 static void Win32_D3d11ResizeWindow(void)
-{}
-#endif
-
-#ifdef CONFIG_ENABLE_D3D9C
-#   include "os_win32_d3d9c.c"
-#else
-static bool Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
-{ return false; }
-static void Win32_D3d9cResizeWindow(void)
 {}
 #endif
 
@@ -276,7 +267,6 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 				
 				case OS_WindowGraphicsApi_OpenGL: Win32_OpenGLResizeWindow(); break;
 				case OS_WindowGraphicsApi_Direct3D11: Win32_D3d11ResizeWindow(); break;
-				case OS_WindowGraphicsApi_Direct3D9c: Win32_D3d9cResizeWindow(); break;
 			}
 		} break;
 		
@@ -493,9 +483,6 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 #ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: Win32_DestroyD3d11Window(); break;
 #endif
-#ifdef CONFIG_ENABLE_D3D9C
-		case OS_WindowGraphicsApi_Direct3D9c: Win32_DestroyD3d9cWindow(); break;
-#endif
 		default: break;
 	}
 	
@@ -560,16 +547,13 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 				default: break;
 				
 				case OS_WindowGraphicsApi_OpenGL: created_window = Win32_CreateOpenGLWindow(&config, window_name); break;
-				case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&config, window_name); break;
-				case OS_WindowGraphicsApi_Direct3D9c: created_window = Win32_CreateD3d9cWindow(&config, window_name); break;
+				case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&config, window_name, desc->window_desired_d3d11_feature_level); break;
 			}
 			
 			if (!created_window)
-				created_window = Win32_CreateD3d11Window(&config, window_name);
+				created_window = Win32_CreateD3d11Window(&config, window_name, 0);
 			if (!created_window)
 				created_window = Win32_CreateOpenGLWindow(&config, window_name);
-			if (!created_window)
-				created_window = Win32_CreateD3d9cWindow(&config, window_name);
 		}
 		
 		ok = ok && created_window;
@@ -1231,4 +1215,35 @@ OS_DebugLog(const char* fmt, ...)
 			fwrite(str.data, 1, str.size, stderr);
 	}
 }
+
+API int
+OS_DebugLogPrintfFormat(const char* fmt, ...)
+{
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	int32 ret = 0;
+	
+	for Arena_TempScope(scratch_arena)
+	{
+		va_list args, args2;
+		va_start(args, fmt);
+		va_copy(args2, args);
+		
+		int32 len = vsnprintf(NULL, 0, fmt, args);
+		char* buffer = Arena_PushDirtyAligned(scratch_arena, len+1, 1);
+		vsnprintf(buffer, len+1, fmt, args2);
+		
+		va_end(args);
+		va_end(args2);
+		
+		if (IsDebuggerPresent())
+			OutputDebugStringA(buffer);
+		else
+			fwrite(buffer, 1, len, stderr);
+		
+		ret = len;
+	}
+	
+	return ret;
+}
+
 #endif //CONFIG_DEBUG

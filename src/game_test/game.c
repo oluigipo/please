@@ -277,7 +277,6 @@ G_UpdateAndRender(void)
 						case RB_ShaderType_Glsl33: shader_type = "GLSL 3.3"; break;
 						case RB_ShaderType_Hlsl40: shader_type = "HLSL vs/ps_4_0"; break;
 						case RB_ShaderType_HlslLevel91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
-						case RB_ShaderType_Hlsl20: shader_type = "HLSL vs/ps_2_0"; break;
 					}
 					
 					UDebugUI_PushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);

@@ -53,7 +53,6 @@ OS_UserMain(const OS_UserMainArgs* args)
 		.window_initial_state = window_state,
 		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
 		//.window_desired_api = OS_WindowGraphicsApi_Direct3D11,
-		//.window_desired_api = OS_WindowGraphicsApi_Direct3D9c,
 		
 		.workerthreads_count = Min(E_Limits_MaxWorkerThreadCount, args->cpu_core_count/2),
 		.workerthreads_args = (void*[E_Limits_MaxWorkerThreadCount]) { 0 },
@@ -68,16 +67,37 @@ OS_UserMain(const OS_UserMainArgs* args)
 	
 	for (int32 i = 1; i < argc; ++i)
 	{
+		String arg = StrMake(Mem_Strlen(argv[i]), argv[i]);
+		
 		if (!Mem_Strcmp(argv[i], "-opengl"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
 		else if (!Mem_Strcmp(argv[i], "-d3d11"))
 			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
-		else if (!Mem_Strcmp(argv[i], "-d3d9c"))
-			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D9c;
 		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
 			init_desc.workerthreads_count = 0;
 		else if (!Mem_Strcmp(argv[i], "-no-vsync"))
 			global_engine.enable_vsync = false;
+		else if (String_StartsWith(arg, Str("-d3d11=")))
+		{
+			int32 feature_level = 0;
+			arg = String_Substr(arg, sizeof("-d3d11=")-1, -1);
+			
+			if (String_Equals(arg, Str("11_0")))
+				feature_level = 110;
+			else if (String_Equals(arg, Str("10_1")))
+				feature_level = 101;
+			else if (String_Equals(arg, Str("10_0")))
+				feature_level = 100;
+			else if (String_Equals(arg, Str("9_3")))
+				feature_level = 93;
+			else if (String_Equals(arg, Str("9_2")))
+				feature_level = 92;
+			else if (String_Equals(arg, Str("9_1")))
+				feature_level = 91;
+			
+			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
+			init_desc.window_desired_d3d11_feature_level = feature_level;
+		}
 	}
 	
 	// NOTE(ljre): Init basic stuff

@@ -93,8 +93,8 @@ G_Scene3DInit(void)
 		.kind = RB_ResourceCommandKind_MakeShader,
 		.handle = &s->shader,
 		.shader = {
-			.d3d_vs_blob = BufInit(g_scene3d_d3d_vs),
-			.d3d_ps_blob = BufInit(g_scene3d_d3d_ps),
+			.d3d_vs40_blob = BufInit(g_scene3d_d3d_vs),
+			.d3d_ps40_blob = BufInit(g_scene3d_d3d_ps),
 			.gl_vs_src = StrInit(g_scene3d_gl_vs),
 			.gl_fs_src = StrInit(g_scene3d_gl_fs),
 			
@@ -352,9 +352,9 @@ G_Scene3DUpdateAndRender(void)
 				.index_count = s->tree_model_index_count,
 				.instance_count = 1,
 				
-				.samplers = {
-					{ &s->tree_model_diffuse_texture },
-					//{ &s->tree_model_normal_texture },
+				.textures = {
+					&s->tree_model_diffuse_texture,
+					//&s->tree_model_normal_texture,
 				},
 			},
 		});

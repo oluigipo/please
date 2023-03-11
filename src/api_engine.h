@@ -129,7 +129,7 @@ typedef E_FontGlyphEntry;
 
 struct E_Font
 {
-	RB_Handle texture;
+	E_Tex2d texture;
 	
 	Buffer ttf;
 	void* stb_fontinfo;
@@ -197,7 +197,7 @@ typedef E_RectBatchElem;
 struct E_RectBatch
 {
 	Arena* arena;
-	RB_Handle* textures[RB_Limits_SamplersPerDrawCall];
+	E_Tex2d* textures[RB_Limits_MaxTexturesPerDrawCall];
 	
 	uint32 count;
 	E_RectBatchElem* elements;
@@ -205,7 +205,7 @@ struct E_RectBatch
 typedef E_RectBatch;
 
 API bool E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
-API E_RectBatchElem* E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
+API void E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
 
 API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);

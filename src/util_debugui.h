@@ -359,18 +359,19 @@ UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap,
 		bbox[3] = state->current_pos[1] + text_size[1] + padding*2;
 	}
 	
-	E_RectBatchElem* elem = E_PushRect(state->batch, &(E_RectBatchElem) {
+	E_RectBatchElem elem = {
 		.pos = { bbox[0], bbox[1] },
 		.tex_kind = 3,
 		.scaling[0][0] = bbox[2] - bbox[0],
 		.scaling[1][1] = bbox[3] - bbox[1],
 		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
 		.color = { 0.2f, 0.2f, 0.2f, 1.0f },
-	});
+	};
 	
 	if (*is_selected)
-		glm_vec4_copy(vec4(0.3f, 0.3f, 0.3f, 1.0f), elem->color);
+		glm_vec4_copy(vec4(0.3f, 0.3f, 0.3f, 1.0f), elem.color);
 	
+	E_PushRect(state->batch, &elem);
 	E_PushText(state->batch, state->font, text, vec2(bbox[0] + padding, bbox[1] + padding), state->scale, GLM_VEC4_ONE);
 	
 	state->max_width = glm_max(bbox[2] - state->start_pos[0], state->max_width);

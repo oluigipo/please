@@ -154,4 +154,28 @@ String_EndsWith(String check, String s)
 	return Mem_Compare(substr.data, s.data, substr.size) == 0;
 }
 
+static inline bool
+String_StartsWith(String check, String s)
+{
+	if (s.size > check.size)
+		return false;
+	
+	return Mem_Compare(check.data, s.data, s.size) == 0;
+}
+
+static inline String
+String_Substr(String str, intsize index, intsize size)
+{
+	if (index >= str.size)
+		return StrNull;
+	
+	str.data += index;
+	str.size -= index;
+	
+	if (size >= 0 && size < str.size)
+		str.size = size;
+	
+	return str;
+}
+
 #endif // COMMON_STRING_H

@@ -155,7 +155,7 @@ Win32_D3d11ResizeWindow(void)
 }
 
 static bool
-Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
+Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title, int32 desired_feature_level)
 {
 	Trace();
 	
@@ -217,29 +217,38 @@ Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title)
 	
 #if defined(CONFIG_DEBUG) && !defined(__GNUC__)
 	flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 	
 	D3D_FEATURE_LEVEL feature_levels[] = {
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_1,
 		D3D_FEATURE_LEVEL_10_0,
 		D3D_FEATURE_LEVEL_9_3,
-		//D3D_FEATURE_LEVEL_9_2,
-		//D3D_FEATURE_LEVEL_9_1,
+		D3D_FEATURE_LEVEL_9_2,
+		D3D_FEATURE_LEVEL_9_1,
 	};
-#else
-	D3D_FEATURE_LEVEL feature_levels[] = {
-		D3D_FEATURE_LEVEL_11_0,
-		D3D_FEATURE_LEVEL_10_1,
-		D3D_FEATURE_LEVEL_10_0,
-		D3D_FEATURE_LEVEL_9_3,
-		//D3D_FEATURE_LEVEL_9_2,
-		//D3D_FEATURE_LEVEL_9_1,
-	};
-#endif
+	int32 feature_level_count = ArrayLength(feature_levels);
+	
+	if (desired_feature_level != 0)
+	{
+		feature_level_count = 1;
+		
+		switch (desired_feature_level)
+		{
+			default: feature_level_count = ArrayLength(feature_levels); break;
+			
+			case 110: feature_levels[0] = D3D_FEATURE_LEVEL_11_0; break;
+			case 101: feature_levels[0] = D3D_FEATURE_LEVEL_10_1; break;
+			case 100: feature_levels[0] = D3D_FEATURE_LEVEL_10_0; break;
+			case 93: feature_levels[0] = D3D_FEATURE_LEVEL_9_3; break;
+			case 92: feature_levels[0] = D3D_FEATURE_LEVEL_9_2; break;
+			case 91: feature_levels[0] = D3D_FEATURE_LEVEL_9_1; break;
+		}
+	}
 	
 	HRESULT hr = D3D11CreateDeviceAndSwapChain(
 		NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
-		flags, feature_levels, ArrayLength(feature_levels),
+		flags, feature_levels, feature_level_count,
 		D3D11_SDK_VERSION, &swapchain_desc,
 		&global_direct3d.swapchain,
 		&global_direct3d.device,

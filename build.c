@@ -53,6 +53,7 @@ struct Build_Shader
 	Cstr output;
 	Cstr vertex, pixel;
 	Cstr profile;
+	Cstr varprefix;
 };
 
 struct Build_Executable
@@ -80,8 +81,8 @@ static struct Build_Executable g_executables[] = {
 		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, NULL },
 		.shaders = (struct Build_Shader[]) {
 			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d", "scene3d_d3d_vs", "scene3d_d3d_ps", "4_0" },
-			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0" },
-			{ "engine_shader_quad_d3d9c.hlsl", "d3d9c_shader_quad", "D3d9cShader_QuadVertex", "D3d9cShader_QuadPixel", "3_0" },
+			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0", "g_render_" },
+			{ "engine_shader_quad.hlsl", "d3d11_shader_quad_level91", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0_level_9_1", "g_render_" },
 			{ NULL },
 		},
 	},
@@ -429,12 +430,16 @@ CompileShader(struct Build_Shader* shader)
 	bool ok = true;
 	
 	Append(&head, end, "fxc /nologo /O3 src/%s /Fhinclude/%s_vs.inc", shader->path, shader->output);
-	Append(&head, end, " /Tvs_%s /E%s", shader->profile, shader->vertex);
+	Append(&head, end, " /Tvs_%s /E%s /DPROFILE_%s", shader->profile, shader->vertex, shader->profile);
+	if (shader->varprefix)
+		Append(&head, end, " /Vn %s%s_vs", shader->varprefix, shader->output);
 	ok = ok && RunCommand(cmd) == 0;
 	
 	head = cmd;
 	Append(&head, end, "fxc /nologo /O3 src/%s /Fhinclude/%s_ps.inc", shader->path, shader->output);
-	Append(&head, end, " /Tps_%s /E%s", shader->profile, shader->pixel);
+	Append(&head, end, " /Tps_%s /E%s /DPROFILE_%s", shader->profile, shader->pixel, shader->profile);
+	if (shader->varprefix)
+		Append(&head, end, " /Vn %s%s_ps", shader->varprefix, shader->output);
 	ok = ok && RunCommand(cmd) == 0;
 	
 	return ok;

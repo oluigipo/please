@@ -697,14 +697,14 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				// Samplers
 				uint32 sampler_count = 0;
 				
-				for (intsize i = 0; i < ArrayLength(cmd->draw_instanced.samplers); ++i)
+				for (intsize i = 0; i < ArrayLength(cmd->draw_instanced.textures); ++i)
 				{
-					const RB_SamplerDesc* sampler = &cmd->draw_instanced.samplers[i];
+					RB_Handle* handle = cmd->draw_instanced.textures[i];
 					
-					if (!sampler->handle)
+					if (!handle)
 						continue;
 					
-					uint32 id = sampler->handle->id;
+					uint32 id = handle->id;
 					int32 location = -1;
 					
 					{

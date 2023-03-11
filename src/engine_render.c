@@ -3,8 +3,8 @@ uint8 typedef BYTE;
 
 #include <d3d11_shader_quad_vs.inc>
 #include <d3d11_shader_quad_ps.inc>
-#include <d3d9c_shader_quad_vs.inc>
-#include <d3d9c_shader_quad_ps.inc>
+#include <d3d11_shader_quad_level91_vs.inc>
+#include <d3d11_shader_quad_level91_ps.inc>
 
 static RB_Handle g_render_quadvbuf;
 static RB_Handle g_render_quadibuf;
@@ -30,6 +30,8 @@ static const char g_render_gl_quadvshader[] =
 "\n"
 "uniform UniformBuffer {\n"
 "    mat4 uView;\n"
+"    vec4 uTexsize01;\n"
+"    vec4 uTexsize23;\n"
 "};\n"
 "\n"
 "void main() {\n"
@@ -52,6 +54,12 @@ static const char g_render_gl_quadfshader[] =
 "\n"
 "out vec4 oFragColor;\n"
 "\n"
+"uniform UniformBuffer {\n"
+"    mat4 uView;\n"
+"    vec4 uTexsize01;\n"
+"    vec4 uTexsize23;\n"
+"};\n"
+"\n"
 "uniform sampler2D uTexture[4];\n"
 "\n"
 "void main() {\n"
@@ -60,10 +68,10 @@ static const char g_render_gl_quadfshader[] =
 "    \n"
 "    switch (int(vTexIndex.x)) {\n"
 "        default:\n"
-"        case 0: color = texture(uTexture[0], vTexcoords); texsize = textureSize(uTexture[0], 0); break;\n"
-"        case 1: color = texture(uTexture[1], vTexcoords); texsize = textureSize(uTexture[1], 0); break;\n"
-"        case 2: color = texture(uTexture[2], vTexcoords); texsize = textureSize(uTexture[2], 0); break;\n"
-"        case 3: color = texture(uTexture[3], vTexcoords); texsize = textureSize(uTexture[3], 0); break;\n"
+"        case 0: color = texture(uTexture[0], vTexcoords); texsize = uTexsize01.xy; break;\n"
+"        case 1: color = texture(uTexture[1], vTexcoords); texsize = uTexsize01.zw; break;\n"
+"        case 2: color = texture(uTexture[2], vTexcoords); texsize = uTexsize23.xy; break;\n"
+"        case 3: color = texture(uTexture[3], vTexcoords); texsize = uTexsize23.zw; break;\n"
 "    }\n"
 "    \n"
 "    switch (int(vTexIndex.y)) {\n"
@@ -86,12 +94,6 @@ static const char g_render_gl_quadfshader[] =
 "                color.w *= max(1.0 - (dist+1.0)*0.5, 0.0);\n"
 "        } break;\n"
 "        case 4: {\n"
-"            float m = min(vRawScale.x, vRawScale.y);\n"
-"            float inv = 1.0 / m;\n"
-"            float a = (color.x - 0.5 + inv) * (m * 0.5);\n"
-"            color = vec4(1.0, 1.0, 1.0, a);\n"
-"        } break;\n"
-"        case 5: {\n"
 "            vec2 density = fwidth(vTexcoords) * texsize;\n"
 "            float m = min(density.x, density.y);\n"
 "            float inv = 1.0 / m;\n"
@@ -147,7 +149,11 @@ E_InitRender_(void)
 		RB_Capabilities cap = { 0 };
 		RB_QueryCapabilities(&cap);
 		
+#ifndef __clang__
 		OS_DebugLog("[RB] backend: %S\n[RB] driver renderer: %S\n[RB] driver vendor: %S\n[RB] driver version: %S\n", cap.backend_api, cap.driver_renderer, cap.driver_vendor, cap.driver_version);
+#else
+		__builtin_dump_struct(&cap, &OS_DebugLogPrintfFormat);
+#endif
 	}
 	
 	float32 quadvbuf[] = {
@@ -248,12 +254,12 @@ E_InitRender_(void)
 			.kind = RB_ResourceCommandKind_MakeShader,
 			.handle = &g_render_quadshader,
 			.shader = {
-				.d3d_vs_blob = BufInit(g_D3d11Shader_QuadVertex),
-				.d3d_ps_blob = BufInit(g_D3d11Shader_QuadPixel),
+				.d3d_vs40_blob = BufInit(g_render_d3d11_shader_quad_vs),
+				.d3d_ps40_blob = BufInit(g_render_d3d11_shader_quad_ps),
 				.gl_vs_src = StrInit(g_render_gl_quadvshader),
 				.gl_fs_src = StrInit(g_render_gl_quadfshader),
-				.d3d9c_vs_blob = BufInit(g_vs30_D3d9cShader_QuadVertex),
-				.d3d9c_ps_blob = BufInit(g_ps30_D3d9cShader_QuadPixel),
+				.d3d_vs40level91_blob = BufInit(g_render_d3d11_shader_quad_level91_vs),
+				.d3d_ps40level91_blob = BufInit(g_render_d3d11_shader_quad_level91_ps),
 				
 				.input_layout = {
 					[0] = {
@@ -641,7 +647,11 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	}
 	
 	*out_font = (E_Font) {
-		.texture = { 0 },
+		.texture = {
+			.handle = { 0 },
+			.width = tex_size,
+			.height = tex_size,
+		},
 		
 		.ttf = ttf,
 		.stb_fontinfo = stb_fontinfo,
@@ -666,7 +676,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	
 	RB_ResourceCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeTexture2D,
-		.handle = &out_font->texture,
+		.handle = &out_font->texture.handle,
 		//.flag_dynamic = true,
 		.texture_2d = {
 			.pixels = bitmap,
@@ -704,7 +714,13 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 {
 	Trace();
 	
-	mat4 view;
+	struct
+	{
+		mat4 view;
+		vec2 texsize[4];
+	}
+	ubuffer = { 0 };
+	
 	if (!cam)
 	{
 		cam = &(E_Camera2D) {
@@ -715,9 +731,18 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		};
 	}
 	
-	E_CalcViewMatrix2D(cam, view);
+	E_CalcViewMatrix2D(cam, ubuffer.view);
 	
-	void* uniform_buffer = Arena_PushMemoryAligned(global_engine.frame_arena, view, sizeof(view), 16);
+	for (intsize i = 0; i < ArrayLength(batch->textures); ++i)
+	{
+		if (batch->textures[i])
+		{
+			ubuffer.texsize[i][0] = batch->textures[i]->width;
+			ubuffer.texsize[i][1] = batch->textures[i]->height;
+		}
+	}
+	
+	void* uniform_buffer = Arena_PushMemoryAligned(global_engine.frame_arena, &ubuffer, sizeof(ubuffer), 16);
 	
 	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
@@ -733,7 +758,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		.handle = &g_render_quadubuf,
 		.buffer = {
 			.memory = uniform_buffer,
-			.size = sizeof(view),
+			.size = sizeof(ubuffer),
 		},
 	});
 	
@@ -748,11 +773,11 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 			.vbuffer_strides = { sizeof(vec2), sizeof(E_RectBatchElem), },
 			.index_count = 6,
 			.instance_count = batch->count,
-			.samplers = {
-				{ batch->textures[0] ? batch->textures[0] : &g_render_whitetex, },
-				{ batch->textures[1] ? batch->textures[1] : &g_render_whitetex, },
-				{ batch->textures[2] ? batch->textures[2] : &g_render_whitetex, },
-				{ batch->textures[3] ? batch->textures[3] : &g_render_whitetex, },
+			.textures = {
+				batch->textures[0] ? &batch->textures[0]->handle : &g_render_whitetex,
+				batch->textures[1] ? &batch->textures[1]->handle : &g_render_whitetex,
+				batch->textures[2] ? &batch->textures[2]->handle : &g_render_whitetex,
+				batch->textures[3] ? &batch->textures[3]->handle : &g_render_whitetex,
 			},
 		},
 	});
@@ -850,7 +875,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = texindex,
-			.tex_kind = 5,
+			.tex_kind = 4,
 			.texcoords = {
 				(float32)glyph->x * inv_bitmap_size,
 				(float32)glyph->y * inv_bitmap_size,
@@ -866,7 +891,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	return true;
 }
 
-API E_RectBatchElem*
+API void
 E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 {
 	Trace();
@@ -875,7 +900,7 @@ E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
 	
 	++batch->count;
-	return Arena_PushStructData(arena, E_RectBatchElem, rect);
+	Arena_PushStructData(arena, E_RectBatchElem, rect);
 }
 
 API void

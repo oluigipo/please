@@ -38,13 +38,11 @@ enum OS_WindowGraphicsApi
 	
 	OS_WindowGraphicsApi_OpenGL,
 	OS_WindowGraphicsApi_Direct3D11,
-	OS_WindowGraphicsApi_Direct3D9c,
 }
 typedef OS_WindowGraphicsApi;
 
 struct OS_OpenGlApi typedef OS_OpenGlApi;
 struct OS_D3d11Api typedef OS_D3d11Api;
-struct OS_D3d9cApi typedef OS_D3d9cApi;
 
 struct OS_WindowGraphicsContext
 {
@@ -54,7 +52,6 @@ struct OS_WindowGraphicsContext
 	{
 		const OS_OpenGlApi* opengl;
 		const OS_D3d11Api* d3d11;
-		const OS_D3d9cApi* d3d9c;
 	};
 	
 	bool (*present_and_vsync)(int32 vsync_count);
@@ -255,6 +252,7 @@ struct OS_InitDesc
 	// Window & Graphcis
 	OS_WindowState window_initial_state;
 	OS_WindowGraphicsApi window_desired_api;
+	int32 window_desired_d3d11_feature_level;
 	
 	// Worker threads
 	int32 workerthreads_count;
@@ -348,9 +346,11 @@ API void* OS_LoadGameLibrary(void);
 #ifdef CONFIG_DEBUG
 API void OS_DebugMessageBox(const char* fmt, ...);
 API void OS_DebugLog(const char* fmt, ...);
+API int OS_DebugLogPrintfFormat(const char* fmt, ...);
 #else
 #   define OS_DebugMessageBox(...) ((void)0)
 #   define OS_DebugLog(...) ((void)0)
+#   define OS_DebugLogPrintfFormat(...) ((void)0)
 #endif
 
 //- Threading stuff

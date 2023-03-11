@@ -3,7 +3,7 @@
 
 enum
 {
-	RB_Limits_SamplersPerDrawCall = 4,
+	RB_Limits_MaxTexturesPerDrawCall = 4,
 	RB_Limits_InputsPerShader = 8,
 	RB_Limits_ColorAttachPerRenderTarget = 4,
 	RB_Limits_MaxVertexBuffersPerDrawCall = 4,
@@ -16,7 +16,6 @@ enum RB_ShaderType
 	RB_ShaderType_Glsl33,       // GLSL 3.3 (vertex & fragment) source code
 	RB_ShaderType_Hlsl40,       // vs_4_0 & ps_4_0 object code
 	RB_ShaderType_HlslLevel91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
-	RB_ShaderType_Hlsl20,       // vs_2_0 & ps_2_0 object code
 }
 typedef RB_ShaderType;
 
@@ -32,10 +31,10 @@ struct RB_Capabilities
 	int32 max_render_target_textures;
 	int32 max_textures_per_drawcall;
 	
-	bool instancing : 1;
-	bool index32 : 1;
-	bool separate_alpha_blend : 1;
-	bool compute_shaders : 1;
+	bool instancing;
+	bool index32;
+	bool separate_alpha_blend;
+	bool compute_shaders;
 }
 typedef RB_Capabilities;
 
@@ -178,9 +177,9 @@ struct RB_ResourceCommand
 		
 		struct
 		{
-			Buffer d3d_vs_blob, d3d_ps_blob;
+			Buffer d3d_vs40_blob, d3d_ps40_blob;
+			Buffer d3d_vs40level91_blob, d3d_ps40level91_blob;
 			String gl_vs_src, gl_fs_src;
-			Buffer d3d9c_vs_blob, d3d9c_ps_blob;
 			
 			RB_LayoutDesc input_layout[RB_Limits_InputsPerShader];
 		}
@@ -232,12 +231,6 @@ struct RB_ResourceCommand
 };
 
 //~ DrawCommand
-struct RB_SamplerDesc
-{
-	RB_Handle* handle;
-}
-typedef RB_SamplerDesc;
-
 enum RB_DrawCommandKind
 {
 	RB_DrawCommandKind_Null = 0,
@@ -287,7 +280,7 @@ struct RB_DrawCommand
 			
 			uint32 index_count;
 			
-			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
+			RB_Handle* textures[RB_Limits_MaxTexturesPerDrawCall];
 		}
 		draw_indexed;
 		
@@ -303,7 +296,7 @@ struct RB_DrawCommand
 			uint32 index_count;
 			uint32 instance_count;
 			
-			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
+			RB_Handle* textures[RB_Limits_MaxTexturesPerDrawCall];
 		}
 		draw_instanced;
 	};

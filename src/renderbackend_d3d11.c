@@ -1,6 +1,7 @@
 #define D3d11 (*g_graphics_context->d3d11)
 #define D3d11Call(...) do { \
-if (FAILED(__VA_ARGS__)) { \
+HRESULT hr = (__VA_ARGS__); \
+if (FAILED(hr)) { \
 if (Assert_IsDebuggerPresent_()) \
 Debugbreak(); \
 SafeAssert_OnFailure(#__VA_ARGS__, __FILE__, __LINE__, __func__); \
@@ -65,6 +66,7 @@ static ID3D11SamplerState* g_d3d11_linear_sampler_state;
 static ID3D11SamplerState* g_d3d11_nearest_sampler_state;
 static ID3D11BlendState* g_d3d11_blend_state;
 static ID3D11DepthStencilState* g_d3d11_depth_state;
+static bool g_d3d11_use_level91_shaders;
 
 static void
 RB_InitD3d11_(Arena* scratch_arena)
@@ -133,6 +135,10 @@ RB_InitD3d11_(Arena* scratch_arena)
 	};
 	
 	D3d11Call(ID3D11Device_CreateDepthStencilState(D3d11.device, &depth_stencil_desc, &g_d3d11_depth_state));
+	
+	D3D_FEATURE_LEVEL feature_level = ID3D11Device_GetFeatureLevel(D3d11.device);
+	if (feature_level < D3D_FEATURE_LEVEL_10_0)
+		g_d3d11_use_level91_shaders = true;
 }
 
 static void
@@ -349,8 +355,19 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			{
 				Assert(!handle.id);
 				
-				Buffer vs_blob = cmd->shader.d3d_vs_blob;
-				Buffer ps_blob = cmd->shader.d3d_ps_blob;
+				Buffer vs_blob;
+				Buffer ps_blob;
+				
+				if (!g_d3d11_use_level91_shaders)
+				{
+					vs_blob = cmd->shader.d3d_vs40_blob;
+					ps_blob = cmd->shader.d3d_ps40_blob;
+				}
+				else
+				{
+					vs_blob = cmd->shader.d3d_vs40level91_blob;
+					ps_blob = cmd->shader.d3d_ps40level91_blob;
+				}
 				
 				ID3D11VertexShader* vs;
 				ID3D11PixelShader* ps;
@@ -841,18 +858,18 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				
 				// Samplers
 				uint32 sampler_count = 0;
-				ID3D11SamplerState* sampler_states[ArrayLength(cmd->draw_instanced.samplers)] = { 0 };
+				ID3D11SamplerState* sampler_states[ArrayLength(cmd->draw_instanced.textures)] = { 0 };
 				ID3D11ShaderResourceView* shader_resources[ArrayLength(sampler_states)] = { 0 };
 				
-				for (int32 i = 0; i < ArrayLength(cmd->draw_instanced.samplers); ++i)
+				for (int32 i = 0; i < ArrayLength(cmd->draw_instanced.textures); ++i)
 				{
-					RB_SamplerDesc desc = cmd->draw_instanced.samplers[i];
+					RB_Handle* handle = cmd->draw_instanced.textures[i];
 					
-					if (!desc.handle)
+					if (!handle)
 						break;
 					
-					SafeAssert(desc.handle->id);
-					RB_D3d11Texture2D_* tex_pool_data = RB_PoolFetch_(&g_d3d11_texpool, desc.handle->id);
+					SafeAssert(handle->id);
+					RB_D3d11Texture2D_* tex_pool_data = RB_PoolFetch_(&g_d3d11_texpool, handle->id);
 					
 					sampler_states[i] = tex_pool_data->sampler_state;
 					shader_resources[i] = tex_pool_data->resource_view;
@@ -880,7 +897,10 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				if (vertex_shader != curr_vertex_shader)
 					ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
 				if (cbuffer != curr_cbuffer)
+				{
 					ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
+					ID3D11DeviceContext_PSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
+				}
 				if (pixel_shader != curr_pixel_shader)
 					ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
 				ID3D11DeviceContext_PSSetSamplers(D3d11.context, 0, sampler_count, sampler_states);
