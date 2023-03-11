@@ -11,7 +11,9 @@ static RB_Handle g_render_quadibuf;
 static RB_Handle g_render_quadubuf;
 static RB_Handle g_render_whitetex;
 static RB_Handle g_render_quadshader;
+static RB_Handle g_render_quadpipeline;
 static RB_Handle g_render_quadelemsbuf;
+static RB_Capabilities g_render_caps;
 
 static const char g_render_gl_quadvshader[] =
 "#version 330 core\n"
@@ -28,7 +30,7 @@ static const char g_render_gl_quadvshader[] =
 "out vec2  vRawPos;\n"
 "out vec2  vRawScale;\n"
 "\n"
-"uniform UniformBuffer {\n"
+"layout(std140) uniform UniformBuffer {\n"
 "    mat4 uView;\n"
 "    vec4 uTexsize01;\n"
 "    vec4 uTexsize23;\n"
@@ -54,7 +56,7 @@ static const char g_render_gl_quadfshader[] =
 "\n"
 "out vec4 oFragColor;\n"
 "\n"
-"uniform UniformBuffer {\n"
+"layout(std140) uniform UniformBuffer {\n"
 "    mat4 uView;\n"
 "    vec4 uTexsize01;\n"
 "    vec4 uTexsize23;\n"
@@ -148,12 +150,9 @@ E_InitRender_(void)
 	{
 		RB_Capabilities cap = { 0 };
 		RB_QueryCapabilities(&cap);
+		g_render_caps = cap;
 		
-#ifndef __clang__
 		OS_DebugLog("[RB] backend: %S\n[RB] driver renderer: %S\n[RB] driver vendor: %S\n[RB] driver version: %S\n", cap.backend_api, cap.driver_renderer, cap.driver_vendor, cap.driver_version);
-#else
-		__builtin_dump_struct(&cap, &OS_DebugLogPrintfFormat);
-#endif
 	}
 	
 	float32 quadvbuf[] = {
@@ -260,49 +259,66 @@ E_InitRender_(void)
 				.gl_fs_src = StrInit(g_render_gl_quadfshader),
 				.d3d_vs40level91_blob = BufInit(g_render_d3d11_shader_quad_level91_vs),
 				.d3d_ps40level91_blob = BufInit(g_render_d3d11_shader_quad_level91_ps),
+			},
+		});
+		
+		*head = cmd;
+		head = &cmd->next;
+		
+		// Quad Pipeline
+		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
+			.kind = RB_ResourceCommandKind_MakePipeline,
+			.handle = &g_render_quadpipeline,
+			.pipeline = {
+				.flag_blend = true,
+				.flag_cw_backface = false,
+				.flag_depth_test = false,
+				.flag_scissor = false,
 				
+				.blend_source = RB_BlendFunc_SrcAlpha,
+				.blend_dest = RB_BlendFunc_InvSrcAlpha,
+				.blend_op = RB_BlendOp_Add,
+				.blend_source_alpha = RB_BlendFunc_SrcAlpha,
+				.blend_dest_alpha = RB_BlendFunc_InvSrcAlpha,
+				.blend_op_alpha = RB_BlendOp_Add,
+				
+				.shader = &g_render_quadshader,
 				.input_layout = {
 					[0] = {
 						.kind = RB_LayoutDescKind_Vec2,
 						.offset = 0,
 						.divisor = 0,
 						.vbuffer_index = 0,
-						.gl_location = 0,
 					},
 					[1] = {
 						.kind = RB_LayoutDescKind_Vec2,
 						.offset = offsetof(E_RectBatchElem, pos),
 						.divisor = 1,
 						.vbuffer_index = 1,
-						.gl_location = 1,
 					},
 					[2] = {
 						.kind = RB_LayoutDescKind_Mat2,
 						.offset = offsetof(E_RectBatchElem, scaling),
 						.divisor = 1,
 						.vbuffer_index = 1,
-						.gl_location = 2,
 					},
 					[3] = {
 						.kind = RB_LayoutDescKind_Vec2,
 						.offset = offsetof(E_RectBatchElem, tex_index),
 						.divisor = 1,
 						.vbuffer_index = 1,
-						.gl_location = 4,
 					},
 					[4] = {
 						.kind = RB_LayoutDescKind_Vec4,
 						.offset = offsetof(E_RectBatchElem, texcoords),
 						.divisor = 1,
 						.vbuffer_index = 1,
-						.gl_location = 5,
 					},
 					[5] = {
 						.kind = RB_LayoutDescKind_Vec4,
 						.offset = offsetof(E_RectBatchElem, color),
 						.divisor = 1,
 						.vbuffer_index = 1,
-						.gl_location = 6,
 					},
 				},
 			},
@@ -677,7 +693,6 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	RB_ResourceCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_MakeTexture2D,
 		.handle = &out_font->texture.handle,
-		//.flag_dynamic = true,
 		.texture_2d = {
 			.pixels = bitmap,
 			.width = tex_size,
@@ -740,6 +755,11 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 			ubuffer.texsize[i][0] = batch->textures[i]->width;
 			ubuffer.texsize[i][1] = batch->textures[i]->height;
 		}
+		else
+		{
+			ubuffer.texsize[i][0] = 2.0f;
+			ubuffer.texsize[i][1] = 2.0f;
+		}
 	}
 	
 	void* uniform_buffer = Arena_PushMemoryAligned(global_engine.frame_arena, &ubuffer, sizeof(ubuffer), 16);
@@ -763,10 +783,14 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	});
 	
 	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
-		.kind = RB_DrawCommandKind_DrawInstanced,
+		.kind = RB_DrawCommandKind_ApplyPipeline,
 		.resources_cmd = rc_cmd,
+		.apply = { &g_render_quadpipeline },
+	});
+	
+	cmd->next = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
+		.kind = RB_DrawCommandKind_DrawInstanced,
 		.draw_instanced = {
-			.shader = &g_render_quadshader,
 			.ibuffer = &g_render_quadibuf,
 			.ubuffer = &g_render_quadubuf,
 			.vbuffers = { &g_render_quadvbuf, &g_render_quadelemsbuf, },
@@ -782,7 +806,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		},
 	});
 	
-	E_AppendDrawCmd_(cmd, cmd);
+	E_AppendDrawCmd_(cmd, cmd->next);
 }
 
 API bool

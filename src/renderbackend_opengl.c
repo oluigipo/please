@@ -10,38 +10,35 @@ typedef RB_OpenGLBuffer_;
 struct RB_OpenGLShader_
 {
 	uint32 program_id;
-	
-	RB_LayoutDesc input_layout[8];
 }
 typedef RB_OpenGLShader_;
 
-struct RB_OpenGLBlend_
+struct RB_OpenGLPipeline_
 {
-	bool enable;
+	bool flag_blend : 1;
+	bool flag_enable_cullface : 1;
+	bool flag_depth_test : 1;
+	bool flag_scissor : 1;
+	
+	RB_Handle shader_handle;
+	
 	uint32 source;
 	uint32 dest;
 	uint32 op;
 	uint32 source_alpha;
 	uint32 dest_alpha;
 	uint32 op_alpha;
-}
-typedef RB_OpenGLBlend_;
-
-struct RB_OpenGLRasterizer_
-{
+	
 	uint32 polygon_mode;
 	uint32 cull_mode;
 	uint32 frontface;
 	
-	bool flag_enable_cullface : 1;
-	bool flag_depth_test : 1;
-	bool flag_scissor : 1;
+	RB_LayoutDesc input_layout[RB_Limits_MaxVertexInputs];
 }
-typedef RB_OpenGLRasterizer_;
+typedef RB_OpenGLPipeline_;
 
 static RB_PoolOf_(RB_OpenGLShader_, 64) g_ogl_shaderpool;
-static RB_PoolOf_(RB_OpenGLBlend_, 16) g_ogl_blendpool;
-static RB_PoolOf_(RB_OpenGLRasterizer_, 16) g_ogl_rasterizerpool;
+static RB_PoolOf_(RB_OpenGLPipeline_, 16) g_ogl_pipelinepool;
 static RB_PoolOf_(RB_OpenGLBuffer_, 512) g_ogl_bufferpool;
 
 #ifdef CONFIG_DEBUG
@@ -259,7 +256,6 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				RB_OpenGLShader_* pool_data = RB_PoolAlloc_(&g_ogl_shaderpool, &handle.id);
 				pool_data->program_id = program;
-				Mem_Copy(pool_data->input_layout, cmd->shader.input_layout, sizeof(pool_data->input_layout));
 			} break;
 			
 			case RB_ResourceCommandKind_MakeRenderTarget:
@@ -267,7 +263,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(false);
 			} break;
 			
-			case RB_ResourceCommandKind_MakeBlendState:
+			case RB_ResourceCommandKind_MakePipeline:
 			{
 				static const uint32 functable[] = {
 					[RB_BlendFunc_Zero] = GL_ZERO,
@@ -287,27 +283,14 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 					[RB_BlendOp_Subtract] = GL_FUNC_SUBTRACT,
 				};
 				
-				SafeAssert(cmd->blend.source >= 0 && cmd->blend.source < ArrayLength(functable));
-				SafeAssert(cmd->blend.dest >= 0 && cmd->blend.dest < ArrayLength(functable));
-				SafeAssert(cmd->blend.source_alpha >= 0 && cmd->blend.source_alpha < ArrayLength(functable));
-				SafeAssert(cmd->blend.dest_alpha >= 0 && cmd->blend.dest_alpha < ArrayLength(functable));
-				SafeAssert(cmd->blend.op >= 0 && cmd->blend.op < ArrayLength(optable));
-				SafeAssert(cmd->blend.op_alpha >= 0 && cmd->blend.op_alpha < ArrayLength(optable));
+				SafeAssert(cmd->pipeline.blend_source >= 0 && cmd->pipeline.blend_source < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_dest >= 0 && cmd->pipeline.blend_dest < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_source_alpha >= 0 && cmd->pipeline.blend_source_alpha < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_dest_alpha >= 0 && cmd->pipeline.blend_dest_alpha < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_op >= 0 && cmd->pipeline.blend_op < ArrayLength(optable));
+				SafeAssert(cmd->pipeline.blend_op_alpha >= 0 && cmd->pipeline.blend_op_alpha < ArrayLength(optable));
 				
-				RB_OpenGLBlend_* pool_data = RB_PoolAlloc_(&g_ogl_blendpool, &handle.id);
-				pool_data->enable = cmd->blend.enable;
-				pool_data->source = cmd->blend.source ? functable[cmd->blend.source] : GL_ONE;
-				pool_data->dest = cmd->blend.dest ? functable[cmd->blend.dest] : GL_ZERO;
-				pool_data->op = cmd->blend.op ? optable[cmd->blend.op] : GL_FUNC_ADD;
-				pool_data->source = cmd->blend.source_alpha ? functable[cmd->blend.source_alpha] : GL_ONE;
-				pool_data->dest = cmd->blend.dest_alpha ? functable[cmd->blend.dest_alpha] : GL_ZERO;
-				pool_data->op = cmd->blend.op_alpha ? optable[cmd->blend.op_alpha] : GL_FUNC_ADD;
-			} break;
-			
-			case RB_ResourceCommandKind_MakeRasterizerState:
-			{
 				static const uint32 filltable[] = {
-					[0] = GL_FILL,
 					[RB_FillMode_Solid] = GL_FILL,
 					[RB_FillMode_Wireframe] = GL_LINE,
 				};
@@ -318,16 +301,29 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 					[RB_CullMode_Back] = GL_BACK,
 				};
 				
-				SafeAssert(cmd->rasterizer.fill_mode >= 0 && cmd->rasterizer.fill_mode < ArrayLength(filltable));
-				SafeAssert(cmd->rasterizer.cull_mode >= 0 && cmd->rasterizer.cull_mode < ArrayLength(culltable));
+				SafeAssert(cmd->pipeline.fill_mode >= 0 && cmd->pipeline.fill_mode < ArrayLength(filltable));
+				SafeAssert(cmd->pipeline.cull_mode >= 0 && cmd->pipeline.cull_mode < ArrayLength(culltable));
 				
-				RB_OpenGLRasterizer_* pool_data = RB_PoolAlloc_(&g_ogl_rasterizerpool, &handle.id);
-				pool_data->polygon_mode = filltable[cmd->rasterizer.fill_mode];
-				pool_data->cull_mode = culltable[cmd->rasterizer.cull_mode];
-				pool_data->frontface = cmd->rasterizer.flag_cw_backface ? GL_CCW : GL_CW;
-				pool_data->flag_enable_cullface = (culltable[cmd->rasterizer.cull_mode] != 0);
-				pool_data->flag_depth_test = cmd->rasterizer.flag_depth_test;
-				pool_data->flag_scissor = cmd->rasterizer.flag_scissor;
+				RB_OpenGLPipeline_* pool_data = RB_PoolAlloc_(&g_ogl_pipelinepool, &handle.id);
+				pool_data->flag_blend = cmd->pipeline.flag_blend;
+				pool_data->source = cmd->pipeline.blend_source ? functable[cmd->pipeline.blend_source] : GL_ONE;
+				pool_data->dest = cmd->pipeline.blend_dest ? functable[cmd->pipeline.blend_dest] : GL_ZERO;
+				pool_data->op = cmd->pipeline.blend_op ? optable[cmd->pipeline.blend_op] : GL_FUNC_ADD;
+				pool_data->source = cmd->pipeline.blend_source_alpha ? functable[cmd->pipeline.blend_source_alpha] : GL_ONE;
+				pool_data->dest = cmd->pipeline.blend_dest_alpha ? functable[cmd->pipeline.blend_dest_alpha] : GL_ZERO;
+				pool_data->op = cmd->pipeline.blend_op_alpha ? optable[cmd->pipeline.blend_op_alpha] : GL_FUNC_ADD;
+				
+				pool_data->polygon_mode = filltable[cmd->pipeline.fill_mode];
+				pool_data->cull_mode = culltable[cmd->pipeline.cull_mode];
+				pool_data->frontface = cmd->pipeline.flag_cw_backface ? GL_CCW : GL_CW;
+				pool_data->flag_enable_cullface = (culltable[cmd->pipeline.cull_mode] != 0);
+				pool_data->flag_depth_test = cmd->pipeline.flag_depth_test;
+				pool_data->flag_scissor = cmd->pipeline.flag_scissor;
+				
+				SafeAssert(cmd->pipeline.shader);
+				pool_data->shader_handle = *cmd->pipeline.shader;
+				
+				Mem_Copy(pool_data->input_layout, cmd->pipeline.input_layout, sizeof(pool_data->input_layout));
 			} break;
 			
 			//case RB_ResourceCommandKind_UpdateVertexBuffer:
@@ -418,19 +414,11 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(false);
 			} break;
 			
-			case RB_ResourceCommandKind_FreeBlendState:
+			case RB_ResourceCommandKind_FreePipeline:
 			{
 				Assert(handle.id);
 				
-				RB_PoolFree_(&g_ogl_blendpool, handle.id);
-				handle.id = 0;
-			} break;
-			
-			case RB_ResourceCommandKind_FreeRasterizerState:
-			{
-				Assert(handle.id);
-				
-				RB_PoolFree_(&g_ogl_rasterizerpool, handle.id);
+				RB_PoolFree_(&g_ogl_pipelinepool, handle.id);
 				handle.id = 0;
 			} break;
 		}
@@ -443,6 +431,14 @@ static void
 RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height)
 {
 	Trace();
+	
+	RB_LayoutDesc input_layout[RB_Limits_MaxVertexInputs] = { 0 };
+	uint32 current_program_id = 0;
+	
+	int32 uniform_block_location = -1;
+	int32 samplers_locations[RB_Limits_MaxTexturesPerDrawCall];
+	for (intsize i = 0; i < ArrayLength(samplers_locations); ++i)
+		samplers_locations[i] = -1;
 	
 	GL.glViewport(0, 0, default_width, default_height);
 	
@@ -492,64 +488,60 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				}
 			} break;
 			
-			case RB_DrawCommandKind_ApplyBlendState:
+			case RB_DrawCommandKind_ApplyPipeline:
 			{
-				if (cmd->apply.handle)
+				SafeAssert(cmd->apply.handle);
+				RB_OpenGLPipeline_* pool_data = RB_PoolFetch_(&g_ogl_pipelinepool, cmd->apply.handle->id);
+				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, pool_data->shader_handle.id);
+				
+				Mem_Copy(input_layout, pool_data->input_layout, sizeof(input_layout));
+				
+				if (current_program_id != shader_pool_data->program_id)
 				{
-					RB_OpenGLBlend_* pool_data = RB_PoolFetch_(&g_ogl_blendpool, cmd->apply.handle->id);
+					current_program_id = shader_pool_data->program_id;
+					GL.glUseProgram(shader_pool_data->program_id);
 					
-					if (!pool_data->enable)
-						GL.glDisable(GL_BLEND);
-					else
+					uniform_block_location = GL.glGetUniformBlockIndex(current_program_id, "UniformBuffer");
+					
+					for (intsize i = 0; i < ArrayLength(samplers_locations); ++i)
 					{
-						GL.glEnable(GL_BLEND);
-						GL.glBlendFuncSeparate(pool_data->source, pool_data->dest, pool_data->source_alpha, pool_data->dest_alpha);
-						GL.glBlendEquationSeparate(pool_data->op, pool_data->op_alpha);
+						static_assert(ArrayLength(samplers_locations) < 10);
+						char name[] = "uTexture[N]";
+						name[sizeof(name)-3] = (char)('0' + i);
+						
+						samplers_locations[i] = GL.glGetUniformLocation(current_program_id, name);
 					}
 				}
+				
+				if (!pool_data->flag_blend)
+					GL.glDisable(GL_BLEND);
 				else
 				{
 					GL.glEnable(GL_BLEND);
-					GL.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-					GL.glBlendEquation(GL_FUNC_ADD);
+					GL.glBlendFuncSeparate(pool_data->source, pool_data->dest, pool_data->source_alpha, pool_data->dest_alpha);
+					GL.glBlendEquationSeparate(pool_data->op, pool_data->op_alpha);
 				}
-			} break;
-			
-			case RB_DrawCommandKind_ApplyRasterizerState:
-			{
-				if (cmd->apply.handle)
+				
+				GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
+				GL.glFrontFace(pool_data->frontface);
+				
+				if (pool_data->flag_enable_cullface)
 				{
-					RB_OpenGLRasterizer_* pool_data = RB_PoolFetch_(&g_ogl_rasterizerpool, cmd->apply.handle->id);
-					
-					GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
-					GL.glFrontFace(pool_data->frontface);
-					
-					if (pool_data->flag_enable_cullface)
-					{
-						GL.glEnable(GL_CULL_FACE);
-						GL.glCullFace(pool_data->cull_mode);
-					}
-					else
-						GL.glDisable(GL_CULL_FACE);
-					
-					if (pool_data->flag_depth_test)
-						GL.glEnable(GL_DEPTH_TEST);
-					else
-						GL.glDisable(GL_DEPTH_TEST);
-					
-					if (pool_data->flag_scissor)
-						GL.glEnable(GL_SCISSOR_TEST);
-					else
-						GL.glDisable(GL_SCISSOR_TEST);
+					GL.glEnable(GL_CULL_FACE);
+					GL.glCullFace(pool_data->cull_mode);
 				}
 				else
-				{
-					GL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-					GL.glFrontFace(GL_CCW);
-					GL.glDisable(GL_DEPTH_TEST);
-					GL.glDisable(GL_SCISSOR_TEST);
 					GL.glDisable(GL_CULL_FACE);
-				}
+				
+				if (pool_data->flag_depth_test)
+					GL.glEnable(GL_DEPTH_TEST);
+				else
+					GL.glDisable(GL_DEPTH_TEST);
+				
+				if (pool_data->flag_scissor)
+					GL.glEnable(GL_SCISSOR_TEST);
+				else
+					GL.glDisable(GL_SCISSOR_TEST);
 			} break;
 			
 			case RB_DrawCommandKind_ApplyRenderTarget:
@@ -557,20 +549,19 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				SafeAssert(false);
 			} break;
 			
-			case RB_DrawCommandKind_DrawIndexed:
+			//case RB_DrawCommandKind_DrawIndexed:
+			//case RB_DrawCommandKind_DrawInstanced:
 			{
-				SafeAssert(false); // TODO
-			} break;
-			
-			case RB_DrawCommandKind_DrawInstanced:
-			{
-				// Buffers and Shader
-				SafeAssert(cmd->draw_instanced.shader && cmd->draw_instanced.ibuffer);
+				bool instanced;
 				
-				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->draw_instanced.shader->id);
+				if (0) case RB_DrawCommandKind_DrawIndexed: instanced = false;
+				if (0) case RB_DrawCommandKind_DrawInstanced: instanced = true;
+				
+				// Buffers
+				SafeAssert(cmd->draw_instanced.ibuffer);
+				
 				RB_OpenGLBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_ogl_bufferpool, cmd->draw_instanced.ibuffer->id);
 				
-				const uint32 shader = shader_pool_data->program_id;
 				uint32 ibuffer = ibuffer_pool_data->id;
 				uint32 vbuffers[ArrayLength(cmd->draw_instanced.vbuffers)] = { 0 };
 				
@@ -592,9 +583,11 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				GL.glBindVertexArray(vao);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuffer);
 				
-				for (intsize i = 0; i < ArrayLength(shader_pool_data->input_layout); ++i)
+				uint32 location = 0;
+				
+				for (intsize i = 0; i < ArrayLength(input_layout); ++i)
 				{
-					const RB_LayoutDesc* layout = &shader_pool_data->input_layout[i];
+					const RB_LayoutDesc* layout = &input_layout[i];
 					
 					if (!layout->kind)
 						break;
@@ -602,7 +595,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					SafeAssert(layout->vbuffer_index < ArrayLength(vbuffers));
 					GL.glBindBuffer(GL_ARRAY_BUFFER, vbuffers[layout->vbuffer_index]);
 					
-					uint32 loc = layout->gl_location;
+					uint32 loc = location;
 					uint32 stride = cmd->draw_instanced.vbuffer_strides[layout->vbuffer_index];
 					uintptr offset = cmd->draw_instanced.vbuffer_offsets[layout->vbuffer_index] + layout->offset;
 					
@@ -622,6 +615,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							GL.glEnableVertexAttribArray(loc);
 							GL.glVertexAttribDivisor(loc, layout->divisor);
 							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)offset);
+							
+							location += 1;
 						} break;
 						
 						case RB_LayoutDescKind_Mat2:
@@ -634,6 +629,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							
 							GL.glVertexAttribPointer(loc+0, 2, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[2])*0));
 							GL.glVertexAttribPointer(loc+1, 2, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[2])*1));
+							
+							location += 2;
 						} break;
 						
 						case RB_LayoutDescKind_Mat3:
@@ -649,6 +646,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							GL.glVertexAttribPointer(loc+0, 3, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[3])*0));
 							GL.glVertexAttribPointer(loc+1, 3, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[3])*1));
 							GL.glVertexAttribPointer(loc+2, 3, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[3])*2));
+							
+							location += 3;
 						} break;
 						
 						case RB_LayoutDescKind_Mat4:
@@ -667,6 +666,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							GL.glVertexAttribPointer(loc+1, 4, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[4])*1));
 							GL.glVertexAttribPointer(loc+2, 4, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[4])*2));
 							GL.glVertexAttribPointer(loc+3, 4, GL_FLOAT, false, stride, (void*)(offset + sizeof(float32[4])*3));
+							
+							location += 4;
 						} break;
 						
 						default: Assert(false); break;
@@ -676,8 +677,6 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				}
 				
 				// Uniforms
-				GL.glUseProgram(shader);
-				
 				if (cmd->draw_instanced.ubuffer)
 				{
 					uint32 index = cmd->draw_instanced.ubuffer->id;
@@ -685,10 +684,9 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, pool_data->id);
 					
-					int32 location = GL.glGetUniformBlockIndex(shader, "UniformBuffer");
-					SafeAssert(location != -1);
+					SafeAssert(uniform_block_location != -1);
 					
-					GL.glUniformBlockBinding(shader, location, 0);
+					GL.glUniformBlockBinding(current_program_id, uniform_block_location, 0);
 					GL.glBindBufferBase(GL_UNIFORM_BUFFER, 0, pool_data->id);
 					
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -705,16 +703,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 						continue;
 					
 					uint32 id = handle->id;
-					int32 location = -1;
-					
-					{
-						SafeAssert(i < 10);
-						char name[] = "uTexture[N]";
-						name[sizeof(name)-3] = (char)('0' + i);
-						
-						location = GL.glGetUniformLocation(shader, name);
-						SafeAssert(location != -1);
-					}
+					int32 location = samplers_locations[i];
+					SafeAssert(location != -1);
 					
 					GL.glActiveTexture(GL_TEXTURE0 + sampler_count);
 					GL.glBindTexture(GL_TEXTURE_2D, id);
@@ -730,12 +720,14 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
-				GL.glDrawElementsInstanced(GL_TRIANGLES, index_count, index_type, NULL, instance_count);
+				if (instanced)
+					GL.glDrawElementsInstanced(GL_TRIANGLES, index_count, index_type, NULL, instance_count);
+				else
+					GL.glDrawElements(GL_TRIANGLES, index_count, index_type, NULL);
 				
 				// Done
 				GL.glBindVertexArray(0);
 				GL.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-				GL.glUseProgram(0);
 				
 				GL.glDeleteVertexArrays(1, &vao);
 			} break;

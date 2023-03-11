@@ -48,7 +48,7 @@ struct G_GlobalData
 };
 
 #include "game_snake.c"
-#include "game_scene3d.c"
+//#include "game_scene3d.c"
 #include "game_stress.c"
 
 //~ NOTE(ljre): Main menu implementation
@@ -184,7 +184,7 @@ G_UpdateAndRender(void)
 		{
 			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
-			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
+			//case G_GlobalState_Scene3D: G_Scene3DInit(); break;
 			case G_GlobalState_Stress: G_StressInit(); break;
 		}
 		
@@ -338,7 +338,7 @@ G_UpdateAndRender(void)
 		} break;
 		
 		case G_GlobalState_Snake: G_SnakeUpdateAndRender(); break;
-		case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
+		//case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
 		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	

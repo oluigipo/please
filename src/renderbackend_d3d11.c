@@ -28,10 +28,8 @@ struct RB_D3d11Shader_
 {
 	ID3D11VertexShader* vertex_shader;
 	ID3D11PixelShader* pixel_shader;
-	ID3D11InputLayout* input_layout;
 	
-	uint32 strides[RB_Limits_InputsPerShader];
-	uint32 offsets[RB_Limits_InputsPerShader];
+	Buffer vs_blob;
 }
 typedef RB_D3d11Shader_;
 
@@ -42,24 +40,20 @@ struct RB_D3d11Buffer_
 }
 typedef RB_D3d11Buffer_;
 
-struct RB_D3d11Blend_
+struct RB_D3d11Pipeline_
 {
+	RB_Handle shader_handle;
 	ID3D11BlendState* blend_state;
-}
-typedef RB_D3d11Blend_;
-
-struct RB_D3d11Rasterizer_
-{
 	ID3D11RasterizerState* rasterizer_state;
 	ID3D11DepthStencilState* depth_stencil_state;
+	ID3D11InputLayout* input_layout;
 }
-typedef RB_D3d11Rasterizer_;
+typedef RB_D3d11Pipeline_;
 
 static RB_PoolOf_(RB_D3d11Texture2D_, 512) g_d3d11_texpool;
 static RB_PoolOf_(RB_D3d11Shader_, 64) g_d3d11_shaderpool;
 static RB_PoolOf_(RB_D3d11Buffer_, 512) g_d3d11_bufferpool;
-static RB_PoolOf_(RB_D3d11Blend_, 16) g_d3d11_blendpool;
-static RB_PoolOf_(RB_D3d11Rasterizer_, 16) g_d3d11_rasterizerpool;
+static RB_PoolOf_(RB_D3d11Pipeline_, 16) g_d3d11_pipelinepool;
 
 static ID3D11RasterizerState* g_d3d11_rasterizer_state;
 static ID3D11SamplerState* g_d3d11_linear_sampler_state;
@@ -371,16 +365,32 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				ID3D11VertexShader* vs;
 				ID3D11PixelShader* ps;
-				ID3D11InputLayout* input_layout;
-				uint32 layout_size = 0;
-				D3D11_INPUT_ELEMENT_DESC layout_desc[RB_Limits_InputsPerShader*4] = { 0 };
 				
-				for (int32 i = 0; i < ArrayLength(cmd->shader.input_layout); ++i)
+				D3d11Call(ID3D11Device_CreateVertexShader(D3d11.device, vs_blob.data, vs_blob.size, NULL, &vs));
+				D3d11Call(ID3D11Device_CreatePixelShader(D3d11.device, ps_blob.data, ps_blob.size, NULL, &ps));
+				
+				RB_D3d11Shader_* pool_data = RB_PoolAlloc_(&g_d3d11_shaderpool, &handle.id);
+				pool_data->vertex_shader = vs;
+				pool_data->pixel_shader = ps;
+				pool_data->vs_blob = vs_blob;
+			} break;
+			
+			case RB_ResourceCommandKind_MakePipeline:
+			{
+				SafeAssert(cmd->pipeline.shader);
+				RB_Handle shader_handle = *cmd->pipeline.shader;
+				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, shader_handle.id);
+				Buffer vs_blob = shader_pool_data->vs_blob;
+				
+				int32 layout_size = 0;
+				D3D11_INPUT_ELEMENT_DESC layout_desc[RB_Limits_MaxVertexInputs*4] = { 0 };
+				
+				for (int32 i = 0; i < ArrayLength(cmd->pipeline.input_layout); ++i)
 				{
-					if (!cmd->shader.input_layout[i].kind)
+					if (!cmd->pipeline.input_layout[i].kind)
 						break;
 					
-					RB_LayoutDesc curr_layout = cmd->shader.input_layout[i];
+					RB_LayoutDesc curr_layout = cmd->pipeline.input_layout[i];
 					
 					switch (curr_layout.kind)
 					{
@@ -399,7 +409,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = "VINPUT",
-								.SemanticIndex = layout_size,
+								.SemanticIndex = (UINT)layout_size,
 								.Format = format,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -414,7 +424,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						{
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = "VINPUT",
-								.SemanticIndex = layout_size,
+								.SemanticIndex = (UINT)layout_size,
 								.Format = DXGI_FORMAT_R32G32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -430,7 +440,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						{
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = "VINPUT",
-								.SemanticIndex = layout_size,
+								.SemanticIndex = (UINT)layout_size,
 								.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -447,7 +457,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						{
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = "VINPUT",
-								.SemanticIndex = layout_size,
+								.SemanticIndex = (UINT)layout_size,
 								.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
 								.InputSlot = curr_layout.vbuffer_index,
 								.AlignedByteOffset = curr_layout.offset,
@@ -463,23 +473,6 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 					}
 				}
 				
-				D3d11Call(ID3D11Device_CreateVertexShader(D3d11.device, vs_blob.data, vs_blob.size, NULL, &vs));
-				D3d11Call(ID3D11Device_CreatePixelShader(D3d11.device, ps_blob.data, ps_blob.size, NULL, &ps));
-				D3d11Call(ID3D11Device_CreateInputLayout(D3d11.device, layout_desc, layout_size, vs_blob.data, vs_blob.size, &input_layout));
-				
-				RB_D3d11Shader_* pool_data = RB_PoolAlloc_(&g_d3d11_shaderpool, &handle.id);
-				pool_data->vertex_shader = vs;
-				pool_data->pixel_shader = ps;
-				pool_data->input_layout = input_layout;
-			} break;
-			
-			case RB_ResourceCommandKind_MakeRenderTarget:
-			{
-				SafeAssert(false);
-			} break;
-			
-			case RB_ResourceCommandKind_MakeBlendState:
-			{
 				static const D3D11_BLEND functable[] = {
 					[RB_BlendFunc_Zero]        = D3D11_BLEND_ZERO,
 					[RB_BlendFunc_One]         = D3D11_BLEND_ONE,
@@ -498,82 +491,84 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 					[RB_BlendOp_Subtract] = D3D11_BLEND_OP_SUBTRACT,
 				};
 				
-				SafeAssert(cmd->blend.source >= 0 && cmd->blend.source < ArrayLength(functable));
-				SafeAssert(cmd->blend.dest >= 0 && cmd->blend.dest < ArrayLength(functable));
-				SafeAssert(cmd->blend.source_alpha >= 0 && cmd->blend.source_alpha < ArrayLength(functable));
-				SafeAssert(cmd->blend.dest_alpha >= 0 && cmd->blend.dest_alpha < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_source >= 0 && cmd->pipeline.blend_source < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_dest >= 0 && cmd->pipeline.blend_dest < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_source_alpha >= 0 && cmd->pipeline.blend_source_alpha < ArrayLength(functable));
+				SafeAssert(cmd->pipeline.blend_dest_alpha >= 0 && cmd->pipeline.blend_dest_alpha < ArrayLength(functable));
 				
-				SafeAssert(cmd->blend.op >= 0 && cmd->blend.op < ArrayLength(optable));
-				SafeAssert(cmd->blend.op_alpha >= 0 && cmd->blend.op_alpha < ArrayLength(optable));
+				SafeAssert(cmd->pipeline.blend_op >= 0 && cmd->pipeline.blend_op < ArrayLength(optable));
+				SafeAssert(cmd->pipeline.blend_op_alpha >= 0 && cmd->pipeline.blend_op_alpha < ArrayLength(optable));
 				
 				D3D11_BLEND_DESC blend_desc = {
 					.AlphaToCoverageEnable = false,
 					.IndependentBlendEnable = false,
 					
 					.RenderTarget[0] = {
-						.BlendEnable = cmd->blend.enable,
-						.SrcBlend = cmd->blend.source ? functable[cmd->blend.source] : D3D11_BLEND_ONE,
-						.DestBlend = cmd->blend.dest ? functable[cmd->blend.dest] : D3D11_BLEND_ZERO,
-						.BlendOp = cmd->blend.op ? optable[cmd->blend.op] : D3D11_BLEND_OP_ADD,
-						.SrcBlendAlpha = cmd->blend.source_alpha ? functable[cmd->blend.source_alpha] : D3D11_BLEND_ONE,
-						.DestBlendAlpha = cmd->blend.dest_alpha ? functable[cmd->blend.dest_alpha] : D3D11_BLEND_ZERO,
-						.BlendOpAlpha = cmd->blend.op_alpha ? optable[cmd->blend.op_alpha] : D3D11_BLEND_OP_ADD,
+						.BlendEnable = cmd->pipeline.flag_blend,
+						.SrcBlend = cmd->pipeline.blend_source ? functable[cmd->pipeline.blend_source] : D3D11_BLEND_ONE,
+						.DestBlend = cmd->pipeline.blend_dest ? functable[cmd->pipeline.blend_dest] : D3D11_BLEND_ZERO,
+						.BlendOp = cmd->pipeline.blend_op ? optable[cmd->pipeline.blend_op] : D3D11_BLEND_OP_ADD,
+						.SrcBlendAlpha = cmd->pipeline.blend_source_alpha ? functable[cmd->pipeline.blend_source_alpha] : D3D11_BLEND_ONE,
+						.DestBlendAlpha = cmd->pipeline.blend_dest_alpha ? functable[cmd->pipeline.blend_dest_alpha] : D3D11_BLEND_ZERO,
+						.BlendOpAlpha = cmd->pipeline.blend_op_alpha ? optable[cmd->pipeline.blend_op_alpha] : D3D11_BLEND_OP_ADD,
 						.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
 					},
 				};
 				
-				ID3D11BlendState* blend_state;
-				D3d11Call(ID3D11Device_CreateBlendState(D3d11.device, &blend_desc, &blend_state));
-				
-				RB_D3d11Blend_* pool_data = RB_PoolAlloc_(&g_d3d11_blendpool, &handle.id);
-				pool_data->blend_state = blend_state;
-			} break;
-			
-			case RB_ResourceCommandKind_MakeRasterizerState:
-			{
 				static const D3D11_FILL_MODE filltable[] = {
-					[0] = D3D11_FILL_SOLID,
 					[RB_FillMode_Solid]     = D3D11_FILL_SOLID,
 					[RB_FillMode_Wireframe] = D3D11_FILL_WIREFRAME,
 				};
 				
 				static const D3D11_CULL_MODE culltable[] = {
-					[0] = D3D11_CULL_NONE,
 					[RB_CullMode_None]  = D3D11_CULL_NONE,
 					[RB_CullMode_Front] = D3D11_CULL_FRONT,
 					[RB_CullMode_Back]  = D3D11_CULL_BACK,
 				};
 				
-				SafeAssert(cmd->rasterizer.fill_mode >= 0 && cmd->rasterizer.fill_mode < ArrayLength(filltable));
-				SafeAssert(cmd->rasterizer.cull_mode >= 0 && cmd->rasterizer.cull_mode < ArrayLength(culltable));
+				SafeAssert(cmd->pipeline.fill_mode >= 0 && cmd->pipeline.fill_mode < ArrayLength(filltable));
+				SafeAssert(cmd->pipeline.cull_mode >= 0 && cmd->pipeline.cull_mode < ArrayLength(culltable));
 				
 				D3D11_RASTERIZER_DESC rasterizer_desc = {
-					.FillMode = filltable[cmd->rasterizer.fill_mode],
-					.CullMode = culltable[cmd->rasterizer.cull_mode],
-					.FrontCounterClockwise = cmd->rasterizer.flag_cw_backface,
+					.FillMode = filltable[cmd->pipeline.fill_mode],
+					.CullMode = culltable[cmd->pipeline.cull_mode],
+					.FrontCounterClockwise = cmd->pipeline.flag_cw_backface,
 					.DepthBias = 0,
 					.SlopeScaledDepthBias = 0.0f,
 					.DepthBiasClamp = 0.0f,
-					.DepthClipEnable = true, //cmd->rasterizer.flag_depth_test,
-					.ScissorEnable = cmd->rasterizer.flag_scissor,
+					.DepthClipEnable = true,
+					.ScissorEnable = cmd->pipeline.flag_scissor,
 					.MultisampleEnable = false,
 					.AntialiasedLineEnable = false,
 				};
 				
 				D3D11_DEPTH_STENCIL_DESC depth_stencil_desc = {
-					.DepthEnable = cmd->rasterizer.flag_depth_test,
+					.DepthEnable = cmd->pipeline.flag_depth_test,
 					.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL,
 					.DepthFunc = D3D11_COMPARISON_LESS,
 				};
 				
+				ID3D11InputLayout* input_layout;
+				ID3D11BlendState* blend_state;
 				ID3D11RasterizerState* rasterizer_state;
-				D3d11Call(ID3D11Device_CreateRasterizerState(D3d11.device, &rasterizer_desc, &rasterizer_state));
 				ID3D11DepthStencilState* depth_stencil_state;
+				
+				D3d11Call(ID3D11Device_CreateInputLayout(D3d11.device, layout_desc, layout_size, vs_blob.data, vs_blob.size, &input_layout));
+				D3d11Call(ID3D11Device_CreateBlendState(D3d11.device, &blend_desc, &blend_state));
+				D3d11Call(ID3D11Device_CreateRasterizerState(D3d11.device, &rasterizer_desc, &rasterizer_state));
 				D3d11Call(ID3D11Device_CreateDepthStencilState(D3d11.device, &depth_stencil_desc, &depth_stencil_state));
 				
-				RB_D3d11Rasterizer_* pool_data = RB_PoolAlloc_(&g_d3d11_rasterizerpool, &handle.id);
+				RB_D3d11Pipeline_* pool_data = RB_PoolAlloc_(&g_d3d11_pipelinepool, &handle.id);
+				pool_data->shader_handle = shader_handle;
+				pool_data->input_layout = input_layout;
+				pool_data->blend_state = blend_state;
 				pool_data->rasterizer_state = rasterizer_state;
 				pool_data->depth_stencil_state = depth_stencil_state;
+			} break;
+			
+			case RB_ResourceCommandKind_MakeRenderTarget:
+			{
+				SafeAssert(false);
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateVertexBuffer:
@@ -675,27 +670,18 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(false);
 			} break;
 			
-			case RB_ResourceCommandKind_FreeBlendState:
+			case RB_ResourceCommandKind_FreePipeline:
 			{
 				Assert(handle.id);
 				
-				RB_D3d11Blend_* pool_data = RB_PoolFetch_(&g_d3d11_blendpool, handle.id);
+				RB_D3d11Pipeline_* pool_data = RB_PoolFetch_(&g_d3d11_pipelinepool, handle.id);
 				
 				ID3D11BlendState_Release(pool_data->blend_state);
-				
-				RB_PoolFree_(&g_d3d11_blendpool, handle.id);
-				handle.id = 0;
-			} break;
-			
-			case RB_ResourceCommandKind_FreeRasterizerState:
-			{
-				Assert(handle.id);
-				
-				RB_D3d11Rasterizer_* pool_data = RB_PoolFetch_(&g_d3d11_rasterizerpool, handle.id);
-				
 				ID3D11RasterizerState_Release(pool_data->rasterizer_state);
+				ID3D11DepthStencilState_Release(pool_data->depth_stencil_state);
+				ID3D11InputLayout_Release(pool_data->input_layout);
 				
-				RB_PoolFree_(&g_d3d11_rasterizerpool, handle.id);
+				RB_PoolFree_(&g_d3d11_pipelinepool, handle.id);
 				handle.id = 0;
 			} break;
 			
@@ -717,7 +703,6 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 	ID3D11VertexShader* curr_vertex_shader = NULL;
 	ID3D11PixelShader* curr_pixel_shader = NULL;
 	ID3D11InputLayout* curr_input_layout = NULL;
-	ID3D11Buffer* curr_cbuffer = NULL;
 	ID3D11RasterizerState* curr_raststate = g_d3d11_rasterizer_state;
 	ID3D11BlendState* curr_blendstate = g_d3d11_blend_state;
 	ID3D11DepthStencilState* curr_depthstate = g_d3d11_depth_state;
@@ -766,69 +751,55 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 					ID3D11DeviceContext_ClearDepthStencilView(D3d11.context, D3d11.depth_stencil, ds_flags, 1.0f, 0);
 			} break;
 			
-			case RB_DrawCommandKind_ApplyBlendState:
+			case RB_DrawCommandKind_ApplyPipeline:
 			{
-				ID3D11BlendState* desired = g_d3d11_blend_state;
+				SafeAssert(cmd->apply.handle->id);
+				RB_D3d11Pipeline_* pool_data = RB_PoolFetch_(&g_d3d11_pipelinepool, cmd->apply.handle->id);
+				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, pool_data->shader_handle.id);
 				
-				if (cmd->apply.handle)
-				{
-					SafeAssert(cmd->apply.handle->id);
-					RB_D3d11Blend_* pool_data = RB_PoolFetch_(&g_d3d11_blendpool, cmd->apply.handle->id);
-					
-					desired = pool_data->blend_state;
-				}
+				ID3D11BlendState* blend_state = pool_data->blend_state;
+				ID3D11RasterizerState* rasterizer_state = pool_data->rasterizer_state;
+				ID3D11DepthStencilState* depth_stencil_state = pool_data->depth_stencil_state;
+				ID3D11InputLayout* input_layout = pool_data->input_layout;
+				ID3D11VertexShader* vertex_shader = shader_pool_data->vertex_shader;
+				ID3D11PixelShader* pixel_shader = shader_pool_data->pixel_shader;
 				
-				if (curr_blendstate != desired)
-					ID3D11DeviceContext_OMSetBlendState(D3d11.context, desired, NULL, 0xFFFFFFFF);
+				if (curr_blendstate != blend_state)
+					ID3D11DeviceContext_OMSetBlendState(D3d11.context, blend_state, NULL, 0xFFFFFFFF);
+				if (curr_raststate != rasterizer_state)
+					ID3D11DeviceContext_RSSetState(D3d11.context, rasterizer_state);
+				if (curr_depthstate != depth_stencil_state)
+					ID3D11DeviceContext_OMSetDepthStencilState(D3d11.context, depth_stencil_state, 1);
+				if (curr_input_layout != input_layout)
+					ID3D11DeviceContext_IASetInputLayout(D3d11.context, input_layout);
+				if (curr_vertex_shader != vertex_shader)
+					ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
+				if (curr_pixel_shader != pixel_shader)
+					ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
 				
-				curr_blendstate = desired;
-			} break;
-			
-			case RB_DrawCommandKind_ApplyRasterizerState:
-			{
-				ID3D11RasterizerState* desired_ras = g_d3d11_rasterizer_state;
-				ID3D11DepthStencilState* desired_ds = g_d3d11_depth_state;
-				
-				if (cmd->apply.handle)
-				{
-					SafeAssert(cmd->apply.handle->id);
-					RB_D3d11Rasterizer_* pool_data = RB_PoolFetch_(&g_d3d11_rasterizerpool, cmd->apply.handle->id);
-					
-					desired_ras = pool_data->rasterizer_state;
-					desired_ds = pool_data->depth_stencil_state;
-				}
-				
-				if (curr_raststate != desired_ras)
-					ID3D11DeviceContext_RSSetState(D3d11.context, desired_ras);
-				if (curr_depthstate != desired_ds)
-					ID3D11DeviceContext_OMSetDepthStencilState(D3d11.context, desired_ds, 1);
-				
-				curr_raststate = desired_ras;
-				curr_depthstate = desired_ds;
+				curr_blendstate = blend_state;
+				curr_raststate = rasterizer_state;
+				curr_depthstate = depth_stencil_state;
+				curr_input_layout = input_layout;
+				curr_vertex_shader = vertex_shader;
+				curr_pixel_shader = pixel_shader;
 			} break;
 			
 			case RB_DrawCommandKind_ApplyRenderTarget:
 			{
-				SafeAssert(false);
-			} break;
-			
-			case RB_DrawCommandKind_DrawIndexed:
-			{
 				SafeAssert(false); // TODO
 			} break;
 			
-			case RB_DrawCommandKind_DrawInstanced:
+			//case RB_DrawCommandKind_DrawIndexed:
+			//case RB_DrawCommandKind_DrawInstanced:
 			{
+				bool instanced;
+				
+				if (0) case RB_DrawCommandKind_DrawIndexed: instanced = false;
+				if (0) case RB_DrawCommandKind_DrawInstanced: instanced = true;
+				
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;
-				
-				// Shaders
-				SafeAssert(cmd->draw_instanced.shader && cmd->draw_instanced.shader->id);
-				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, cmd->draw_instanced.shader->id);
-				
-				ID3D11VertexShader* vertex_shader = shader_pool_data->vertex_shader;
-				ID3D11PixelShader* pixel_shader = shader_pool_data->pixel_shader;
-				ID3D11InputLayout* input_layout = shader_pool_data->input_layout;
 				
 				// Buffers
 				SafeAssert(cmd->draw_instanced.ibuffer && cmd->draw_instanced.ibuffer->id);
@@ -890,31 +861,17 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				DXGI_FORMAT index_type = ibuffer_pool_data->index_type;
 				
 				// Draw
-				if (input_layout != curr_input_layout)
-					ID3D11DeviceContext_IASetInputLayout(D3d11.context, input_layout);
 				ID3D11DeviceContext_IASetVertexBuffers(D3d11.context, 0, vbuffer_count, vbuffers, strides, offsets);
 				ID3D11DeviceContext_IASetIndexBuffer(D3d11.context, ibuffer, index_type, 0);
-				if (vertex_shader != curr_vertex_shader)
-					ID3D11DeviceContext_VSSetShader(D3d11.context, vertex_shader, NULL, 0);
-				if (cbuffer != curr_cbuffer)
-				{
-					ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
-					ID3D11DeviceContext_PSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
-				}
-				if (pixel_shader != curr_pixel_shader)
-					ID3D11DeviceContext_PSSetShader(D3d11.context, pixel_shader, NULL, 0);
+				ID3D11DeviceContext_VSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
+				ID3D11DeviceContext_PSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
 				ID3D11DeviceContext_PSSetSamplers(D3d11.context, 0, sampler_count, sampler_states);
 				ID3D11DeviceContext_PSSetShaderResources(D3d11.context, 0, sampler_count, shader_resources);
 				
-				{
-					Trace(); TraceName(Str("ID3D11DeviceContext::DrawIndexedInstanced"));
+				if (instanced)
 					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
-				}
-				
-				curr_vertex_shader = vertex_shader;
-				curr_pixel_shader = pixel_shader;
-				curr_input_layout = input_layout;
-				curr_cbuffer = cbuffer;
+				else
+					ID3D11DeviceContext_DrawIndexed(D3d11.context, index_count, 0, 0);
 			} break;
 		}
 	}
