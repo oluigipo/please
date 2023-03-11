@@ -12,6 +12,11 @@
 #define Min(x,y) ((x) < (y) ? (x) : (y))
 #define Max(x,y) ((x) > (y) ? (x) : (y))
 
+// NOTE(ljre): I once had a dream where I was crying to my mom because Min/Max were confusing, and in the previous
+//             night I did need to printf-debug code that used Max instead of Min.
+#define ClampMax Min
+#define ClampMin Max
+
 #if defined(__clang__)
 #   define Assume(...) __builtin_assume(__VA_ARGS__)
 #   define Debugbreak() __builtin_debugtrap()

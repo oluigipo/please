@@ -47,6 +47,7 @@ enum RB_LayoutDescKind
 {
 	RB_LayoutDescKind_Null = 0,
 	
+	// TODO(ljre): Add normalized int formats
 	RB_LayoutDescKind_Float,
 	RB_LayoutDescKind_Vec2,
 	RB_LayoutDescKind_Vec3,
