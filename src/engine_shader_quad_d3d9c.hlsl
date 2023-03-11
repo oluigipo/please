@@ -68,7 +68,7 @@ float4 D3d9cShader_QuadPixel(VertexOutput input) : SV_TARGET
 	switch (uswizzle)
 	{
 		default: break;
-		case 1: result = float4(1.0, 1.0, 1.0, result.a); break;
+		case 1: result = float4(1.0, 1.0, 1.0, result.r); break;
 		case 2:
 		{
 			float2 pos = (input.rawpos - 0.5) * 2.0;
@@ -90,7 +90,7 @@ float4 D3d9cShader_QuadPixel(VertexOutput input) : SV_TARGET
 		{
 			float m = min(input.rawscale.x, input.rawscale.y);
 			float inv = 1.0 / m;
-			float a = (result.a - 0.5 + inv) * (m * 0.5);
+			float a = (result.r - 0.5 + inv) * (m * 0.5);
 			result = float4(1.0, 1.0, 1.0, a);
 		} break;
 		case 5:
@@ -98,7 +98,7 @@ float4 D3d9cShader_QuadPixel(VertexOutput input) : SV_TARGET
 			float2 density = fwidth(uv) * texsize;
 			float m = min(density.x, density.y);
 			float inv = 1.0 / m;
-			float a = (result.a - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;
+			float a = (result.r - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;
 			result = float4(1.0, 1.0, 1.0, a);
 		} break;
 	}

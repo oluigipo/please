@@ -270,7 +270,24 @@ G_UpdateAndRender(void)
 					RB_Capabilities caps = { 0 };
 					RB_QueryCapabilities(&caps);
 					
-					UDebugUI_PushTextF(&debugui, "API: %S\nDriver: %S\nMaxTextureSize: %i", caps.backend_api, caps.driver, caps.max_texture_size);
+					const char* shader_type = "";
+					switch (caps.shader_type)
+					{
+						case 0: shader_type = ""; break;
+						case RB_ShaderType_Glsl33: shader_type = "GLSL 3.3"; break;
+						case RB_ShaderType_Hlsl40: shader_type = "HLSL vs/ps_4_0"; break;
+						case RB_ShaderType_HlslLevel91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
+						case RB_ShaderType_Hlsl20: shader_type = "HLSL vs/ps_2_0"; break;
+					}
+					
+					UDebugUI_PushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
+					UDebugUI_PushTextF(&debugui, "shader_type: %s", shader_type);
+					UDebugUI_PushTextF(&debugui, "max_texture_size: %i", caps.max_texture_size);
+					UDebugUI_PushTextF(&debugui, "max_render_target_textures: %i", caps.max_render_target_textures);
+					UDebugUI_PushTextF(&debugui, "instancing: %s", caps.instancing ? "TRUE" : "false");
+					UDebugUI_PushTextF(&debugui, "index32: %s", caps.index32 ? "TRUE" : "false");
+					UDebugUI_PushTextF(&debugui, "separate_alpha_blend: %s", caps.separate_alpha_blend ? "TRUE" : "false");
+					UDebugUI_PushTextF(&debugui, "compute_shaders: %s", caps.compute_shaders ? "TRUE" : "false");
 					
 					UDebugUI_PopFoldable(&debugui);
 				}

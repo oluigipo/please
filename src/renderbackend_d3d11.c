@@ -144,41 +144,76 @@ static void
 RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
 {
 	D3D_FEATURE_LEVEL feature_level = ID3D11Device_GetFeatureLevel(D3d11.device);
-	int32 max_texture_size;
-	String driver = StrInit("newer one?");
+	RB_Capabilities caps = {
+		.backend_api = StrInit("Direct3D 11"),
+		.driver_renderer = StrInit("Unknown"),
+		.driver_vendor = StrInit("TODO"),
+		.driver_version = StrInit("TODO"),
+	};
 	
 	switch (feature_level)
 	{
-		default:
-		if (0) case D3D_FEATURE_LEVEL_11_1: driver = Str("Feature Level 11_1");
-		if (0) case D3D_FEATURE_LEVEL_11_0: driver = Str("Feature Level 11_0");
-		{
-			max_texture_size = 16384;
-		} break;
-		
-		if (0) case D3D_FEATURE_LEVEL_10_1: driver = Str("Feature Level 10_1");
-		if (0) case D3D_FEATURE_LEVEL_10_0: driver = Str("Feature Level 10_0");
-		{
-			max_texture_size = 8192;
-		} break;
-		
-		if (0) case D3D_FEATURE_LEVEL_9_3: driver = Str("Feature Level 9_3");
-		{
-			max_texture_size = 4096;
-		} break;
-		
-		if (0) case D3D_FEATURE_LEVEL_9_2: driver = Str("Feature Level 9_2");
-		if (0) case D3D_FEATURE_LEVEL_9_1: driver = Str("Feature Level 9_1");
-		{
-			max_texture_size = 2048;
-		} break;
+		default: break;
+		//case D3D_FEATURE_LEVEL_12_2: caps.driver_renderer = Str("Feature Level 12_2"); break;
+		case D3D_FEATURE_LEVEL_12_1: caps.driver_renderer = Str("Feature Level 12_1"); break;
+		case D3D_FEATURE_LEVEL_12_0: caps.driver_renderer = Str("Feature Level 12_0"); break;
+		case D3D_FEATURE_LEVEL_11_1: caps.driver_renderer = Str("Feature Level 11_1"); break;
+		case D3D_FEATURE_LEVEL_11_0: caps.driver_renderer = Str("Feature Level 11_0"); break;
+		case D3D_FEATURE_LEVEL_10_1: caps.driver_renderer = Str("Feature Level 10_1"); break;
+		case D3D_FEATURE_LEVEL_10_0: caps.driver_renderer = Str("Feature Level 10_0"); break;
+		case D3D_FEATURE_LEVEL_9_3: caps.driver_renderer = Str("Feature Level 9_3"); break;
+		case D3D_FEATURE_LEVEL_9_2: caps.driver_renderer = Str("Feature Level 9_2"); break;
+		case D3D_FEATURE_LEVEL_9_1: caps.driver_renderer = Str("Feature Level 9_1"); break;
 	}
 	
-	*out_capabilities = (RB_Capabilities) {
-		.backend_api = StrInit("Direct3D 11"),
-		.driver = driver,
-		.max_texture_size = max_texture_size,
-	};
+	//-
+	if (feature_level >= D3D_FEATURE_LEVEL_9_1) // NOTE(ljre): This should always be true, really
+	{
+		caps.max_texture_size = 2048;
+		caps.max_render_target_textures = 1;
+		caps.max_textures_per_drawcall = 8;
+		caps.shader_type = RB_ShaderType_HlslLevel91;
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_9_2)
+	{
+		caps.index32 = true;
+		caps.separate_alpha_blend = true;
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_9_3)
+	{
+		caps.max_texture_size = 4096;
+		caps.max_render_target_textures = 4;
+		caps.instancing = true;
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_10_0)
+	{
+		caps.max_texture_size = 8192;
+		caps.max_render_target_textures = 8;
+		caps.shader_type = RB_ShaderType_Hlsl40;
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_10_1)
+	{
+		
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_11_0)
+	{
+		caps.max_texture_size = 16384;
+		caps.max_render_target_textures = 8;
+		caps.compute_shaders = true;
+	}
+	
+	if (feature_level >= D3D_FEATURE_LEVEL_11_1)
+	{
+		
+	}
+	
+	//- Done
+	*out_capabilities = caps;
 }
 
 static void
@@ -760,35 +795,40 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				SafeAssert(false);
 			} break;
 			
-			case RB_DrawCommandKind_DrawCall:
+			case RB_DrawCommandKind_DrawIndexed:
 			{
-				uint32 index_count = cmd->drawcall.index_count;
-				uint32 instance_count = cmd->drawcall.instance_count;
+				SafeAssert(false); // TODO
+			} break;
+			
+			case RB_DrawCommandKind_DrawInstanced:
+			{
+				uint32 index_count = cmd->draw_instanced.index_count;
+				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
 				// Shaders
-				SafeAssert(cmd->drawcall.shader && cmd->drawcall.shader->id);
-				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, cmd->drawcall.shader->id);
+				SafeAssert(cmd->draw_instanced.shader && cmd->draw_instanced.shader->id);
+				RB_D3d11Shader_* shader_pool_data = RB_PoolFetch_(&g_d3d11_shaderpool, cmd->draw_instanced.shader->id);
 				
 				ID3D11VertexShader* vertex_shader = shader_pool_data->vertex_shader;
 				ID3D11PixelShader* pixel_shader = shader_pool_data->pixel_shader;
 				ID3D11InputLayout* input_layout = shader_pool_data->input_layout;
 				
 				// Buffers
-				SafeAssert(cmd->drawcall.ibuffer && cmd->drawcall.ibuffer->id);
-				RB_D3d11Buffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.ibuffer->id);
+				SafeAssert(cmd->draw_instanced.ibuffer && cmd->draw_instanced.ibuffer->id);
+				RB_D3d11Buffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->draw_instanced.ibuffer->id);
 				
 				ID3D11Buffer* ibuffer = ibuffer_pool_data->buffer;
 				
 				uint32 vbuffer_count = 0;
-				ID3D11Buffer* vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
+				ID3D11Buffer* vbuffers[ArrayLength(cmd->draw_instanced.vbuffers)] = { 0 };
 				
 				for (int32 i = 0; i < ArrayLength(vbuffers); ++i)
 				{
-					if (!cmd->drawcall.vbuffers[i])
+					if (!cmd->draw_instanced.vbuffers[i])
 						break;
 					
-					SafeAssert(cmd->drawcall.vbuffers[i]->id);
-					RB_D3d11Buffer_* vbuffer = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.vbuffers[i]->id);
+					SafeAssert(cmd->draw_instanced.vbuffers[i]->id);
+					RB_D3d11Buffer_* vbuffer = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->draw_instanced.vbuffers[i]->id);
 					
 					vbuffers[i] = vbuffer->buffer;
 					vbuffer_count = i+1;
@@ -796,17 +836,17 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				
 				uint32 strides[ArrayLength(vbuffers)] = { 0 };
 				uint32 offsets[ArrayLength(vbuffers)] = { 0 };
-				Mem_Copy(strides, cmd->drawcall.vbuffer_strides, sizeof(strides));
-				Mem_Copy(offsets, cmd->drawcall.vbuffer_offsets, sizeof(offsets));
+				Mem_Copy(strides, cmd->draw_instanced.vbuffer_strides, sizeof(strides));
+				Mem_Copy(offsets, cmd->draw_instanced.vbuffer_offsets, sizeof(offsets));
 				
 				// Samplers
 				uint32 sampler_count = 0;
-				ID3D11SamplerState* sampler_states[ArrayLength(cmd->drawcall.samplers)] = { 0 };
+				ID3D11SamplerState* sampler_states[ArrayLength(cmd->draw_instanced.samplers)] = { 0 };
 				ID3D11ShaderResourceView* shader_resources[ArrayLength(sampler_states)] = { 0 };
 				
-				for (int32 i = 0; i < ArrayLength(cmd->drawcall.samplers); ++i)
+				for (int32 i = 0; i < ArrayLength(cmd->draw_instanced.samplers); ++i)
 				{
-					RB_SamplerDesc desc = cmd->drawcall.samplers[i];
+					RB_SamplerDesc desc = cmd->draw_instanced.samplers[i];
 					
 					if (!desc.handle)
 						break;
@@ -823,9 +863,9 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				// Constant buffer
 				ID3D11Buffer* cbuffer = NULL;
 				
-				if (cmd->drawcall.ubuffer)
+				if (cmd->draw_instanced.ubuffer)
 				{
-					RB_D3d11Buffer_* cbuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->drawcall.ubuffer->id);
+					RB_D3d11Buffer_* cbuffer_pool_data = RB_PoolFetch_(&g_d3d11_bufferpool, cmd->draw_instanced.ubuffer->id);
 					cbuffer = cbuffer_pool_data->buffer;
 				}
 				

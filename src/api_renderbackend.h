@@ -9,12 +9,33 @@ enum
 	RB_Limits_MaxVertexBuffersPerDrawCall = 4,
 };
 
+enum RB_ShaderType
+{
+	RB_ShaderType_Null = 0,
+	
+	RB_ShaderType_Glsl33,       // GLSL 3.3 (vertex & fragment) source code
+	RB_ShaderType_Hlsl40,       // vs_4_0 & ps_4_0 object code
+	RB_ShaderType_HlslLevel91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
+	RB_ShaderType_Hlsl20,       // vs_2_0 & ps_2_0 object code
+}
+typedef RB_ShaderType;
+
 struct RB_Capabilities
 {
 	String backend_api;
-	String driver;
+	String driver_renderer;
+	String driver_vendor;
+	String driver_version;
 	
+	RB_ShaderType shader_type;
 	int32 max_texture_size;
+	int32 max_render_target_textures;
+	int32 max_textures_per_drawcall;
+	
+	bool instancing : 1;
+	bool index32 : 1;
+	bool separate_alpha_blend : 1;
+	bool compute_shaders : 1;
 }
 typedef RB_Capabilities;
 
@@ -225,7 +246,8 @@ enum RB_DrawCommandKind
 	RB_DrawCommandKind_ApplyBlendState,
 	RB_DrawCommandKind_ApplyRasterizerState,
 	RB_DrawCommandKind_ApplyRenderTarget,
-	RB_DrawCommandKind_DrawCall,
+	RB_DrawCommandKind_DrawIndexed,
+	RB_DrawCommandKind_DrawInstanced,
 }
 typedef RB_DrawCommandKind;
 
@@ -264,11 +286,26 @@ struct RB_DrawCommand
 			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
 			
 			uint32 index_count;
+			
+			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
+		}
+		draw_indexed;
+		
+		struct
+		{
+			RB_Handle* shader;
+			RB_Handle* ibuffer;
+			RB_Handle* ubuffer;
+			RB_Handle* vbuffers[RB_Limits_MaxVertexBuffersPerDrawCall];
+			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
+			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
+			
+			uint32 index_count;
 			uint32 instance_count;
 			
 			RB_SamplerDesc samplers[RB_Limits_SamplersPerDrawCall];
 		}
-		drawcall;
+		draw_instanced;
 	};
 };
 

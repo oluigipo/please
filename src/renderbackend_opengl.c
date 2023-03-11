@@ -88,19 +88,27 @@ RB_DeinitOpenGL_(Arena* scratch_arena)
 static void
 RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 {
-	int32 max_texture_size;
-	String driver;
-	
-	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
-	
-	const uint8* driver_cstr = GL.glGetString(GL_VENDOR);
-	driver = StrMake(Mem_Strlen((char*)driver_cstr), driver_cstr);
-	
-	*out_capabilities = (RB_Capabilities) {
+	RB_Capabilities caps = {
 		.backend_api = StrInit("OpenGL 3.3"),
-		.driver = driver,
-		.max_texture_size = max_texture_size,
+		.shader_type = RB_ShaderType_Glsl33,
 	};
+	
+	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &caps.max_texture_size);
+	GL.glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &caps.max_render_target_textures);
+	
+	const uint8* vendor_cstr = GL.glGetString(GL_VENDOR);
+	caps.driver_vendor = StrMake(Mem_Strlen((char*)vendor_cstr), vendor_cstr);
+	const uint8* renderer_cstr = GL.glGetString(GL_RENDERER);
+	caps.driver_renderer = StrMake(Mem_Strlen((char*)renderer_cstr), renderer_cstr);
+	const uint8* version_cstr = GL.glGetString(GL_VERSION);
+	caps.driver_version = StrMake(Mem_Strlen((char*)version_cstr), version_cstr);
+	
+	caps.instancing = true;
+	caps.index32 = true;
+	caps.separate_alpha_blend = true;
+	caps.compute_shaders = false;
+	
+	*out_capabilities = caps;
 }
 
 static void
@@ -549,23 +557,28 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				SafeAssert(false);
 			} break;
 			
-			case RB_DrawCommandKind_DrawCall:
+			case RB_DrawCommandKind_DrawIndexed:
+			{
+				SafeAssert(false); // TODO
+			} break;
+			
+			case RB_DrawCommandKind_DrawInstanced:
 			{
 				// Buffers and Shader
-				SafeAssert(cmd->drawcall.shader && cmd->drawcall.ibuffer);
+				SafeAssert(cmd->draw_instanced.shader && cmd->draw_instanced.ibuffer);
 				
-				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->drawcall.shader->id);
-				RB_OpenGLBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_ogl_bufferpool, cmd->drawcall.ibuffer->id);
+				RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&g_ogl_shaderpool, cmd->draw_instanced.shader->id);
+				RB_OpenGLBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_ogl_bufferpool, cmd->draw_instanced.ibuffer->id);
 				
 				const uint32 shader = shader_pool_data->program_id;
 				uint32 ibuffer = ibuffer_pool_data->id;
-				uint32 vbuffers[ArrayLength(cmd->drawcall.vbuffers)] = { 0 };
+				uint32 vbuffers[ArrayLength(cmd->draw_instanced.vbuffers)] = { 0 };
 				
-				for (intsize i = 0; i < ArrayLength(cmd->drawcall.vbuffers); ++i)
+				for (intsize i = 0; i < ArrayLength(cmd->draw_instanced.vbuffers); ++i)
 				{
-					if (cmd->drawcall.vbuffers[i])
+					if (cmd->draw_instanced.vbuffers[i])
 					{
-						uint32 index = cmd->drawcall.vbuffers[i]->id;
+						uint32 index = cmd->draw_instanced.vbuffers[i]->id;
 						RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, index);
 						
 						vbuffers[i] = pool_data->id;
@@ -590,8 +603,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					GL.glBindBuffer(GL_ARRAY_BUFFER, vbuffers[layout->vbuffer_index]);
 					
 					uint32 loc = layout->gl_location;
-					uint32 stride = cmd->drawcall.vbuffer_strides[layout->vbuffer_index];
-					uintptr offset = cmd->drawcall.vbuffer_offsets[layout->vbuffer_index] + layout->offset;
+					uint32 stride = cmd->draw_instanced.vbuffer_strides[layout->vbuffer_index];
+					uintptr offset = cmd->draw_instanced.vbuffer_offsets[layout->vbuffer_index] + layout->offset;
 					
 					switch (layout->kind)
 					{
@@ -665,9 +678,9 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				// Uniforms
 				GL.glUseProgram(shader);
 				
-				if (cmd->drawcall.ubuffer)
+				if (cmd->draw_instanced.ubuffer)
 				{
-					uint32 index = cmd->drawcall.ubuffer->id;
+					uint32 index = cmd->draw_instanced.ubuffer->id;
 					RB_OpenGLBuffer_* pool_data = RB_PoolFetch_(&g_ogl_bufferpool, index);
 					
 					GL.glBindBuffer(GL_UNIFORM_BUFFER, pool_data->id);
@@ -684,9 +697,9 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				// Samplers
 				uint32 sampler_count = 0;
 				
-				for (intsize i = 0; i < ArrayLength(cmd->drawcall.samplers); ++i)
+				for (intsize i = 0; i < ArrayLength(cmd->draw_instanced.samplers); ++i)
 				{
-					const RB_SamplerDesc* sampler = &cmd->drawcall.samplers[i];
+					const RB_SamplerDesc* sampler = &cmd->draw_instanced.samplers[i];
 					
 					if (!sampler->handle)
 						continue;
@@ -714,8 +727,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				uint32 index_type = ibuffer_pool_data->index_type;
 				
 				// Draw Call
-				uint32 index_count = cmd->drawcall.index_count;
-				uint32 instance_count = cmd->drawcall.instance_count;
+				uint32 index_count = cmd->draw_instanced.index_count;
+				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
 				GL.glDrawElementsInstanced(GL_TRIANGLES, index_count, index_type, NULL, instance_count);
 				

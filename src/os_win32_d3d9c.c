@@ -85,9 +85,11 @@ Win32_CreateD3d9cWindow(const OS_WindowState* config, const wchar_t* title)
 		.PresentationInterval = 0,
 	};
 	
+	D3DDEVTYPE device_type = D3DDEVTYPE_HAL;
+	
 	IDirect3DDevice9* device;
 	HRESULT hr = IDirect3D9_CreateDevice(
-		d3d9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window,
+		d3d9, D3DADAPTER_DEFAULT, device_type, window,
 		D3DCREATE_SOFTWARE_VERTEXPROCESSING, &present_params, &device);
 	if (!SUCCEEDED(hr))
 	{

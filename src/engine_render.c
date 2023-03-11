@@ -147,7 +147,7 @@ E_InitRender_(void)
 		RB_Capabilities cap = { 0 };
 		RB_QueryCapabilities(&cap);
 		
-		OS_DebugLog("[RB] backend: %S\n[RB] driver: %S\nmax_texture_size: %i\n", cap.backend_api, cap.driver, cap.max_texture_size);
+		OS_DebugLog("[RB] backend: %S\n[RB] driver renderer: %S\n[RB] driver vendor: %S\n[RB] driver version: %S\n", cap.backend_api, cap.driver_renderer, cap.driver_vendor, cap.driver_version);
 	}
 	
 	float32 quadvbuf[] = {
@@ -738,9 +738,9 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	});
 	
 	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
-		.kind = RB_DrawCommandKind_DrawCall,
+		.kind = RB_DrawCommandKind_DrawInstanced,
 		.resources_cmd = rc_cmd,
-		.drawcall = {
+		.draw_instanced = {
 			.shader = &g_render_quadshader,
 			.ibuffer = &g_render_quadibuf,
 			.ubuffer = &g_render_quadubuf,

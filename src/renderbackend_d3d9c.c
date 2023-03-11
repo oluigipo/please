@@ -75,8 +75,13 @@ RB_CapabilitiesD3d9c_(RB_Capabilities* out_capabilities)
 {
 	*out_capabilities = (RB_Capabilities) {
 		.backend_api = StrInit("Direct3D 9.0c"),
-		.driver = StrInit("TODO: get driver info"),
+		.driver_renderer = StrInit("TODO"),
+		.driver_vendor = StrInit("TODO"),
+		.driver_version = StrInit("TODO"),
+		.shader_type = RB_ShaderType_Hlsl20,
 		.max_texture_size = 2048,
+		.max_render_target_textures = 1,
+		.max_textures_per_drawcall = RB_Limits_SamplersPerDrawCall,
 	};
 }
 
@@ -111,7 +116,7 @@ RB_ResourceD3d9c_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				switch (cmd->texture_2d.channels)
 				{
 					default: SafeAssert(false); break;
-					case 1: format = D3DFMT_A8; format_size = 1; break;
+					case 1: format = D3DFMT_L8; format_size = 1; break;
 					case 4: format = D3DFMT_A8B8G8R8; format_size = 4; break;
 				}
 				
@@ -531,7 +536,12 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				SafeAssert(false); // TODO(ljre)
 			} break;
 			
-			case RB_DrawCommandKind_DrawCall:
+			case RB_DrawCommandKind_DrawIndexed:
+			{
+				SafeAssert(false); // TODO(ljre)
+			} break;
+			
+			case RB_DrawCommandKind_DrawInstanced:
 			{
 				//- Stuff we're going to fetch
 				IDirect3DVertexShader9* vshader = NULL;
@@ -545,9 +555,9 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				UINT divisors[RB_Limits_InputsPerShader] = { 0 };
 				
 				//- Shader
-				SafeAssert(cmd->drawcall.shader);
+				SafeAssert(cmd->draw_instanced.shader);
 				
-				RB_D3d9cShader_* shader_pool_data = RB_PoolFetch_(&g_d3d9c_shaderpool, cmd->drawcall.shader->id);
+				RB_D3d9cShader_* shader_pool_data = RB_PoolFetch_(&g_d3d9c_shaderpool, cmd->draw_instanced.shader->id);
 				vshader = shader_pool_data->vertex_shader;
 				pshader = shader_pool_data->pixel_shader;
 				vdecl = shader_pool_data->vertex_declaration;
@@ -557,24 +567,24 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 					if (shader_pool_data->divisors[i])
 						divisors[i] = shader_pool_data->divisors[i] | (D3DSTREAMSOURCE_INSTANCEDATA);
 					else
-						divisors[i] = (UINT)cmd->drawcall.instance_count | (D3DSTREAMSOURCE_INDEXEDDATA);
+						divisors[i] = (UINT)cmd->draw_instanced.instance_count | (D3DSTREAMSOURCE_INDEXEDDATA);
 				}
 				
 				//- Buffers
-				SafeAssert(cmd->drawcall.ibuffer);
+				SafeAssert(cmd->draw_instanced.ibuffer);
 				
-				RB_D3d9cIndexBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ibufpool, cmd->drawcall.ibuffer->id);
+				RB_D3d9cIndexBuffer_* ibuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ibufpool, cmd->draw_instanced.ibuffer->id);
 				ibuffer = ibuffer_pool_data->index_buffer;
 				
 				for (intsize i = 0; i < ArrayLength(vbuffers); ++i)
 				{
-					if (!cmd->drawcall.vbuffers[i])
+					if (!cmd->draw_instanced.vbuffers[i])
 						break;
 					
-					RB_D3d9cVertexBuffer_* vbuffer_pool_data = RB_PoolFetch_(&g_d3d9c_vbufpool, cmd->drawcall.vbuffers[i]->id);
+					RB_D3d9cVertexBuffer_* vbuffer_pool_data = RB_PoolFetch_(&g_d3d9c_vbufpool, cmd->draw_instanced.vbuffers[i]->id);
 					vbuffers[i] = vbuffer_pool_data->vertex_buffer;
-					offsets[i] = cmd->drawcall.vbuffer_offsets[i];
-					strides[i] = cmd->drawcall.vbuffer_strides[i];
+					offsets[i] = cmd->draw_instanced.vbuffer_offsets[i];
+					strides[i] = cmd->draw_instanced.vbuffer_strides[i];
 				}
 				
 				//- Textures
@@ -584,10 +594,10 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				
 				for (intsize i = 0; i < ArrayLength(textures); ++i)
 				{
-					if (!cmd->drawcall.samplers[i].handle)
+					if (!cmd->draw_instanced.samplers[i].handle)
 						break;
 					
-					RB_D3d9cTexture2D_* pool_data = RB_PoolFetch_(&g_d3d9c_texpool, cmd->drawcall.samplers[i].handle->id);
+					RB_D3d9cTexture2D_* pool_data = RB_PoolFetch_(&g_d3d9c_texpool, cmd->draw_instanced.samplers[i].handle->id);
 					textures[i] = (IDirect3DBaseTexture9*)pool_data->texture;
 					texsizes[2*i+0] = (float32)pool_data->width;
 					texsizes[2*i+1] = (float32)pool_data->height;
@@ -595,7 +605,7 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				}
 				
 				//- Constants
-				RB_D3d9cUniformBuffer_* ubuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ubufpool, cmd->drawcall.ubuffer->id);
+				RB_D3d9cUniformBuffer_* ubuffer_pool_data = RB_PoolFetch_(&g_d3d9c_ubufpool, cmd->draw_instanced.ubuffer->id);
 				uintsize vec4_count = ubuffer_pool_data->size / sizeof(vec4);
 				const float32* floats = ubuffer_pool_data->floats;
 				
@@ -605,7 +615,7 @@ RB_DrawD3d9c_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				IDirect3DDevice9_SetPixelShaderConstantF(D3d9c.device, texsizes_count, floats, vec4_count);
 				
 				//- Draw call
-				UINT index_count = (UINT)cmd->drawcall.index_count;
+				UINT index_count = (UINT)cmd->draw_instanced.index_count;
 				
 				D3d9cCall(IDirect3DDevice9_SetVertexShader(D3d9c.device, vshader));
 				D3d9cCall(IDirect3DDevice9_SetPixelShader(D3d9c.device, pshader));

@@ -60,7 +60,7 @@
       endif
     endif
     if_eq r0_abs.y, c5.y
-      mad r1, r1.w, c5.xxxy, c5.yyyx
+      mad r1, r1.x, c5.xxxy, c5.yyyx
     else
       if_eq r0_abs.y, c5.z
         add r2.xy, c2.x, v2
@@ -73,14 +73,14 @@
         add r2.xy, r2_abs.zwzw, r2_abs
         mul r0.xz, r0.zyww, r2.xyyw
         min r2.x, r0.z, r0.x
-        add r0.x, r1.w, c3.z
+        add r0.x, r1.x, c3.z
         mad r0.x, r2.x, c3.w, r0.x
         rcp r0.z, r2.x
         mul r0.x, r0.z, r0.x
         mul r2.w, r0.x, c4.x
         min r0.x, v3.y, v3.x
         rcp r0.z, r0.x
-        add r0.z, r0.z, r1.w
+        add r0.z, r0.z, r1.x
         add r0.z, r0.z, c2.x
         mul r0.w, r0.x, -c2.x
         mul r3.w, r0.w, r0.z
@@ -263,7 +263,7 @@ const BYTE g_ps30_D3d9cShader_QuadPixel[] =
       2,   2,   0,   0,  85, 139, 
       5,   0,  85, 160,   4,   0, 
       0,   4,   1,   0,  15, 128, 
-      1,   0, 255, 128,   5,   0, 
+      1,   0,   0, 128,   5,   0, 
      64, 160,   5,   0,  21, 160, 
      42,   0,   0,   0,  41,   0, 
       2,   2,   0,   0,  85, 139, 
@@ -294,7 +294,7 @@ const BYTE g_ps30_D3d9cShader_QuadPixel[] =
       0,   0, 170, 128,   0,   0, 
       0, 128,   2,   0,   0,   3, 
       0,   0,   1, 128,   1,   0, 
-    255, 128,   3,   0, 170, 160, 
+      0, 128,   3,   0, 170, 160, 
       4,   0,   0,   4,   0,   0, 
       1, 128,   2,   0,   0, 128, 
       3,   0, 255, 160,   0,   0, 
@@ -312,7 +312,7 @@ const BYTE g_ps30_D3d9cShader_QuadPixel[] =
       0,   0,   4, 128,   0,   0, 
       0, 128,   2,   0,   0,   3, 
       0,   0,   4, 128,   0,   0, 
-    170, 128,   1,   0, 255, 128, 
+    170, 128,   1,   0,   0, 128, 
       2,   0,   0,   3,   0,   0, 
       4, 128,   0,   0, 170, 128, 
       2,   0,   0, 160,   5,   0, 

@@ -323,7 +323,7 @@ G_Scene3DUpdateAndRender(void)
 		});
 		
 		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_DrawCommand, {
-			.kind = RB_DrawCommandKind_DrawCall,
+			.kind = RB_DrawCommandKind_DrawInstanced,
 			.resources_cmd = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
 				.kind = RB_ResourceCommandKind_UpdateUniformBuffer,
 				.handle = &s->shader_ubuffer,
@@ -333,7 +333,7 @@ G_Scene3DUpdateAndRender(void)
 				},
 			}),
 			
-			.drawcall = {
+			.draw_instanced = {
 				.shader = &s->shader,
 				.ibuffer = &s->tree_model_ibuffer,
 				.ubuffer = &s->shader_ubuffer,

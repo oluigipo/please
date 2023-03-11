@@ -91,7 +91,8 @@ static const String RB_draw_cmd_names[] = {
 	[RB_DrawCommandKind_ApplyBlendState] = StrInit("RB_DrawCommandKind_ApplyBlendState"),
 	[RB_DrawCommandKind_ApplyRasterizerState] = StrInit("RB_DrawCommandKind_ApplyRasterizerState"),
 	[RB_DrawCommandKind_ApplyRenderTarget] = StrInit("RB_DrawCommandKind_ApplyRenderTarget"),
-	[RB_DrawCommandKind_DrawCall] = StrInit("RB_DrawCommandKind_DrawCall"),
+	[RB_DrawCommandKind_DrawIndexed] = StrInit("RB_DrawCommandKind_DrawIndexed"),
+	[RB_DrawCommandKind_DrawInstanced] = StrInit("RB_DrawCommandKind_DrawInstanced"),
 };
 
 #ifdef CONFIG_ENABLE_D3D11
