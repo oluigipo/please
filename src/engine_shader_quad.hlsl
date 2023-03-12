@@ -1,4 +1,4 @@
-struct VertexInput
+struct VS_INPUT
 {
 	float2   pos : VINPUT0;
 	float2   elemPos : VINPUT1;
@@ -8,7 +8,7 @@ struct VertexInput
 	float4   elemColor : VINPUT6;
 };
 
-struct VertexOutput
+struct VS_OUTPUT
 {
 	float4 texcoords : TEXCOORD0;
 	float4 color : COLOR0;
@@ -24,9 +24,9 @@ cbuffer VS_CONSTANT_BUFFER : register(b0)
 	float4 uTexsize23;
 };
 
-VertexOutput D3d11Shader_QuadVertex(VertexInput input)
+VS_OUTPUT Vertex(VS_INPUT input)
 {
-	VertexOutput output;
+	VS_OUTPUT output;
 	
 	float2 pos = mul(input.elemScaling, input.pos) + input.elemPos;
 	
@@ -44,7 +44,7 @@ VertexOutput D3d11Shader_QuadVertex(VertexInput input)
 Texture2D textures[4] : register(t0);
 SamplerState samplers[4] : register(s0);
 
-float4 D3d11Shader_QuadPixel(VertexOutput input) : SV_TARGET
+float4 Pixel(VS_OUTPUT input) : SV_TARGET
 {
 	float4 result = 0;
 	float2 uv = input.texcoords.xy;

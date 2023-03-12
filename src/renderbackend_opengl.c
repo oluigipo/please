@@ -100,10 +100,11 @@ RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 	const uint8* version_cstr = GL.glGetString(GL_VERSION);
 	caps.driver_version = StrMake(Mem_Strlen((char*)version_cstr), version_cstr);
 	
-	caps.instancing = true;
-	caps.index32 = true;
-	caps.separate_alpha_blend = true;
-	caps.compute_shaders = false;
+	caps.has_instancing = true;
+	caps.has_32bit_index = true;
+	caps.has_separate_alpha_blend = true;
+	caps.has_compute_shaders = false;
+	caps.has_16bit_float = false;
 	
 	*out_capabilities = caps;
 }
@@ -601,13 +602,14 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					
 					switch (layout->kind)
 					{
+						//case RB_LayoutDescKind_Scalar:
 						//case RB_LayoutDescKind_Vec2:
 						//case RB_LayoutDescKind_Vec3:
 						//case RB_LayoutDescKind_Vec4:
 						{
 							uint32 count;
 							
-							if (0) case RB_LayoutDescKind_Float: count = 1;
+							if (0) case RB_LayoutDescKind_Scalar: count = 1;
 							if (0) case RB_LayoutDescKind_Vec2: count = 2;
 							if (0) case RB_LayoutDescKind_Vec3: count = 3;
 							if (0) case RB_LayoutDescKind_Vec4: count = 4;
@@ -615,6 +617,33 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 							GL.glEnableVertexAttribArray(loc);
 							GL.glVertexAttribDivisor(loc, layout->divisor);
 							GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)offset);
+							
+							location += 1;
+						} break;
+						
+						//case RB_LayoutDescKind_Vec2I16Norm:
+						//case RB_LayoutDescKind_Vec4I16Norm:
+						//case RB_LayoutDescKind_Vec4U16Norm:
+						//case RB_LayoutDescKind_Vec2I16:
+						//case RB_LayoutDescKind_Vec4I16:
+						//case RB_LayoutDescKind_Vec4U16:
+						{
+							uint32 count;
+							bool unsig;
+							bool norm;
+							
+							if (0) case RB_LayoutDescKind_Vec2I16Norm: { count = 2; unsig = false; norm = true; }
+							if (0) case RB_LayoutDescKind_Vec4I16Norm: { count = 4; unsig = false; norm = true; }
+							if (0) case RB_LayoutDescKind_Vec2I16: { count = 2; unsig = false; norm = false; }
+							if (0) case RB_LayoutDescKind_Vec4I16: { count = 4; unsig = false; norm = false; }
+							if (0) case RB_LayoutDescKind_Vec4U8Norm: { count = 4; unsig = true; norm = true; }
+							if (0) case RB_LayoutDescKind_Vec4U8: { count = 4; unsig = true; norm = false; }
+							
+							uint32 type = unsig ? GL_UNSIGNED_BYTE : GL_SHORT;
+							
+							GL.glEnableVertexAttribArray(loc);
+							GL.glVertexAttribDivisor(loc, layout->divisor);
+							GL.glVertexAttribPointer(loc, count, type, norm, stride, (void*)offset);
 							
 							location += 1;
 						} break;
@@ -715,15 +744,18 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				
 				// Index type
 				uint32 index_type = ibuffer_pool_data->index_type;
+				uintsize index_size = (index_type == GL_UNSIGNED_SHORT) ? 2 : 4;
 				
 				// Draw Call
+				int32 base_vertex = cmd->draw_instanced.base_vertex;
+				void* base_index = (void*)(cmd->draw_instanced.base_index * index_size);
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
 				if (instanced)
-					GL.glDrawElementsInstanced(GL_TRIANGLES, index_count, index_type, NULL, instance_count);
+					GL.glDrawElementsInstancedBaseVertex(GL_TRIANGLES, index_count, index_type, base_index, instance_count, base_vertex);
 				else
-					GL.glDrawElements(GL_TRIANGLES, index_count, index_type, NULL);
+					GL.glDrawElementsBaseVertex(GL_TRIANGLES, index_count, index_type, base_index, base_vertex);
 				
 				// Done
 				GL.glBindVertexArray(0);

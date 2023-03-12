@@ -1,11 +1,11 @@
-struct VertexInput
+struct VS_INPUT
 {
 	float3 pos : VINPUT0;
 	float2 texcoord : VINPUT1;
 	float3 normal : VINPUT2;
 };
 
-struct VertexOutput
+struct VS_OUTPUT
 {
 	float2 texcoord : TEXCOORD0;
 	float3 normal : NORMAL;
@@ -18,9 +18,9 @@ cbuffer VS_CONSTANT_BUFFER : register(b0)
 	matrix uModel;
 };
 
-VertexOutput scene3d_d3d_vs(VertexInput input)
+VS_OUTPUT Vertex(VS_INPUT input)
 {
-	VertexOutput output;
+	VS_OUTPUT output;
 
 	output.position = mul(mul(uView, uModel), float4(input.pos, 1.0));
 	output.normal = input.normal;
@@ -32,7 +32,7 @@ VertexOutput scene3d_d3d_vs(VertexInput input)
 Texture2D textures[4] : register(t0);
 SamplerState samplers[4] : register(s0);
 
-float4 scene3d_d3d_ps(VertexOutput input) : SV_TARGET
+float4 Pixel(VS_OUTPUT input) : SV_TARGET
 {
 	return textures[0].Sample(samplers[0], input.texcoord);
 }

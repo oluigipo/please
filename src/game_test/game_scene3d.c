@@ -1,8 +1,8 @@
 struct G_Scene3DState
 {
-	RB_Handle rasterizer_state;
 	RB_Handle shader;
 	RB_Handle shader_ubuffer;
+	RB_Handle pipeline;
 	
 	RB_Handle tree_model_vbuffer;
 	RB_Handle tree_model_ibuffer;
@@ -68,8 +68,10 @@ static const char g_scene3d_gl_fs[] =
 "\n";
 
 uint8 typedef BYTE;
-#include <game_test_scene3d_vs.inc>
-#include <game_test_scene3d_ps.inc>
+#include <d3d11_gametest_scene3d_vs.inc>
+#include <d3d11_gametest_scene3d_ps.inc>
+#include <d3d11_gametest_scene3d_level91_vs.inc>
+#include <d3d11_gametest_scene3d_level91_ps.inc>
 
 static void
 G_Scene3DInit(void)
@@ -93,32 +95,41 @@ G_Scene3DInit(void)
 		.kind = RB_ResourceCommandKind_MakeShader,
 		.handle = &s->shader,
 		.shader = {
-			.d3d_vs40_blob = BufInit(g_scene3d_d3d_vs),
-			.d3d_ps40_blob = BufInit(g_scene3d_d3d_ps),
+			.d3d_vs40_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_vs),
+			.d3d_ps40_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_ps),
+			.d3d_vs40level91_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_level91_vs),
+			.d3d_ps40level91_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_level91_ps),
 			.gl_vs_src = StrInit(g_scene3d_gl_vs),
 			.gl_fs_src = StrInit(g_scene3d_gl_fs),
+		},
+	});
+	
+	last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
+		.kind = RB_ResourceCommandKind_MakePipeline,
+		.handle = &s->pipeline,
+		.pipeline = {
+			.cull_mode = RB_CullMode_Back,
+			.flag_depth_test = true,
 			
+			.shader = &s->shader,
 			.input_layout = {
 				[0] = {
 					.kind = RB_LayoutDescKind_Vec3,
 					.offset = 0,
 					.divisor = 0,
 					.vbuffer_index = 0,
-					.gl_location = 0,
 				},
 				[1] = {
 					.kind = RB_LayoutDescKind_Vec2,
 					.offset = 0,
 					.divisor = 0,
 					.vbuffer_index = 1,
-					.gl_location = 1,
 				},
 				[2] = {
 					.kind = RB_LayoutDescKind_Vec3,
 					.offset = 0,
 					.divisor = 0,
 					.vbuffer_index = 2,
-					.gl_location = 2,
 				},
 			},
 		},
@@ -131,15 +142,6 @@ G_Scene3DInit(void)
 		.buffer = {
 			.memory = NULL,
 			.size = sizeof(G_Scene3DUBuffer),
-		},
-	});
-	
-	last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_MakeRasterizerState,
-		.handle = &s->rasterizer_state,
-		.rasterizer = {
-			.cull_mode = RB_CullMode_Back,
-			.flag_depth_test = true,
 		},
 	});
 	
@@ -318,12 +320,12 @@ G_Scene3DUpdateAndRender(void)
 		RB_DrawCommand* last = NULL;
 		
 		first = last = Arena_PushStructInit(engine->frame_arena, RB_DrawCommand, {
-			.kind = RB_DrawCommandKind_ApplyRasterizerState,
-			.apply = { &s->rasterizer_state },
+			.kind = RB_DrawCommandKind_ApplyPipeline,
+			.apply = { &s->pipeline },
 		});
 		
 		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_DrawCommand, {
-			.kind = RB_DrawCommandKind_DrawInstanced,
+			.kind = RB_DrawCommandKind_DrawIndexed,
 			.resources_cmd = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
 				.kind = RB_ResourceCommandKind_UpdateUniformBuffer,
 				.handle = &s->shader_ubuffer,
@@ -334,7 +336,6 @@ G_Scene3DUpdateAndRender(void)
 			}),
 			
 			.draw_instanced = {
-				.shader = &s->shader,
 				.ibuffer = &s->tree_model_ibuffer,
 				.ubuffer = &s->shader_ubuffer,
 				.vbuffers = { &s->tree_model_vbuffer, &s->tree_model_vbuffer, &s->tree_model_vbuffer },
@@ -350,7 +351,6 @@ G_Scene3DUpdateAndRender(void)
 				},
 				
 				.index_count = s->tree_model_index_count,
-				.instance_count = 1,
 				
 				.textures = {
 					&s->tree_model_diffuse_texture,

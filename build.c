@@ -80,9 +80,12 @@ static struct Build_Executable g_executables[] = {
 		.is_graphic_program = true,
 		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, NULL },
 		.shaders = (struct Build_Shader[]) {
-			{ "game_test/shader_scene3d.hlsl", "game_test_scene3d", "scene3d_d3d_vs", "scene3d_d3d_ps", "4_0" },
-			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0", "g_render_" },
-			{ "engine_shader_quad.hlsl", "d3d11_shader_quad_level91", "D3d11Shader_QuadVertex", "D3d11Shader_QuadPixel", "4_0_level_9_1", "g_render_" },
+			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "Vertex", "Pixel", "4_0", "g_render_" },
+			{ "engine_shader_quad.hlsl", "d3d11_shader_quad_level91", "Vertex", "Pixel", "4_0_level_9_1", "g_render_" },
+			
+			{ "game_test/shader_scene3d.hlsl", "d3d11_gametest_scene3d", "Vertex", "Pixel", "4_0", "g_scene3d_" },
+			{ "game_test/shader_scene3d.hlsl", "d3d11_gametest_scene3d_level91", "Vertex", "Pixel", "4_0_level_9_1", "g_scene3d_" },
+			
 			{ NULL },
 		},
 	},

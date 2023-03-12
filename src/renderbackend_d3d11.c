@@ -177,15 +177,16 @@ RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_9_2)
 	{
-		caps.index32 = true;
-		caps.separate_alpha_blend = true;
+		caps.has_32bit_index = true;
+		caps.has_separate_alpha_blend = true;
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_9_3)
 	{
 		caps.max_texture_size = 4096;
 		caps.max_render_target_textures = 4;
-		caps.instancing = true;
+		caps.has_instancing = true;
+		caps.has_16bit_float = true;
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_10_0)
@@ -204,7 +205,7 @@ RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
 	{
 		caps.max_texture_size = 16384;
 		caps.max_render_target_textures = 8;
-		caps.compute_shaders = true;
+		caps.has_compute_shaders = true;
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_11_1)
@@ -402,10 +403,16 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 						{
 							DXGI_FORMAT format;
 							
-							if (0) case RB_LayoutDescKind_Float: format = DXGI_FORMAT_R32_FLOAT;
+							if (0) case RB_LayoutDescKind_Scalar: format = DXGI_FORMAT_R32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec2: format = DXGI_FORMAT_R32G32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec3: format = DXGI_FORMAT_R32G32B32_FLOAT;
 							if (0) case RB_LayoutDescKind_Vec4: format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+							if (0) case RB_LayoutDescKind_Vec2I16Norm: format = DXGI_FORMAT_R16G16_SNORM;
+							if (0) case RB_LayoutDescKind_Vec2I16: format = DXGI_FORMAT_R16G16_SINT;
+							if (0) case RB_LayoutDescKind_Vec4I16Norm: format = DXGI_FORMAT_R16G16B16A16_SNORM;
+							if (0) case RB_LayoutDescKind_Vec4I16: format = DXGI_FORMAT_R16G16B16A16_SINT;
+							if (0) case RB_LayoutDescKind_Vec4U8Norm: format = DXGI_FORMAT_R8G8B8A8_UNORM;
+							if (0) case RB_LayoutDescKind_Vec4U8: format = DXGI_FORMAT_R8G8B8A8_UINT;
 							
 							D3D11_INPUT_ELEMENT_DESC element_desc = {
 								.SemanticName = "VINPUT",
@@ -798,6 +805,8 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				if (0) case RB_DrawCommandKind_DrawIndexed: instanced = false;
 				if (0) case RB_DrawCommandKind_DrawInstanced: instanced = true;
 				
+				int32 base_vertex = cmd->draw_instanced.base_vertex;
+				uint32 base_index = cmd->draw_instanced.base_index;
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
@@ -869,9 +878,9 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				ID3D11DeviceContext_PSSetShaderResources(D3d11.context, 0, sampler_count, shader_resources);
 				
 				if (instanced)
-					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, 0, 0, 0);
+					ID3D11DeviceContext_DrawIndexedInstanced(D3d11.context, index_count, instance_count, base_index, base_vertex, 0);
 				else
-					ID3D11DeviceContext_DrawIndexed(D3d11.context, index_count, 0, 0);
+					ID3D11DeviceContext_DrawIndexed(D3d11.context, index_count, base_index, base_vertex);
 			} break;
 		}
 	}

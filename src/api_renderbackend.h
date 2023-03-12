@@ -31,10 +31,11 @@ struct RB_Capabilities
 	int32 max_render_target_textures;
 	int32 max_textures_per_drawcall;
 	
-	bool instancing;
-	bool index32;
-	bool separate_alpha_blend;
-	bool compute_shaders;
+	bool has_instancing : 1;
+	bool has_32bit_index : 1;
+	bool has_separate_alpha_blend : 1;
+	bool has_compute_shaders : 1;
+	bool has_16bit_float : 1;
 }
 typedef RB_Capabilities;
 
@@ -47,14 +48,20 @@ enum RB_LayoutDescKind
 {
 	RB_LayoutDescKind_Null = 0,
 	
-	// TODO(ljre): Add normalized int formats
-	RB_LayoutDescKind_Float,
+	RB_LayoutDescKind_Scalar,
 	RB_LayoutDescKind_Vec2,
 	RB_LayoutDescKind_Vec3,
 	RB_LayoutDescKind_Vec4,
 	RB_LayoutDescKind_Mat2,
 	RB_LayoutDescKind_Mat3,
 	RB_LayoutDescKind_Mat4,
+	
+	RB_LayoutDescKind_Vec2I16Norm,
+	RB_LayoutDescKind_Vec2I16,
+	RB_LayoutDescKind_Vec4I16Norm,
+	RB_LayoutDescKind_Vec4I16,
+	RB_LayoutDescKind_Vec4U8Norm,
+	RB_LayoutDescKind_Vec4U8,
 }
 typedef RB_LayoutDescKind;
 
@@ -261,14 +268,17 @@ struct RB_DrawCommand
 		{
 			RB_Handle* ibuffer;
 			RB_Handle* ubuffer;
+			RB_Handle* textures[RB_Limits_MaxTexturesPerDrawCall];
 			RB_Handle* vbuffers[RB_Limits_MaxVertexBuffersPerDrawCall];
 			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
 			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
 			
+			int32 base_vertex;
+			uint32 base_index;
 			uint32 index_count;
-			uint32 instance_count;
 			
-			RB_Handle* textures[RB_Limits_MaxTexturesPerDrawCall];
+			// used if on 'RB_DrawCommandKind_DrawInstanced'.
+			uint32 instance_count;
 		}
 		draw_instanced;
 	};

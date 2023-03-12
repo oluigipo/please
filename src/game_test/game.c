@@ -48,7 +48,7 @@ struct G_GlobalData
 };
 
 #include "game_snake.c"
-//#include "game_scene3d.c"
+#include "game_scene3d.c"
 #include "game_stress.c"
 
 //~ NOTE(ljre): Main menu implementation
@@ -184,7 +184,7 @@ G_UpdateAndRender(void)
 		{
 			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
-			//case G_GlobalState_Scene3D: G_Scene3DInit(); break;
+			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
 			case G_GlobalState_Stress: G_StressInit(); break;
 		}
 		
@@ -281,12 +281,21 @@ G_UpdateAndRender(void)
 					
 					UDebugUI_PushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
 					UDebugUI_PushTextF(&debugui, "shader_type: %s", shader_type);
-					UDebugUI_PushTextF(&debugui, "max_texture_size: %i", caps.max_texture_size);
-					UDebugUI_PushTextF(&debugui, "max_render_target_textures: %i", caps.max_render_target_textures);
-					UDebugUI_PushTextF(&debugui, "instancing: %s", caps.instancing ? "TRUE" : "false");
-					UDebugUI_PushTextF(&debugui, "index32: %s", caps.index32 ? "TRUE" : "false");
-					UDebugUI_PushTextF(&debugui, "separate_alpha_blend: %s", caps.separate_alpha_blend ? "TRUE" : "false");
-					UDebugUI_PushTextF(&debugui, "compute_shaders: %s", caps.compute_shaders ? "TRUE" : "false");
+					
+#define _CapInt(Field) UDebugUI_PushTextF(&debugui, #Field ": %i", caps.Field)
+#define _CapBool(Field) if (caps.Field) UDebugUI_PushTextF(&debugui, "Supported: " #Field)
+					
+					_CapInt(max_texture_size);
+					_CapInt(max_render_target_textures);
+					_CapInt(max_textures_per_drawcall);
+					_CapBool(has_instancing);
+					_CapBool(has_32bit_index);
+					_CapBool(has_separate_alpha_blend);
+					_CapBool(has_compute_shaders);
+					_CapBool(has_16bit_float);
+					
+#undef _CapInt
+#undef _CapBool
 					
 					UDebugUI_PopFoldable(&debugui);
 				}
@@ -338,7 +347,7 @@ G_UpdateAndRender(void)
 		} break;
 		
 		case G_GlobalState_Snake: G_SnakeUpdateAndRender(); break;
-		//case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
+		case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
 		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	

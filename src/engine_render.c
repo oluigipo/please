@@ -108,6 +108,14 @@ static const char g_render_gl_quadfshader[] =
 "}\n"
 "\n";
 
+struct RectVertex
+{
+	float32 pos[2];
+	int16 uv[2];
+	int16 tex[2];
+	uint8 color[4];
+};
+
 static void
 E_AppendDrawCmd_(RB_DrawCommand* first, RB_DrawCommand* last)
 {
