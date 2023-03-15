@@ -994,7 +994,7 @@ OS_LoadGameLibrary(void)
 #endif //CONFIG_ENABLE_HOT
 
 #if 1
-static_assert(sizeof(OS_RWLock) == sizeof(SRWLOCK));
+static_assert(sizeof(OS_RWLock) == sizeof(SRWLOCK), "we want to just reinterpret_cast OS_RWLock to win32's SRWLOCK");
 
 API void
 OS_InitRWLock(OS_RWLock* lock)

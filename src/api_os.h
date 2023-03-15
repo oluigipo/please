@@ -66,7 +66,7 @@ struct OS_ButtonState
 }
 typedef OS_ButtonState;
 
-static_assert(sizeof(OS_ButtonState) == 1);
+static_assert(sizeof(OS_ButtonState) == 1, "bitfield didn't work?");
 
 // TODO(ljre): Properly support buffered sequence of inputs.
 enum OS_KeyboardKey

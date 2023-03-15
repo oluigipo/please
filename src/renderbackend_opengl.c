@@ -506,7 +506,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					
 					for (intsize i = 0; i < ArrayLength(samplers_locations); ++i)
 					{
-						static_assert(ArrayLength(samplers_locations) < 10);
+						static_assert(ArrayLength(samplers_locations) < 10, "this code needs to be updated if we ever use more than 10 textures");
 						char name[] = "uTexture[N]";
 						name[sizeof(name)-3] = (char)('0' + i);
 						

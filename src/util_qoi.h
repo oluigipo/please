@@ -39,7 +39,7 @@ UQoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int
 		uint32 value;
 	};
 	
-	static_assert(sizeof(union QoiColor) == sizeof(uint32));
+	static_assert(sizeof(union QoiColor) == sizeof(uint32), "union didn't work?");
 	
 	//- NOTE(ljre): Validate header.
 	if (size < 14 + 8)

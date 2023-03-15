@@ -824,7 +824,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 				INT16_MAX, INT16_MAX,
 			};
 			
-			static_assert(sizeof(base_vertices) == 16);
+			static_assert(sizeof(base_vertices) == 16, "making sure we can copy a whole vertex at a time");
 			
 			for (intsize i = 0; i < batch->count; ++i)
 				Mem_CopyX16(&new_vertices[i * 8], &base_vertices[0]);

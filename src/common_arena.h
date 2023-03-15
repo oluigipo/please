@@ -87,7 +87,7 @@ externC_ int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long ty
 #   define Arena_DEFAULT_ALIGNMENT 16
 #endif
 
-static_assert(Arena_DEFAULT_ALIGNMENT != 0 && IsPowerOf2(Arena_DEFAULT_ALIGNMENT));
+static_assert(Arena_DEFAULT_ALIGNMENT != 0 && IsPowerOf2(Arena_DEFAULT_ALIGNMENT), "Default Arena alignment should always be non-zero and a power of two");
 
 static Arena*
 Arena_Create(uintsize reserved, uintsize page_size)

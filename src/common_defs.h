@@ -66,14 +66,11 @@ _Pragma("GCC diagnostic pop")
 
 #ifdef __cplusplus
 #   define restrict
-//      NOTE(ljre): ugh
-#   define static_assert_(a,b,...) static_assert(a,b)
-#   define static_assert(...) static_assert_(__VA_ARGS__, "static_assert",)
 #   define externC_ extern "C"
 #else
-#   define alignas(x) _Alignas(x)
-#   define alignof(x) _Alignof(x)
-#   define static_assert(...) _Static_assert(__VA_ARGS__, "static_assert")
+#   define alignas _Alignas
+#   define alignof _Alignof
+#   define static_assert _Static_assert
 #   ifdef _MSC_VER
 #       define thread_local __declspec(thread)
 #   else
