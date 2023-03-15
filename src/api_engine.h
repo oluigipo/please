@@ -6,7 +6,7 @@
 #include "api_renderbackend.h"
 
 DisableWarnings();
-// NOTE(ljre): CGLM crashes we're building with AVX or AVX2 enabled because alignment.
+// NOTE(ljre): CGLM crashes when we're building with AVX or AVX2 enabled because alignment.
 #pragma push_macro("__AVX__")
 #pragma push_macro("__AVX2__")
 #undef __AVX__
