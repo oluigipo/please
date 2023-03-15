@@ -1,5 +1,5 @@
 # please
-made to be simple, easy to build, and mainly to learn.
+made to be simple, easy to build, and mainly to learn. basically my experimentation playground.
 
 ## License (Public Domain)
 Everyone is free to use my code to do whatever they want.
@@ -15,10 +15,10 @@ Run `build --help` for help.
 
 ### tools required to build:
 * Clang or MSVC: C & C++ Compiler;
-* `fxc`: HLSL compiler;
 
 ### optional tools:
 * `llvm-rc` or `rc`: Resource (`.rc`) files compiler. Needed if passing the `-rc` flag;
+* `fxc`: HLSL compiler. Needed if you change any of the shaders;
 
 ## Folder Structure
 * `build`: The default build directory. It is automatically generated;
@@ -29,7 +29,7 @@ Run `build --help` for help.
 * `src/gamepad_db_gen`: A simple tool to parse SDL's `gamecontrollerdb.txt` and generate a `gamepad_map_database.inc`;
 
 ## APIs Used
-* Graphics: Direct3D 11, OpenGL 3.3, and Direct3D 9c;
+* Graphics: OpenGL 3.3, Direct3D 11 (FT 9_1 to 11_0);
 * Gamepad Input: DirectInput, XInput;
 * Audio: WASAPI, ALSA;
 * System: Win32, Linux (X11);
