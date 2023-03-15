@@ -156,11 +156,11 @@ E_InitRender_(void)
 		OS_DebugLog("[RB] backend: %S\n[RB] driver renderer: %S\n[RB] driver vendor: %S\n[RB] driver version: %S\n", cap.backend_api, cap.driver_renderer, cap.driver_vendor, cap.driver_version);
 	}
 	
-	float32 quadvbuf[] = {
-		0.0f, 0.0f,
-		0.0f, 1.0f,
-		1.0f, 0.0f,
-		1.0f, 1.0f,
+	int16 quadvbuf[] = {
+		0, 0,
+		0, INT16_MAX,
+		INT16_MAX, 0,
+		INT16_MAX, INT16_MAX,
 	};
 	
 	uint16 quadibuf[] = {
@@ -288,7 +288,7 @@ E_InitRender_(void)
 				.shader = &g_render_quadshader,
 				.input_layout = {
 					[0] = {
-						.kind = RB_LayoutDescKind_Vec2,
+						.kind = RB_LayoutDescKind_Vec2I16Norm,
 						.offset = 0,
 						.divisor = 0,
 						.vbuffer_index = 0,
@@ -306,13 +306,13 @@ E_InitRender_(void)
 						.vbuffer_index = 1,
 					},
 					[3] = {
-						.kind = RB_LayoutDescKind_Vec2,
+						.kind = RB_LayoutDescKind_Vec2I16,
 						.offset = offsetof(E_RectBatchElem, tex_index),
 						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 					[4] = {
-						.kind = RB_LayoutDescKind_Vec4,
+						.kind = RB_LayoutDescKind_Vec4I16Norm,
 						.offset = offsetof(E_RectBatchElem, texcoords),
 						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
@@ -814,21 +814,20 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		{
 			g_render_uninstanced_cached_count = batch->count;
 			
-			float32* new_vertices = Arena_PushDirty(global_engine.frame_arena, sizeof(vec2) * 4 * batch->count);
+			int16* new_vertices = Arena_PushDirty(global_engine.frame_arena, sizeof(int16) * 8 * batch->count);
 			uint16* new_indices = Arena_PushDirty(global_engine.frame_arena, sizeof(uint16) * 6 * batch->count);
 			
-			vec4 base_vertices[2] = {
-				0.0f, 0.0f,
-				0.0f, 1.0f,
-				1.0f, 0.0f,
-				1.0f, 1.0f,
+			alignas(16) int16 base_vertices[8] = {
+				0, 0,
+				0, INT16_MAX,
+				INT16_MAX, 0,
+				INT16_MAX, INT16_MAX,
 			};
 			
+			static_assert(sizeof(base_vertices) == 16);
+			
 			for (intsize i = 0; i < batch->count; ++i)
-			{
-				glm_vec4_copy(base_vertices[0], &new_vertices[i*8 + 0]);
-				glm_vec4_copy(base_vertices[1], &new_vertices[i*8 + 4]);
-			}
+				Mem_CopyX16(&new_vertices[i * 8], &base_vertices[0]);
 			
 			for (intsize i = 0; i < batch->count; ++i)
 			{
@@ -845,7 +844,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 				.handle = &g_render_quadvbuf,
 				.buffer = {
 					.memory = new_vertices,
-					.size = batch->count * sizeof(vec2) * 4,
+					.size = batch->count * sizeof(int16) * 8,
 				},
 			});
 			
@@ -889,7 +888,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 			.ibuffer = &g_render_quadibuf,
 			.ubuffer = &g_render_quadubuf,
 			.vbuffers = { &g_render_quadvbuf, &g_render_quadelemsbuf, },
-			.vbuffer_strides = { sizeof(vec2), sizeof(E_RectBatchElem), },
+			.vbuffer_strides = { sizeof(int16[2]), sizeof(E_RectBatchElem), },
 			.index_count = index_count,
 			.instance_count = instance_count,
 			.textures = {
@@ -931,7 +930,6 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	
 	batch->textures[int_texindex] = &font->texture;
 	
-	const float32 texindex = (float32)int_texindex;
 	const float32 begin_x = pos[0];
 	const float32 begin_y = pos[1];
 	const float32 scale_x = font->char_scale * scale[0];
@@ -993,13 +991,13 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 				[0][0] = (float32)glyph->width * scale[0],
 				[1][1] = (float32)glyph->height * scale[1],
 			},
-			.tex_index = texindex,
+			.tex_index = (int16)int_texindex,
 			.tex_kind = 4,
 			.texcoords = {
-				(float32)glyph->x * inv_bitmap_size,
-				(float32)glyph->y * inv_bitmap_size,
-				(float32)glyph->width * inv_bitmap_size,
-				(float32)glyph->height * inv_bitmap_size,
+				(int16)((float32)glyph->x * inv_bitmap_size * INT16_MAX),
+				(int16)((float32)glyph->y * inv_bitmap_size * INT16_MAX),
+				(int16)((float32)glyph->width * inv_bitmap_size * INT16_MAX),
+				(int16)((float32)glyph->height * inv_bitmap_size * INT16_MAX),
 			},
 			.color = { color[0], color[1], color[2], color[3], },
 		});

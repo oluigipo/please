@@ -81,8 +81,8 @@ UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
 		},
 		.scaling[0][0] = dot_size - dot_pad*2,
 		.scaling[1][1] = dot_size - dot_pad*2,
-		.tex_kind = 3.0f,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.tex_kind = 3,
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { dot_color, dot_color, dot_color, 1.0f },
 	});
 	
@@ -156,7 +156,7 @@ UDebugUI_PushButton(UDebugUI_State* state, String text)
 		.tex_kind = 3,
 		.scaling[0][0] = width + padding,
 		.scaling[1][1] = height,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { color, color, color, 1.0f },
 	});
 	
@@ -186,7 +186,7 @@ UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3
 		.tex_kind = 3,
 		.scaling[0][0] = width,
 		.scaling[1][1] = height,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { 0.2f, 0.2f, 0.2f, 1.0f },
 	});
 	
@@ -197,7 +197,7 @@ UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3
 			.tex_kind = 3,
 			.scaling[0][0] = width * ts[i],
 			.scaling[1][1] = height,
-			.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+			.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 			.color = { colors[i][0], colors[i][1], colors[i][2], 1.0f },
 		});
 	}
@@ -364,12 +364,12 @@ UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap,
 		.tex_kind = 3,
 		.scaling[0][0] = bbox[2] - bbox[0],
 		.scaling[1][1] = bbox[3] - bbox[1],
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { 0.2f, 0.2f, 0.2f, 1.0f },
 	};
 	
 	if (*is_selected)
-		glm_vec4_copy(vec4(0.3f, 0.3f, 0.3f, 1.0f), elem.color);
+		glm_vec3_copy(vec3(0.3f, 0.3f, 0.3f), elem.color);
 	
 	E_PushRect(state->batch, &elem);
 	E_PushText(state->batch, state->font, text, vec2(bbox[0] + padding, bbox[1] + padding), state->scale, GLM_VEC4_ONE);
@@ -388,7 +388,7 @@ UDebugUI_End(UDebugUI_State* state)
 		.tex_kind = 0,
 		.scaling[0][0] = state->max_width + 4.0f,
 		.scaling[1][1] = state->current_pos[1] - state->start_pos[1] + 4.0f,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { 0.05f, 0.05f, 0.05f, 1.0f },
 	};
 	

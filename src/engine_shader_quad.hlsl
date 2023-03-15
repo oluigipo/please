@@ -3,14 +3,15 @@ struct VS_INPUT
 	float2   pos : VINPUT0;
 	float2   elemPos : VINPUT1;
 	float2x2 elemScaling : VINPUT2;
-	float2   elemTexIndex : VINPUT4;
+	int2     elemTexIndex : VINPUT4;
 	float4   elemTexcoords : VINPUT5;
 	float4   elemColor : VINPUT6;
 };
 
 struct VS_OUTPUT
 {
-	float4 texcoords : TEXCOORD0;
+	float2 texcoords : TEXCOORD0;
+	float2 texindex : TEXCOORD3;
 	float4 color : COLOR0;
 	float4 position : SV_POSITION;
 	float2 rawpos : TEXCOORD1;
@@ -33,7 +34,7 @@ VS_OUTPUT Vertex(VS_INPUT input)
 	output.position = mul(uView, float4(pos, 0.0, 1.0));
 	output.color = input.elemColor;
 	output.texcoords.xy = input.elemTexcoords.xy + input.pos * input.elemTexcoords.zw;
-	output.texcoords.zw = input.elemTexIndex;
+	output.texindex = float2(input.elemTexIndex);
 	output.rawpos = input.pos;
 	output.rawscale.xy = float2(length(input.elemScaling._m00_m10), length(input.elemScaling._m01_m11));
 	output.rawscale.zw = input.elemTexcoords.zw;
@@ -50,8 +51,8 @@ float4 Pixel(VS_OUTPUT input) : SV_TARGET
 	float2 uv = input.texcoords.xy;
 	float2 texsize;
 	float2 centeredpos = (input.rawpos - 0.5) * 2.0;
-	int uindex = abs(int(input.texcoords.z));
-	int uswizzle = abs(int(input.texcoords.w));
+	int uindex = abs(int(input.texindex.x));
+	int uswizzle = abs(int(input.texindex.y));
 	
 #ifndef PROFILE_4_0_level_9_1
 	float2 uvfwidth = fwidth(uv);

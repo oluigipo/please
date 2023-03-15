@@ -147,7 +147,7 @@ G_SnakeUpdateAndRender(void)
 		},
 		.scaling[0][0] = s->cell_width * s->grid_width,
 		.scaling[1][1] = s->cell_height * s->grid_height,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { [3] = 0.3f },
 	});
 	
@@ -162,7 +162,7 @@ G_SnakeUpdateAndRender(void)
 		.tex_kind = 3,
 		.scaling[0][0] = s->cell_width - 2,
 		.scaling[1][1] = s->cell_height - 2,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { col1[0], col1[1], col1[2], 1.0f },
 	});
 	
@@ -179,7 +179,7 @@ G_SnakeUpdateAndRender(void)
 			.tex_kind = 3,
 			.scaling[0][0] = s->cell_width  - 4*glm_lerp(1.0f, 1.5f, scale2),
 			.scaling[1][1] = s->cell_height - 4*glm_lerp(1.0f, 1.5f, scale2),
-			.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+			.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 			.color = { [3] = 1.0f },
 		};
 		
@@ -195,7 +195,7 @@ G_SnakeUpdateAndRender(void)
 		.tex_kind = 3,
 		.scaling[0][0] = s->cell_width - 4,
 		.scaling[1][1] = s->cell_height - 4,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { 0.9f, 0.3f, 0.3f, 1.0f },
 	});
 	

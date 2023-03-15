@@ -182,15 +182,14 @@ typedef E_FontDesc;
 API bool E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex);
 API bool E_MakeFont(const E_FontDesc* desc, E_Font* out_font);
 
-struct E_RectBatchElem
+struct E_RectBatchElem     // struct size
 {
-	vec2 pos;
-	mat2 scaling;
-	float32 tex_index;
-	float32 tex_kind;
-	
-	vec4 texcoords;
-	vec4 color;
+	float32 pos[2];
+	float32 scaling[2][2];
+	float32 color[4];
+	int16 texcoords[4];
+	int16 tex_index;
+	int16 tex_kind;
 }
 typedef E_RectBatchElem;
 

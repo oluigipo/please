@@ -21,6 +21,8 @@ static inline uint64 Mem_ByteSwap64(uint64 x);
 static inline uint32 Mem_ByteSwap32(uint32 x);
 static inline uint16 Mem_ByteSwap16(uint16 x);
 
+static inline void Mem_CopyX16(void* restrict dst, const void* restrict src);
+
 static inline uintsize Mem_Strlen(const char* restrict cstr);
 static inline uintsize Mem_Strnlen(const char* restrict cstr, uintsize limit);
 static inline int32 Mem_Strcmp(const char* left, const char* right);
@@ -278,6 +280,10 @@ Mem_ZeroSafe(void* restrict dst, uintsize size)
 #if defined(_MSC_VER) && !defined(__clang__)
 #   pragma optimize("", on)
 #endif
+
+static inline void
+Mem_CopyX16(void* restrict dst, const void* restrict src)
+{ _mm_store_ps((float32*)dst, _mm_load_ps((const float32*)src)); }
 
 //- CRT memcpy, memmove, memset & memcmp functions
 #ifdef COMMON_DONT_USE_CRT

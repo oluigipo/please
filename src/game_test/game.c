@@ -9,7 +9,7 @@
 IncludeBinary(g_music_ogg, "music.ogg");
 IncludeBinary(g_luigi_ogg, "luigi.ogg");
 //IncludeBinary(g_font_ttf, "C:/Windows/Fonts/Arial.ttf");
-//IncludeBinary(g_corset_model, "assets/corset.glb");
+IncludeBinary(g_corset_model, "assets/corset.glb");
 #endif
 
 static G_GlobalData* game;
@@ -150,7 +150,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 		.scaling[0][0] = button_width,
 		.scaling[1][1] = button_height,
 		.tex_kind = 3.0f,
-		.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { color[0], color[1], color[2], color[3] },
 	});
 	
@@ -229,9 +229,9 @@ G_UpdateAndRender(void)
 						{ size*cosf(angle), size*-sinf(angle) },
 						{ size*sinf(angle), size* cosf(angle) },
 					},
-					.tex_index = 0.0f,
-					.tex_kind = 3.0f,
-					.texcoords = { 0.0f, 0.0f, 1.0f, 1.0f },
+					.tex_index = 0,
+					.tex_kind = 3,
+					.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 					.color = { color[0], color[1], color[2], 1.0f },
 				});
 			}
