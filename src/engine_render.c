@@ -14,6 +14,7 @@ static RB_Handle g_render_quadshader;
 static RB_Handle g_render_quadpipeline;
 static RB_Handle g_render_quadelemsbuf;
 static RB_Capabilities g_render_caps;
+static intsize g_render_uninstanced_cached_count = 1;
 
 static const char g_render_gl_quadvshader[] =
 "#version 330 core\n"
@@ -108,14 +109,6 @@ static const char g_render_gl_quadfshader[] =
 "}\n"
 "\n";
 
-struct RectVertex
-{
-	float32 pos[2];
-	int16 uv[2];
-	int16 tex[2];
-	uint8 color[4];
-};
-
 static void
 E_AppendDrawCmd_(RB_DrawCommand* first, RB_DrawCommand* last)
 {
@@ -190,6 +183,7 @@ E_InitRender_(void)
 		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeVertexBuffer,
 			.handle = &g_render_quadvbuf,
+			.flag_dynamic = !g_render_caps.has_instancing,
 			.buffer = {
 				.memory = quadvbuf,
 				.size = sizeof(quadvbuf),
@@ -203,6 +197,7 @@ E_InitRender_(void)
 		cmd = Arena_PushStructInit(arena, RB_ResourceCommand, {
 			.kind = RB_ResourceCommandKind_MakeIndexBuffer,
 			.handle = &g_render_quadibuf,
+			.flag_dynamic = !g_render_caps.has_instancing,
 			.buffer = {
 				.memory = quadibuf,
 				.size = sizeof(quadibuf),
@@ -301,31 +296,31 @@ E_InitRender_(void)
 					[1] = {
 						.kind = RB_LayoutDescKind_Vec2,
 						.offset = offsetof(E_RectBatchElem, pos),
-						.divisor = 1,
+						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 					[2] = {
 						.kind = RB_LayoutDescKind_Mat2,
 						.offset = offsetof(E_RectBatchElem, scaling),
-						.divisor = 1,
+						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 					[3] = {
 						.kind = RB_LayoutDescKind_Vec2,
 						.offset = offsetof(E_RectBatchElem, tex_index),
-						.divisor = 1,
+						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 					[4] = {
 						.kind = RB_LayoutDescKind_Vec4,
 						.offset = offsetof(E_RectBatchElem, texcoords),
-						.divisor = 1,
+						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 					[5] = {
 						.kind = RB_LayoutDescKind_Vec4,
 						.offset = offsetof(E_RectBatchElem, color),
-						.divisor = 1,
+						.divisor = g_render_caps.has_instancing,
 						.vbuffer_index = 1,
 					},
 				},
@@ -773,15 +768,6 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	void* uniform_buffer = Arena_PushMemoryAligned(global_engine.frame_arena, &ubuffer, sizeof(ubuffer), 16);
 	
 	RB_ResourceCommand* rc_cmd = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
-		.handle = &g_render_quadelemsbuf,
-		.buffer = {
-			.memory = batch->elements,
-			.size = batch->count * sizeof(batch->elements[0]),
-		},
-	});
-	
-	rc_cmd->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
 		.kind = RB_ResourceCommandKind_UpdateUniformBuffer,
 		.handle = &g_render_quadubuf,
 		.buffer = {
@@ -790,21 +776,122 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		},
 	});
 	
+	RB_ResourceCommand* rc_cmd_last = rc_cmd;
+	
+	if (g_render_caps.has_instancing)
+	{
+		rc_cmd_last = rc_cmd_last->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
+			.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
+			.handle = &g_render_quadelemsbuf,
+			.buffer = {
+				.memory = batch->elements,
+				.size = batch->count * sizeof(batch->elements[0]),
+			},
+		});
+	}
+	else
+	{
+		E_RectBatchElem* elements = Arena_PushDirty(global_engine.frame_arena, sizeof(E_RectBatchElem) * batch->count * 4);
+		
+		for (intsize i = 0; i < batch->count; ++i)
+		{
+			elements[i*4 + 0] = batch->elements[i];
+			elements[i*4 + 1] = batch->elements[i];
+			elements[i*4 + 2] = batch->elements[i];
+			elements[i*4 + 3] = batch->elements[i];
+		}
+		
+		rc_cmd_last = rc_cmd_last->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
+			.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
+			.handle = &g_render_quadelemsbuf,
+			.buffer = {
+				.memory = elements,
+				.size = batch->count * sizeof(batch->elements[0]) * 4,
+			},
+		});
+		
+		if (g_render_uninstanced_cached_count < batch->count)
+		{
+			g_render_uninstanced_cached_count = batch->count;
+			
+			float32* new_vertices = Arena_PushDirty(global_engine.frame_arena, sizeof(vec2) * 4 * batch->count);
+			uint16* new_indices = Arena_PushDirty(global_engine.frame_arena, sizeof(uint16) * 6 * batch->count);
+			
+			vec4 base_vertices[2] = {
+				0.0f, 0.0f,
+				0.0f, 1.0f,
+				1.0f, 0.0f,
+				1.0f, 1.0f,
+			};
+			
+			for (intsize i = 0; i < batch->count; ++i)
+			{
+				glm_vec4_copy(base_vertices[0], &new_vertices[i*8 + 0]);
+				glm_vec4_copy(base_vertices[1], &new_vertices[i*8 + 4]);
+			}
+			
+			for (intsize i = 0; i < batch->count; ++i)
+			{
+				new_indices[i*6 + 0] = (uint16)(i*4 + 0);
+				new_indices[i*6 + 1] = (uint16)(i*4 + 1);
+				new_indices[i*6 + 2] = (uint16)(i*4 + 2);
+				new_indices[i*6 + 3] = (uint16)(i*4 + 2);
+				new_indices[i*6 + 4] = (uint16)(i*4 + 1);
+				new_indices[i*6 + 5] = (uint16)(i*4 + 3);
+			}
+			
+			rc_cmd_last = rc_cmd_last->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
+				.kind = RB_ResourceCommandKind_UpdateVertexBuffer,
+				.handle = &g_render_quadvbuf,
+				.buffer = {
+					.memory = new_vertices,
+					.size = batch->count * sizeof(vec2) * 4,
+				},
+			});
+			
+			rc_cmd_last = rc_cmd_last->next = Arena_PushStructInit(global_engine.frame_arena, RB_ResourceCommand, {
+				.kind = RB_ResourceCommandKind_UpdateIndexBuffer,
+				.handle = &g_render_quadibuf,
+				.buffer = {
+					.memory = new_indices,
+					.size = batch->count * sizeof(uint16) * 6,
+				},
+			});
+		}
+	}
+	
 	RB_DrawCommand* cmd = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
 		.kind = RB_DrawCommandKind_ApplyPipeline,
 		.resources_cmd = rc_cmd,
 		.apply = { &g_render_quadpipeline },
 	});
 	
+	RB_DrawCommandKind command;
+	uint32 index_count;
+	uint32 instance_count;
+	
+	if (g_render_caps.has_instancing)
+	{
+		command = RB_DrawCommandKind_DrawInstanced;
+		index_count = 6;
+		instance_count = batch->count;
+	}
+	else
+	{
+		command = RB_DrawCommandKind_DrawIndexed;
+		index_count = batch->count * 6;
+		instance_count = 0;
+	}
+	
 	cmd->next = Arena_PushStructInit(global_engine.frame_arena, RB_DrawCommand, {
-		.kind = RB_DrawCommandKind_DrawInstanced,
+		.kind = command,
 		.draw_instanced = {
 			.ibuffer = &g_render_quadibuf,
 			.ubuffer = &g_render_quadubuf,
 			.vbuffers = { &g_render_quadvbuf, &g_render_quadelemsbuf, },
 			.vbuffer_strides = { sizeof(vec2), sizeof(E_RectBatchElem), },
-			.index_count = 6,
-			.instance_count = batch->count,
+			.index_count = index_count,
+			.instance_count = instance_count,
 			.textures = {
 				batch->textures[0] ? &batch->textures[0]->handle : &g_render_whitetex,
 				batch->textures[1] ? &batch->textures[1]->handle : &g_render_whitetex,

@@ -1074,9 +1074,7 @@ OS_InitSemaphore(OS_Semaphore* sem, int32 max_count)
 {
 	Trace();
 	
-	HANDLE handle = CreateSemaphoreA(NULL, 0, max_count, NULL);
-	SafeAssert(handle);
-	
+	HANDLE handle = CreateSemaphoreA(NULL, max_count, max_count, NULL);
 	sem->ptr = handle;
 }
 
@@ -1084,29 +1082,38 @@ API bool
 OS_WaitForSemaphore(OS_Semaphore* sem)
 {
 	//Trace();
-	SafeAssert(sem && sem->ptr);
+	Assert(sem);
 	
-	DWORD result = WaitForSingleObjectEx(sem->ptr, INFINITE, false);
-	return result == WAIT_OBJECT_0;
+	if (sem->ptr)
+	{
+		DWORD result = WaitForSingleObjectEx(sem->ptr, INFINITE, false);
+		return result == WAIT_OBJECT_0;
+	}
+	
+	return false;
 }
 
 API void
 OS_SignalSemaphore(OS_Semaphore* sem, int32 count)
 {
 	Trace();
-	SafeAssert(sem && sem->ptr);
+	Assert(sem);
 	
-	ReleaseSemaphore(sem->ptr, count, NULL);
+	if (sem->ptr)
+		ReleaseSemaphore(sem->ptr, count, NULL);
 }
 
 API void
 OS_DeinitSemaphore(OS_Semaphore* sem)
 {
 	Trace();
-	SafeAssert(sem && sem->ptr);
+	Assert(sem);
 	
-	CloseHandle(sem->ptr);
-	sem->ptr = NULL;
+	if (sem->ptr)
+	{
+		CloseHandle(sem->ptr);
+		sem->ptr = NULL;
+	}
 }
 
 API void
