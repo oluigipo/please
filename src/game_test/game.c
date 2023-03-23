@@ -1,9 +1,9 @@
 #include "api_engine.h"
 #include "api_steam.h"
+#include "api_debugtools.h"
 #include "util_random.h"
 #include "util_json.h"
 #include "util_gltf.h"
-#include "util_debugui.h"
 
 #ifdef CONFIG_ENABLE_EMBED
 IncludeBinary(g_music_ogg, "music.ogg");
@@ -247,25 +247,25 @@ G_UpdateAndRender(void)
 				engine->running = false;
 			
 			float32 scl = 0.5f;
-			UDebugUI_State debugui = UDebugUI_Begin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(scl, scl));
+			DBG_UIState debugui = DBG_UIBegin(engine, &batch, &game->font, vec2(50.0f, 50.0f), vec2(scl, scl));
 			
 			static bool unfolded = false;
-			if (UDebugUI_PushFoldable(&debugui, Str("Options"), &unfolded))
+			if (DBG_UIPushFoldable(&debugui, Str("Options"), &unfolded))
 			{
-				if (UDebugUI_PushButton(&debugui, Str("Stop music")))
+				if (DBG_UIPushButton(&debugui, Str("Stop music")))
 					E_StopAllSounds(&game->music);
-				if (UDebugUI_PushButton(&debugui, Str("luigi")))
+				if (DBG_UIPushButton(&debugui, Str("luigi")))
 					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
 				
 				static uint8 buffer[128] = "Click me!";
 				static intsize size = 9;
 				static bool selected = false;
 				
-				UDebugUI_PushTextF(&debugui, "Text Input:");
-				UDebugUI_PushTextField(&debugui, buffer, sizeof(buffer), &size, &selected, 200.0f);
+				DBG_UIPushTextF(&debugui, "Text Input:");
+				DBG_UIPushTextField(&debugui, buffer, sizeof(buffer), &size, &selected, 200.0f);
 				
 				static bool caps_unfolded = false;
-				if (UDebugUI_PushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))
+				if (DBG_UIPushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))
 				{
 					RB_Capabilities caps = { 0 };
 					RB_QueryCapabilities(&caps);
@@ -279,11 +279,11 @@ G_UpdateAndRender(void)
 						case RB_ShaderType_HlslLevel91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
 					}
 					
-					UDebugUI_PushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
-					UDebugUI_PushTextF(&debugui, "shader_type: %s", shader_type);
+					DBG_UIPushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
+					DBG_UIPushTextF(&debugui, "shader_type: %s", shader_type);
 					
-#define _CapInt(Field) UDebugUI_PushTextF(&debugui, #Field ": %i", caps.Field)
-#define _CapBool(Field) if (caps.Field) UDebugUI_PushTextF(&debugui, "Supported: " #Field)
+#define _CapInt(Field) DBG_UIPushTextF(&debugui, #Field ": %i", caps.Field)
+#define _CapBool(Field) if (caps.Field) DBG_UIPushTextF(&debugui, "Supported: " #Field)
 					
 					_CapInt(max_texture_size);
 					_CapInt(max_render_target_textures);
@@ -297,29 +297,29 @@ G_UpdateAndRender(void)
 #undef _CapInt
 #undef _CapBool
 					
-					UDebugUI_PopFoldable(&debugui);
+					DBG_UIPopFoldable(&debugui);
 				}
 				
 				static bool arenas_unfolded = false;
-				if (UDebugUI_PushFoldable(&debugui, Str("Arenas Info"), &arenas_unfolded))
+				if (DBG_UIPushFoldable(&debugui, Str("Arenas Info"), &arenas_unfolded))
 				{
-					UDebugUI_PushArenaInfo(&debugui, engine->persistent_arena, Str("Persistent"));
-					UDebugUI_PushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
-					UDebugUI_PushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
-					UDebugUI_PushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
+					DBG_UIPushArenaInfo(&debugui, engine->persistent_arena, Str("Persistent"));
+					DBG_UIPushArenaInfo(&debugui, engine->scratch_arena, Str("Scratch"));
+					DBG_UIPushArenaInfo(&debugui, engine->frame_arena, Str("Frame"));
+					DBG_UIPushArenaInfo(&debugui, engine->audio_thread_arena, Str("Audio Thread"));
 					
-					UDebugUI_PopFoldable(&debugui);
+					DBG_UIPopFoldable(&debugui);
 				}
 				
 				static bool audiodev_unfolded = false;
-				if (UDebugUI_PushFoldable(&debugui, Str("Audio Devices"), &audiodev_unfolded))
+				if (DBG_UIPushFoldable(&debugui, Str("Audio Devices"), &audiodev_unfolded))
 				{
-					UDebugUI_PushTextF(&debugui, "Current playing device ID: %u", engine->os->audio.current_device_id);
-					UDebugUI_PushTextF(&debugui, "Sample Rate: %i", engine->os->audio.mix_sample_rate);
-					UDebugUI_PushTextF(&debugui, "Channels: %i", engine->os->audio.mix_channels);
-					UDebugUI_PushTextF(&debugui, "Frame Pull Rate: %i", engine->os->audio.mix_frame_pull_rate);
-					UDebugUI_PushVerticalSpacing(&debugui, 24.0f);
-					UDebugUI_PushTextF(&debugui, "Devices:");
+					DBG_UIPushTextF(&debugui, "Current playing device ID: %u", engine->os->audio.current_device_id);
+					DBG_UIPushTextF(&debugui, "Sample Rate: %i", engine->os->audio.mix_sample_rate);
+					DBG_UIPushTextF(&debugui, "Channels: %i", engine->os->audio.mix_channels);
+					DBG_UIPushTextF(&debugui, "Frame Pull Rate: %i", engine->os->audio.mix_frame_pull_rate);
+					DBG_UIPushVerticalSpacing(&debugui, 24.0f);
+					DBG_UIPushTextF(&debugui, "Devices:");
 					
 					static bool devs_unfolded[32];
 					for (int32 i = 0; i < Min(engine->os->audio.device_count, ArrayLength(devs_unfolded)); ++i)
@@ -327,21 +327,21 @@ G_UpdateAndRender(void)
 						const OS_AudioDeviceInfo* dev = &engine->os->audio.devices[i];
 						String text = String_PrintfLocal(256, "ID %u", dev->id);
 						
-						if (UDebugUI_PushFoldable(&debugui, text, &devs_unfolded[i]))
+						if (DBG_UIPushFoldable(&debugui, text, &devs_unfolded[i]))
 						{
-							UDebugUI_PushTextF(&debugui, "Name: %S\nDescription: %S\nInterface: %S", dev->name, dev->description, dev->interface_name);
+							DBG_UIPushTextF(&debugui, "Name: %S\nDescription: %S\nInterface: %S", dev->name, dev->description, dev->interface_name);
 							
-							UDebugUI_PopFoldable(&debugui);
+							DBG_UIPopFoldable(&debugui);
 						}
 					}
 					
-					UDebugUI_PopFoldable(&debugui);
+					DBG_UIPopFoldable(&debugui);
 				}
 				
-				UDebugUI_PopFoldable(&debugui);
+				DBG_UIPopFoldable(&debugui);
 			}
 			
-			UDebugUI_End(&debugui);
+			DBG_UIEnd(&debugui);
 			
 			E_DrawRectBatch(&batch, NULL);
 		} break;

@@ -226,7 +226,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				
 				padding_char = '0';
 				
-				if (arg == INT_MIN)
+				if (arg == INT64_MIN || arg == INT32_MIN && intmin[1] == '2')
 				{
 					write_buf = intmin;
 					write_count = Mem_Strlen(intmin);
@@ -331,14 +331,19 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 					arg = "(null)";
 					len = 6;
 				}
-				else
-					len = Mem_Strlen(arg);
-				
-				if (trailling_padding >= 0)
+				else if (trailling_padding >= 0)
 				{
-					len = Min(len, trailling_padding);
+					const char* found = (const char*)Mem_FindByte(arg, 0, trailling_padding);
+					
+					if (found)
+						len = found - arg;
+					else
+						len = trailling_padding;
+					
 					trailling_padding = -1;
 				}
+				else
+					len = Mem_Strlen(arg);
 				
 				write_buf = arg;
 				write_count = len;
@@ -369,6 +374,8 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				uint32 length;
 				int32 decimal_pos;
 				
+				static_assert(sizeof(tmpbuf) > 64 + 32, "stbsp__real_to_str takes just the final 64 bytes of the buffer because we might need to add a prefix to the string");
+				
 				bool negative = String__stbsp__real_to_str((const char**)&start, &length, tmpbuf+sizeof(tmpbuf)-64, &decimal_pos, arg, trailling_padding);
 				
 				if (decimal_pos == String__STDSP_SPECIAL)
@@ -395,6 +402,8 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				{
 					start -= -decimal_pos + 2;
 					length += -decimal_pos + 2;
+					
+					SafeAssert(start >= tmpbuf);
 					
 					write_buf = start;
 					write_count = length;

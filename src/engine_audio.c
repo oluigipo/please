@@ -299,6 +299,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	}
 	
 	//- Cast samples to int16 with saturation.
+	Trace(); TraceName(Str("Conversion"));
 	int32 head = 0;
 	__m128 mul = _mm_set1_ps(INT16_MAX);
 	mul = _mm_mul_ps(mul, _mm_set1_ps(default_master_volume));

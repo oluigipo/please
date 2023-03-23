@@ -14,9 +14,7 @@ struct S_ScratchScope_
 	{ Arena_Restore(savepoint); }
 };
 
-void*
-operator new(size_t size, void* ptr)
-{ return ptr; }
+extern void* operator new(size_t size, void* ptr);
 
 DisableWarnings(); // NOTE(ljre): -Winvalid-offsetof
 struct S_Callbacks_

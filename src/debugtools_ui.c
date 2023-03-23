@@ -1,42 +1,7 @@
-#ifndef UTIL_DEBUGUI_H
-#define UTIL_DEBUGUI_H
-
-struct UDebugUI_State
+API DBG_UIState
+DBG_UIBegin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos, vec2 scale)
 {
-	E_GlobalData* engine;
-	E_RectBatch* batch;
-	E_Font* font;
-	E_RectBatchElem* deferred_background;
-	vec2 scale;
-	
-	vec2 start_pos;
-	vec2 current_pos;
-	
-	float32 xoffset;
-	float32 max_width;
-	float32 tab_size;
-	float32 elems_spacing;
-}
-typedef UDebugUI_State;
-
-static UDebugUI_State UDebugUI_Begin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos, vec2 scale);
-static bool UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded);
-static void UDebugUI_PopFoldable(UDebugUI_State* state);
-static void UDebugUI_PushTextF(UDebugUI_State* state, const char* fmt, ...);
-static bool UDebugUI_PushButton(UDebugUI_State* state, String text);
-static void UDebugUI_PushSlider(UDebugUI_State* state, float32 min, float32 max, float32* value);
-static void UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3* colors, int32 bar_count);
-static void UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String optional_name);
-static void UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing);
-static String UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap, intsize* buffer_size, bool* is_selected, float32 min_width);
-static void UDebugUI_End(UDebugUI_State* state);
-
-//~ Implementation
-
-static UDebugUI_State
-UDebugUI_Begin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos, vec2 scale)
-{
-	UDebugUI_State state = {
+	DBG_UIState state = {
 		.engine = engine,
 		.batch = batch,
 		.font = font,
@@ -54,8 +19,8 @@ UDebugUI_Begin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos,
 	return state;
 }
 
-static bool
-UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
+API bool
+DBG_UIPushFoldable(DBG_UIState* state, String text, bool* is_unfolded)
 {
 	const float32 dot_size = 32.0f * glm_min(state->scale[0], state->scale[1]);
 	const float32 dot_pad = 4.0f * glm_min(state->scale[0], state->scale[1]);
@@ -99,15 +64,15 @@ UDebugUI_PushFoldable(UDebugUI_State* state, String text, bool* is_unfolded)
 	return *is_unfolded;
 }
 
-static void
-UDebugUI_PopFoldable(UDebugUI_State* state)
+API void
+DBG_UIPopFoldable(DBG_UIState* state)
 {
 	state->xoffset -= state->tab_size;
 	state->current_pos[0] -= state->tab_size;
 }
 
-static void
-UDebugUI_PushTextF(UDebugUI_State* state, const char* fmt, ...)
+API void
+DBG_UIPushTextF(DBG_UIState* state, const char* fmt, ...)
 {
 	for Arena_TempScope(state->engine->scratch_arena)
 	{
@@ -125,8 +90,8 @@ UDebugUI_PushTextF(UDebugUI_State* state, const char* fmt, ...)
 	}
 }
 
-static bool
-UDebugUI_PushButton(UDebugUI_State* state, String text)
+API bool
+DBG_UIPushButton(DBG_UIState* state, String text)
 {
 	vec2 size = { 0 };
 	E_CalcTextSize(state->font, text, state->scale, &size);
@@ -167,14 +132,14 @@ UDebugUI_PushButton(UDebugUI_State* state, String text)
 	return result;
 }
 
-static void
-UDebugUI_PushSlider(UDebugUI_State* state, float32 min, float32 max, float32* value)
+API void
+DBG_UIPushSlider(DBG_UIState* state, float32 min, float32 max, float32* value)
 {
 	// TODO
 }
 
-static void
-UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3* colors, int32 bar_count)
+API void
+DBG_UIPushProgressBar(DBG_UIState* state, float32 width, float32* ts, vec3* colors, int32 bar_count)
 {
 	width *= state->scale[0];
 	const float32 height = 8.0f * state->scale[1];
@@ -205,8 +170,8 @@ UDebugUI_PushProgressBar(UDebugUI_State* state, float32 width, float32* ts, vec3
 	state->current_pos[1] += height + state->elems_spacing;
 }
 
-static char
-UDebugUI_ChooseMemoryMetric_(uintsize count, float32* out_flt)
+API char
+DBG_UIChooseMemoryMetric_(uintsize count, float32* out_flt)
 {
 	char ch = 'B';
 	intsize base = 1;
@@ -222,24 +187,24 @@ UDebugUI_ChooseMemoryMetric_(uintsize count, float32* out_flt)
 	return ch;
 }
 
-static void
-UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String name)
+API void
+DBG_UIPushArenaInfo(DBG_UIState* state, Arena* arena, String name)
 {
 	float32 f_offset, f_peak, f_commited, f_reserved;
 	
-	char me_offset = UDebugUI_ChooseMemoryMetric_(arena->offset, &f_offset);
-	char me_peak = UDebugUI_ChooseMemoryMetric_(arena->peak, &f_peak);
-	char me_commited = UDebugUI_ChooseMemoryMetric_(arena->commited, &f_commited);
-	char me_reserved = UDebugUI_ChooseMemoryMetric_(arena->reserved, &f_reserved);
+	char me_offset = DBG_UIChooseMemoryMetric_(arena->offset, &f_offset);
+	char me_peak = DBG_UIChooseMemoryMetric_(arena->peak, &f_peak);
+	char me_commited = DBG_UIChooseMemoryMetric_(arena->commited, &f_commited);
+	char me_reserved = DBG_UIChooseMemoryMetric_(arena->reserved, &f_reserved);
 	
-	UDebugUI_PushTextF(state, "Arena '%S':", name);
+	DBG_UIPushTextF(state, "Arena '%S':", name);
 	state->xoffset += state->tab_size;
 	state->current_pos[0] += state->tab_size;
 	
 	if (arena->page_size != 0 && arena->page_size != arena->reserved)
 	{
-		UDebugUI_PushTextF(state, "Offset: %.2f%c current, %.2f%c peak", f_offset, me_offset, f_peak, me_peak);
-		UDebugUI_PushProgressBar(state, 300.0f,
+		DBG_UIPushTextF(state, "Offset: %.2f%c current, %.2f%c peak", f_offset, me_offset, f_peak, me_peak);
+		DBG_UIPushProgressBar(state, 300.0f,
 		(float32[]) {
 				(float32)arena->peak / (float32)arena->commited,
 				(float32)arena->offset / (float32)arena->commited,
@@ -249,8 +214,8 @@ UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String name)
 				{ 0.1f, 0.8f, 0.1f },
 			}, 2);
 		
-		UDebugUI_PushTextF(state, "Virtual: %.2f%c commited, %.2f%c reserved", f_commited, me_commited, f_reserved, me_reserved);
-		UDebugUI_PushProgressBar(state, 300.0f,
+		DBG_UIPushTextF(state, "Virtual: %.2f%c commited, %.2f%c reserved", f_commited, me_commited, f_reserved, me_reserved);
+		DBG_UIPushProgressBar(state, 300.0f,
 		(float32[]) {
 				(float32)arena->commited / (float32)arena->reserved,
 			},
@@ -260,8 +225,8 @@ UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String name)
 	}
 	else
 	{
-		UDebugUI_PushTextF(state, "Offset: %.2f%c current, %.2f%c peak\nMax: %.2f%c", f_offset, me_offset, f_peak, me_peak, f_commited, me_commited);
-		UDebugUI_PushProgressBar(state, 300.0f,
+		DBG_UIPushTextF(state, "Offset: %.2f%c current, %.2f%c peak\nMax: %.2f%c", f_offset, me_offset, f_peak, me_peak, f_commited, me_commited);
+		DBG_UIPushProgressBar(state, 300.0f,
 		(float32[]) {
 				(float32)arena->peak / (float32)arena->commited,
 				(float32)arena->offset / (float32)arena->commited,
@@ -276,14 +241,14 @@ UDebugUI_PushArenaInfo(UDebugUI_State* state, Arena* arena, String name)
 	state->current_pos[0] -= state->tab_size;
 }
 
-static void
-UDebugUI_PushVerticalSpacing(UDebugUI_State* state, float32 spacing)
+API void
+DBG_UIPushVerticalSpacing(DBG_UIState* state, float32 spacing)
 {
 	state->current_pos[1] += spacing * state->scale[1];
 }
 
-static String
-UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap, intsize* buffer_size, bool* is_selected, float32 min_width)
+API String
+DBG_UIPushTextField(DBG_UIState* state, uint8* buffer, intsize buffer_cap, intsize* buffer_size, bool* is_selected, float32 min_width)
 {
 	String text = StrMake(*buffer_size, buffer);
 	vec2 text_size;
@@ -380,8 +345,8 @@ UDebugUI_PushTextField(UDebugUI_State* state, uint8* buffer, intsize buffer_cap,
 	return text;
 }
 
-static void
-UDebugUI_End(UDebugUI_State* state)
+API void
+DBG_UIEnd(DBG_UIState* state)
 {
 	*state->deferred_background = (E_RectBatchElem) {
 		.pos = { state->start_pos[0], state->start_pos[1] },
@@ -394,5 +359,3 @@ UDebugUI_End(UDebugUI_State* state)
 	
 	Mem_Zero(state, sizeof(*state));
 }
-
-#endif //UTIL_DEBUGUI_H
