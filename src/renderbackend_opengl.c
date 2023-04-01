@@ -64,9 +64,12 @@ static void
 RB_InitOpenGL_(Arena* scratch_arena)
 {
 #ifdef CONFIG_DEBUG
-	GL.glEnable(GL_DEBUG_OUTPUT);
-	GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	GL.glDebugMessageCallback(RB_OpenGLDebugMessageCallback_, NULL);
+	if (GL.glDebugMessageCallback)
+	{
+		GL.glEnable(GL_DEBUG_OUTPUT);
+		GL.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		GL.glDebugMessageCallback(RB_OpenGLDebugMessageCallback_, NULL);
+	}
 #endif //CONFIG_DEBUG
 	
 	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -94,10 +97,10 @@ RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 	GL.glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &caps.max_render_target_textures);
 	
 	const uint8* vendor_cstr = GL.glGetString(GL_VENDOR);
-	caps.driver_vendor = StrMake(Mem_Strlen((char*)vendor_cstr), vendor_cstr);
 	const uint8* renderer_cstr = GL.glGetString(GL_RENDERER);
-	caps.driver_renderer = StrMake(Mem_Strlen((char*)renderer_cstr), renderer_cstr);
 	const uint8* version_cstr = GL.glGetString(GL_VERSION);
+	caps.driver_vendor = StrMake(Mem_Strlen((char*)vendor_cstr), vendor_cstr);
+	caps.driver_renderer = StrMake(Mem_Strlen((char*)renderer_cstr), renderer_cstr);
 	caps.driver_version = StrMake(Mem_Strlen((char*)version_cstr), version_cstr);
 	
 	caps.has_instancing = true;

@@ -17,17 +17,6 @@
 #   define API
 #endif
 
-//- Identify platform if build system didn't tell us
-#if !defined(CONFIG_OS_WIN32) && !defined(CONFIG_OS_LINUX) && !defined(CONFIG_OS_WIN32LINUX) && !defined(CONFIG_OS_SDL2LINUX)
-#   if defined(_WIN32)
-#       define CONFIG_OS_WIN32
-#   elif defined(__linux__)
-#       define CONFIG_OS_LINUX
-#   else
-#       error "unsupported system"
-#   endif
-#endif
-
 //- Platform specific stuff
 #if defined(CONFIG_OS_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS
@@ -40,7 +29,7 @@
 #elif defined(CONFIG_OS_WIN32LINUX)
 #   define _CRT_SECURE_NO_WARNINGS
 #   define CONFIG_ENABLE_OPENGL
-#elif defined(CONFIG_OS_LINUX) || defined(CONFIG_OS_SDL2LINUX)
+#elif defined(CONFIG_OS_LINUX) || defined(CONFIG_OS_SDL2LINUX) || defined(CONFIG_OS_ANDROID)
 #   define CONFIG_ENABLE_OPENGL
 #endif
 
