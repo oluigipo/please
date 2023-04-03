@@ -86,7 +86,7 @@ OS_ExitWithErrorMessage(const char* fmt, ...)
 	va_end(args);
 	
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error!", (const char*)str.data, NULL);
-	SDL_exit(1);
+	exit(1);
 }
 
 API void

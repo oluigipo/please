@@ -4,6 +4,8 @@
 #   define ENV_ANDROID_SDK "B:/programs/android/sdk"
 #   define ENV_ANDROID_NDK "B:/programs/android/ndk-r23c"
 #   define ENV_JAVA_JDK "B:/programs/jdk-17.0.6+10"
+#   define ENV_BUILD_TOOLS "B:/programs/android/sdk/build-tools/33.0.1"
+#   define ENV_PLATFORM "B:/programs/android/sdk/platforms/android-18"
 #endif
 
 #ifndef ENV_ANDROID_SDK
@@ -14,6 +16,12 @@
 #endif
 #ifndef ENV_JAVA_JDK
 #   error "please define ENV_JAVA_JDK"
+#endif
+#ifndef ENV_BUILD_TOOLS
+#   error "please define ENV_BUILD_TOOLS"
+#endif
+#ifndef ENV_PLATFORM
+#   error "please define ENV_PLATFORM"
 #endif
 
 struct
@@ -30,6 +38,8 @@ static g_opts = {
 	.exec = &g_executables[0],
 	.debug_mode = true,
 };
+
+static Cstr g_apkname = "";
 
 static bool
 CreateMakefiles(void)
@@ -52,8 +62,9 @@ CreateMakefiles(void)
 		"\n"
 		"LOCAL_MODULE := %s\n"
 		"LOCAL_C_INCLUDES := ../include ../src\n"
-		"LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3 -lSDL2\n"
-		"LOCAL_STATIC_LIBRARIES := android_native_app_glue\n"
+		"LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3\n"
+		"LOCAL_SHARED_LIBRARIES := SDL2\n"
+		"LOCAL_STATIC_LIBRARIES := SDL2main\n"
 		"\n", g_opts.exec->outname);
 	
 	fprintf(file, "LOCAL_SRC_FILES :=");
@@ -73,7 +84,9 @@ CreateMakefiles(void)
 	fprintf(file,
 		"\n"
 		"include $(BUILD_SHARED_LIBRARY)\n"
-		"$(call import-module,android/native_app_glue)\n");
+		"$(call import-module,android/native_app_glue)\n"
+		"$(call import-module,SDL2)\n"
+		"\n");
 	
 	fclose(file);
 	
@@ -86,9 +99,10 @@ CreateMakefiles(void)
 		"# https://developer.android.com/ndk/guides/application_mk.html\n"
 		"\n"
 		"NDK_TOOLCHAIN_VERSION := clang\n"
+		"NDK_MODULE_PATH := $(NDK_PROJECT_PATH)/../lib/android\n"
 		"APP_PLATFORM := android-18\n"
 		"APP_OPTIM := %s\n"
-		"APP_ABI := armeabi-v7a # arm64-v8a x86\n"
+		"APP_ABI := armeabi-v7a arm64-v8a x86 x86_64\n"
 		"\n", g_opts.optimize > 0 ? "release" : "debug");
 	
 	fclose(file);
@@ -99,7 +113,7 @@ CreateMakefiles(void)
 static bool
 CallNdkBuildSystem(void)
 {
-	return RunCommand(
+	return !RunCommand(
 		LocalPrintf(
 		512,
 		"cd %s && \"" ENV_ANDROID_NDK "/ndk-build.cmd\" -j1 NDK_LIBS_OUT=lib\\lib NDK_PROJECT_PATH=.",
@@ -109,19 +123,29 @@ CallNdkBuildSystem(void)
 static bool
 CallAapt(void)
 {
-	return false;
+	return !RunCommand(
+		LocalPrintf(
+		512,
+		"cd %s && \"" ENV_BUILD_TOOLS "/aapt.exe\" package -f -M ../tools/AndroidManifest.xml -I \"" ENV_PLATFORM "/android.jar\" -A ../assets -F bin\%s.build lib",
+		g_builddir, g_apkname));
 }
 
 static bool
 CreateKeystoreIfNeeded(void)
 {
-	return false;
+	return !RunCommand("if not exist .keystore " ENV_JAVA_JDK "/bin/keytool -genkey -dname \"CN=Android Debug, O=Android, C=US\" -keystore .keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -validity 30000");
 }
 
 static bool
 SignAndZipApk(void)
 {
-	return false;
+	return !RunCommand(
+		LocalPrintf(
+		512,
+		"cd %s && "
+		"\"" ENV_JAVA_JDK "/bin/jarsigner\" -storepass android -keystore ../.keystore bin\%s.build androiddebugkey && "
+		"\"" ENV_BUILD_TOOLS "/zipalign\" -f 4 bin\%s.build bin\%s",
+		g_builddir, g_apkname, g_apkname, g_apkname));
 }
 
 static int PrintHelp(void);
@@ -177,6 +201,8 @@ main(int argc, char** argv)
 				fprintf(stderr, "[warning] unknown project '%s'.\n", argv[i]);
 		}
 	}
+	
+	g_apkname = LocalPrintf(128, "%s.apk", g_opts.exec->outname);
 	
 	bool ok = true;
 	
