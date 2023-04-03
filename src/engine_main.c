@@ -43,11 +43,14 @@ OS_UserMain(const OS_UserMainArgs* args)
 	
 	// NOTE(ljre): Desired initial state
 	OS_WindowState window_state = args->default_window_state;
-	
-	window_state.width = 1280;
-	window_state.height = 720;
 	Mem_Copy(window_state.title, "Title", 6);
-	window_state.center_window = true;
+	
+	if (!window_state.fullscreen)
+	{
+		window_state.width = 1280;
+		window_state.height = 720;
+		window_state.center_window = true;
+	}
 	
 	OS_InitDesc init_desc = {
 		.window_initial_state = window_state,

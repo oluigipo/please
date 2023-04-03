@@ -301,8 +301,10 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	//- Cast samples to int16 with saturation.
 	Trace(); TraceName(Str("Conversion"));
 	int32 head = 0;
-	__m128 mul = _mm_set1_ps(INT16_MAX);
-	mul = _mm_mul_ps(mul, _mm_set1_ps(default_master_volume));
+	float32 mul_float = INT16_MAX * default_master_volume;
+	
+#ifdef CONFIG_ARCH_X86FAMILY
+	__m128 mul = _mm_set1_ps(mul_float);
 	
 #ifdef __clang__
 #   pragma clang loop unroll(disable)
@@ -319,9 +321,10 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 #ifdef __clang__
 #   pragma clang loop unroll(disable)
 #endif
+#endif //CONFIG_ARCH_X86FAMILY
 	for (; head+1 <= sample_count; head += 1)
 	{
-		float32 sample = working_samples[head] * _mm_cvtss_f32(mul);
+		float32 sample = working_samples[head] * mul_float;
 		
 		if (sample < INT16_MIN)
 			sample = INT16_MIN;

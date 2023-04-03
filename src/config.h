@@ -17,6 +17,21 @@
 #   define API
 #endif
 
+//- Detect arch
+#if defined(__x86_64__) || defined(_M_X64)
+#   define CONFIG_ARCH_AMD64
+#   define CONFIG_ARCH_X86FAMILY
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#   define CONFIG_ARCH_I686
+#   define CONFIG_ARCH_X86FAMILY
+#elif defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)
+#   define CONFIG_ARCH_ARMV7A
+#   define CONFIG_ARCH_ARMFAMILY
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#   define CONFIG_ARCH_AARCH64
+#   define CONFIG_ARCH_ARMFAMILY
+#endif
+
 //- Platform specific stuff
 #if defined(CONFIG_OS_WIN32)
 #   define _CRT_SECURE_NO_WARNINGS

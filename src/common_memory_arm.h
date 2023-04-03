@@ -1,0 +1,6 @@
+#ifndef COMMON_MEMORY_ARM_H
+#define COMMON_MEMORY_ARM_H
+
+// TODO(ljre)
+
+#endif //COMMON_MEMORY_ARM_H
