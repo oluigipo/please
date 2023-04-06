@@ -17,7 +17,6 @@ static RB_Capabilities g_render_caps;
 static intsize g_render_uninstanced_cached_count = 1;
 
 static const char g_render_gl_quadvshader[] =
-"#version 330 core\n"
 "layout (location=0) in vec2  aPos;\n"
 "layout (location=1) in vec2  aElemPos;\n"
 "layout (location=2) in mat2  aElemScaling;\n"
@@ -48,7 +47,6 @@ static const char g_render_gl_quadvshader[] =
 "\n";
 
 static const char g_render_gl_quadfshader[] =
-"#version 330 core\n"
 "in vec2  vTexcoords;\n"
 "in vec4  vColor;\n"
 "in vec2  vTexIndex;\n"
@@ -100,7 +98,7 @@ static const char g_render_gl_quadfshader[] =
 "            vec2 density = fwidth(vTexcoords) * texsize;\n"
 "            float m = min(density.x, density.y);\n"
 "            float inv = 1.0 / m;\n"
-"            float a = (color.x - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;\n"
+"            float a = (color.w - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;\n"
 "            color = vec4(1.0, 1.0, 1.0, a);\n"
 "        } break;\n"
 "    }\n"

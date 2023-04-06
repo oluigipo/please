@@ -63,6 +63,8 @@ RB_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sev
 static void
 RB_InitOpenGL_(Arena* scratch_arena)
 {
+	Trace();
+	
 #ifdef CONFIG_DEBUG
 	if (GL.glDebugMessageCallback)
 	{
@@ -73,7 +75,6 @@ RB_InitOpenGL_(Arena* scratch_arena)
 #endif //CONFIG_DEBUG
 	
 	GL.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	
 	GL.glDisable(GL_DEPTH_TEST);
 	GL.glDisable(GL_CULL_FACE);
 	GL.glEnable(GL_BLEND);
@@ -83,15 +84,21 @@ RB_InitOpenGL_(Arena* scratch_arena)
 static void
 RB_DeinitOpenGL_(Arena* scratch_arena)
 {
+	Trace();
+	
 }
 
 static void
 RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 {
+	Trace();
 	RB_Capabilities caps = {
 		.backend_api = StrInit("OpenGL 3.3"),
 		.shader_type = RB_ShaderType_Glsl33,
 	};
+	
+	if (GL.is_es)
+		caps.backend_api = Str("OpenGL ES 3.0"),
 	
 	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &caps.max_texture_size);
 	GL.glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &caps.max_render_target_textures);
@@ -139,7 +146,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				SafeAssert(width && height && channels > 0 && channels <= 4);
 				
 				uint32 id;
-				const int32 formats[4] = { GL_RED, GL_RG, GL_RGB, GL_RGBA, };
+				const int32 formats[4] = { GL_ALPHA, GL_RG, GL_RGB, GL_RGBA, };
 				int32 format = formats[channels - 1];
 				
 				bool mag_linear = cmd->texture_2d.flag_linear_filtering;
@@ -202,9 +209,26 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				const char* vertex_shader_source = Arena_PushCString(scratch_arena, cmd->shader.gl_vs_src);
 				const char* fragment_shader_source = Arena_PushCString(scratch_arena, cmd->shader.gl_fs_src);
 				
+				const char* vertex_lines[] = {
+					"#version 330 core\n",
+					vertex_shader_source,
+				};
+				const char* fragment_lines[] = {
+					"#version 330 core\n",
+					"\n",
+					fragment_shader_source,
+				};
+				
+				if (GL.is_es)
+				{
+					vertex_lines[0] = "#version 300 es\n";
+					fragment_lines[0] = "#version 300 es\n";
+					fragment_lines[1] = "precision mediump float;\n";
+				}
+				
 				// Compile Vertex Shader
 				uint32 vertex_shader = GL.glCreateShader(GL_VERTEX_SHADER);
-				GL.glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
+				GL.glShaderSource(vertex_shader, ArrayLength(vertex_lines), vertex_lines, NULL);
 				GL.glCompileShader(vertex_shader);
 				
 				// Check for errors
@@ -220,7 +244,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				// Compile Fragment Shader
 				uint32 fragment_shader = GL.glCreateShader(GL_FRAGMENT_SHADER);
-				GL.glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
+				GL.glShaderSource(fragment_shader, ArrayLength(fragment_lines), fragment_lines, NULL);
 				GL.glCompileShader(fragment_shader);
 				
 				// Check for errors
@@ -313,9 +337,9 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				pool_data->source = cmd->pipeline.blend_source ? functable[cmd->pipeline.blend_source] : GL_ONE;
 				pool_data->dest = cmd->pipeline.blend_dest ? functable[cmd->pipeline.blend_dest] : GL_ZERO;
 				pool_data->op = cmd->pipeline.blend_op ? optable[cmd->pipeline.blend_op] : GL_FUNC_ADD;
-				pool_data->source = cmd->pipeline.blend_source_alpha ? functable[cmd->pipeline.blend_source_alpha] : GL_ONE;
-				pool_data->dest = cmd->pipeline.blend_dest_alpha ? functable[cmd->pipeline.blend_dest_alpha] : GL_ZERO;
-				pool_data->op = cmd->pipeline.blend_op_alpha ? optable[cmd->pipeline.blend_op_alpha] : GL_FUNC_ADD;
+				pool_data->source_alpha = cmd->pipeline.blend_source_alpha ? functable[cmd->pipeline.blend_source_alpha] : GL_ONE;
+				pool_data->dest_alpha = cmd->pipeline.blend_dest_alpha ? functable[cmd->pipeline.blend_dest_alpha] : GL_ZERO;
+				pool_data->op_alpha = cmd->pipeline.blend_op_alpha ? optable[cmd->pipeline.blend_op_alpha] : GL_FUNC_ADD;
 				
 				pool_data->polygon_mode = filltable[cmd->pipeline.fill_mode];
 				pool_data->cull_mode = culltable[cmd->pipeline.cull_mode];
@@ -452,7 +476,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 	GL.glBlendEquation(GL_FUNC_ADD);
 	
 	// default rasterizer
-	GL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	//GL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL.glFrontFace(GL_CCW);
 	GL.glDisable(GL_DEPTH_TEST);
 	GL.glDisable(GL_SCISSOR_TEST);
@@ -526,7 +550,7 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					GL.glBlendEquationSeparate(pool_data->op, pool_data->op_alpha);
 				}
 				
-				GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
+				//GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
 				GL.glFrontFace(pool_data->frontface);
 				
 				if (pool_data->flag_enable_cullface)
@@ -750,15 +774,14 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 				uintsize index_size = (index_type == GL_UNSIGNED_SHORT) ? 2 : 4;
 				
 				// Draw Call
-				int32 base_vertex = cmd->draw_instanced.base_vertex;
 				void* base_index = (void*)(cmd->draw_instanced.base_index * index_size);
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;
 				
 				if (instanced)
-					GL.glDrawElementsInstancedBaseVertex(GL_TRIANGLES, index_count, index_type, base_index, instance_count, base_vertex);
+					GL.glDrawElementsInstanced(GL_TRIANGLES, index_count, index_type, base_index, instance_count);
 				else
-					GL.glDrawElementsBaseVertex(GL_TRIANGLES, index_count, index_type, base_index, base_vertex);
+					GL.glDrawElements(GL_TRIANGLES, index_count, index_type, base_index);
 				
 				// Done
 				GL.glBindVertexArray(0);

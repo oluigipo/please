@@ -42,9 +42,14 @@ typedef unsigned int GLhandleARB;
 typedef uint16 GLhalf;
 typedef uint16 GLhalfARB;
 typedef int32 GLfixed;
+#ifdef __linux__
+typedef long GLintptr;
+typedef long GLsizeiptr;
+#else
 typedef intptr GLintptr;
-typedef intptr GLintptrARB;
 typedef intsize GLsizeiptr;
+#endif
+typedef intptr GLintptrARB;
 typedef intsize GLsizeiptrARB;
 typedef int64 GLint64;
 typedef int64 GLint64EXT;
@@ -1261,6 +1266,7 @@ typedef void (APIENTRYP PFNGLDEBUGMESSAGECALLBACKPROC)(GLDEBUGPROC callback, con
 
 struct OS_OpenGlApi
 {
+	bool is_es;
 #ifdef CONFIG_DEBUG
 	PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 #endif

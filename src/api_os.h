@@ -354,20 +354,9 @@ API int OS_DebugLogPrintfFormat(const char* fmt, ...);
 #endif
 
 //- Threading stuff
-struct OS_RWLock typedef OS_RWLock;
-
-#if defined(_WIN32)
 struct OS_RWLock
-{
-	void* ptr_;
-};
-#elif defined(__linux__)
-#   include <pthread.h>
-struct OS_RWLock
-{
-	pthread_rwlock_t impl;
-};
-#endif //defined(__linux__)
+{ void* ptr; }
+typedef OS_RWLock;
 
 API void OS_InitRWLock(OS_RWLock* lock);
 API void OS_LockShared(OS_RWLock* lock);

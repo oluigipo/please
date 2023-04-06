@@ -139,6 +139,9 @@ static void
 E_InitAudio_(void)
 {
 	Trace();
+	if (!global_engine.os->audio.initialized_successfully)
+		return;
+	
 	E_AudioState* audio = global_engine.audio;
 	Arena* arena = global_engine.audio_thread_arena;
 	

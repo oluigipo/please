@@ -6,6 +6,6 @@
 #   include "os_win32.c"
 #elif defined(CONFIG_OS_LINUX)
 #   include "os_linux.c"
-#elif defined(CONFIG_OS_SDL2LINUX) || defined(CONFIG_OS_ANDROID)
-#   include "os_sdl2.c"
+#elif defined(CONFIG_OS_ANDROID)
+#   include "os_android.c"
 #endif

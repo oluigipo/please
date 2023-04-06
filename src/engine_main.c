@@ -107,8 +107,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 	{
 		const uintsize pagesize = 16ull << 20;
 		const uintsize sz_scratch     = 16ull << 20;
-		const uintsize sz_frame       = 64ull << 20;
-		const uintsize sz_persistent  = 256ull << 20;
+		const uintsize sz_frame       = 32ull << 20;
+		const uintsize sz_persistent  = 64ull << 20;
 		const uintsize sz_audiothread = 256ull << 10;
 		
 		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent + sz_audiothread;
@@ -158,8 +158,12 @@ OS_UserMain(const OS_UserMainArgs* args)
 		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
 		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, E_AudioState);
 		
-		OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
-		OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
+		if (init_desc.workerthreads_count > 0)
+		{
+			OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
+			OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
+		}
+		
 		OS_InitRWLock(&global_engine.mt_lock);
 	}
 	

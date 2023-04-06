@@ -30,6 +30,7 @@ struct
 	int optimize;
 	bool debug_mode;
 	bool embed;
+	bool debug_info;
 	
 	bool install;
 	bool launch;
@@ -60,12 +61,11 @@ CreateMakefiles(void)
 		"LOCAL_PATH := $(call my-dir)\n"
 		"include $(CLEAR_VARS)\n"
 		"\n"
-		"LOCAL_MODULE := %s\n"
+		"LOCAL_MODULE := main\n"
 		"LOCAL_C_INCLUDES := ../include ../src\n"
 		"LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3\n"
-		"LOCAL_SHARED_LIBRARIES := SDL2\n"
-		"LOCAL_STATIC_LIBRARIES := SDL2main\n"
-		"\n", g_opts.exec->outname);
+		"LOCAL_STATIC_LIBRARIES := android_native_app_glue\n"
+		"\n");
 	
 	fprintf(file, "LOCAL_SRC_FILES :=");
 	for (struct Build_Tu** tu = g_opts.exec->tus; *tu; ++tu)
@@ -76,7 +76,11 @@ CreateMakefiles(void)
 	
 	fprintf(file, "LOCAL_CFLAGS := -DCONFIG_OS_ANDROID");
 	if (g_opts.embed)
+		fprintf(file, " -DCONFIG_ENABLE_EMBED");
+	if (g_opts.debug_mode)
 		fprintf(file, " -DCONFIG_DEBUG");
+	if (g_opts.debug_info)
+		fprintf(file, " -g");
 	for (Cstr* def = g_opts.exec->defines; def && *def; ++def)
 		fprintf(file, " -D%s", *def);
 	fprintf(file, "\n");
@@ -85,7 +89,6 @@ CreateMakefiles(void)
 		"\n"
 		"include $(BUILD_SHARED_LIBRARY)\n"
 		"$(call import-module,android/native_app_glue)\n"
-		"$(call import-module,SDL2)\n"
 		"\n");
 	
 	fclose(file);
@@ -99,10 +102,9 @@ CreateMakefiles(void)
 		"# https://developer.android.com/ndk/guides/application_mk.html\n"
 		"\n"
 		"NDK_TOOLCHAIN_VERSION := clang\n"
-		"NDK_MODULE_PATH := $(NDK_PROJECT_PATH)/../lib/android\n"
 		"APP_PLATFORM := android-18\n"
 		"APP_OPTIM := %s\n"
-		"APP_ABI := armeabi-v7a arm64-v8a x86 x86_64\n"
+		"APP_ABI := armeabi-v7a arm64-v8a # x86 x86_64\n"
 		"\n", g_opts.optimize > 0 ? "release" : "debug");
 	
 	fclose(file);
@@ -126,7 +128,7 @@ CallAapt(void)
 	return !RunCommand(
 		LocalPrintf(
 		512,
-		"cd %s && \"" ENV_BUILD_TOOLS "/aapt.exe\" package -f -M ../tools/AndroidManifest.xml -I \"" ENV_PLATFORM "/android.jar\" -A ../assets -F bin\%s.build lib",
+		"cd %s && \"" ENV_BUILD_TOOLS "/aapt.exe\" package -f -M ../tools/AndroidManifest.xml -I \"" ENV_PLATFORM "/android.jar\" -A ../assets -F %s.build lib",
 		g_builddir, g_apkname));
 }
 
@@ -143,9 +145,25 @@ SignAndZipApk(void)
 		LocalPrintf(
 		512,
 		"cd %s && "
-		"\"" ENV_JAVA_JDK "/bin/jarsigner\" -storepass android -keystore ../.keystore bin\%s.build androiddebugkey && "
-		"\"" ENV_BUILD_TOOLS "/zipalign\" -f 4 bin\%s.build bin\%s",
+		"\"" ENV_JAVA_JDK "/bin/jarsigner\" -storepass android -keystore ../.keystore %s.build androiddebugkey && "
+		"\"" ENV_BUILD_TOOLS "/zipalign\" -f 4 %s.build %s",
 		g_builddir, g_apkname, g_apkname, g_apkname));
+}
+
+static bool
+InstallApk(void)
+{
+	return !RunCommand(
+		LocalPrintf(
+		512,
+		ENV_ANDROID_SDK "/platform-tools/adb install -r \"%s/%s\"",
+		g_builddir, g_apkname));
+}
+
+static bool
+LaunchApk(void)
+{
+	return false;
 }
 
 static int PrintHelp(void);
@@ -161,7 +179,7 @@ main(int argc, char** argv)
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "/?") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
 			return PrintHelp();
 		else if (strcmp(argv[i], "-g") == 0)
-		{}
+			g_opts.debug_info = true;
 		else if (strcmp(argv[i], "-install") == 0)
 			g_opts.install = true;
 		else if (strcmp(argv[i], "-launch") == 0)
@@ -212,6 +230,10 @@ main(int argc, char** argv)
 	ok = ok && CallAapt();
 	ok = ok && CreateKeystoreIfNeeded();
 	ok = ok && SignAndZipApk();
+	if (g_opts.install)
+		ok = ok && InstallApk();
+	if (g_opts.launch)
+		ok = ok && LaunchApk();
 	
 	return !ok;
 }
@@ -226,7 +248,7 @@ PrintHelp(void)
 		"Target:        %s\n"
 		"\n"
 		"OPTIONS:\n"
-		"    -g                  Nothing for now\n"
+		"    -g                  Generate debug info\n"
 		"    -ndebug             Don't define CONFIG_DEBUG macro\n"
 		"    -embed              Embed assets in executable file (doesn't work on MSVC)\n"
 		"    -O0 -O1 -O2         Optimization flags\n"
