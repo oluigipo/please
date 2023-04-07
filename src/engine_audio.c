@@ -139,7 +139,7 @@ static void
 E_InitAudio_(void)
 {
 	Trace();
-	if (!global_engine.os->audio.initialized_successfully)
+	if (!global_engine.os->has_audio)
 		return;
 	
 	E_AudioState* audio = global_engine.audio;
@@ -348,6 +348,9 @@ E_LoadSound(Buffer ogg, E_SoundHandle* out_sound, E_SoundInfo* out_info)
 	Trace();
 	SafeAssert(ogg.size <= INT32_MAX);
 	
+	if (!global_engine.os->has_audio)
+		return false;
+	
 	E_AudioState* audio = global_engine.audio;
 	
 	int32 err;
@@ -405,8 +408,11 @@ API void
 E_UnloadSound(E_SoundHandle sound)
 {
 	Trace();
+	
 	E_AudioState* audio = global_engine.audio;
 	
+	if (!global_engine.os->has_audio)
+		return;
 	if (E_IsValidSoundHandle(sound))
 	{
 		OS_LockExclusive(&audio->lock);
@@ -426,6 +432,8 @@ E_IsValidSoundHandle(E_SoundHandle sound)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	
+	if (!global_engine.os->has_audio)
+		return false;
 	if (!sound.index || sound.index > E_Limits_MaxLoadedSounds)
 		return false;
 	if (audio->loaded_sounds_table[sound.index-1].generation != sound.generation)
@@ -443,6 +451,8 @@ E_QuerySoundInfo(E_SoundHandle sound, E_SoundInfo* out_info)
 	E_AudioState* audio = global_engine.audio;
 	bool result = false;
 	
+	if (!global_engine.os->has_audio)
+		return false;
 	if (E_IsValidSoundHandle(sound))
 	{
 		result = true;
@@ -464,6 +474,9 @@ E_PlaySound(E_SoundHandle sound, const E_PlaySoundOptions* options, E_PlayingSou
 {
 	Trace();
 	E_AudioState* audio = global_engine.audio;
+	
+	if (!global_engine.os->has_audio)
+		return false;
 	
 	bool result = false;
 	E_PlayingSoundHandle handle = { 0 };
@@ -503,6 +516,9 @@ E_StopSound(E_PlayingSoundHandle playing_sound)
 	E_AudioState* audio = global_engine.audio;
 	bool result = false;
 	
+	if (!global_engine.os->has_audio)
+		return false;
+	
 	if (playing_sound.index && playing_sound.index <= E_Limits_MaxPlayingSounds)
 	{
 		OS_LockExclusive(&audio->lock);
@@ -530,6 +546,9 @@ E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSoundInfo* 
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	bool result = false;
+	
+	if (!global_engine.os->has_audio)
+		return false;
 	
 	if (playing_sound.index && playing_sound.index <= E_Limits_MaxPlayingSounds)
 	{
@@ -562,6 +581,9 @@ E_StopAllSounds(E_SoundHandle* specific)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	
+	if (!global_engine.os->has_audio)
+		return;
+	
 	OS_LockExclusive(&audio->lock);
 	
 	for (int32 i = 0; i < audio->playing_sounds_size; ++i)
@@ -585,6 +607,9 @@ E_IsValidPlayingSoundHandle(E_PlayingSoundHandle playing_sound)
 	Trace();
 	E_AudioState* audio = global_engine.audio;
 	bool result = true;
+	
+	if (!global_engine.os->has_audio)
+		return false;
 	
 	if (!playing_sound.index || playing_sound.index > E_Limits_MaxPlayingSounds)
 		result = false;

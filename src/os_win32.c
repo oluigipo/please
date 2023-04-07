@@ -71,6 +71,17 @@ struct
 	HDC hdc;
 	LPCWSTR class_name;
 	HANDLE worker_threads[E_Limits_MaxWorkerThreadCount];
+	
+	int32 user_thread_count;
+	int32 argc;
+	const char* const* argv;
+	
+	struct
+	{
+		OS_WindowGraphicsApi desired_graphics_api;
+		int32 desired_d3d11_ft;
+	}
+	init_config;
 }
 static g_win32;
 
@@ -137,82 +148,6 @@ Win32_GetThreadScratchArena(void)
 	return this_arena;
 }
 
-static void
-Win32_UpdateWindowStateIfNeeded(OS_WindowState* inout_state)
-{
-	Trace();
-	Arena* scratch_arena = Win32_GetThreadScratchArena();
-	
-	//- NOTE(ljre): Simple-idk-how-to-call-it data.
-	{
-		inout_state->should_close = g_os.window.should_close;
-		inout_state->resized_by_user = g_os.window.resized_by_user;
-		
-		if (g_os.window.resized_by_user)
-		{
-			inout_state->width = g_os.window.width;
-			inout_state->height = g_os.window.height;
-		}
-	}
-	
-	//- NOTE(ljre): Window Position & Size
-	{
-		UINT flags = SWP_NOSIZE | SWP_NOMOVE;
-		
-		int32 x = inout_state->x;
-		int32 y = inout_state->y;
-		int32 width = inout_state->width;
-		int32 height = inout_state->height;
-		
-		if (width != g_os.window.width || height != g_os.window.height)
-			flags &= ~(UINT)SWP_NOSIZE;
-		
-		if (inout_state->center_window)
-		{
-			inout_state->x = x = (g_win32.monitor.right - g_win32.monitor.left) / 2 - width / 2;
-			inout_state->y = y = (g_win32.monitor.bottom - g_win32.monitor.top) / 2 - height / 2;
-			inout_state->center_window = false;
-			
-			flags &= ~(UINT)SWP_NOMOVE;
-		}
-		else if (x != g_os.window.x || y != g_os.window.y)
-			flags &= ~(UINT)SWP_NOMOVE;
-		
-		if (flags)
-			SetWindowPos(g_win32.window, NULL, x, y, width, height, flags | SWP_NOZORDER);
-	}
-	
-	//- NOTE(ljre): Window Title
-	{
-		uintsize new_size = Mem_Strnlen((const char*)inout_state->title, ArrayLength(inout_state->title));
-		uintsize old_size = Mem_Strnlen((const char*)g_os.window.title, ArrayLength(g_os.window.title));
-		
-		String new_title = StrMake(new_size, inout_state->title);
-		String old_title = StrMake(old_size, g_os.window.title);
-		
-		if (!String_Equals(old_title, new_title))
-		{
-			for Arena_TempScope(scratch_arena)
-			{
-				wchar_t* name = Win32_StringToWide(scratch_arena, new_title);
-				SetWindowTextW(g_win32.window, name);
-			}
-		}
-	}
-	
-	//- NOTE(ljre): Cursor
-	{
-		if (inout_state->show_cursor != g_os.window.show_cursor)
-			ShowCursor(inout_state->show_cursor);
-		
-		g_win32.lock_cursor = inout_state->lock_cursor;
-	}
-	
-	//- NOTE(ljre): Sync
-	g_os.window = *inout_state;
-	g_os.window.resized_by_user = false;
-}
-
 //~ NOTE(ljre): Files
 #include "os_win32_input.c"
 #include "os_win32_audio.c"
@@ -242,7 +177,6 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 	Trace();
 	
 	LRESULT result = 0;
-	OS_InputState* input = (void*)GetWindowLongPtrW(window, GWLP_USERDATA);
 	
 	switch (message)
 	{
@@ -280,8 +214,8 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			int32 repeat_count = (lparam & 0xffff);
 			(void)repeat_count;
 			
-			if (input->codepoints_count < ArrayLength(input->codepoints))
-				input->codepoints[input->codepoints_count++] = codepoint;
+			if (g_os.text_codepoints_count < ArrayLength(g_os.text_codepoints))
+				g_os.text_codepoints[g_os.text_codepoints_count++] = codepoint;
 		} break;
 		
 		case WM_SYSKEYDOWN:
@@ -302,33 +236,33 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 			// TODO(ljre): This might fuck up a bit the buffering...
 			if (vkcode == VK_SHIFT)
 			{
-				Win32_UpdateKeyboardKey(input, VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
-				Win32_UpdateKeyboardKey(input, VK_RSHIFT, !!(GetKeyState(VK_RSHIFT) & 0x8000));
+				Win32_UpdateKeyboardKey(&g_os, VK_LSHIFT, !!(GetKeyState(VK_LSHIFT) & 0x8000));
+				Win32_UpdateKeyboardKey(&g_os, VK_RSHIFT, !!(GetKeyState(VK_RSHIFT) & 0x8000));
 			}
 			else if (vkcode == VK_CONTROL)
 			{
-				Win32_UpdateKeyboardKey(input, VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
-				Win32_UpdateKeyboardKey(input, VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
+				Win32_UpdateKeyboardKey(&g_os, VK_LCONTROL, !!(GetKeyState(VK_LCONTROL) & 0x8000));
+				Win32_UpdateKeyboardKey(&g_os, VK_RCONTROL, !!(GetKeyState(VK_RCONTROL) & 0x8000));
 			}
 			else
-				Win32_UpdateKeyboardKey(input, vkcode, is_down);
+				Win32_UpdateKeyboardKey(&g_os, vkcode, is_down);
 			
 			// NOTE(ljre): Always close on Alt+F4
 			if (vkcode == VK_F4 && GetKeyState(VK_MENU) & 0x8000)
 				g_os.window.should_close = true;
 		} break;
 		
-		case WM_LBUTTONUP: Win32_UpdateMouseButton(input, OS_MouseButton_Left, false); break;
-		case WM_LBUTTONDOWN: Win32_UpdateMouseButton(input, OS_MouseButton_Left, true); break;
-		case WM_MBUTTONUP: Win32_UpdateMouseButton(input, OS_MouseButton_Middle, false); break;
-		case WM_MBUTTONDOWN: Win32_UpdateMouseButton(input, OS_MouseButton_Middle, true); break;
-		case WM_RBUTTONUP: Win32_UpdateMouseButton(input, OS_MouseButton_Right, false); break;
-		case WM_RBUTTONDOWN: Win32_UpdateMouseButton(input, OS_MouseButton_Right, true); break;
+		case WM_LBUTTONUP: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Left, false); break;
+		case WM_LBUTTONDOWN: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Left, true); break;
+		case WM_MBUTTONUP: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Middle, false); break;
+		case WM_MBUTTONDOWN: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Middle, true); break;
+		case WM_RBUTTONUP: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Right, false); break;
+		case WM_RBUTTONDOWN: Win32_UpdateMouseButton(&g_os, OS_MouseButton_Right, true); break;
 		
 		case WM_MOUSEWHEEL:
 		{
 			int32 delta = GET_WHEEL_DELTA_WPARAM(wparam) / 120;
-			input->mouse.scroll += delta;
+			g_os.mouse.scroll += delta;
 		} break;
 		
 		case WM_DEVICECHANGE:
@@ -349,14 +283,15 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 static DWORD WINAPI
 Win32_ThreadProc_(void* user_data)
 {
-	void** args = user_data;
-	OS_ThreadProc* proc = args[0];
-	void* proc_arg = args[1];
+	OS_UserMainArgs user_args = {
+		.thread_id = (int32)(uintptr)user_data,
+		.thread_count = g_win32.user_thread_count,
+		
+		.argc = g_win32.argc,
+		.argv = g_win32.argv,
+	};
 	
-	OS_HeapFree(args);
-	proc(proc_arg);
-	
-	return 0;
+	return OS_UserMain(&user_args);
 }
 
 //~ NOTE(ljre): Entry point
@@ -364,10 +299,6 @@ int WINAPI
 WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 {
 	//TraceInit();
-	
-	// NOTE(ljre): __argc and __argv - those are public symbols from the CRT
-	int32 argc = __argc;
-	char** argv = __argv;
 	
 	//- Init
 	{
@@ -438,33 +369,57 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	
 	g_win32.process_started_time = Win32_GetTimer();
 	g_win32.instance = instance;
+	g_win32.user_thread_count = Clamp(cpu_core_count/2, 1, E_Limits_MaxWorkerThreadCount);
+	g_win32.argc = __argc;
+	g_win32.argv = (const char* const*)__argv;
+	
+	for (int32 i = 1; i < g_win32.argc; ++i)
+	{
+		String arg = StrMake(Mem_Strlen(g_win32.argv[i]), g_win32.argv[i]);
+		
+		if (String_Equals(arg, Str("-opengl")))
+			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_OpenGL;
+		else if (String_Equals(arg, Str("-d3d11")))
+			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_Direct3D11;
+		else if (String_Equals(arg, Str("-no-worker-threads")))
+			g_win32.user_thread_count = 1;
+		else if (String_Equals(arg, Str("-no-vsync")))
+		{}
+		else if (String_StartsWith(arg, Str("-d3d11=")))
+		{
+			int32 feature_level = 0;
+			arg = String_Substr(arg, sizeof("-d3d11=")-1, -1);
+			
+			if (String_Equals(arg, Str("11_0")))
+				feature_level = 110;
+			else if (String_Equals(arg, Str("10_1")))
+				feature_level = 101;
+			else if (String_Equals(arg, Str("10_0")))
+				feature_level = 100;
+			else if (String_Equals(arg, Str("9_3")))
+				feature_level = 93;
+			else if (String_Equals(arg, Str("9_2")))
+				feature_level = 92;
+			else if (String_Equals(arg, Str("9_1")))
+				feature_level = 91;
+			
+			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_Direct3D11;
+			g_win32.init_config.desired_d3d11_ft = feature_level;
+		}
+	}
 	
 	//- Run
-	OS_UserMainArgs args = {
-		.argc = argc,
-		.argv = (const char* const*)argv,
+	int32 result = OS_UserMain(&(OS_UserMainArgs) {
+		.thread_id = 0,
+		.thread_count = g_win32.user_thread_count,
 		
-		.default_window_state = {
-			.show_cursor = true,
-			.lock_cursor = false,
-			.center_window = true,
-			.fullscreen = false,
-			.should_close = false,
-			
-			.x = 0,
-			.y = 0,
-			.width = 800,
-			.height = 600,
-		},
-		
-		.cpu_core_count = cpu_core_count,
-	};
+		.argc = g_win32.argc,
+		.argv = g_win32.argv,
+	});
 	
-	int32 result = OS_UserMain(&args);
-	
-	// NOTE(ljre): Free resources... or nah :P
+	//- NOTE(ljre): Free resources... or nah :P
 	//Win32_DeinitSimpleAudio();
-	Win32_DeinitAudio();
+	Win32_DeinitAudio(&g_os);
 	
 	for (int32 i = 0; i < ArrayLength(g_win32.worker_threads); ++i)
 	{
@@ -497,80 +452,61 @@ API bool
 OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 {
 	Trace();
-	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
-	g_win32.class_name = L"WindowClassName";
-	
-	WNDCLASSW window_class = {
-		.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
-		.lpfnWndProc = WindowProc,
-		.lpszClassName = g_win32.class_name,
-		.hInstance = g_win32.instance,
-		.hCursor = LoadCursorA(NULL, IDC_ARROW),
-		.hIcon = LoadIconA(g_win32.instance, MAKEINTRESOURCE(101)),
-	};
-	
-	if (!RegisterClassW(&window_class))
-		OS_ExitWithErrorMessage("Could not create window class.");
-	
-	OS_WindowState config = desc->window_initial_state;
-	
-	if (config.center_window)
+	// NOTE(ljre): Window class
 	{
-		config.x = (g_win32.monitor.right - g_win32.monitor.left - config.width) / 2;
-		config.y = (g_win32.monitor.bottom - g_win32.monitor.top - config.height) / 2;
+		g_win32.class_name = L"WindowClassName";
+		WNDCLASSW window_class = {
+			.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW,
+			.lpfnWndProc = WindowProc,
+			.lpszClassName = g_win32.class_name,
+			.hInstance = g_win32.instance,
+			.hCursor = LoadCursorA(NULL, IDC_ARROW),
+			.hIcon = LoadIconA(g_win32.instance, MAKEINTRESOURCE(101)),
+		};
 		
-		config.center_window = false;
+		if (!RegisterClassW(&window_class))
+			OS_ExitWithErrorMessage("Could not create window class.");
 	}
+	
+	OS_WindowState window_state = {
+		.show_cursor = true,
+		.x = (g_win32.monitor.right - g_win32.monitor.left - 1280) / 2,
+		.y = (g_win32.monitor.bottom - g_win32.monitor.top - 720) / 2,
+		.width = 1280,
+		.height = 720,
+	};
 	
 	bool ok = true;
 	
 	{
 		bool created_window = false;
+		wchar_t* window_name = L"Title";
 		
-		for Arena_TempScope(scratch_arena)
+		switch (g_win32.init_config.desired_graphics_api)
 		{
-			uintsize size = 0;
-			for (int32 i = 0; i < ArrayLength(config.title); ++i)
-			{
-				if (!config.title[i])
-				{
-					size = i;
-					break;
-				}
-			}
+			default: break;
 			
-			wchar_t* window_name = Win32_StringToWide(scratch_arena, StrMake(size, config.title));
-			
-			switch (desc->window_desired_api)
-			{
-				default: break;
-				
-				case OS_WindowGraphicsApi_OpenGL: created_window = Win32_CreateOpenGLWindow(&config, window_name); break;
-				case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&config, window_name, desc->window_desired_d3d11_feature_level); break;
-			}
-			
-			if (!created_window)
-				created_window = Win32_CreateD3d11Window(&config, window_name, 0);
-			if (!created_window)
-				created_window = Win32_CreateOpenGLWindow(&config, window_name);
+			case OS_WindowGraphicsApi_OpenGL: created_window = Win32_CreateOpenGLWindow(&window_state, window_name); break;
+			case OS_WindowGraphicsApi_Direct3D11: created_window = Win32_CreateD3d11Window(&window_state, window_name, g_win32.init_config.desired_d3d11_ft); break;
 		}
+		
+		if (!created_window)
+			created_window = Win32_CreateD3d11Window(&window_state, window_name, 0);
+		if (!created_window)
+			created_window = Win32_CreateOpenGLWindow(&window_state, window_name);
 		
 		ok = ok && created_window;
 	}
 	
-	if (desc->workerthreads_count > 0)
+	if (g_win32.user_thread_count > 0)
 	{
-		SafeAssert(desc->workerthreads_count < 16);
-		SafeAssert(desc->workerthreads_proc);
+		SafeAssert(g_win32.user_thread_count < 16);
 		
-		for (int32 i = 0; i < desc->workerthreads_count; ++i)
+		for (int32 i = 1; i < g_win32.user_thread_count; ++i)
 		{
-			void** args = OS_HeapAlloc(sizeof(void*)*2);
-			args[0] = desc->workerthreads_proc;
-			args[1] = desc->workerthreads_args[i];
+			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, (void*)(uintptr)i, 0, NULL);
 			
-			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, args, 0, NULL);
 			g_win32.worker_threads[i] = handle;
 		}
 	}
@@ -583,21 +519,23 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 		};
 		
 		OS_State* os_state = &g_os;
+		bool audio_initialized_successfully = false;
 		
 		if (!RegisterDeviceNotification(g_win32.window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if (desc->audiothread_proc && !Win32_InitAudio(desc, os_state))
+		if (desc->audiothread_proc && !(audio_initialized_successfully = Win32_InitAudio(desc, os_state)))
 			OS_DebugLog("Failed to initialize audio.");
 		
 		ok = ok && Win32_InitInput();
 		
 		if (ok)
 		{
-			config.resized_by_user = false;
-			config.should_close = false;
+			os_state->has_audio = audio_initialized_successfully;
+			os_state->has_keyboard = true;
+			os_state->has_mouse = true;
+			os_state->has_gestures = false;
 			
-			os_state->window = config;
-			os_state->input = (OS_InputState) { 0 };
+			os_state->window = window_state;
 			os_state->graphics_context = &g_graphics_context;
 			*out_state = os_state;
 			
@@ -613,10 +551,7 @@ OS_PollEvents(void)
 {
 	Trace();
 	
-	SetWindowLongPtrW(g_win32.window, GWLP_USERDATA, (LONG_PTR)&g_os.input);
-	
-	Win32_UpdateInputEarly(&g_os.input);
-	Win32_UpdateWindowStateIfNeeded(&g_os.window);
+	Win32_UpdateInputEarly(&g_os);
 	
 	MSG message;
 	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
@@ -625,7 +560,7 @@ OS_PollEvents(void)
 		DispatchMessageW(&message);
 	}
 	
-	Win32_UpdateInputLate(&g_os.input);
+	Win32_UpdateInputLate(&g_os);
 }
 
 API void

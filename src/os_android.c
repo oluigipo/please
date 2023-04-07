@@ -1,13 +1,19 @@
 #include "api_os_opengl.h"
+
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
-
 #include <jni.h>
 #include <android_native_app_glue.h>
-#include <stdlib.h>
-
 #include <android/log.h>
+#include <android/input.h>
+
+#include <sys/eventfd.h>
 #include <sys/mman.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <time.h>
 
 #ifndef CONFIG_ENABLE_OPENGL
 #   error "CONFIG_ENABLE_OPENGL is required for SDL2 build."
@@ -18,6 +24,7 @@ struct
 	bool has_focus;
 	bool can_initialize_window;
 	struct android_app* app_state;
+	struct timespec started_time;
 	
 	OS_State state;
 	OS_WindowGraphicsContext graphics_context;
@@ -453,6 +460,35 @@ LoadOpenGLFunctions(void)
 static int32
 OnInputEvent(struct android_app* app, AInputEvent* event)
 {
+	int32 type = AInputEvent_getType(event);
+	
+	switch (type)
+	{
+		case AINPUT_EVENT_TYPE_MOTION:
+		{
+			int32 flags = AMotionEvent_getFlags(event);
+			int32 action = AMotionEvent_getAction(event);
+			uintsize pointer_index = 0;
+			
+			float32 x_axis = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_X, pointer_index);
+			float32 y_axis = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_Y, pointer_index);
+			
+			g_android.state.mouse.pos[0] = x_axis;
+			g_android.state.mouse.pos[1] = y_axis;
+			
+			if (action == 0 || action == 2)
+			{
+				g_android.state.mouse.buttons[OS_MouseButton_Left].is_down = (action == 0);
+				g_android.state.mouse.buttons[OS_MouseButton_Left].changes += 1;
+			}
+		} break;
+		
+		case AINPUT_EVENT_TYPE_KEY: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_KEY"); break;
+		case AINPUT_EVENT_TYPE_FOCUS: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_FOCUS"); break;
+		case AINPUT_EVENT_TYPE_CAPTURE: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_CAPTURE"); break;
+		case AINPUT_EVENT_TYPE_DRAG: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_DRAG"); break;
+	}
+	
 	return 0;
 }
 
@@ -468,7 +504,7 @@ OnAppCommand(struct android_app* app, int32_t cmd)
 		
 		case APP_CMD_TERM_WINDOW:
 		{
-			g_android.state.window.should_close = true;
+			g_android.state.is_terminating = true;
 		} break;
 		
 		case APP_CMD_GAINED_FOCUS:
@@ -488,7 +524,11 @@ android_main(struct android_app* state)
 {
 	Trace();
 	
+	DisableWarnings();
 	app_dummy();
+	ReenableWarnings();
+	
+	clock_gettime(CLOCK_MONOTONIC, &g_android.started_time);
 	
 	g_android.app_state = state;
 	state->onAppCmd = OnAppCommand;
@@ -498,14 +538,11 @@ android_main(struct android_app* state)
 		OS_PollEvents();
 	
 	OS_UserMainArgs user_args = {
+		.thread_id = 0,
+		.thread_count = 1,
+		
 		.argc = 1,
 		.argv = (const char*[]) { "app" },
-		
-		.default_window_state = {
-			.fullscreen = true,
-		},
-		
-		.cpu_core_count = 1,
 	};
 	
 	int32 result = OS_UserMain(&user_args);
@@ -569,12 +606,24 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	g_android.graphics_context.opengl = &g_android.opengl_graphics_context;
 	g_android.graphics_context.present_and_vsync = PresentAndVsync;
 	
-	OS_WindowState window_config = desc->window_initial_state;
-	eglQuerySurface(display, surface, EGL_WIDTH, &window_config.width);
-	eglQuerySurface(display, surface, EGL_HEIGHT, &window_config.height);
+	int32 width = 0, height = 0;
+	eglQuerySurface(display, surface, EGL_WIDTH, &width);
+	eglQuerySurface(display, surface, EGL_HEIGHT, &height);
+	
+	g_android.state.has_audio = false;
+	g_android.state.has_keyboard = false;
+	g_android.state.has_mouse = false;
+	g_android.state.has_gestures = true;
+	g_android.state.is_terminating = false;
 	
 	g_android.state.graphics_context = &g_android.graphics_context;
-	g_android.state.window = window_config;
+	g_android.state.window = (OS_WindowState) {
+		.should_close = false,
+		.fullscreen = true,
+		.width = width,
+		.height = height,
+	};
+	
 	*out_state = &g_android.state;
 	
 	return true;
@@ -584,6 +633,11 @@ API void
 OS_PollEvents(void)
 {
 	Trace();
+	
+	g_android.state.mouse.old_pos[0] = g_android.state.mouse.pos[0];
+	g_android.state.mouse.old_pos[1] = g_android.state.mouse.pos[1];
+	for (intsize i = 0; i < ArrayLength(g_android.state.mouse.buttons); ++i)
+		g_android.state.mouse.buttons[i].changes = 0;
 	
 	int32 ident;
 	int32 events;
@@ -613,7 +667,6 @@ OS_WaitForVsync(void)
 	return false;
 }
 
-
 API void
 OS_ExitWithErrorMessage(const char* fmt, ...)
 {
@@ -627,25 +680,55 @@ OS_MessageBox(String title, String message)
 {
 	Trace();
 	
+	// TODO
 }
 
 API uint64
 OS_CurrentPosixTime(void)
 {
-	// TODO(ljre)
-	return 0;
+	time_t result = time(NULL);
+	if (result == -1)
+		result = 0;
+	
+	return (uint64)result;
 }
 
 API uint64
 OS_CurrentTick(uint64* out_ticks_per_second)
 {
-	return 0;
+	uint64 result = 0;
+	uint64 ticks_per_second = 1000 * 1000 * 10; // 100ns granularity
+	
+	struct timespec t;
+	if (clock_gettime(CLOCK_MONOTONIC, &t) == 0)
+	{
+		result += t.tv_sec * ticks_per_second;
+		result += t.tv_nsec / 100;
+	}
+	
+	if (out_ticks_per_second)
+		*out_ticks_per_second = ticks_per_second;
+	
+	return result;
 }
 
 API float64
 OS_GetTimeInSeconds(void)
 {
-	return 0;
+	struct timespec t;
+	if (0 != clock_gettime(CLOCK_MONOTONIC, &t))
+		return 0.0;
+	
+	t.tv_sec -= g_android.started_time.tv_sec;
+	t.tv_nsec -= g_android.started_time.tv_nsec;
+	
+	if (t.tv_nsec < 0)
+	{
+		t.tv_nsec += 1000000000L;
+		t.tv_sec -= 1;
+	}
+	
+	return (float64)t.tv_nsec / 1000000000.0 + (float64)t.tv_sec;
 }
 
 API void*
@@ -733,7 +816,10 @@ OS_InitRWLock(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	pthread_rwlock_t* mem = OS_HeapAlloc(sizeof(pthread_rwlock_t));
+	SafeAssert(pthread_rwlock_init(mem, NULL) == 0);
+	
+	lock->ptr = mem;
 }
 
 API void
@@ -741,7 +827,7 @@ OS_LockShared(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	SafeAssert(pthread_rwlock_rdlock(lock->ptr) == 0);
 }
 
 API void
@@ -749,7 +835,7 @@ OS_LockExclusive(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	SafeAssert(pthread_rwlock_wrlock(lock->ptr) == 0);
 }
 
 API bool
@@ -757,7 +843,7 @@ OS_TryLockShared(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	return pthread_rwlock_tryrdlock(lock->ptr) == 0;
 }
 
 API bool
@@ -765,7 +851,7 @@ OS_TryLockExclusive(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	return pthread_rwlock_trywrlock(lock->ptr) == 0;
 }
 
 API void
@@ -773,7 +859,7 @@ OS_UnlockShared(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	SafeAssert(pthread_rwlock_unlock(lock->ptr) == 0);
 }
 
 API void
@@ -781,7 +867,7 @@ OS_UnlockExclusive(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	SafeAssert(pthread_rwlock_unlock(lock->ptr) == 0);
 }
 
 API void
@@ -789,16 +875,27 @@ OS_DeinitRWLock(OS_RWLock* lock)
 {
 	Trace();
 	
-	// TODO(ljre)
+	if (lock->ptr)
+	{
+		SafeAssert(pthread_rwlock_destroy(lock->ptr) == 0);
+		OS_HeapFree(lock->ptr);
+		lock->ptr = NULL;
+	}
 }
 
 API void
 OS_InitSemaphore(OS_Semaphore* sem, int32 max_count)
 {
 	Trace();
-	SafeAssert(max_count > 0);
 	
-	// TODO(ljre)
+	sem->ptr = NULL;
+	
+	if (max_count > 0)
+	{
+		sem_t* mem = OS_HeapAlloc(sizeof(sem_t));
+		SafeAssert(sem_init(mem, 0, max_count) == 0);
+		sem->ptr = mem;
+	}
 }
 
 API bool
@@ -806,7 +903,10 @@ OS_WaitForSemaphore(OS_Semaphore* sem)
 {
 	Trace();
 	
-	// TODO(ljre)
+	if (sem->ptr)
+		return sem_wait(sem->ptr) == 0;
+	
+	return false;
 }
 
 API void
@@ -814,7 +914,11 @@ OS_SignalSemaphore(OS_Semaphore* sem, int32 count)
 {
 	Trace();
 	
-	// TODO(ljre)
+	if (sem->ptr)
+	{
+		while (count-- && sem_post(sem->ptr) == 0)
+		{}
+	}
 }
 
 API void
@@ -822,7 +926,12 @@ OS_DeinitSemaphore(OS_Semaphore* sem)
 {
 	Trace();
 	
-	// TODO(ljre)
+	if (sem->ptr)
+	{
+		sem_destroy(sem->ptr);
+		OS_HeapFree(sem->ptr);
+		sem->ptr = NULL;
+	}
 }
 
 API void
@@ -830,40 +939,69 @@ OS_InitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
 	
-	// TODO
+	int fd = eventfd(0, 0);
+	SafeAssert(fd != -1);
+	sig->ptr = (void*)(uintptr)fd;
 }
 
 API bool
 OS_WaitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
+	SafeAssert(sig && sig->ptr);
 	
-	// TODO
-	return false;
+	uint64 count;
+	int fd = (int)(uintptr)sig->ptr;
+	
+	return read(fd, &count, sizeof(count)) >= 0;
 }
 
 API void
 OS_SetEventSignal(OS_EventSignal* sig)
 {
 	Trace();
+	SafeAssert(sig && sig->ptr);
 	
-	// TODO(ljre)
+	uint64 count = 1;
+	int fd = (int)(uintptr)sig->ptr;
+	
+	write(fd, &count, sizeof(count));
 }
 
 API void
 OS_ResetEventSignal(OS_EventSignal* sig)
 {
 	Trace();
+	SafeAssert(sig && sig->ptr);
 	
-	// TODO(ljre)
+	// TODO(ljre): Is this remotely right?
+	// https://man7.org/linux/man-pages/man2/eventfd.2.html
+	
+	uint64 count;
+	int fd = (int)(uintptr)sig->ptr;
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = POLLIN,
+	};
+	
+	if (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN) != 0)
+	{
+		do
+			read(fd, &count, sizeof(count));
+		while (count > 0);
+	}
 }
 
 API void
 OS_DeinitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
+	SafeAssert(sig && sig->ptr);
 	
-	// TODO(ljre)
+	int fd = (int)(uintptr)sig->ptr;
+	close(fd);
+	
+	sig->ptr = NULL;
 }
 
 API int32
@@ -871,7 +1009,9 @@ OS_InterlockedCompareExchange32(volatile int32* ptr, int32 new_value, int32 expe
 {
 	Trace();
 	
-	// TODO(ljre)
+	int32 result = __sync_val_compare_and_swap(ptr, expected, new_value);
+	__sync_synchronize();
+	return result;
 }
 
 API int64
@@ -879,7 +1019,9 @@ OS_InterlockedCompareExchange64(volatile int64* ptr, int64 new_value, int64 expe
 {
 	Trace();
 	
-	// TODO(ljre)
+	int64 result = __sync_val_compare_and_swap(ptr, expected, new_value);
+	__sync_synchronize();
+	return result;
 }
 
 API void*
@@ -887,7 +1029,9 @@ OS_InterlockedCompareExchangePtr(void* volatile* ptr, void* new_value, void* exp
 {
 	Trace();
 	
-	// TODO(ljre)
+	void* result = __sync_val_compare_and_swap(ptr, expected, new_value);
+	__sync_synchronize();
+	return result;
 }
 
 API int32
@@ -895,7 +1039,9 @@ OS_InterlockedIncrement32(volatile int32* ptr)
 {
 	Trace();
 	
-	// TODO(ljre)
+	int32 result = __sync_add_and_fetch(ptr, 1);
+	__sync_synchronize();
+	return result;
 }
 
 API int32
@@ -903,12 +1049,10 @@ OS_InterlockedDecrement32(volatile int32* ptr)
 {
 	Trace();
 	
-	// TODO(ljre)
+	int32 result = __sync_sub_and_fetch(ptr, 1);
+	__sync_synchronize();
+	return result;
 }
-
-#ifdef CONFIG_ENABLE_HOT
-#   error "CONFIG_ENABLE_HOT not implemented for SDL2."
-#endif
 
 #ifdef CONFIG_DEBUG
 API void
@@ -937,7 +1081,26 @@ OS_DebugLog(const char* fmt, ...)
 API int
 OS_DebugLogPrintfFormat(const char* fmt, ...)
 {
-	// TODO(ljre)
-	return 0;
+	Arena* scratch_arena = GetThreadScratchArena();
+	int result = 0;
+	
+	for Arena_TempScope(scratch_arena)
+	{
+		va_list args, args2;
+		va_start(args, fmt);
+		va_copy(args2, args);
+		
+		int count = vsnprintf(NULL, 0, fmt, args2)+1;
+		char* buffer = Arena_PushDirtyAligned(scratch_arena, count, 1);
+		vsnprintf(buffer, count, fmt, args);
+		
+		va_end(args);
+		va_end(args2);
+		
+		__android_log_print(ANDROID_LOG_INFO, "NativeExample", "%s", buffer);
+		result = count-1;
+	}
+	
+	return result;
 }
 #endif //CONFIG_DEBUG

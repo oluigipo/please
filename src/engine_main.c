@@ -39,72 +39,14 @@ OS_UserMain(const OS_UserMainArgs* args)
 {
 	Trace();
 	
-	global_engine.enable_vsync = true;
-	
-	// NOTE(ljre): Desired initial state
-	OS_WindowState window_state = args->default_window_state;
-	Mem_Copy(window_state.title, "Title", 6);
-	
-	if (!window_state.fullscreen)
+	if (args->thread_id > 0)
 	{
-		window_state.width = 1280;
-		window_state.height = 720;
-		window_state.center_window = true;
+		E_WorkerThreadProc_(&global_engine.worker_threads[args->thread_id - 1]);
 	}
-	
-	OS_InitDesc init_desc = {
-		.window_initial_state = window_state,
-		//.window_desired_api = OS_WindowGraphicsApi_OpenGL,
-		//.window_desired_api = OS_WindowGraphicsApi_Direct3D11,
-		
-		.workerthreads_count = Min(E_Limits_MaxWorkerThreadCount, args->cpu_core_count/2),
-		.workerthreads_args = (void*[E_Limits_MaxWorkerThreadCount]) { 0 },
-		.workerthreads_proc = E_WorkerThreadProc_,
-		
-		.audiothread_proc = E_AudioThreadProc_,
-		.audiothread_user_data = NULL,
-	};
-	
-	int32 argc = args->argc;
-	const char* const* argv = args->argv;
-	
-	for (int32 i = 1; i < argc; ++i)
+	else
 	{
-		String arg = StrMake(Mem_Strlen(argv[i]), argv[i]);
-		
-		if (!Mem_Strcmp(argv[i], "-opengl"))
-			init_desc.window_desired_api = OS_WindowGraphicsApi_OpenGL;
-		else if (!Mem_Strcmp(argv[i], "-d3d11"))
-			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
-		else if (!Mem_Strcmp(argv[i], "-no-worker-threads"))
-			init_desc.workerthreads_count = 0;
-		else if (!Mem_Strcmp(argv[i], "-no-vsync"))
-			global_engine.enable_vsync = false;
-		else if (String_StartsWith(arg, Str("-d3d11=")))
-		{
-			int32 feature_level = 0;
-			arg = String_Substr(arg, sizeof("-d3d11=")-1, -1);
-			
-			if (String_Equals(arg, Str("11_0")))
-				feature_level = 110;
-			else if (String_Equals(arg, Str("10_1")))
-				feature_level = 101;
-			else if (String_Equals(arg, Str("10_0")))
-				feature_level = 100;
-			else if (String_Equals(arg, Str("9_3")))
-				feature_level = 93;
-			else if (String_Equals(arg, Str("9_2")))
-				feature_level = 92;
-			else if (String_Equals(arg, Str("9_1")))
-				feature_level = 91;
-			
-			init_desc.window_desired_api = OS_WindowGraphicsApi_Direct3D11;
-			init_desc.window_desired_d3d11_feature_level = feature_level;
-		}
-	}
-	
-	// NOTE(ljre): Init basic stuff
-	{
+		// NOTE(ljre): Init basic stuff
+		const int32 worker_thread_count = args->thread_count-1;
 		const uintsize pagesize = 16ull << 20;
 		const uintsize sz_scratch     = 16ull << 20;
 		const uintsize sz_frame       = 32ull << 20;
@@ -112,7 +54,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		const uintsize sz_audiothread = 256ull << 10;
 		
 		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent + sz_audiothread;
-		for (int32 i = 0; i < init_desc.workerthreads_count; ++i)
+		for (int32 i = 0; i < worker_thread_count; ++i)
 			game_memory_size += sz_scratch;
 		
 		void* game_memory = OS_VirtualReserve(NULL, game_memory_size);
@@ -121,7 +63,8 @@ OS_UserMain(const OS_UserMainArgs* args)
 		global_engine.game_memory_size = game_memory_size;
 		global_engine.delta_time = 1.0f;
 		global_engine.running = true;
-		global_engine.worker_thread_count = init_desc.workerthreads_count;
+		global_engine.enable_vsync = true;
+		global_engine.worker_thread_count = worker_thread_count;
 		
 		// NOTE(ljre): Reserving pieces of the game memory to different arenas
 		{
@@ -137,15 +80,13 @@ OS_UserMain(const OS_UserMainArgs* args)
 			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, sz_persistent, pagesize);
 			memory_head += sz_persistent;
 			
-			for (int32 i = 0; i < init_desc.workerthreads_count; ++i)
+			for (int32 i = 0; i < worker_thread_count; ++i)
 			{
 				E_ThreadCtx* ctx = &global_engine.worker_threads[i];
 				
 				ctx->id = i+1;
 				ctx->scratch_arena = Arena_FromUncommitedMemory(memory_head, sz_scratch, pagesize);
 				memory_head += sz_scratch;
-				
-				init_desc.workerthreads_args[i] = ctx;
 			}
 			
 			global_engine.audio_thread_arena = Arena_FromUncommitedMemory(memory_head, sz_audiothread, sz_audiothread);
@@ -158,49 +99,52 @@ OS_UserMain(const OS_UserMainArgs* args)
 		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
 		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, E_AudioState);
 		
-		if (init_desc.workerthreads_count > 0)
+		if (worker_thread_count > 0)
 		{
-			OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, init_desc.workerthreads_count);
+			OS_InitSemaphore(&global_engine.thread_work_queue->semaphore, worker_thread_count);
 			OS_InitEventSignal(&global_engine.thread_work_queue->reached_zero_doing_work_sig);
 		}
 		
 		OS_InitRWLock(&global_engine.mt_lock);
-	}
-	
-	init_desc.audiothread_user_data = global_engine.audio;
-	
-	if (!OS_Init(&init_desc, &global_engine.os))
-		OS_ExitWithErrorMessage("Failed to initialize platform layer.");
-	
-	OS_PollEvents();
-	
-	// NOTE(ljre): Init everything else
-	E_InitAudio_();
-	E_InitRender_();
-	
-	// NOTE(ljre): Run
-	global_engine.last_frame_time = OS_GetTimeInSeconds();
-	
-#ifdef CONFIG_ENABLE_HOT
-	do
-	{
-		void(*func)(E_GlobalData*) = OS_LoadGameLibrary();
 		
-		func(&global_engine);
-	}
-	while (global_engine.running);
+		OS_InitDesc init_desc = {
+			.audiothread_proc = E_AudioThreadProc_,
+			.audiothread_user_data = global_engine.audio,
+		};
+		
+		if (!OS_Init(&init_desc, &global_engine.os))
+			OS_ExitWithErrorMessage("Failed to initialize platform layer.");
+		
+		OS_PollEvents();
+		
+		// NOTE(ljre): Init everything else
+		E_InitAudio_();
+		E_InitRender_();
+		
+		// NOTE(ljre): Run
+		global_engine.last_frame_time = OS_GetTimeInSeconds();
+		
+#ifdef CONFIG_ENABLE_HOT
+		do
+		{
+			void(*func)(E_GlobalData*) = OS_LoadGameLibrary();
+			
+			func(&global_engine);
+		}
+		while (global_engine.running && !global_engine.os->is_terminating);
 #else
-	do
-		G_Main(&global_engine);
-	while (global_engine.running);
+		do
+			G_Main(&global_engine);
+		while (global_engine.running && !global_engine.os->is_terminating);
 #endif
-	
-	// NOTE(ljre): Deinit
+		
+		// NOTE(ljre): Deinit
 #ifdef CONFIG_ENABLE_STEAM
-	S_Deinit();
+		S_Deinit();
 #endif
-	E_DeinitRender_();
-	E_DeinitAudio_();
+		E_DeinitRender_();
+		E_DeinitAudio_();
+	}
 	
 	return 0;
 }

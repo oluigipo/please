@@ -181,19 +181,6 @@ struct OS_GamepadState
 }
 typedef OS_GamepadState;
 
-struct OS_InputState
-{
-	OS_KeyboardState keyboard;
-	OS_MouseState mouse;
-	
-	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
-	uint16 connected_gamepads; // NOTE(ljre): Bitset
-	
-	int16 codepoints_count;
-	uint32 codepoints[OS_Limits_MaxCodepointsPerFrame];
-}
-typedef OS_InputState;
-
 // NOTE(ljre): Helper macros.
 //             Returns a bool.
 //
@@ -204,29 +191,6 @@ typedef OS_InputState;
 #define OS_IsReleased(state, btn) (!(state).buttons[btn].is_down && (state).buttons[btn].changes & 1)
 #define OS_IsUp(state, btn) (!(state).buttons[btn].is_down)
 
-static inline bool
-OS_IsGamepadConnected(const OS_InputState* input, uint32 index)
-{ return 0 != (input->connected_gamepads & (1 << index)); }
-
-static inline int32
-OS_ConnectedGamepadCount(const OS_InputState* input)
-{ return Mem_PopCnt64(input->connected_gamepads); }
-
-static inline int32
-OS_ConnectedGamepadsIndices(const OS_InputState* input, int32 out_indices[OS_Limits_MaxGamepadCount])
-{
-	uint64 bits = input->connected_gamepads;
-	int32 count = 0;
-	
-	while (bits && count < OS_Limits_MaxGamepadCount)
-	{
-		out_indices[count++] = Mem_BitCtz64(bits);
-		bits &= bits-1;
-	}
-	
-	return count;
-}
-
 //~ Window State
 struct OS_WindowState
 {
@@ -235,35 +199,11 @@ struct OS_WindowState
 	
 	bool show_cursor : 1;
 	bool lock_cursor : 1;
-	bool center_window : 1;
 	bool fullscreen : 1;
 	
 	int32 x, y, width, height;
-	uint8 title[OS_Limits_MaxWindowTitleLength];
 }
 typedef OS_WindowState;
-
-//~ Init
-void typedef OS_ThreadProc(void* arg);
-void typedef OS_AudioThreadProc(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
-
-struct OS_InitDesc
-{
-	// Window & Graphcis
-	OS_WindowState window_initial_state;
-	OS_WindowGraphicsApi window_desired_api;
-	int32 window_desired_d3d11_feature_level;
-	
-	// Worker threads
-	int32 workerthreads_count;
-	void** workerthreads_args;
-	OS_ThreadProc* workerthreads_proc;
-	
-	// Audio thread
-	OS_AudioThreadProc* audiothread_proc;
-	void* audiothread_user_data;
-}
-typedef OS_InitDesc;
 
 struct OS_AudioDeviceInfo
 {
@@ -281,7 +221,6 @@ struct OS_AudioState
 	uint32 current_device_id;
 	
 	// Specified by platform layer
-	bool initialized_successfully;
 	int32 mix_sample_rate;
 	int32 mix_channels;
 	int32 mix_frame_pull_rate;
@@ -293,29 +232,80 @@ typedef OS_AudioState;
 
 struct OS_State
 {
-	const OS_WindowGraphicsContext* graphics_context;
+	bool has_audio : 1;
+	bool has_keyboard : 1;
+	bool has_mouse : 1;
+	bool has_gestures : 1;
+	bool is_terminating : 1;
 	
+	//- Window
+	const OS_WindowGraphicsContext* graphics_context;
 	OS_WindowState window;
-	OS_InputState input;
+	
+	//- Input
+	OS_KeyboardState keyboard;
+	OS_MouseState mouse;
+	
+	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
+	uint16 connected_gamepads; // NOTE(ljre): Bitset
+	
+	int16 text_codepoints_count;
+	uint32 text_codepoints[OS_Limits_MaxCodepointsPerFrame];
+	
+	//- Audio
 	OS_AudioState audio;
 }
 typedef OS_State;
 
+static inline bool
+OS_IsGamepadConnected(const OS_State* os_state, int32 index)
+{ return 0 != (os_state->connected_gamepads & (1 << index)); }
+
+static inline int32
+OS_ConnectedGamepadCount(const OS_State* os_state)
+{ return Mem_PopCnt64(os_state->connected_gamepads); }
+
+static inline int32
+OS_ConnectedGamepadsIndices(const OS_State* os_state, int32 out_indices[OS_Limits_MaxGamepadCount])
+{
+	uint64 bits = os_state->connected_gamepads;
+	int32 count = 0;
+	
+	while (bits && count < OS_Limits_MaxGamepadCount)
+	{
+		out_indices[count++] = Mem_BitCtz64(bits);
+		bits &= bits-1;
+	}
+	
+	return count;
+}
+
+//~ Init
+void typedef OS_AudioThreadProc(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
+
 struct OS_UserMainArgs
 {
+	int32 thread_id;
+	int32 thread_count;
+	
 	int32 argc;
 	const char* const* argv;
-	
-	OS_WindowState default_window_state;
-	
-	int32 cpu_core_count;
 }
 typedef OS_UserMainArgs;
+
+struct OS_InitDesc
+{
+	// Audio thread
+	OS_AudioThreadProc* audiothread_proc;
+	void* audiothread_user_data;
+}
+typedef OS_InitDesc;
+
+API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
 
 //~ Functions
 API int32 OS_UserMain(const OS_UserMainArgs* args);
 
-API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
 API void OS_PollEvents(void);
 API bool OS_WaitForVsync(void);
 

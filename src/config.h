@@ -113,4 +113,10 @@ extern                              const unsigned char name ## _end[]
 
 #endif //defined(__clang__) || defined(__GNUC__)
 
+#if 0 && defined(CONFIG_OS_ANDROID)
+#   include <android/log.h>
+#   undef Trace
+#   define Trace() __android_log_print(ANDROID_LOG_INFO, "NativeExample", "[Trace] %s\n", __func__)
+#endif
+
 #endif //CONFIG_H

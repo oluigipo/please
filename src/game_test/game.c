@@ -97,11 +97,8 @@ G_Init(void)
 		ok = OS_ReadEntireFile(Str("music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
 #endif
 		
-		if (ok)
-		{
-			//SafeAssert(E_LoadSound(ogg, &game->music, NULL));
-			//SafeAssert(E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL));
-		}
+		ok = ok && E_LoadSound(ogg, &game->music, NULL);
+		ok = ok && E_PlaySound(game->music, &(E_PlaySoundOptions) { .volume = 0.5f }, NULL);
 		
 #ifdef CONFIG_ENABLE_EMBED
 		ogg = BufRange(g_luigi_ogg_begin, g_luigi_ogg_end);
@@ -110,8 +107,7 @@ G_Init(void)
 		ok = OS_ReadEntireFile(Str("luigi.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
 #endif
 		
-		//if (ok)
-		//SafeAssert(E_LoadSound(ogg, &game->sound_luigi, NULL));
+		ok = ok && E_LoadSound(ogg, &game->sound_luigi, NULL);
 	}
 	
 	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
@@ -125,12 +121,12 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 	const float32 button_width = 300.0f;
 	const float32 button_height = 100.0f;
 	const float32 button_x = (engine->os->window.width - button_width) / 2;
-	const float32 mouse_x = engine->os->input.mouse.pos[0];
-	const float32 mouse_y = engine->os->input.mouse.pos[1];
+	const float32 mouse_x = engine->os->mouse.pos[0];
+	const float32 mouse_y = engine->os->mouse.pos[1];
 	
 	float32 button_y = *inout_y;
 	
-	bool is_mouse_pressing = OS_IsDown(engine->os->input.mouse, OS_MouseButton_Left);
+	bool is_mouse_pressing = OS_IsDown(engine->os->mouse, OS_MouseButton_Left);
 	bool is_mouse_over = true
 		&& (mouse_x >= button_x && button_x + button_width  >= mouse_x)
 		&& (mouse_y >= button_y && button_y + button_height >= mouse_y);
@@ -161,7 +157,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 	button_y += button_height * 1.5f;
 	
 	*inout_y = button_y;
-	return is_mouse_over && OS_IsReleased(engine->os->input.mouse, OS_MouseButton_Left);
+	return is_mouse_over && OS_IsReleased(engine->os->mouse, OS_MouseButton_Left);
 }
 
 static void
@@ -173,7 +169,7 @@ G_UpdateAndRender(void)
 	S_Update();
 #endif
 	
-	if (engine->os->window.should_close || OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Escape))
+	if (engine->os->window.should_close || OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
 	
 	E_DrawClear(0.2f, 0.0f, 0.4f, 1.0f);

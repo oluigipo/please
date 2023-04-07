@@ -31,8 +31,8 @@ DBG_UIPushFoldable(DBG_UIState* state, String text, bool* is_unfolded)
 	state->max_width = glm_max(size[0] + state->xoffset + dot_size, state->max_width);
 	
 	vec2 mouse;
-	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
-	if (OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left) &&
+	glm_vec2_copy(state->engine->os->mouse.pos, mouse);
+	if (OS_IsPressed(state->engine->os->mouse, OS_MouseButton_Left) &&
 		mouse[0] >= state->current_pos[0] && state->current_pos[0] + size[0] + dot_size >= mouse[0] &&
 		mouse[1] >= state->current_pos[1] && state->current_pos[1] + size[1] >= mouse[1])
 	{
@@ -110,11 +110,11 @@ DBG_UIPushButton(DBG_UIState* state, String text)
 	state->max_width = glm_max(width + state->xoffset, state->max_width);
 	
 	vec2 mouse;
-	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
+	glm_vec2_copy(state->engine->os->mouse.pos, mouse);
 	bool is_over = (mouse[0] >= bbox[0] && bbox[2] >= mouse[0] && mouse[1] >= bbox[1] && bbox[3] >= mouse[1]);
-	bool result = is_over && OS_IsReleased(state->engine->os->input.mouse, OS_MouseButton_Left);
+	bool result = is_over && OS_IsReleased(state->engine->os->mouse, OS_MouseButton_Left);
 	
-	float32 color = is_over && OS_IsDown(state->engine->os->input.mouse, OS_MouseButton_Left) ? 0.3f : 0.2f;
+	float32 color = is_over && OS_IsDown(state->engine->os->mouse, OS_MouseButton_Left) ? 0.3f : 0.2f;
 	
 	E_PushRect(state->batch, &(E_RectBatchElem) {
 		.pos = { bbox[0], bbox[1] },
@@ -264,10 +264,10 @@ DBG_UIPushTextField(DBG_UIState* state, uint8* buffer, intsize buffer_cap, intsi
 	};
 	
 	vec2 mouse;
-	glm_vec2_copy(state->engine->os->input.mouse.pos, mouse);
+	glm_vec2_copy(state->engine->os->mouse.pos, mouse);
 	
 	bool is_over = (mouse[0] >= bbox[0] && bbox[2] >= mouse[0] && mouse[1] >= bbox[1] && bbox[3] >= mouse[1]);
-	bool is_pressed = OS_IsPressed(state->engine->os->input.mouse, OS_MouseButton_Left);
+	bool is_pressed = OS_IsPressed(state->engine->os->mouse, OS_MouseButton_Left);
 	
 	if (is_pressed)
 		*is_selected = is_over;
@@ -276,9 +276,9 @@ DBG_UIPushTextField(DBG_UIState* state, uint8* buffer, intsize buffer_cap, intsi
 	{
 		intsize size = *buffer_size;
 		
-		for (intsize i = 0; i < state->engine->os->input.codepoints_count; ++i)
+		for (intsize i = 0; i < state->engine->os->text_codepoints_count; ++i)
 		{
-			uint32 codepoint = state->engine->os->input.codepoints[i];
+			uint32 codepoint = state->engine->os->text_codepoints[i];
 			
 			if (codepoint == '\b')
 			{

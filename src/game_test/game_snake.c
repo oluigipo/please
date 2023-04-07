@@ -66,13 +66,13 @@ G_SnakeUpdateAndRender(void)
 	s->time_scale = glm_max(s->time_scale - 0.1f, 1.0f);
 	
 	//- NOTE(ljre): Update
-	if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Left) && s->previous_direction != 0)
+	if (OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Left) && s->previous_direction != 0)
 		s->direction = 2;
-	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Right) && s->previous_direction != 2)
+	else if (OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Right) && s->previous_direction != 2)
 		s->direction = 0;
-	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Up) && s->previous_direction != 3)
+	else if (OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Up) && s->previous_direction != 3)
 		s->direction = 1;
-	else if (OS_IsPressed(engine->os->input.keyboard, OS_KeyboardKey_Down) && s->previous_direction != 1)
+	else if (OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Down) && s->previous_direction != 1)
 		s->direction = 3;
 	
 	if (s->period >= 0.1f)

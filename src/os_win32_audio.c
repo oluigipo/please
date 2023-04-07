@@ -508,7 +508,7 @@ Win32_ChangeAudioEndpoint_(uint32 id)
 }
 
 //~ Internal API
-static void Win32_DeinitAudio(void);
+static void Win32_DeinitAudio(OS_State* os_state);
 
 static bool
 Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
@@ -524,23 +524,22 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 	
 	hr = CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**)&g_audio.device_enumerator);
 	if (!SUCCEEDED(hr))
-		return Win32_DeinitAudio(), false;
+		return Win32_DeinitAudio(os_state), false;
 	
 	if (!Win32_EnumerateAudioEndpoints_())
-		return Win32_DeinitAudio(), false;
+		return Win32_DeinitAudio(os_state), false;
 	
 	if (!Win32_ChangeAudioEndpoint_(Win32_FindDefaultAudioEndpoint_()))
-		return Win32_DeinitAudio(), false;
+		return Win32_DeinitAudio(os_state), false;
 	
 	g_audio.thread_proc = init_desc->audiothread_proc;
 	g_audio.thread_userdata = init_desc->audiothread_user_data;
 	g_audio.thread = CreateThread(NULL, 0, Win32_AudioThreadProc_, NULL, 0, NULL);
 	if (!g_audio.thread)
-		return Win32_DeinitAudio(), false;
+		return Win32_DeinitAudio(os_state), false;
 	
 	SetThreadPriority(g_audio.thread, THREAD_PRIORITY_TIME_CRITICAL);
 	
-	os_state->audio.initialized_successfully = true;
 	os_state->audio.mix_sample_rate = g_audio.sample_rate;
 	os_state->audio.mix_channels = g_audio.channels;
 	os_state->audio.mix_frame_pull_rate = g_audio.frame_pull_rate;
@@ -552,7 +551,7 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 }
 
 static void
-Win32_DeinitAudio(void)
+Win32_DeinitAudio(OS_State* os_state)
 {
 	Trace();
 	
@@ -577,6 +576,9 @@ Win32_DeinitAudio(void)
 	}
 	
 	Mem_Zero(&g_audio, sizeof(g_audio));
+	Mem_Zero(&os_state->audio, sizeof(os_state->audio));
+	
+	os_state->has_audio = false;
 }
 
 static void
@@ -584,7 +586,7 @@ Win32_UpdateAudioEndpointIfNeeded(void)
 {
 	Trace();
 	
-	if (g_os.audio.initialized_successfully)
+	if (g_os.has_audio)
 	{
 		Win32_EnumerateAudioEndpoints_();
 		uint32 default_endpoint_id = Win32_FindDefaultAudioEndpoint_();

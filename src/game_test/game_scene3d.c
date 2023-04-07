@@ -30,8 +30,6 @@ struct G_Scene3DUBuffer
 typedef G_Scene3DUBuffer;
 
 static const char g_scene3d_gl_vs[] =
-"#version 330 core\n"
-"\n"
 "layout (location = 0) in vec3 aPosition;\n"
 "layout (location = 1) in vec2 aTexcoord;\n"
 "layout (location = 2) in vec3 aNormal;\n"
@@ -53,8 +51,6 @@ static const char g_scene3d_gl_vs[] =
 "\n";
 
 static const char g_scene3d_gl_fs[] =
-"#version 330 core\n"
-"\n"
 "in vec2 vTexcoord;\n"
 "in vec3 vNormal;\n"
 "\n"
@@ -274,8 +270,8 @@ G_Scene3DUpdateAndRender(void)
 {
 	G_Scene3DState* s = game->scene3d;
 	
-	s->camera_yaw   +=  0.002f * (engine->os->input.mouse.old_pos[0] - engine->os->input.mouse.pos[0]);
-	s->camera_pitch += -0.002f * (engine->os->input.mouse.old_pos[1] - engine->os->input.mouse.pos[1]);
+	s->camera_yaw   +=  0.002f * (engine->os->mouse.old_pos[0] - engine->os->mouse.pos[0]);
+	s->camera_pitch += -0.002f * (engine->os->mouse.old_pos[1] - engine->os->mouse.pos[1]);
 	
 	s->camera_yaw   = fmodf(s->camera_yaw, GLM_PIf*2.0f);
 	s->camera_pitch = glm_clamp(s->camera_pitch, -GLM_PIf*0.49f, GLM_PIf*0.49f);
@@ -293,9 +289,9 @@ G_Scene3DUpdateAndRender(void)
 	glm_vec3_cross(dir, right, up);
 	
 	vec3 move = {
-		OS_IsDown(engine->os->input.keyboard, 'W') - OS_IsDown(engine->os->input.keyboard, 'S'),
-		OS_IsDown(engine->os->input.keyboard, OS_KeyboardKey_LeftShift) - OS_IsDown(engine->os->input.keyboard, ' '),
-		OS_IsDown(engine->os->input.keyboard, 'A') - OS_IsDown(engine->os->input.keyboard, 'D'),
+		OS_IsDown(engine->os->keyboard, 'W') - OS_IsDown(engine->os->keyboard, 'S'),
+		OS_IsDown(engine->os->keyboard, OS_KeyboardKey_LeftShift) - OS_IsDown(engine->os->keyboard, ' '),
+		OS_IsDown(engine->os->keyboard, 'A') - OS_IsDown(engine->os->keyboard, 'D'),
 	};
 	
 	glm_vec3_rotate(move, -s->camera_yaw, vec3(0.0f, 1.0f, 0.0f));

@@ -908,13 +908,13 @@ Win32_InitInput(void)
 }
 
 static void
-Win32_UpdateKeyboardKey(OS_InputState* out_input_data, uint32 vkcode, bool is_down)
+Win32_UpdateKeyboardKey(OS_State* os_state, uint32 vkcode, bool is_down)
 {
 	OS_KeyboardKey key = global_keyboard_key_table[vkcode];
 	
 	if (key)
 	{
-		OS_ButtonState* btn = &out_input_data->keyboard.buttons[key];
+		OS_ButtonState* btn = &os_state->keyboard.buttons[key];
 		
 		if (btn->is_down != is_down)
 		{
@@ -924,8 +924,8 @@ Win32_UpdateKeyboardKey(OS_InputState* out_input_data, uint32 vkcode, bool is_do
 		
 		if (is_down)
 		{
-			if (out_input_data->keyboard.buffered_count < ArrayLength(out_input_data->keyboard.buffered))
-				out_input_data->keyboard.buffered[out_input_data->keyboard.buffered_count++] = (uint8)key;
+			if (os_state->keyboard.buffered_count < ArrayLength(os_state->keyboard.buffered))
+				os_state->keyboard.buffered[os_state->keyboard.buffered_count++] = (uint8)key;
 			else
 				OS_DebugLog("[warning-win32] Lost buffered input: %u\n");
 		}
@@ -933,65 +933,65 @@ Win32_UpdateKeyboardKey(OS_InputState* out_input_data, uint32 vkcode, bool is_do
 }
 
 static void
-Win32_UpdateMouseButton(OS_InputState* out_input_data, OS_MouseButton button, bool is_down)
+Win32_UpdateMouseButton(OS_State* os_state, OS_MouseButton button, bool is_down)
 {
-	out_input_data->mouse.buttons[button].changes += 1;
-	out_input_data->mouse.buttons[button].is_down = is_down;
+	os_state->mouse.buttons[button].changes += 1;
+	os_state->mouse.buttons[button].is_down = is_down;
 }
 
 static inline void
-Win32_UpdateInputEarly(OS_InputState* out_input_data)
+Win32_UpdateInputEarly(OS_State* os_state)
 {
 	// NOTE(ljre): Update Keyboard
-	for (int32 i = 0; i < ArrayLength(out_input_data->keyboard.buttons); ++i)
-		out_input_data->keyboard.buttons[i].changes = 0;
+	for (int32 i = 0; i < ArrayLength(os_state->keyboard.buttons); ++i)
+		os_state->keyboard.buttons[i].changes = 0;
 	
-	out_input_data->keyboard.buffered_count = 0;
+	os_state->keyboard.buffered_count = 0;
 	
 	// NOTE(ljre): Update Mouse
-	for (int32 i = 0; i < ArrayLength(out_input_data->mouse.buttons); ++i)
-		out_input_data->mouse.buttons[i].changes = 0;
+	for (int32 i = 0; i < ArrayLength(os_state->mouse.buttons); ++i)
+		os_state->mouse.buttons[i].changes = 0;
 	
-	out_input_data->mouse.scroll = 0;
+	os_state->mouse.scroll = 0;
 	
 	// NOTE(ljre): Update text
-	out_input_data->codepoints_count = 0;
-	Mem_Zero(out_input_data->codepoints, sizeof(out_input_data->codepoints));
+	os_state->text_codepoints_count = 0;
+	Mem_Zero(os_state->text_codepoints, sizeof(os_state->text_codepoints));
 }
 
 static inline void
-Win32_UpdateInputLate(OS_InputState* out_input_data)
+Win32_UpdateInputLate(OS_State* os_state)
 {
 	// NOTE(ljre): Get mouse cursor
 	{
-		out_input_data->mouse.old_pos[0] = out_input_data->mouse.pos[0];
-		out_input_data->mouse.old_pos[1] = out_input_data->mouse.pos[1];
+		os_state->mouse.old_pos[0] = os_state->mouse.pos[0];
+		os_state->mouse.old_pos[1] = os_state->mouse.pos[1];
 		
 		POINT mouse;
 		GetCursorPos(&mouse);
 		ScreenToClient(g_win32.window, &mouse);
 		
-		out_input_data->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)g_os.window.width);
-		out_input_data->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)g_os.window.height);
+		os_state->mouse.pos[0] = glm_clamp((float32)mouse.x, 0.0f, (float32)os_state->window.width);
+		os_state->mouse.pos[1] = glm_clamp((float32)mouse.y, 0.0f, (float32)os_state->window.height);
 		
 		static bool prev_update_mouse_pos = false;
 		bool update_mouse_pos = (GetForegroundWindow() == g_win32.window);
 		
 		if (g_win32.lock_cursor && update_mouse_pos)
 		{
-			mouse.x = g_os.window.width/2;
-			mouse.y = g_os.window.height/2;
+			mouse.x = os_state->window.width/2;
+			mouse.y = os_state->window.height/2;
 			
 			ClientToScreen(g_win32.window, &mouse);
 			SetCursorPos(mouse.x, mouse.y);
 			
-			out_input_data->mouse.old_pos[0] = (float32)(g_os.window.width/2);
-			out_input_data->mouse.old_pos[1] = (float32)(g_os.window.height/2);
+			os_state->mouse.old_pos[0] = (float32)(os_state->window.width/2);
+			os_state->mouse.old_pos[1] = (float32)(os_state->window.height/2);
 			
 			if (!prev_update_mouse_pos)
 			{
-				out_input_data->mouse.pos[0] = out_input_data->mouse.old_pos[0];
-				out_input_data->mouse.pos[1] = out_input_data->mouse.old_pos[1];
+				os_state->mouse.pos[0] = os_state->mouse.old_pos[0];
+				os_state->mouse.pos[1] = os_state->mouse.old_pos[1];
 			}
 		}
 		
@@ -999,7 +999,7 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 	}
 	
 	// NOTE(ljre): Update Gamepads
-	out_input_data->connected_gamepads = 0;
+	os_state->connected_gamepads = 0;
 	
 	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
 	{
@@ -1007,12 +1007,12 @@ Win32_UpdateInputLate(OS_InputState* out_input_data)
 		
 		if (gamepad->connected)
 		{
-			out_input_data->connected_gamepads |= 1 << i;
+			os_state->connected_gamepads |= 1 << i;
 			
 			UpdateConnectedGamepad(gamepad);
-			out_input_data->gamepads[i] = gamepad->data;
+			os_state->gamepads[i] = gamepad->data;
 		}
 		else
-			Mem_Zero(&out_input_data->gamepads[i], sizeof(OS_GamepadState));
+			Mem_Zero(&os_state->gamepads[i], sizeof(OS_GamepadState));
 	}
 }

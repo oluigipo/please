@@ -17,6 +17,8 @@
 #define ClampMax Min
 #define ClampMin Max
 
+#define Clamp(x,min,max) Max(Min(x, max), min)
+
 #if defined(__clang__)
 #   define Assume(...) __builtin_assume(__VA_ARGS__)
 #   define Debugbreak() __builtin_debugtrap()
