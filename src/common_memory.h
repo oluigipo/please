@@ -76,8 +76,8 @@ static inline int32 Mem_Generic_Compare(const void* left_, const void* right_, u
 
 #if defined(CONFIG_ARCH_X86FAMILY)
 #   include "common_memory_x86.h"
-//#elif defined(CONFIG_ARCH_ARMFAMILY)
-//#   include "common_memory_arm.h"
+#elif defined(CONFIG_ARCH_ARMFAMILY)
+#   include "common_memory_arm.h"
 #else
 static inline int32 Mem_BitCtz64(uint64 i) { return Mem_Generic_BitCtz64(i); }
 static inline int32 Mem_BitCtz32(uint32 i) { return Mem_Generic_BitCtz32(i); }
