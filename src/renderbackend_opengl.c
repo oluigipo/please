@@ -103,6 +103,9 @@ RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 	GL.glGetIntegerv(GL_MAX_TEXTURE_SIZE, &caps.max_texture_size);
 	GL.glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &caps.max_render_target_textures);
 	
+	caps.max_texture_size = ClampMin(caps.max_texture_size, 2048);
+	caps.max_render_target_textures = ClampMin(caps.max_render_target_textures, 4);
+	
 	const uint8* vendor_cstr = GL.glGetString(GL_VENDOR);
 	const uint8* renderer_cstr = GL.glGetString(GL_RENDERER);
 	const uint8* version_cstr = GL.glGetString(GL_VERSION);
