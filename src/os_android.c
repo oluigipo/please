@@ -6,6 +6,7 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
 #include <android/input.h>
+#include <android/asset_manager.h>
 #include <aaudio/AAudio.h>
 
 #include <sys/eventfd.h>
@@ -45,7 +46,7 @@ struct
 static g_android;
 
 static Arena*
-GetThreadScratchArena(void)
+GetThreadScratchArena_(void)
 {
 	static thread_local Arena* this_arena;
 	
@@ -56,7 +57,7 @@ GetThreadScratchArena(void)
 }
 
 static bool
-PresentAndVsync(int32 vsync_count)
+PresentAndVsync_(int32 vsync_count)
 {
 	Trace();
 	
@@ -65,7 +66,7 @@ PresentAndVsync(int32 vsync_count)
 }
 
 static bool
-LoadOpenGLFunctions(void)
+LoadOpenGLFunctions_(void)
 {
 	Trace();
 	
@@ -619,8 +620,26 @@ android_main(struct android_app* state)
 	{
 		AAudioStream_requestStop(g_android.audio_stream);
 		AAudioStream_close(g_android.audio_stream);
+		
 		g_android.audio_stream = NULL;
 	}
+	
+	if (g_android.gl_context)
+	{
+		eglMakeCurrent(g_android.gl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+		eglDestroyContext(g_android.gl_display, g_android.gl_context);
+		eglDestroySurface(g_android.gl_display, g_android.gl_surface);
+		eglTerminate(g_android.gl_display);
+		
+		g_android.gl_display = NULL;
+		g_android.gl_context = NULL;
+		g_android.gl_surface = NULL;
+	}
+	
+	ANativeActivity_finish(state->activity);
+	
+	while (!g_android.state.is_terminating)
+		OS_PollEvents();
 }
 
 API bool
@@ -670,7 +689,7 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE)
 		return false;
 	
-	if (!LoadOpenGLFunctions())
+	if (!LoadOpenGLFunctions_())
 		return false;
 	
 	g_android.gl_display = display;
@@ -678,7 +697,7 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	g_android.gl_surface = surface;
 	g_android.graphics_context.api = OS_WindowGraphicsApi_OpenGL;
 	g_android.graphics_context.opengl = &g_android.opengl_graphics_context;
-	g_android.graphics_context.present_and_vsync = PresentAndVsync;
+	g_android.graphics_context.present_and_vsync = PresentAndVsync_;
 	
 	int32 width = 0, height = 0;
 	eglQuerySurface(display, surface, EGL_WIDTH, &width);
@@ -1138,7 +1157,7 @@ OS_DebugMessageBox(const char* fmt, ...)
 API void
 OS_DebugLog(const char* fmt, ...)
 {
-	Arena* scratch_arena = GetThreadScratchArena();
+	Arena* scratch_arena = GetThreadScratchArena_();
 	
 	for Arena_TempScope(scratch_arena)
 	{
@@ -1155,7 +1174,7 @@ OS_DebugLog(const char* fmt, ...)
 API int
 OS_DebugLogPrintfFormat(const char* fmt, ...)
 {
-	Arena* scratch_arena = GetThreadScratchArena();
+	Arena* scratch_arena = GetThreadScratchArena_();
 	int result = 0;
 	
 	for Arena_TempScope(scratch_arena)
