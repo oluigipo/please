@@ -30,7 +30,6 @@ struct
 	int optimize;
 	bool debug_mode;
 	bool embed;
-	bool debug_info;
 	
 	bool install;
 	bool launch;
@@ -79,8 +78,6 @@ CreateMakefiles(void)
 		fprintf(file, " -DCONFIG_ENABLE_EMBED");
 	if (g_opts.debug_mode)
 		fprintf(file, " -DCONFIG_DEBUG");
-	if (g_opts.debug_info)
-		fprintf(file, " -g");
 	for (Cstr* def = g_opts.exec->defines; def && *def; ++def)
 		fprintf(file, " -D%s", *def);
 	fprintf(file, "\n");
@@ -178,8 +175,6 @@ main(int argc, char** argv)
 	{
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "/?") || !strcmp(argv[i], "-help") || !strcmp(argv[i], "--help"))
 			return PrintHelp();
-		else if (strcmp(argv[i], "-g") == 0)
-			g_opts.debug_info = true;
 		else if (strcmp(argv[i], "-install") == 0)
 			g_opts.install = true;
 		else if (strcmp(argv[i], "-launch") == 0)
@@ -248,10 +243,11 @@ PrintHelp(void)
 		"Target:        %s\n"
 		"\n"
 		"OPTIONS:\n"
-		"    -g                  Generate debug info\n"
+		"    -g                  Does nothing\n"
 		"    -ndebug             Don't define CONFIG_DEBUG macro\n"
 		"    -embed              Embed assets in executable file (doesn't work on MSVC)\n"
 		"    -O0 -O1 -O2         Optimization flags\n"
+		"    -install            Install the APK through ADB after building it\n"
 		"    -profile=release    alias for: -ndebug -O2 -embed\n"
 		"",
 		g_self, g_opts.exec->name, g_target);
