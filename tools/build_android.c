@@ -5,7 +5,7 @@
 #   define ENV_ANDROID_NDK "B:/programs/android/ndk-r23c"
 #   define ENV_JAVA_JDK "B:/programs/jdk-17.0.6+10"
 #   define ENV_BUILD_TOOLS "B:/programs/android/sdk/build-tools/33.0.1"
-#   define ENV_PLATFORM "B:/programs/android/sdk/platforms/android-18"
+#   define ENV_PLATFORM "B:/programs/android/sdk/platforms/android-26"
 #endif
 
 #ifndef ENV_ANDROID_SDK
@@ -63,7 +63,7 @@ CreateMakefiles(void)
 		"\n"
 		"LOCAL_MODULE := main\n"
 		"LOCAL_C_INCLUDES := ../include ../src\n"
-		"LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3\n"
+		"LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv3 -laaudio\n"
 		"LOCAL_STATIC_LIBRARIES := android_native_app_glue\n"
 		"\n");
 	
@@ -102,7 +102,7 @@ CreateMakefiles(void)
 		"# https://developer.android.com/ndk/guides/application_mk.html\n"
 		"\n"
 		"NDK_TOOLCHAIN_VERSION := clang\n"
-		"APP_PLATFORM := android-18\n"
+		"APP_PLATFORM := android-26\n"
 		"APP_OPTIM := %s\n"
 		"APP_ABI := armeabi-v7a arm64-v8a # x86 x86_64\n"
 		"\n", g_opts.optimize > 0 ? "release" : "debug");

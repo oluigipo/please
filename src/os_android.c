@@ -6,6 +6,7 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
 #include <android/input.h>
+#include <aaudio/AAudio.h>
 
 #include <sys/eventfd.h>
 #include <sys/mman.h>
@@ -16,7 +17,7 @@
 #include <time.h>
 
 #ifndef CONFIG_ENABLE_OPENGL
-#   error "CONFIG_ENABLE_OPENGL is required for SDL2 build."
+#   error "CONFIG_ENABLE_OPENGL is required for Android build."
 #endif
 
 struct
@@ -33,6 +34,13 @@ struct
 	EGLDisplay gl_display;
 	EGLContext gl_context;
 	EGLSurface gl_surface;
+	
+	OS_AudioThreadProc* audio_user_thread_proc;
+	void* audio_user_thread_data;
+	AAudioStream* audio_stream;
+	int32 audio_sample_rate;
+	int32 audio_channel_count;
+	int32 audio_samples_per_frame;
 }
 static g_android;
 
@@ -457,8 +465,67 @@ LoadOpenGLFunctions(void)
 	return true;
 }
 
+static aaudio_data_callback_result_t
+AudioCallback_(AAudioStream* stream, void* user_data, void* audio_data, int32 num_frames)
+{
+	const int32 sample_rate       = g_android.audio_sample_rate;
+	const int32 channel_count     = g_android.audio_channel_count;
+	const int32 samples_per_frame = g_android.audio_samples_per_frame;
+	const int32 sample_count      = num_frames * samples_per_frame;
+	
+	OS_AudioThreadProc* const user_proc = g_android.audio_user_thread_proc;
+	void* const user_proc_data          = g_android.audio_user_thread_data;
+	
+	Mem_Zero(audio_data, sizeof(int16) * sample_count);
+	user_proc(user_proc_data, audio_data, channel_count, sample_rate, sample_count);
+	
+	return AAUDIO_CALLBACK_RESULT_CONTINUE;
+}
+
+static bool
+InitAudio_(const OS_InitDesc* init_desc)
+{
+	aaudio_result_t r;
+	
+	AAudioStreamBuilder* stream_builder;
+	r = AAudio_createStreamBuilder(&stream_builder);
+	if (r != AAUDIO_OK)
+		return false;
+	
+	AAudioStreamBuilder_setDirection(stream_builder, AAUDIO_DIRECTION_OUTPUT);
+	AAudioStreamBuilder_setSharingMode(stream_builder, AAUDIO_SHARING_MODE_SHARED);
+	AAudioStreamBuilder_setSampleRate(stream_builder, 44100);
+	AAudioStreamBuilder_setChannelCount(stream_builder, 2);
+	AAudioStreamBuilder_setFormat(stream_builder, AAUDIO_FORMAT_PCM_I16);
+	AAudioStreamBuilder_setDataCallback(stream_builder, AudioCallback_, NULL);
+	
+	AAudioStream* audio_stream;
+	r = AAudioStreamBuilder_openStream(stream_builder, &audio_stream);
+	
+	AAudioStreamBuilder_delete(stream_builder);
+	if (r != AAUDIO_OK)
+		return false;
+	
+	g_android.audio_stream = audio_stream;
+	g_android.audio_sample_rate = AAudioStream_getSampleRate(audio_stream);
+	g_android.audio_channel_count = AAudioStream_getChannelCount(audio_stream);
+	g_android.audio_samples_per_frame = AAudioStream_getSamplesPerFrame(audio_stream);
+	g_android.audio_user_thread_proc = init_desc->audiothread_proc;
+	g_android.audio_user_thread_data = init_desc->audiothread_user_data;
+	
+	r = AAudioStream_requestStart(audio_stream);
+	if (r != AAUDIO_OK)
+	{
+		AAudioStream_close(g_android.audio_stream);
+		g_android.audio_stream = NULL;
+		return false;
+	}
+	
+	return true;
+}
+
 static int32
-OnInputEvent(struct android_app* app, AInputEvent* event)
+OnInputEvent_(struct android_app* app, AInputEvent* event)
 {
 	int32 type = AInputEvent_getType(event);
 	
@@ -483,17 +550,17 @@ OnInputEvent(struct android_app* app, AInputEvent* event)
 			}
 		} break;
 		
-		case AINPUT_EVENT_TYPE_KEY: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_KEY"); break;
-		case AINPUT_EVENT_TYPE_FOCUS: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_FOCUS"); break;
-		case AINPUT_EVENT_TYPE_CAPTURE: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_CAPTURE"); break;
-		case AINPUT_EVENT_TYPE_DRAG: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_DRAG"); break;
+		//case AINPUT_EVENT_TYPE_KEY: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_KEY"); break;
+		//case AINPUT_EVENT_TYPE_FOCUS: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_FOCUS"); break;
+		//case AINPUT_EVENT_TYPE_CAPTURE: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_CAPTURE"); break;
+		//case AINPUT_EVENT_TYPE_DRAG: OS_DebugLog("[OnInputEvent] AINPUT_EVENT_TYPE_DRAG"); break;
 	}
 	
 	return 0;
 }
 
 static void
-OnAppCommand(struct android_app* app, int32_t cmd)
+OnAppCommand_(struct android_app* app, int32_t cmd)
 {
 	switch (cmd)
 	{
@@ -531,8 +598,8 @@ android_main(struct android_app* state)
 	clock_gettime(CLOCK_MONOTONIC, &g_android.started_time);
 	
 	g_android.app_state = state;
-	state->onAppCmd = OnAppCommand;
-	state->onInputEvent = OnInputEvent;
+	state->onAppCmd = OnAppCommand_;
+	state->onInputEvent = OnInputEvent_;
 	
 	while (!g_android.can_initialize_window)
 		OS_PollEvents();
@@ -547,6 +614,13 @@ android_main(struct android_app* state)
 	
 	int32 result = OS_UserMain(&user_args);
 	(void)result;
+	
+	if (g_android.audio_stream)
+	{
+		AAudioStream_requestStop(g_android.audio_stream);
+		AAudioStream_close(g_android.audio_stream);
+		g_android.audio_stream = NULL;
+	}
 }
 
 API bool
@@ -610,7 +684,7 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 	eglQuerySurface(display, surface, EGL_WIDTH, &width);
 	eglQuerySurface(display, surface, EGL_HEIGHT, &height);
 	
-	g_android.state.has_audio = false;
+	g_android.state.has_audio = InitAudio_(desc);
 	g_android.state.has_keyboard = false;
 	g_android.state.has_mouse = false;
 	g_android.state.has_gestures = true;
@@ -974,7 +1048,7 @@ OS_ResetEventSignal(OS_EventSignal* sig)
 	Trace();
 	SafeAssert(sig && sig->ptr);
 	
-	// TODO(ljre): Is this remotely right?
+	// TODO(ljre): Is this even remotely right?
 	// https://man7.org/linux/man-pages/man2/eventfd.2.html
 	
 	uint64 count;
