@@ -19,6 +19,22 @@ enum RB_ShaderType
 }
 typedef RB_ShaderType;
 
+enum RB_TexFormat
+{
+	RB_TexFormat_Null = 0,
+	
+	RB_TexFormat_D16,
+	RB_TexFormat_D24S8,
+	RB_TexFormat_A8,
+	RB_TexFormat_R8,
+	RB_TexFormat_RG8,
+	RB_TexFormat_RGB8,
+	RB_TexFormat_RGBA8,
+	
+	RB_TexFormat_Count,
+}
+typedef RB_TexFormat;
+
 struct RB_Capabilities
 {
 	String backend_api;
@@ -31,11 +47,14 @@ struct RB_Capabilities
 	int32 max_render_target_textures;
 	int32 max_textures_per_drawcall;
 	
+	uint64 supported_texture_formats[(RB_TexFormat_Count + 63) / 64];
+	
 	bool has_instancing : 1;
 	bool has_32bit_index : 1;
 	bool has_separate_alpha_blend : 1;
 	bool has_compute_shaders : 1;
 	bool has_16bit_float : 1;
+	bool has_wireframe_fillmode : 1;
 }
 typedef RB_Capabilities;
 
@@ -164,9 +183,11 @@ struct RB_ResourceCommand
 		{
 			const void* pixels;
 			int32 width, height;
-			uint32 channels;
+			RB_TexFormat format;
 			
 			bool flag_linear_filtering : 1;
+			bool flag_render_target : 1;
+			bool flag_not_used_in_shader : 1;
 			
 			// used if 'flag_subregion' is set and not on init.
 			int32 xoffset;
@@ -273,7 +294,6 @@ struct RB_DrawCommand
 			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
 			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
 			
-			int32 base_vertex;
 			uint32 base_index;
 			uint32 index_count;
 			

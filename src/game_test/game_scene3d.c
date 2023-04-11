@@ -256,7 +256,7 @@ G_Scene3DInit(void)
 				.pixels = imgdata,
 				.width = imgwidth,
 				.height = imgheight,
-				.channels = 4,
+				.format = RB_TexFormat_RGBA8,
 				.flag_linear_filtering = true,
 			},
 		});

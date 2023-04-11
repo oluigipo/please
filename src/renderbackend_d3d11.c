@@ -21,6 +21,7 @@ struct RB_D3d11Texture2D_
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* resource_view;
 	ID3D11SamplerState* sampler_state;
+	DXGI_FORMAT format;
 }
 typedef RB_D3d11Texture2D_;
 
@@ -50,10 +51,19 @@ struct RB_D3d11Pipeline_
 }
 typedef RB_D3d11Pipeline_;
 
+struct RB_D3d11RenderTarget_
+{
+	intsize color_count;
+	ID3D11RenderTargetView* color_views[RB_Limits_ColorAttachPerRenderTarget];
+	ID3D11DepthStencilView* depth_stencil_view;
+}
+typedef RB_D3d11RenderTarget_;
+
 static RB_PoolOf_(RB_D3d11Texture2D_, 512) g_d3d11_texpool;
 static RB_PoolOf_(RB_D3d11Shader_, 64) g_d3d11_shaderpool;
 static RB_PoolOf_(RB_D3d11Buffer_, 512) g_d3d11_bufferpool;
-static RB_PoolOf_(RB_D3d11Pipeline_, 16) g_d3d11_pipelinepool;
+static RB_PoolOf_(RB_D3d11Pipeline_, 64) g_d3d11_pipelinepool;
+static RB_PoolOf_(RB_D3d11RenderTarget_, 64) g_d3d11_rendertargetpool;
 
 static ID3D11RasterizerState* g_d3d11_rasterizer_state;
 static ID3D11SamplerState* g_d3d11_linear_sampler_state;
@@ -61,6 +71,49 @@ static ID3D11SamplerState* g_d3d11_nearest_sampler_state;
 static ID3D11BlendState* g_d3d11_blend_state;
 static ID3D11DepthStencilState* g_d3d11_depth_state;
 static bool g_d3d11_use_level91_shaders;
+
+static DXGI_FORMAT
+RB_D3d11TexFormatToDxgi_(RB_TexFormat texfmt, uint32* out_pixel_size)
+{
+	DXGI_FORMAT format = 0;
+	uint32 pixel_size = 0;
+	
+	switch (texfmt)
+	{
+		case 0: case RB_TexFormat_Count: break;
+		
+		case RB_TexFormat_D16: format = DXGI_FORMAT_D16_UNORM; pixel_size = 2; break;
+		case RB_TexFormat_D24S8: format = DXGI_FORMAT_D24_UNORM_S8_UINT; pixel_size = 4; break;
+		case RB_TexFormat_A8: format = DXGI_FORMAT_A8_UNORM; pixel_size = 1; break;
+		case RB_TexFormat_R8: format = DXGI_FORMAT_R8_UNORM; pixel_size = 1; break;
+		case RB_TexFormat_RG8: format = DXGI_FORMAT_R8G8_UNORM; pixel_size = 2; break;
+		case RB_TexFormat_RGB8: break;
+		case RB_TexFormat_RGBA8: format = DXGI_FORMAT_R8G8B8A8_UNORM; pixel_size = 4; break;
+	}
+	
+	if (out_pixel_size)
+		*out_pixel_size = pixel_size;
+	
+	return format;
+}
+
+static bool
+RB_D3d11TexFormatIsDepthStencil_(RB_TexFormat texfmt)
+{
+	switch (texfmt)
+	{
+		case 0: case RB_TexFormat_Count: return false;
+		
+		case RB_TexFormat_D16:
+		case RB_TexFormat_D24S8: return true;
+		
+		case RB_TexFormat_A8:
+		case RB_TexFormat_R8:
+		case RB_TexFormat_RG8:
+		case RB_TexFormat_RGB8:
+		case RB_TexFormat_RGBA8: return false;
+	}
+}
 
 static void
 RB_InitD3d11_(Arena* scratch_arena)
@@ -173,12 +226,17 @@ RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
 		caps.max_render_target_textures = 1;
 		caps.max_textures_per_drawcall = 8;
 		caps.shader_type = RB_ShaderType_HlslLevel91;
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_D16);
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_D24S8);
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_R8);
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_RGBA8);
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_9_2)
 	{
 		caps.has_32bit_index = true;
 		caps.has_separate_alpha_blend = true;
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_A8);
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_9_3)
@@ -194,6 +252,7 @@ RB_CapabilitiesD3d11_(RB_Capabilities* out_capabilities)
 		caps.max_texture_size = 8192;
 		caps.max_render_target_textures = 8;
 		caps.shader_type = RB_ShaderType_Hlsl40;
+		caps.supported_texture_formats[0] |= (1 << RB_TexFormat_RG8);
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_10_1)
@@ -242,33 +301,37 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				const void* pixels = cmd->texture_2d.pixels;
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
-				uint32 channels = cmd->texture_2d.channels;
 				bool dynamic = cmd->flag_dynamic;
-				uint32 pitch = width * channels;
+				uint32 pixel_size;
+				DXGI_FORMAT format = RB_D3d11TexFormatToDxgi_(cmd->texture_2d.format, &pixel_size);
+				uint32 pitch = width * pixel_size;
 				
-				Assert(width && height && channels);
+				Assert(width && height && format);
 				
-				const DXGI_FORMAT formats[] = {
-					DXGI_FORMAT_R8_UNORM,
-					DXGI_FORMAT_R8G8_UNORM,
-					0,
-					DXGI_FORMAT_R8G8B8A8_UNORM,
-				};
+				UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
 				
-				Assert(channels <= 4 && channels != 3);
+				if (cmd->texture_2d.flag_not_used_in_shader)
+					bind_flags &= ~D3D11_BIND_SHADER_RESOURCE;
+				if (cmd->texture_2d.flag_render_target)
+				{
+					if (RB_D3d11TexFormatIsDepthStencil_(cmd->texture_2d.format))
+						bind_flags |= D3D11_BIND_DEPTH_STENCIL;
+					else
+						bind_flags |= D3D11_BIND_RENDER_TARGET;
+				}
 				
 				const D3D11_TEXTURE2D_DESC tex_desc = {
 					.Width = width,
 					.Height = height,
 					.MipLevels = 1,
 					.ArraySize = 1,
-					.Format = formats[channels - 1],
+					.Format = format,
 					.SampleDesc = {
 						.Count = 1,
 						.Quality = 0,
 					},
 					.Usage = (dynamic) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE,
-					.BindFlags = D3D11_BIND_SHADER_RESOURCE,
+					.BindFlags = bind_flags,
 					.CPUAccessFlags = (dynamic) ? D3D11_CPU_ACCESS_WRITE : 0,
 					.MiscFlags = 0,
 				};
@@ -300,6 +363,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				pool_data->texture = texture;
 				pool_data->resource_view = resource_view;
 				pool_data->sampler_state = sampler_state;
+				pool_data->format = format;
 			} break;
 			
 			//case RB_ResourceCommandKind_MakeVertexBuffer:
@@ -575,7 +639,59 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			
 			case RB_ResourceCommandKind_MakeRenderTarget:
 			{
-				SafeAssert(false);
+				Assert(!handle.id);
+				
+				intsize color_count = 0;
+				ID3D11RenderTargetView* color_views[ArrayLength(cmd->render_target.color_textures)] = { 0 };
+				ID3D11DepthStencilView* depth_stencil_view = NULL;
+				
+				for (intsize i = 0; i < ArrayLength(cmd->render_target.color_textures); ++i)
+				{
+					RB_Handle* texhandle = cmd->render_target.color_textures[i];
+					if (!texhandle)
+						break;
+					
+					RB_D3d11Texture2D_* tex_pool_data = RB_PoolFetch_(&g_d3d11_texpool, texhandle->id);
+					
+					ID3D11Resource* resource = (ID3D11Resource*)tex_pool_data->texture;
+					ID3D11RenderTargetView* view;
+					D3D11_RENDER_TARGET_VIEW_DESC desc = {
+						.Format = tex_pool_data->format,
+						.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+						.Texture2D = {
+							.MipSlice = 0,
+						},
+					};
+					
+					D3d11Call(ID3D11Device_CreateRenderTargetView(D3d11.device, resource, &desc, &view));
+					
+					color_views[i] = view;
+					color_count = i;
+				}
+				
+				if (cmd->render_target.depth_stencil_texture)
+				{
+					RB_D3d11Texture2D_* tex_pool_data = RB_PoolFetch_(&g_d3d11_texpool, cmd->render_target.depth_stencil_texture->id);
+					ID3D11Resource* resource = (ID3D11Resource*)tex_pool_data->texture;
+					ID3D11DepthStencilView* view;
+					D3D11_DEPTH_STENCIL_VIEW_DESC desc = {
+						.Format = tex_pool_data->format,
+						.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+						.Flags = 0,
+						.Texture2D = {
+							.MipSlice = 0,
+						},
+					};
+					
+					D3d11Call(ID3D11Device_CreateDepthStencilView(D3d11.device, resource, &desc, &view));
+					
+					depth_stencil_view = view;
+				}
+				
+				RB_D3d11RenderTarget_* pool_data = RB_PoolAlloc_(&g_d3d11_rendertargetpool, &handle.id);
+				pool_data->color_count = color_count;
+				pool_data->depth_stencil_view = depth_stencil_view;
+				Mem_Copy(pool_data->color_views, color_views, sizeof(color_views[0]) * color_count);
 			} break;
 			
 			case RB_ResourceCommandKind_UpdateVertexBuffer:
@@ -630,7 +746,8 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				const uint8* pixels = cmd->texture_2d.pixels;
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
-				uint32 channels = cmd->texture_2d.channels;
+				uint32 pixel_size;
+				RB_D3d11TexFormatToDxgi_(cmd->texture_2d.format, &pixel_size);
 				
 				ID3D11Texture2D* texture = pool_data->texture;
 				ID3D11Resource* resource;
@@ -640,7 +757,7 @@ RB_ResourceD3d11_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				D3d11Call(ID3D11DeviceContext_Map(D3d11.context, resource, 0, D3D11_MAP_WRITE_DISCARD, 0, &map));
 				
 				for (intsize y = 0; y < height; ++y)
-					Mem_Copy((uint8*)map.pData + map.RowPitch*y, pixels + width*channels*y, width * channels);
+					Mem_Copy((uint8*)map.pData + map.RowPitch*y, pixels + width*pixel_size*y, width * pixel_size);
 				
 				ID3D11DeviceContext_Unmap(D3d11.context, resource, 0);
 			} break;
@@ -794,7 +911,19 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 			
 			case RB_DrawCommandKind_ApplyRenderTarget:
 			{
-				SafeAssert(false); // TODO
+				intsize color_count = 1;
+				ID3D11RenderTargetView* color_views[RB_Limits_ColorAttachPerRenderTarget] = { D3d11.target };
+				ID3D11DepthStencilView* depth_stencil_view = D3d11.depth_stencil;
+				
+				if (cmd->apply.handle)
+				{
+					RB_D3d11RenderTarget_* pool_data = RB_PoolFetch_(&g_d3d11_rendertargetpool, cmd->apply.handle->id);
+					color_count = pool_data->color_count;
+					depth_stencil_view = pool_data->depth_stencil_view;
+					Mem_Copy(color_views, pool_data->color_views, sizeof(color_views[0]) * color_count);
+				}
+				
+				ID3D11DeviceContext_OMSetRenderTargets(D3d11.context, color_count, color_views, depth_stencil_view);
 			} break;
 			
 			//case RB_DrawCommandKind_DrawIndexed:
@@ -805,7 +934,7 @@ RB_DrawD3d11_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_widt
 				if (0) case RB_DrawCommandKind_DrawIndexed: instanced = false;
 				if (0) case RB_DrawCommandKind_DrawInstanced: instanced = true;
 				
-				int32 base_vertex = cmd->draw_instanced.base_vertex;
+				int32 base_vertex = 0; // = cmd->draw_instanced.base_vertex;
 				uint32 base_index = cmd->draw_instanced.base_index;
 				uint32 index_count = cmd->draw_instanced.index_count;
 				uint32 instance_count = cmd->draw_instanced.instance_count;

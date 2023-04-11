@@ -98,7 +98,7 @@ static const char g_render_gl_quadfshader[] =
 "            vec2 density = fwidth(vTexcoords) * texsize;\n"
 "            float m = min(density.x, density.y);\n"
 "            float inv = 1.0 / m;\n"
-"            float a = (color.w - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;\n"
+"            float a = (color.x - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;\n"
 "            color = vec4(1.0, 1.0, 1.0, a);\n"
 "        } break;\n"
 "    }\n"
@@ -214,7 +214,7 @@ E_InitRender_(void)
 				.pixels = whitetex,
 				.width = 2,
 				.height = 2,
-				.channels = 4,
+				.format = RB_TexFormat_RGBA8,
 			},
 		});
 		
@@ -426,7 +426,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 	
 	void* pixels;
 	int32 width, height;
-	int32 channels;
+	RB_TexFormat format;
 	
 	if (desc->encoded_image.size)
 	{
@@ -436,9 +436,9 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 		int32 size = (int32)desc->encoded_image.size;
 		
 		void* allocated = stbi_load_from_memory(data, size, &width, &height, &(int32) { 0 }, 4);
-		channels = 4;
+		format = RB_TexFormat_RGBA8;
 		
-		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, allocated, (intsize)width*height*channels, 4);
+		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, allocated, (intsize)width*height*4, 4);
 		stbi_image_free(allocated);
 		
 		if (!pixels)
@@ -451,10 +451,10 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 		
 		width = desc->width;
 		height = desc->height;
-		channels = desc->raw_image_channel_count;
+		format = desc->raw_image_format;
 		
 		SafeAssert(data && size);
-		SafeAssert(size == (intsize)width*height*channels);
+		//SafeAssert(size == (intsize)width*height*channels);
 		
 		pixels = Arena_PushMemoryAligned(global_engine.frame_arena, data, size, 4);
 	}
@@ -473,7 +473,7 @@ E_MakeTex2d(const E_Tex2dDesc* desc, E_Tex2d* out_tex)
 			.pixels = pixels,
 			.width = width,
 			.height = height,
-			.channels = (uint32)channels,
+			.format = format,
 		},
 	});
 	
@@ -698,7 +698,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			.pixels = bitmap,
 			.width = tex_size,
 			.height = tex_size,
-			.channels = 1,
+			.format = RB_TexFormat_R8,
 			.flag_linear_filtering = true,
 		},
 	});

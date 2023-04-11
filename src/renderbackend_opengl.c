@@ -60,6 +60,44 @@ RB_OpenGLDebugMessageCallback_(GLenum source, GLenum type, GLuint id, GLenum sev
 }
 #endif //CONFIG_DEBUG
 
+static GLenum
+RB_OpenGLTexFormatToGLEnum_(RB_TexFormat texfmt, GLenum* out_unsized_format, GLenum* out_datatype)
+{
+	GLenum format = 0;
+	GLenum unsized_format = 0;
+	GLenum datatype = GL_UNSIGNED_BYTE;
+	
+	switch (texfmt)
+	{
+		case 0: case RB_TexFormat_Count: break;
+		
+		case RB_TexFormat_D16:
+		{
+			format = GL_DEPTH_COMPONENT16;
+			unsized_format = GL_DEPTH_COMPONENT;
+			datatype = GL_UNSIGNED_SHORT;
+		} break;
+		case RB_TexFormat_D24S8:
+		{
+			format = GL_DEPTH24_STENCIL8;
+			unsized_format = GL_DEPTH_STENCIL;
+			datatype = GL_UNSIGNED_INT_24_8;
+		} break;
+		case RB_TexFormat_A8: format = GL_ALPHA; unsized_format = GL_ALPHA; break;
+		case RB_TexFormat_R8: format = GL_R8; unsized_format = GL_RED; break;
+		case RB_TexFormat_RG8: format = GL_RG8; unsized_format = GL_RG; break;
+		case RB_TexFormat_RGB8: format = GL_RGB8; unsized_format = GL_RGB; break;
+		case RB_TexFormat_RGBA8: format = GL_RGBA8; unsized_format = GL_RGBA; break;
+	}
+	
+	if (out_unsized_format)
+		*out_unsized_format = unsized_format;
+	if (out_datatype)
+		*out_datatype = datatype;
+	
+	return format;
+}
+
 static void
 RB_InitOpenGL_(Arena* scratch_arena)
 {
@@ -118,6 +156,15 @@ RB_CapabilitiesOpenGL_(RB_Capabilities* out_capabilities)
 	caps.has_separate_alpha_blend = true;
 	caps.has_compute_shaders = false;
 	caps.has_16bit_float = false;
+	caps.has_wireframe_fillmode = !GL.is_es;
+	
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_D16);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_D24S8);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_A8);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_R8);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_RG8);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_RGB8);
+	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_RGBA8);
 	
 	*out_capabilities = caps;
 }
@@ -143,14 +190,15 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			{
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
-				int32 channels = cmd->texture_2d.channels;
 				const void* pixels = cmd->texture_2d.pixels;
 				
-				SafeAssert(width && height && channels > 0 && channels <= 4);
+				SafeAssert(width && height);
 				
 				uint32 id;
-				const int32 formats[4] = { GL_ALPHA, GL_RG, GL_RGB, GL_RGBA, };
-				int32 format = formats[channels - 1];
+				GLenum unsized_format, datatype;
+				GLenum format = RB_OpenGLTexFormatToGLEnum_(cmd->texture_2d.format, &unsized_format, &datatype);
+				
+				SafeAssert(format && unsized_format && datatype);
 				
 				bool mag_linear = cmd->texture_2d.flag_linear_filtering;
 				bool min_linear = mag_linear;
@@ -165,7 +213,7 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 				
 				{
 					Trace(); TraceName(Str("glTexImage2D"));
-					GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+					GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, unsized_format, datatype, pixels);
 				}
 				
 				GL.glBindTexture(GL_TEXTURE_2D, 0);
@@ -386,20 +434,20 @@ RB_ResourceOpenGL_(Arena* scratch_arena, RB_ResourceCommand* commands)
 			{
 				int32 width = cmd->texture_2d.width;
 				int32 height = cmd->texture_2d.height;
-				int32 channels = cmd->texture_2d.channels;
 				const void* pixels = cmd->texture_2d.pixels;
+				Assert(width && height);
 				
-				Assert(width && height && channels > 0 && channels <= 4);
+				GLenum unsized_format, datatype;
+				GLenum format = RB_OpenGLTexFormatToGLEnum_(cmd->texture_2d.format, &unsized_format, &datatype);
+				Assert(format && unsized_format && datatype);
 				
 				uint32 id = handle.id;
-				const int32 formats[4] = { GL_RED, GL_RG, GL_RGB, GL_RGBA, };
-				int32 format = formats[channels - 1];
 				
 				GL.glBindTexture(GL_TEXTURE_2D, id);
 				if (cmd->flag_subregion)
-					GL.glTexSubImage2D(GL_TEXTURE_2D, 0, cmd->texture_2d.xoffset, cmd->texture_2d.yoffset, width, height, format, GL_UNSIGNED_BYTE, pixels);
+					GL.glTexSubImage2D(GL_TEXTURE_2D, 0, cmd->texture_2d.xoffset, cmd->texture_2d.yoffset, width, height, unsized_format, datatype, pixels);
 				else
-					GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+					GL.glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, unsized_format, datatype, pixels);
 				GL.glBindTexture(GL_TEXTURE_2D, 0);
 			} break;
 			

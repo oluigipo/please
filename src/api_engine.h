@@ -155,7 +155,7 @@ struct E_Tex2dDesc
 	Buffer raw_image;
 	
 	int32 width, height;
-	uint32 raw_image_channel_count;
+	RB_TexFormat raw_image_format;
 	
 	bool flag_linear_filtering : 1;
 }

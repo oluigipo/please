@@ -252,6 +252,8 @@ G_UpdateAndRender(void)
 					E_StopAllSounds(&game->music);
 				if (DBG_UIPushButton(&debugui, Str("luigi")))
 					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
+				if (DBG_UIPushButton(&debugui, Str("test OS_MessageBox")))
+					OS_MessageBox(Str("Title Title Title"), Str("Message Message message!!!"));
 				
 				static uint8 buffer[128] = "Click me!";
 				static intsize size = 9;
