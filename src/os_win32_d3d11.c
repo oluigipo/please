@@ -92,7 +92,7 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 		
 		while (vsync_count --> 0)
 		{
-			ok = OS_WaitForVsync();
+			ok = Win32_WaitForVsync();
 			
 			if (!ok)
 				break;

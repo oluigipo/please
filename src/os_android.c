@@ -587,6 +587,126 @@ OnAppCommand_(struct android_app* app, int32_t cmd)
 	}
 }
 
+static void
+ExitApp_(bool should_call_exit)
+{
+	if (g_android.audio_stream)
+	{
+		AAudioStream_requestStop(g_android.audio_stream);
+		AAudioStream_close(g_android.audio_stream);
+		
+		g_android.audio_stream = NULL;
+	}
+	
+	if (g_android.gl_context)
+	{
+		eglMakeCurrent(g_android.gl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+		eglDestroyContext(g_android.gl_display, g_android.gl_context);
+		eglDestroySurface(g_android.gl_display, g_android.gl_surface);
+		eglTerminate(g_android.gl_display);
+		
+		g_android.gl_display = NULL;
+		g_android.gl_context = NULL;
+		g_android.gl_surface = NULL;
+	}
+	
+	ANativeActivity_finish(g_android.app_state->activity);
+	
+	while (!g_android.state.is_terminating)
+		OS_PollEvents();
+	
+	if (should_call_exit)
+		exit(0);
+}
+
+static void
+MessageBox_(const char* title, const char* message)
+{
+	// TODO(ljre): Debug this. It only reaches "Step 1" before crashing.
+	return;
+	
+	// NOTE(ljre): Here are some useful links for the future if I need to modify this:
+	// 
+	// https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/types.html#field_and_method_ids
+	// https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#interface_function_table
+	
+	JNIEnv* env = g_android.app_state->activity->env;
+	jobject activity_object = g_android.app_state->activity->clazz;
+	jobject builder_object;
+	jobject dialog_object;
+	jstring title_string;
+	jstring message_string;
+	jclass builder_class;
+	jclass dialog_class;
+	jmethodID builder_class_ctor;
+	jmethodID builder_set_title;
+	jmethodID builder_set_text;
+	jmethodID builder_set_positive_button;
+	jmethodID builder_create;
+	jmethodID dialog_show;
+	jmethodID dialog_is_showing;
+	
+	OS_DebugLog("Step 1\n");
+	
+	// NOTE(ljre): Get classes and method
+	builder_class = (*env)->FindClass(env, "com/google/android/material/dialog/MaterialAlertDialogBuilder");
+	dialog_class = (*env)->FindClass(env, "androidx/appcompat/app/AlertDialog");
+	if (!builder_class)
+		return;
+	
+	OS_DebugLog("Step 2\n");
+	builder_class_ctor = (*env)->GetMethodID(env, builder_class, "<init>", "(Landroid/content/Context;)");
+	builder_set_title  = (*env)->GetMethodID(env, builder_class, "setTitle", "(Ljava/lang/CharSequence;)Lcom/google/android/material/dialog/MaterialAlertDialogBuilder;");
+	builder_set_text   = (*env)->GetMethodID(env, builder_class, "setText", "(Ljava/lang/CharSequence;)Lcom/google/android/material/dialog/MaterialAlertDialogBuilder;");
+	builder_set_positive_button = (*env)->GetMethodID(env, builder_class, "setPositiveButton", "(Ljava/lang/CharSequence;Landroid/content/DialogInterface/OnClickListener;)Lcom/google/android/material/dialog/MaterialAlertDialogBuilder;");
+	builder_create     = (*env)->GetMethodID(env, builder_class, "create", "()Landroidx/appcompat/app/AlertDialog;");
+	dialog_show        = (*env)->GetMethodID(env, dialog_class, "show", "()");
+	dialog_is_showing  = (*env)->GetMethodID(env, dialog_class, "isShowing", "()Z");
+	title_string       = (*env)->NewStringUTF(env, title); // NOTE(ljre): This one may leak if the next fails.
+	message_string     = (*env)->NewStringUTF(env, message);
+	if (!builder_class_ctor || !builder_set_title || !builder_set_text ||
+		!builder_create || !title_string || !message_string)
+		return;
+	
+	OS_DebugLog("Step 3\n");
+	
+	//- NOTE(ljre): Actually calling the API
+	builder_object = (*env)->NewObject(env, builder_class, builder_class_ctor, activity_object);
+	(*env)->CallObjectMethod(env, builder_object, builder_set_title, title_string);
+	(*env)->CallObjectMethod(env, builder_object, builder_set_text, message_string);
+	dialog_object = (*env)->CallObjectMethod(env, builder_object, builder_create);
+	(*env)->CallVoidMethod(env, dialog_object, dialog_show);
+	
+	OS_DebugLog("Step 4\n");
+	
+	// NOTE(ljre): Block until dialog is closed.
+	int32 ident;
+	int32 events;
+	struct android_poll_source* source;
+	struct android_app* state = g_android.app_state;
+	
+	while ((ident = ALooper_pollAll(-1, NULL, &events, (void**)&source)) >= 0)
+	{
+		if (source != NULL)
+			source->process(state, source);
+		
+		if (state->destroyRequested != 0)
+		{
+			g_android.state.window.should_close = true;
+			break;
+		}
+		
+		jboolean is_showing = (*env)->CallBooleanMethod(env, dialog_object, dialog_is_showing);
+		if (!is_showing)
+			break;
+	}
+	
+	OS_DebugLog("Step 5\n");
+	// NOTE(ljre): Clean-up
+	(*env)->ReleaseStringUTFChars(env, title_string, title);
+	(*env)->ReleaseStringUTFChars(env, message_string, message);
+}
+
 void
 android_main(struct android_app* state)
 {
@@ -616,30 +736,7 @@ android_main(struct android_app* state)
 	int32 result = OS_UserMain(&user_args);
 	(void)result;
 	
-	if (g_android.audio_stream)
-	{
-		AAudioStream_requestStop(g_android.audio_stream);
-		AAudioStream_close(g_android.audio_stream);
-		
-		g_android.audio_stream = NULL;
-	}
-	
-	if (g_android.gl_context)
-	{
-		eglMakeCurrent(g_android.gl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-		eglDestroyContext(g_android.gl_display, g_android.gl_context);
-		eglDestroySurface(g_android.gl_display, g_android.gl_surface);
-		eglTerminate(g_android.gl_display);
-		
-		g_android.gl_display = NULL;
-		g_android.gl_context = NULL;
-		g_android.gl_surface = NULL;
-	}
-	
-	ANativeActivity_finish(state->activity);
-	
-	while (!g_android.state.is_terminating)
-		OS_PollEvents();
+	ExitApp_(false);
 }
 
 API bool
@@ -751,29 +848,39 @@ OS_PollEvents(void)
 	}
 }
 
-API bool
-OS_WaitForVsync(void)
-{
-	Trace();
-	
-	// TODO(ljre)
-	return false;
-}
-
 API void
 OS_ExitWithErrorMessage(const char* fmt, ...)
 {
 	Trace();
+	Arena* scratch_arena = GetThreadScratchArena_();
 	
-	// TODO
+	for Arena_TempScope(scratch_arena)
+	{
+		va_list args;
+		va_start(args, fmt);
+		String str = Arena_VPrintf(scratch_arena, fmt, args);
+		Arena_PushData(scratch_arena, &"");
+		va_end(args);
+		
+		MessageBox_("Fatal Error!", (const char*)str.data);
+	}
+	
+	ExitApp_(true);
 }
 
 API void
 OS_MessageBox(String title, String message)
 {
 	Trace();
+	Arena* scratch_arena = GetThreadScratchArena_();
 	
-	// TODO
+	for Arena_TempScope(scratch_arena)
+	{
+		const char* title_cstr = Arena_PushCString(scratch_arena, title);
+		const char* message_cstr = Arena_PushCString(scratch_arena, message);
+		
+		MessageBox_(title_cstr, message_cstr);
+	}
 }
 
 API uint64

@@ -148,6 +148,29 @@ Win32_GetThreadScratchArena(void)
 	return this_arena;
 }
 
+static bool
+Win32_WaitForVsync(void)
+{
+	Trace();
+	
+	static bool already_tried = false;
+	static HRESULT (WINAPI* dwm_flush)(void);
+	
+	if (!already_tried && IsWindowsVistaOrGreater())
+	{
+		already_tried = true;
+		
+		HMODULE library = Win32_LoadLibrary("dwmapi.dll");
+		if (library)
+			dwm_flush = (void*)GetProcAddress(library, "DwmFlush");
+	}
+	
+	if (dwm_flush)
+		return dwm_flush() == S_OK;
+	
+	return false;
+}
+
 //~ NOTE(ljre): Files
 #include "os_win32_input.c"
 #include "os_win32_audio.c"
@@ -592,29 +615,6 @@ OS_MessageBox(String title, String message)
 		
 		MessageBoxW(NULL, wmessage, wtitle, MB_OK);
 	}
-}
-
-API bool
-OS_WaitForVsync(void)
-{
-	Trace();
-	
-	static bool already_tried = false;
-	static HRESULT (WINAPI* dwm_flush)(void);
-	
-	if (!already_tried && IsWindowsVistaOrGreater())
-	{
-		already_tried = true;
-		
-		HMODULE library = Win32_LoadLibrary("dwmapi.dll");
-		if (library)
-			dwm_flush = (void*)GetProcAddress(library, "DwmFlush");
-	}
-	
-	if (dwm_flush)
-		return dwm_flush() == S_OK;
-	
-	return false;
 }
 
 API void*

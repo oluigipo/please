@@ -307,7 +307,6 @@ API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
 API int32 OS_UserMain(const OS_UserMainArgs* args);
 
 API void OS_PollEvents(void);
-API bool OS_WaitForVsync(void);
 
 API void OS_ExitWithErrorMessage(const char* fmt, ...);
 API void OS_MessageBox(String title, String message);

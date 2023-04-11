@@ -495,7 +495,7 @@ Win32_OpenGLSwapBuffers(int32 vsync_count)
 	
 	while (vsync_count --> 0)
 	{
-		vsynced = OS_WaitForVsync();
+		vsynced = Win32_WaitForVsync();
 		
 		if (!vsynced)
 			break;
