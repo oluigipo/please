@@ -9,6 +9,8 @@
 #include <android/asset_manager.h>
 #include <aaudio/AAudio.h>
 
+#include <linux/futex.h>
+#include <sys/syscall.h>
 #include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <stdlib.h>
@@ -1167,69 +1169,54 @@ OS_InitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
 	
-	int fd = eventfd(0, 0);
-	SafeAssert(fd != -1);
-	sig->ptr = (void*)(uintptr)fd;
+	sig->ptr = (void*)0;
 }
 
 API bool
 OS_WaitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
-	SafeAssert(sig && sig->ptr);
+	SafeAssert(sig);
 	
-	uint64 count;
-	int fd = (int)(uintptr)sig->ptr;
-	
-	return read(fd, &count, sizeof(count)) >= 0;
+	for (;;)
+	{
+		long rc = syscall(SYS_futex, &sig->ptr, FUTEX_WAIT_PRIVATE, 0, NULL, NULL, 0);
+		
+		if (rc == -1)
+			return false;
+		if (rc != 0)
+			return false;
+		if (sig->ptr == (void*)1)
+			return true;
+	}
 }
 
 API void
 OS_SetEventSignal(OS_EventSignal* sig)
 {
 	Trace();
-	SafeAssert(sig && sig->ptr);
+	SafeAssert(sig);
 	
-	uint64 count = 1;
-	int fd = (int)(uintptr)sig->ptr;
-	
-	write(fd, &count, sizeof(count));
+	sig->ptr = (void*)1;
+	syscall(SYS_futex, &sig->ptr, FUTEX_WAKE_PRIVATE, INT_MAX, NULL, NULL, 0);
 }
 
 API void
 OS_ResetEventSignal(OS_EventSignal* sig)
 {
 	Trace();
-	SafeAssert(sig && sig->ptr);
+	SafeAssert(sig);
 	
-	// TODO(ljre): Is this even remotely right?
-	// https://man7.org/linux/man-pages/man2/eventfd.2.html
-	
-	uint64 count;
-	int fd = (int)(uintptr)sig->ptr;
-	struct pollfd pfd = {
-		.fd = fd,
-		.events = POLLIN,
-	};
-	
-	if (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN) != 0)
-	{
-		do
-			read(fd, &count, sizeof(count));
-		while (count > 0);
-	}
+	sig->ptr = (void*)0;
 }
 
 API void
 OS_DeinitEventSignal(OS_EventSignal* sig)
 {
 	Trace();
-	SafeAssert(sig && sig->ptr);
+	SafeAssert(sig);
 	
-	int fd = (int)(uintptr)sig->ptr;
-	close(fd);
-	
-	sig->ptr = NULL;
+	sig->ptr = (void*)INT_MAX;
 }
 
 API int32
