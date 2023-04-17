@@ -6,8 +6,8 @@
 #include "util_gltf.h"
 
 #ifdef CONFIG_ENABLE_EMBED
-IncludeBinary(g_music_ogg, "music.ogg");
-IncludeBinary(g_luigi_ogg, "luigi.ogg");
+IncludeBinary(g_music_ogg, "assets/music.ogg");
+IncludeBinary(g_luigi_ogg, "assets/luigi.ogg");
 IncludeBinary(g_font_ttf, "assets/Arial.ttf");
 IncludeBinary(g_corset_model, "assets/corset.glb");
 #endif
@@ -93,7 +93,7 @@ G_Init(void)
 		ogg = BufRange(g_music_ogg_begin, g_music_ogg_end);
 		ok = true;
 #else
-		ok = OS_ReadEntireFile(Str("music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+		ok = OS_ReadEntireFile(Str("assets/music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
 #endif
 		
 		ok = ok && E_LoadSound(ogg, &game->music, NULL);
@@ -103,7 +103,7 @@ G_Init(void)
 		ogg = BufRange(g_luigi_ogg_begin, g_luigi_ogg_end);
 		ok = true;
 #else
-		ok = OS_ReadEntireFile(Str("luigi.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+		ok = OS_ReadEntireFile(Str("assets/luigi.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
 #endif
 		
 		ok = ok && E_LoadSound(ogg, &game->sound_luigi, NULL);
