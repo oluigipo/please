@@ -527,10 +527,11 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 	GL.glBlendEquation(GL_FUNC_ADD);
 	
 	// default rasterizer
-	//GL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	GL.glFrontFace(GL_CCW);
 	GL.glDisable(GL_DEPTH_TEST);
 	GL.glDisable(GL_SCISSOR_TEST);
+	if (!GL.is_es)
+		GL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	
 	for (RB_DrawCommand* cmd = commands; cmd; cmd = cmd->next)
 	{
@@ -601,7 +602,8 @@ RB_DrawOpenGL_(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_wid
 					GL.glBlendEquationSeparate(pool_data->op, pool_data->op_alpha);
 				}
 				
-				//GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
+				if (!GL.is_es)
+					GL.glPolygonMode(GL_FRONT_AND_BACK, pool_data->polygon_mode);
 				GL.glFrontFace(pool_data->frontface);
 				
 				if (pool_data->flag_enable_cullface)

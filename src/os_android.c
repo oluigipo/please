@@ -862,7 +862,8 @@ OS_ExitWithErrorMessage(const char* fmt, ...)
 		Arena_PushData(scratch_arena, &"");
 		va_end(args);
 		
-		MessageBox_("Fatal Error!", (const char*)str.data);
+		//MessageBox_("Fatal Error!", (const char*)str.data);
+		__android_log_print(ANDROID_LOG_INFO, "NativeExample", "%s", (const char*)str.data);
 	}
 	
 	ExitApp_(true);
@@ -991,8 +992,35 @@ API bool
 OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size)
 {
 	Trace();
+	String asset_prefix = StrInit("assets/");
+	Arena* scratch_arena = GetThreadScratchArena_();
 	
-	// TODO(ljre)
+	if (String_StartsWith(path, asset_prefix))
+	{
+		String substr = String_Substr(path, asset_prefix.size, -1);
+		AAsset* asset = NULL;
+		
+		for Arena_TempScope(scratch_arena)
+		{
+			const char* cstr = Arena_PushCString(scratch_arena, substr);
+			asset = AAssetManager_open(g_android.app_state->activity->assetManager, cstr, AASSET_MODE_BUFFER);
+		}
+		
+		if (asset)
+		{
+			const void* data = AAsset_getBuffer(asset);
+			uintsize size = AAsset_getLength(asset);
+			
+			*out_data = Arena_PushMemory(output_arena, data, size);
+			*out_size = size;
+			
+			AAsset_close(asset);
+			return true;
+		}
+		
+		return false;
+	}
+	
 	return false;
 }
 
