@@ -94,6 +94,7 @@ struct UDiscord_Client
 	bool8 connected;
 	
 	UDiscord_CreateProc_* create;
+	OS_LibraryHandle library;
 	
 	struct DiscordActivity activity;
 	struct DiscordUser user;
@@ -593,9 +594,17 @@ UDiscord_Init(int64 appid, UDiscord_Client* discord)
 	};
 	
 	// Init
+	if (!discord->library.ptr)
+	{
+		discord->library = OS_LoadLibrary(Str("discord_game_sdk"));
+		
+		if (!discord->library.ptr)
+			return false;
+	}
+	
 	if (!discord->create)
 	{
-		discord->create = OS_LoadDiscordLibrary();
+		discord->create = OS_LoadSymbol(discord->library, "DiscordCreate");
 		
 		if (!discord->create)
 			return false;

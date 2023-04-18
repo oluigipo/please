@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <time.h>
+#include <dlfcn.h>
 
 #ifndef CONFIG_ENABLE_OPENGL
 #   error "CONFIG_ENABLE_OPENGL is required for Android build."
@@ -1035,10 +1036,42 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	return false;
 }
 
-API void*
-OS_LoadDiscordLibrary(void)
+API OS_LibraryHandle
+OS_LoadLibrary(String name)
 {
-	return NULL;
+	Trace();
+	OS_LibraryHandle handle = { 0 };
+	Arena* scratch_arena = GetThreadScratchArena_();
+	
+	for Arena_TempScope(scratch_arena)
+	{
+		String str = Arena_Printf(scratch_arena, "lib%S.so%0", name);
+		handle.ptr = dlopen((const char*)str.data, RTLD_LAZY);
+	}
+	
+	return handle;
+}
+
+API void*
+OS_LoadSymbol(OS_LibraryHandle handle, const char* symbol_name)
+{
+	Trace();
+	void* symbol = NULL;
+	
+	if (handle.ptr)
+		symbol = dlsym(handle.ptr, symbol_name);
+	
+	return symbol;
+}
+
+API void
+OS_UnloadLibrary(OS_LibraryHandle* handle)
+{
+	Trace();
+	
+	if (handle->ptr)
+		dlclose(handle->ptr);
+	handle->ptr = NULL;
 }
 
 API void

@@ -899,12 +899,12 @@ Win32_InitInput(void)
 	for (int32 i = 0; i < ArrayLength(global_gamepads); ++i)
 		global_gamepad_free[(int32)ArrayLength(global_gamepads) - i - 1] = i;
 	
-	LoadXInput();
-	LoadDirectInput();
+	bool loaded_xinput = LoadXInput();
+	bool loaded_dinput = LoadDirectInput();
 	
 	Win32_CheckForGamepads();
 	
-	return true;
+	return loaded_xinput || loaded_dinput;
 }
 
 static void

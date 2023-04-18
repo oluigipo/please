@@ -137,6 +137,18 @@ Win32_LoadLibrary(const char* name)
 	return result;
 }
 
+static HMODULE
+Win32_LoadLibraryWide(LPCWSTR name)
+{
+	Trace();
+	HMODULE result = LoadLibraryW(name);
+	
+	if (result)
+		OS_DebugLog("Loaded Library: (TODO wchar_t string)\n");
+	
+	return result;
+}
+
 static Arena*
 Win32_GetThreadScratchArena(void)
 {
@@ -549,14 +561,13 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 		if (desc->audiothread_proc && !(audio_initialized_successfully = Win32_InitAudio(desc, os_state)))
 			OS_DebugLog("Failed to initialize audio.");
 		
-		ok = ok && Win32_InitInput();
-		
 		if (ok)
 		{
 			os_state->has_audio = audio_initialized_successfully;
 			os_state->has_keyboard = true;
 			os_state->has_mouse = true;
 			os_state->has_gestures = false;
+			os_state->has_gamepad_support = Win32_InitInput();
 			
 			os_state->window = window_state;
 			os_state->graphics_context = &g_graphics_context;
@@ -826,22 +837,47 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	return true;
 }
 
+API OS_LibraryHandle
+OS_LoadLibrary(String name)
+{
+	Trace();
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	OS_LibraryHandle handle = { 0 };
+	
+	for Arena_TempScope(scratch_arena)
+	{
+		String fullname = Arena_Printf(scratch_arena, "%S.dll", name);
+		
+		LPCWSTR fullname_wstr = Win32_StringToWide(scratch_arena, fullname);
+		HMODULE module = Win32_LoadLibraryWide(fullname_wstr);
+		
+		if (module)
+			handle.ptr = module;
+	}
+	
+	return handle;
+}
+
 API void*
-OS_LoadDiscordLibrary(void)
+OS_LoadSymbol(OS_LibraryHandle handle, const char* symbol_name)
+{
+	Trace();
+	void* symbol = NULL;
+	
+	if (handle.ptr)
+		symbol = GetProcAddress(handle.ptr, symbol_name);
+	
+	return symbol;
+}
+
+API void
+OS_UnloadLibrary(OS_LibraryHandle* handle)
 {
 	Trace();
 	
-	static HANDLE library;
-	
-	if (!library)
-	{
-		library = Win32_LoadLibrary("discord_game_sdk.dll");
-		
-		if (!library)
-			return NULL;
-	}
-	
-	return (void*)GetProcAddress(library, "DiscordCreate");
+	if (handle->ptr)
+		FreeLibrary(handle->ptr);
+	handle->ptr = NULL;
 }
 
 #ifdef CONFIG_ENABLE_HOT

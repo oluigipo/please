@@ -234,6 +234,7 @@ struct OS_State
 {
 	bool has_audio : 1;
 	bool has_keyboard : 1;
+	bool has_gamepad_support : 1;
 	bool has_mouse : 1;
 	bool has_gestures : 1;
 	bool is_terminating : 1;
@@ -307,14 +308,39 @@ API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
 API int32 OS_UserMain(const OS_UserMainArgs* args);
 
 API void OS_PollEvents(void);
-
 API void OS_ExitWithErrorMessage(const char* fmt, ...);
 API void OS_MessageBox(String title, String message);
-
+#ifdef CONFIG_ENABLE_HOT
+API void* OS_LoadGameLibrary(void);
+#endif
 API uint64 OS_CurrentPosixTime(void);
 API uint64 OS_CurrentTick(uint64* out_ticks_per_second);
 API float64 OS_GetTimeInSeconds(void);
 
+/* NOTE(ljre): sketching out some stuff
+API bool OS_PleaseResizeWindow(int32 desired_width, int32 desired_height);
+API bool OS_PleaseSetFullscreen(bool enabled);
+API bool OS_PleaseHideCursor(bool enabled);
+API bool OS_PleaseLockMouse(bool lock);
+API bool OS_PleaseTerminate(void);
+
+// everyone supports this. and probably is preferable on Android with AAssetManager.
+// Windows manages to "lazy load" a file even with the current OS_ReadEntireFile API!
+API bool OS_MapFile(String path, void** out_data, uintsize* out_size);
+API bool OS_UnmapFile(void* data, uintsize size);
+*/
+
+#ifdef CONFIG_DEBUG
+API void OS_DebugMessageBox(const char* fmt, ...);
+API void OS_DebugLog(const char* fmt, ...);
+API int OS_DebugLogPrintfFormat(const char* fmt, ...);
+#else
+#   define OS_DebugMessageBox(...) ((void)0)
+#   define OS_DebugLog(...) ((void)0)
+#   define OS_DebugLogPrintfFormat(...) ((void)0)
+#endif
+
+//- Memory & file stuff
 API void* OS_HeapAlloc(uintsize size);
 API void* OS_HeapRealloc(void* ptr, uintsize size);
 API void OS_HeapFree(void* ptr);
@@ -327,26 +353,17 @@ API void OS_VirtualRelease(void* ptr, uintsize size);
 API bool OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size);
 API bool OS_WriteEntireFile(String path, const void* data, uintsize size);
 
-API void* OS_LoadDiscordLibrary(void);
-#ifdef CONFIG_ENABLE_HOT
-API void* OS_LoadGameLibrary(void);
-#endif
-
-#ifdef CONFIG_DEBUG
-API void OS_DebugMessageBox(const char* fmt, ...);
-API void OS_DebugLog(const char* fmt, ...);
-API int OS_DebugLogPrintfFormat(const char* fmt, ...);
-#else
-#   define OS_DebugMessageBox(...) ((void)0)
-#   define OS_DebugLog(...) ((void)0)
-#   define OS_DebugLogPrintfFormat(...) ((void)0)
-#endif
+struct OS_LibraryHandle
+{ void* ptr; }
+typedef OS_LibraryHandle;
+API OS_LibraryHandle OS_LoadLibrary(String name);
+API void* OS_LoadSymbol(OS_LibraryHandle library, const char* symbol_name);
+API void OS_UnloadLibrary(OS_LibraryHandle* library);
 
 //- Threading stuff
 struct OS_RWLock
 { void* ptr; }
 typedef OS_RWLock;
-
 API void OS_InitRWLock(OS_RWLock* lock);
 API void OS_LockShared(OS_RWLock* lock);
 API void OS_LockExclusive(OS_RWLock* lock);
@@ -359,7 +376,6 @@ API void OS_DeinitRWLock(OS_RWLock* lock);
 struct OS_Semaphore
 { void* ptr; }
 typedef OS_Semaphore;
-
 API void OS_InitSemaphore(OS_Semaphore* sem, int32 max_count);
 API bool OS_WaitForSemaphore(OS_Semaphore* sem);
 API void OS_SignalSemaphore(OS_Semaphore* sem, int32 count);
@@ -368,7 +384,6 @@ API void OS_DeinitSemaphore(OS_Semaphore* sem);
 struct OS_EventSignal
 { void* ptr; }
 typedef OS_EventSignal;
-
 API void OS_InitEventSignal(OS_EventSignal* sig);
 API bool OS_WaitEventSignal(OS_EventSignal* sig);
 API void OS_SetEventSignal(OS_EventSignal* sig);
@@ -378,7 +393,6 @@ API void OS_DeinitEventSignal(OS_EventSignal* sig);
 API int32 OS_InterlockedCompareExchange32(volatile int32* ptr, int32 new_value, int32 expected);
 API int64 OS_InterlockedCompareExchange64(volatile int64* ptr, int64 new_value, int64 expected);
 API void* OS_InterlockedCompareExchangePtr(void* volatile* ptr, void* new_value, void* expected);
-
 API int32 OS_InterlockedIncrement32(volatile int32* ptr);
 API int32 OS_InterlockedDecrement32(volatile int32* ptr);
 
