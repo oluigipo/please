@@ -42,14 +42,11 @@ After all that, you can run `clang tools/build_android.c -o build-android.exe -D
 ### Android:
 * OpenGL ES 3.0;
 * AAudio;
-* asset_manager.h (AAssetManager, AAsset, ...);
-* input.h (AInputEvent, AMotionEvent, ...);
-* pthread.h;
+* android-native-app-glue;
 ### Desktop Linux (currently not working):
 * OpenGL 3.3;
 * X11;
 * ALSA;
-* pthread.h;
 
 ## External
 Dependencies:
