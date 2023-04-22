@@ -24,6 +24,8 @@
 #   error "please define ENV_PLATFORM"
 #endif
 
+static const Cstr g_allowed_archs[] = { "armeabi-v7a", "arm64-v8a", "x86", "x86_64" };
+
 struct
 {
 	struct Build_Executable* exec;
@@ -33,10 +35,12 @@ struct
 	
 	bool install;
 	bool launch;
+	Cstr archs[ArrayLength(g_allowed_archs)];
 }
 static g_opts = {
 	.exec = &g_executables[0],
 	.debug_mode = true,
+	.archs = { "armeabi-v7a", "arm64-v8a" },
 };
 
 static Cstr g_apkname = "";
@@ -101,8 +105,15 @@ CreateMakefiles(void)
 		"NDK_TOOLCHAIN_VERSION := clang\n"
 		"APP_PLATFORM := android-26\n"
 		"APP_OPTIM := %s\n"
-		"APP_ABI := armeabi-v7a arm64-v8a # x86 x86_64\n"
-		"\n", g_opts.optimize > 0 ? "release" : "debug");
+		"", g_opts.optimize > 0 ? "release" : "debug");
+	
+	fprintf(file, "APP_ABI :=");
+	for (int i = 0; i < ArrayLength(g_opts.archs); ++i)
+	{
+		if (g_opts.archs[i])
+			fprintf(file, " %s", g_opts.archs[i]);
+	}
+	fprintf(file, "\n");
 	
 	fclose(file);
 	
@@ -193,6 +204,53 @@ main(int argc, char** argv)
 			else
 				fprintf(stderr, "[warning] invalid optimization flag '%s'.\n", argv[i]);
 		}
+		else if (strcmp(argv[i], "-arch=all") == 0)
+		{
+			for (int i = 0; i < ArrayLength(g_allowed_archs); ++i)
+				g_opts.archs[i] = g_allowed_archs[i];
+		}
+		else if (strncmp(argv[i], "-arch=", 6) == 0)
+		{
+			char* archs = argv[i] + 6;
+			int count = 0;
+			
+			while (*archs && count < ArrayLength(g_allowed_archs))
+			{
+				Cstr begin = archs;
+				while (*archs && *archs != ',')
+					++archs;
+				int len = archs - begin;
+				bool can_add = true;
+				
+				for (int i = 0; i < ArrayLength(g_allowed_archs); ++i)
+				{
+					if (strncmp(g_allowed_archs[i], archs, len) == 0 && strlen(g_allowed_archs[i]) == len)
+					{
+						can_add = true;
+						begin = g_allowed_archs[i];
+						break;
+					}
+				}
+				
+				if (!can_add)
+					continue;
+				
+				for (int i = 0; i < count; ++i)
+				{
+					if (strcmp(g_opts.archs[i], begin) == 0)
+					{
+						can_add = false;
+						break;
+					}
+				}
+				
+				if (can_add)
+					g_opts.archs[count++] = begin;
+			}
+			
+			while (count < ArrayLength(g_allowed_archs))
+				g_opts.archs[count++] = NULL;
+		}
 		else if (argv[i][0] == '-')
 			fprintf(stderr, "[warning] unknown flag '%s'.\n", argv[i]);
 		else
@@ -249,6 +307,9 @@ PrintHelp(void)
 		"    -O0 -O1 -O2         Optimization flags\n"
 		"    -install            Install the APK through ADB after building it\n"
 		"    -profile=release    alias for: -ndebug -O2 -embed\n"
+		"    -arch=<values>      Compile for the comma-separated target archs (possible values\n"
+		"                                are armeabi-v7a, arm64-v8a, x86, x86_64)\n"
+		"    -arch=all           Compile for all available archs\n"
 		"",
 		g_self, g_opts.exec->name, g_target);
 	

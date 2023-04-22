@@ -195,7 +195,7 @@ XInputSetStateStub(DWORD index, XINPUT_VIBRATION* state) { return ERROR_DEVICE_N
 static DWORD WINAPI
 XInputGetCapabilitiesStub(DWORD index, DWORD flags, XINPUT_CAPABILITIES* state){ return ERROR_DEVICE_NOT_CONNECTED; }
 
-static void
+static bool
 LoadXInput(void)
 {
 	static const char* const dll_names[] = { "xinput1_4.dll", "xinput9_1_0.dll", "xinput1_3.dll" };
@@ -213,9 +213,11 @@ LoadXInput(void)
 			XInputGetState        = (void*)GetProcAddress(library, "XInputGetState");
 			XInputSetState        = (void*)GetProcAddress(library, "XInputSetState");
 			XInputGetCapabilities = (void*)GetProcAddress(library, "XInputGetCapabilities");
-			break;
+			return true;
 		}
 	}
+	
+	return false;
 }
 
 static const char*
@@ -238,7 +240,7 @@ GetXInputSubTypeString(uint8 subtype)
 	}
 }
 
-static void
+static bool
 LoadDirectInput(void)
 {
 	static const char* const dll_names[] = { "dinput8.dll", /* "dinput.dll" */ };
@@ -262,7 +264,10 @@ LoadDirectInput(void)
 		HRESULT result = DirectInput8Create(g_win32.instance, DIRECTINPUT_VERSION, &IID_IDirectInput8W, (void**)&global_dinput, NULL);
 		
 		global_dinput_enabled = (result == DI_OK);
+		return global_dinput_enabled;
 	}
+	
+	return false;
 }
 
 static void

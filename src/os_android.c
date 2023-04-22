@@ -747,8 +747,7 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 {
 	Trace();
 	
-	const EGLint attribs[] =
-	{
+	const EGLint attribs[] = {
 		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
 		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
 		EGL_BLUE_SIZE, 8,
@@ -767,8 +766,8 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 		return false;
 	
 	EGLConfig config;
-	EGLint numConfigs;
-	if (!eglChooseConfig(display, attribs, &config, 1, &numConfigs))
+	EGLint num_configs;
+	if (!eglChooseConfig(display, attribs, &config, 1, &num_configs))
 		return false;
 	
 	EGLint format;
@@ -845,7 +844,7 @@ OS_PollEvents(void)
 		
 		if (state->destroyRequested != 0)
 		{
-			g_android.state.window.should_close = true;
+			g_android.state.is_terminating = true;
 			return;
 		}
 	}

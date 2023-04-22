@@ -26,7 +26,7 @@ enum
 	RB_Limits_RenderTargetMaxColorAttachments = 4,
 };
 
-struct RB_Ctx { void* ptr; } typedef RB_Ctx;
+struct RB_Ctx typedef RB_Ctx;
 struct RB_Tex2d { uint32 id; } typedef RB_Tex2d;
 struct RB_VBuffer { uint32 id; } typedef RB_VBuffer;
 struct RB_IBuffer { uint32 id; } typedef RB_IBuffer;
@@ -85,40 +85,41 @@ struct RB_Capabilities
 }
 typedef RB_Capabilities;
 
-API RB_Ctx RB_MakeContext(Arena* arena, const OS_WindowGraphicsContext* graphics_context);
+API RB_Ctx* RB_MakeContext(Arena* arena, const OS_WindowGraphicsContext* graphics_context);
+API RB_Ctx* RB_MakeDeferredContext(RB_Ctx* parent, Arena* );
 API void RB_FreeContext(RB_Ctx* ctx);
-API void RB_Present(RB_Ctx ctx);
-API bool RB_IsValidHandle(RB_Ctx ctx, const void* handle_ptr);
-API RB_Capabilities RB_QueryCapabilities(RB_Ctx ctx);
+API void RB_Present(RB_Ctx* ctx);
+API bool RB_IsValid(RB_Ctx* ctx, ...); // returns true is a handle is valid
+API RB_Capabilities RB_QueryCapabilities(RB_Ctx* ctx);
 
 //~
-enum RB_LayoutFormat
+enum RB_VertexFormat
 {
 	// NOTE(ljre): These formats are all supported by GL3.3, D3D11 9_1, and GLES 3.0.
-	RB_LayoutFormat_Null = 0,
+	RB_VertexFormat_Null = 0,
 	
-	RB_LayoutFormat_Scalar,
-	RB_LayoutFormat_Vec2,
-	RB_LayoutFormat_Vec3,
-	RB_LayoutFormat_Vec4,
-	RB_LayoutFormat_Mat2,
-	RB_LayoutFormat_Mat3,
-	RB_LayoutFormat_Mat4,
+	RB_VertexFormat_Scalar,
+	RB_VertexFormat_Vec2,
+	RB_VertexFormat_Vec3,
+	RB_VertexFormat_Vec4,
+	RB_VertexFormat_Mat2,
+	RB_VertexFormat_Mat3,
+	RB_VertexFormat_Mat4,
 	
-	RB_LayoutFormat_Vec2I16Norm,
-	RB_LayoutFormat_Vec2I16,
-	RB_LayoutFormat_Vec4I16Norm,
-	RB_LayoutFormat_Vec4I16,
-	RB_LayoutFormat_Vec4U8Norm,
-	RB_LayoutFormat_Vec4U8,
+	RB_VertexFormat_Vec2I16Norm,
+	RB_VertexFormat_Vec2I16,
+	RB_VertexFormat_Vec4I16Norm,
+	RB_VertexFormat_Vec4I16,
+	RB_VertexFormat_Vec4U8Norm,
+	RB_VertexFormat_Vec4U8,
 }
-typedef RB_LayoutFormat;
+typedef RB_VertexFormat;
 
 struct RB_LayoutDesc
 {
 	uint32 offset;
 	uint8 buffer_slot;
-	RB_LayoutFormat format : 8;
+	RB_VertexFormat format : 8;
 	uint8 divisor;
 }
 typedef RB_LayoutDesc;
@@ -233,27 +234,27 @@ typedef RB_PipelineDesc;
 
 struct RB_VBufferDesc
 {
-	uintsize size;
-	Buffer initial_data;
-	
 	bool flag_dynamic : 1;
+	
+	uintsize size;
+	const void* initial_data;
 }
 typedef RB_VBufferDesc;
 
 struct RB_IBufferDesc
 {
-	uintsize size;
-	Buffer initial_data;
-	RB_IndexType index_type;
-	
 	bool flag_dynamic : 1;
+	
+	uintsize size;
+	const void* initial_data;
+	RB_IndexType index_type;
 }
 typedef RB_IBufferDesc;
 
 struct RB_UBufferDesc
 {
 	uintsize size;
-	Buffer initial_data;
+	const void* initial_data;
 }
 typedef RB_UBufferDesc;
 
@@ -264,28 +265,35 @@ struct RB_RenderTargetDesc
 }
 typedef RB_RenderTargetDesc;
 
-API RB_Tex2d        RB_MakeTexture2D(RB_Ctx ctx, const RB_Tex2dDesc* desc);
-API RB_VBuffer      RB_MakeVertexBuffer(RB_Ctx ctx, const RB_VBufferDesc* desc);
-API RB_IBuffer      RB_MakeIndexBuffer(RB_Ctx ctx, const RB_IBufferDesc* desc);
-API RB_UBuffer      RB_MakeUniformBuffer(RB_Ctx ctx, const RB_UBufferDesc* desc);
-API RB_Shader       RB_MakeShader(RB_Ctx ctx, const RB_ShaderDesc* desc);
-API RB_RenderTarget RB_MakeRenderTarget(RB_Ctx ctx, const RB_RenderTargetDesc* desc);
-API RB_Pipeline     RB_MakePipeline(RB_Ctx ctx, const RB_PipelineDesc* desc);
+API RB_Tex2d        RB_MakeTexture2D(RB_Ctx* ctx, const RB_Tex2dDesc* desc);
+API RB_VBuffer      RB_MakeVertexBuffer(RB_Ctx* ctx, const RB_VBufferDesc* desc);
+API RB_IBuffer      RB_MakeIndexBuffer(RB_Ctx* ctx, const RB_IBufferDesc* desc);
+API RB_UBuffer      RB_MakeUniformBuffer(RB_Ctx* ctx, const RB_UBufferDesc* desc);
+API RB_Shader       RB_MakeShader(RB_Ctx* ctx, const RB_ShaderDesc* desc);
+API RB_RenderTarget RB_MakeRenderTarget(RB_Ctx* ctx, const RB_RenderTargetDesc* desc);
+API RB_Pipeline     RB_MakePipeline(RB_Ctx* ctx, const RB_PipelineDesc* desc);
 
-API void RB_FreeTexture2D(RB_Ctx ctx, RB_Tex2d* desc);
-API void RB_FreeVertexBuffer(RB_Ctx ctx, RB_VBuffer* desc);
-API void RB_FreeIndexBuffer(RB_Ctx ctx, RB_IBuffer* desc);
-API void RB_FreeUniformBuffer(RB_Ctx ctx, RB_UBuffer* desc);
-API void RB_FreeShader(RB_Ctx ctx, RB_Shader* desc);
-API void RB_FreeRenderTarget(RB_Ctx ctx, RB_RenderTarget* desc);
-API void RB_FreePipeline(RB_Ctx ctx, RB_Pipeline* desc);
+API void RB_FreeTexture2D(RB_Ctx* ctx, RB_Tex2d res);
+API void RB_FreeVertexBuffer(RB_Ctx* ctx, RB_VBuffer res);
+API void RB_FreeIndexBuffer(RB_Ctx* ctx, RB_IBuffer res);
+API void RB_FreeUniformBuffer(RB_Ctx* ctx, RB_UBuffer res);
+API void RB_FreeShader(RB_Ctx* ctx, RB_Shader res);
+API void RB_FreeRenderTarget(RB_Ctx* ctx, RB_RenderTarget res);
+API void RB_FreePipeline(RB_Ctx* ctx, RB_Pipeline res);
 
-API void RB_UpdateVertexBuffer(RB_Ctx ctx, RB_VBuffer vbuffer, Buffer new_data, uintsize new_size);
-API void RB_UpdateIndexBuffer(RB_Ctx ctx, RB_IBuffer vbuffer, Buffer new_data, uintsize new_size);
-API void RB_UpdateUniformBuffer(RB_Ctx ctx, RB_UBuffer vbuffer, Buffer new_data);
-API void RB_UpdateTexture2D(RB_Ctx ctx, RB_Tex2d vbuffer, Buffer new_data);
+API void RB_UpdateVertexBuffer(RB_Ctx* ctx, RB_VBuffer res, Buffer new_data, uintsize new_size);
+API void RB_UpdateIndexBuffer(RB_Ctx* ctx, RB_IBuffer res, Buffer new_data, uintsize new_size);
+API void RB_UpdateUniformBuffer(RB_Ctx* ctx, RB_UBuffer res, Buffer new_data);
+API void RB_UpdateTexture2D(RB_Ctx* ctx, RB_Tex2d res, Buffer new_data);
 
 //~
+struct RB_BeginDesc
+{
+	int32 viewport_width;
+	int32 viewport_height;
+}
+typedef RB_BeginDesc;
+
 struct RB_ClearDesc
 {
 	float32 color[4];
@@ -312,11 +320,11 @@ struct RB_DrawDesc
 }
 typedef RB_DrawDesc;
 
-API void RB_BeginCmd(RB_Ctx ctx, int32 viewport_width, int32 viewport_height);
-API void RB_CmdApplyPipeline(RB_Ctx ctx, RB_Pipeline pipeline);
-API void RB_CmdApplyRenderTarget(RB_Ctx ctx, RB_RenderTarget render_target);
-API void RB_CmdClear(RB_Ctx ctx, const RB_ClearDesc* desc);
-API void RB_CmdDraw(RB_Ctx ctx, const RB_DrawDesc* desc);
-API void RB_EndCmd(RB_Ctx ctx);
+API void RB_BeginCmd(RB_Ctx* ctx, const RB_BeginDesc* desc);
+API void RB_CmdApplyPipeline(RB_Ctx* ctx, RB_Pipeline pipeline);
+API void RB_CmdApplyRenderTarget(RB_Ctx* ctx, RB_RenderTarget render_target);
+API void RB_CmdClear(RB_Ctx* ctx, const RB_ClearDesc* desc);
+API void RB_CmdDraw(RB_Ctx* ctx, const RB_DrawDesc* desc);
+API void RB_EndCmd(RB_Ctx* ctx);
 
 #endif //API_RENDERBACKEND_NEW_H

@@ -43,6 +43,7 @@ struct
 	bool steam;
 	bool lto;
 	bool embed;
+	bool dyn_crt;
 	Cstr* extra_flags;
 }
 static g_opts = {
@@ -63,7 +64,7 @@ static Cstr f_cc = "clang -std=c11";
 static Cstr f_cxx = "clang++ -std=c++11 -fno-exceptions -fno-rtti";
 static Cstr f_cflags = "-Isrc -Iinclude";
 static Cstr f_ldflags = "-fuse-ld=lld -Wl,/incremental:no";
-static Cstr f_optimize[3] = { "-O0", "-O1", "-O2 -static -fno-strict-aliasing", };
+static Cstr f_optimize[3] = { "-O0", "-O1 -fno-strict-aliasing", "-O2 -fno-strict-aliasing", };
 static Cstr f_warnings =
 "-Wall -Wno-unused-function -Werror-implicit-function-declaration -Wno-logical-op-parentheses "
 "-Wno-missing-braces -Wconversion -Wno-sign-conversion -Wno-implicit-int-float-conversion -Wsizeof-array-decay "
@@ -80,6 +81,8 @@ static Cstr f_m32 = "-msse2";
 static Cstr f_m64 = "-march=x86-64";
 static Cstr f_lto = "-flto";
 static Cstr f_dll = "-Wl,/NOENTRY,/DLL -lkernel32 -llibvcruntime -lucrt";
+static Cstr f_dynamic_crt = "-Wl,/NODEFAULTLIB:libcmt.lib -lmsvcrt -lvcruntime -lucrt";
+static Cstr f_static_crt = "-static";
 
 static Cstr f_ldflags_graphic = "-Wl,/subsystem:windows";
 
@@ -103,6 +106,8 @@ static Cstr f_m32 = "/arch:SSE2";
 static Cstr f_m64 = "";
 static Cstr f_lto = "/GL";
 static Cstr f_dll = "/NOENTRY /DLL kernel32.lib libvcruntime.lib libucrt.lib";
+static Cstr f_dynamic_crt = "/MD";
+static Cstr f_static_crt = "/MT";
 
 static Cstr f_ldflags_graphic = "/subsystem:windows";
 
@@ -126,6 +131,8 @@ static Cstr f_m32 = "-m32 -msse2";
 static Cstr f_m64 = "-march=x86-64";
 static Cstr f_lto = "-flto";
 static Cstr f_dll = "-r -lkernel32 -llibvcruntime -lucrt";
+static Cstr f_static_crt = "-static";
+static Cstr f_dynamic_crt = "";
 
 static Cstr f_ldflags_graphic = "-mwindows";
 static Cstr f_rc = "windres tools/windows-resource-file.rc -o build/windows-resource-file.res";
@@ -323,6 +330,10 @@ CompileExecutable(struct Build_Executable* exec)
 		Append(&head, end, " -fsanitize=address");
 	if (g_opts.ubsan)
 		Append(&head, end, " -fsanitize=undefined -fno-sanitize=alignment");
+	if (g_opts.dyn_crt)
+		Append(&head, end, " %s", f_dynamic_crt);
+	else
+		Append(&head, end, " %s", f_static_crt);
 	
 	Append(&head, end, " %s", f_ldflags);
 	
@@ -402,6 +413,8 @@ main(int argc, char** argv)
 			g_opts.force_rebuild = true;
 		else if (strcmp(argv[i], "-lto") == 0)
 			g_opts.lto = true;
+		else if (strcmp(argv[i], "-dynamic-crt") == 0)
+			g_opts.dyn_crt = true;
 		else if (strcmp(argv[i], "-embed") == 0)
 		{
 #if !defined(_MSC_VER) || defined(__clang__)
@@ -573,6 +586,7 @@ PrintHelp(void)
 		"    -embed              Embed assets in executable file (doesn't work on MSVC)\n"
 		"    -analyze            Run static analyzer instead of compiling (requires Clang)\n"
 		"    -O0 -O1 -O2         Optimization flags\n"
+		"    -dynamic-crt        Link dynamically against CRT\n"
 		"    -profile=steam      alias for: -lto -rc -O2 -ndebug -embed -steam\n"
 		"    -profile=release    alias for: -lto -rc -O2 -ndebug\n"
 		"",
