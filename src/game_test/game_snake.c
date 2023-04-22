@@ -134,8 +134,8 @@ G_SnakeUpdateAndRender(void)
 	
 	E_RectBatch batch = {
 		.arena = engine->frame_arena,
-		.textures[0] = NULL,
-		.textures[1] = &game->font.texture,
+		.textures[0] = E_WhiteTexture(),
+		.textures[1] = game->font.texture,
 		.count = 0,
 		.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 	};

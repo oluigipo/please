@@ -66,13 +66,14 @@ static struct Build_Tu tu_debugtools = { "debugtools", "debugtools.c" };
 static struct Build_Tu tu_game_test = { "game_test", "game_test/game.c" };
 static struct Build_Tu tu_steam = { "steam", "steam.cpp", .is_cpp = true };
 static struct Build_Tu tu_gamepad_db_gen = { "gamepad_db_gen", "gamepad_db_gen/main.c" };
+static struct Build_Tu tu_renderbackend = { "renderbackend", "renderbackend.c" };
 
 static struct Build_Executable g_executables[] = {
 	{
 		.name = "game_test",
 		.outname = "game",
 		.is_graphic_program = true,
-		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, &tu_debugtools, NULL },
+		.tus = (struct Build_Tu*[]) { &tu_engine, &tu_game_test, &tu_os, &tu_steam, &tu_debugtools, &tu_renderbackend, NULL },
 		.shaders = (struct Build_Shader[]) {
 			{ "engine_shader_quad.hlsl", "d3d11_shader_quad", "Vertex", "Pixel", "4_0_level_9_3", "g_render_" },
 			{ "engine_shader_quad.hlsl", "d3d11_shader_quad_level91", "Vertex", "Pixel", "4_0_level_9_1", "g_render_" },

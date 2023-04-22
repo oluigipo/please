@@ -54,11 +54,7 @@ struct E_GlobalData
 	
 	OS_State* os;
 	E_AudioState* audio;
-	
-	RB_ResourceCommand* resource_command_list;
-	RB_ResourceCommand* last_resource_command;
-	RB_DrawCommand* draw_command_list;
-	RB_DrawCommand* last_draw_command;
+	RB_Ctx* renderbackend;
 	
 	void* game_memory;
 	uintsize game_memory_size;
@@ -109,7 +105,7 @@ API void E_CalcPointInCamera2DSpace(const E_Camera2D* camera, const vec2 pos, ve
 //- Rendering API
 struct E_Tex2d
 {
-	RB_Handle handle;
+	RB_Tex2d handle;
 	int32 width;
 	int32 height;
 }
@@ -196,21 +192,17 @@ typedef E_RectBatchElem;
 struct E_RectBatch
 {
 	Arena* arena;
-	E_Tex2d* textures[RB_Limits_MaxTexturesPerDrawCall];
+	E_Tex2d textures[RB_Limits_DrawMaxTextures];
 	
 	uint32 count;
 	E_RectBatchElem* elements;
 }
 typedef E_RectBatch;
 
+API E_Tex2d E_WhiteTexture(void);
 API bool E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, vec4 color);
 API void E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect);
-
-API void E_DrawClear(float32 r, float32 g, float32 b, float32 a);
 API void E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam);
-
-API void E_RawResourceCommands(RB_ResourceCommand* first, RB_ResourceCommand* last);
-API void E_RawDrawCommands(RB_DrawCommand* first, RB_DrawCommand* last);
 
 API bool E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_width, int32* out_height);
 API void E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size);

@@ -4,29 +4,17 @@ E_FinishFrame(void)
 {
 	Trace();
 	
-	if (global_engine.resource_command_list)
-	{
-		RB_ExecuteResourceCommands(global_engine.scratch_arena, global_engine.resource_command_list);
-		
-		global_engine.resource_command_list = NULL;
-		global_engine.last_resource_command = NULL;
-	}
-	
-	if (global_engine.draw_command_list)
-	{
-		RB_ExecuteDrawCommands(global_engine.scratch_arena, global_engine.draw_command_list, global_engine.os->window.width, global_engine.os->window.height);
-		
-		global_engine.draw_command_list = NULL;
-		global_engine.last_draw_command = NULL;
-	}
-	
+	RB_EndCmd(global_engine.renderbackend);
 	TraceFrameEnd();
-	RB_Present(global_engine.scratch_arena, global_engine.enable_vsync ? 1 : 0);
+	RB_Present(global_engine.renderbackend);
 	TraceFrameBegin();
 	
-	global_engine.peak_frame_arena = global_engine.frame_arena->offset;
 	Arena_Clear(global_engine.frame_arena);
 	OS_PollEvents();
+	RB_BeginCmd(global_engine.renderbackend, &(RB_BeginDesc) {
+		.viewport_width = global_engine.os->window.width,
+		.viewport_height = global_engine.os->window.height,
+	});
 	
 	float64 current_time = OS_GetTimeInSeconds();
 	global_engine.delta_time = (float32)(current_time - global_engine.last_frame_time);

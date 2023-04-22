@@ -1,21 +1,48 @@
 #ifndef API_RENDERBACKEND_H
 #define API_RENDERBACKEND_H
 
+// NOTE(ljre): Sketching new renderbackend API. The idea of command lists, while making the API impl a bit
+//             simpler by deferring all API calls to 2 function calls, can be a little hard to understand.
+//
+// Here are the key differences between this and the old one:
+//    - No command lists, just plain function calls;
+//    - One handle type per resource;
+//    - No global state is needed;
+//    - Still using RB_*Desc keeps all simplicity of old API while still allowing for deferred render with
+//      little to no changes if needed;
+//    - Because no global state is needed, making a "reset" function is trivial. This allows us to
+//      change some fundamental settings in the renderer without reopening the application;
+//
+// Current version of the old one is in commit 5d1e281f563c4d5f62f44b31bd1ab08b4bba9a9b
+
+// NOTE(ljre): This API is obviously inspired by sokol_gfx. I'm just not using it because I wanna learn
+//             how to use the underlying graphics APIs.
+
 enum
 {
-	RB_Limits_MaxTexturesPerDrawCall = 4,
-	RB_Limits_MaxVertexInputs = 8,
-	RB_Limits_ColorAttachPerRenderTarget = 4,
-	RB_Limits_MaxVertexBuffersPerDrawCall = 4,
+	RB_Limits_DrawMaxTextures = 8,
+	RB_Limits_DrawMaxVertexBuffers = 8,
+	RB_Limits_PipelineMaxVertexInputs = 16,
+	RB_Limits_RenderTargetMaxColorAttachments = 4,
 };
 
+struct RB_Ctx typedef RB_Ctx;
+struct RB_Tex2d { uint32 id; } typedef RB_Tex2d;
+struct RB_VBuffer { uint32 id; } typedef RB_VBuffer;
+struct RB_IBuffer { uint32 id; } typedef RB_IBuffer;
+struct RB_UBuffer { uint32 id; } typedef RB_UBuffer;
+struct RB_RenderTarget { uint32 id; } typedef RB_RenderTarget;
+struct RB_Shader { uint32 id; } typedef RB_Shader;
+struct RB_Pipeline { uint32 id; } typedef RB_Pipeline;
+
+//~
 enum RB_ShaderType
 {
 	RB_ShaderType_Null = 0,
 	
-	RB_ShaderType_Glsl33,       // GLSL 3.3 (vertex & fragment) source code
-	RB_ShaderType_Hlsl40,       // vs_4_0 & ps_4_0 object code
-	RB_ShaderType_HlslLevel91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
+	RB_ShaderType_Glsl,           // GLSL (vertex & fragment) source code for both GL3.3 and GLES3.0
+	RB_ShaderType_Hlsl40,         // vs_4_0 & ps_4_0 object code
+	RB_ShaderType_Hlsl40Level91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
 }
 typedef RB_ShaderType;
 
@@ -41,8 +68,8 @@ struct RB_Capabilities
 	String driver_renderer;
 	String driver_vendor;
 	String driver_version;
-	
 	RB_ShaderType shader_type;
+	
 	int32 max_texture_size;
 	int32 max_render_target_textures;
 	int32 max_textures_per_drawcall;
@@ -58,39 +85,46 @@ struct RB_Capabilities
 }
 typedef RB_Capabilities;
 
-union RB_Handle
-{ uint32 id; }
-typedef RB_Handle;
+API RB_Ctx* RB_MakeContext(Arena* arena, const OS_WindowGraphicsContext* graphics_context);
+API RB_Ctx* RB_MakeDeferredContext(RB_Ctx* parent, Arena* );
+API void RB_FreeContext(RB_Ctx* ctx);
+API void RB_Present(RB_Ctx* ctx);
+#define RB_IsNull(handle) (!(handle).id)
+#define RB_IsValid(ctx, handle) RB_IsValidImpl(ctx, (handle).id)
+#define RB_IsSame(ctx, handle1, handle2) RB_IsSameImpl(ctx, (handle1).id, (handle2).id)
+API bool RB_IsValidImpl(RB_Ctx* ctx, uint32 handle);
+API bool RB_IsSameImpl(RB_Ctx* ctx, uint32 id1, uint32 id2);
+API RB_Capabilities RB_QueryCapabilities(RB_Ctx* ctx);
 
-//~ ResourceCommand
-enum RB_LayoutDescKind
+//~
+enum RB_VertexFormat
 {
-	RB_LayoutDescKind_Null = 0,
+	// NOTE(ljre): These formats are all supported by GL3.3, D3D11 9_1, and GLES 3.0.
+	RB_VertexFormat_Null = 0,
 	
-	RB_LayoutDescKind_Scalar,
-	RB_LayoutDescKind_Vec2,
-	RB_LayoutDescKind_Vec3,
-	RB_LayoutDescKind_Vec4,
-	RB_LayoutDescKind_Mat2,
-	RB_LayoutDescKind_Mat3,
-	RB_LayoutDescKind_Mat4,
+	RB_VertexFormat_Scalar,
+	RB_VertexFormat_Vec2,
+	RB_VertexFormat_Vec3,
+	RB_VertexFormat_Vec4,
+	RB_VertexFormat_Mat2,
+	RB_VertexFormat_Mat3,
+	RB_VertexFormat_Mat4,
 	
-	RB_LayoutDescKind_Vec2I16Norm,
-	RB_LayoutDescKind_Vec2I16,
-	RB_LayoutDescKind_Vec4I16Norm,
-	RB_LayoutDescKind_Vec4I16,
-	RB_LayoutDescKind_Vec4U8Norm,
-	RB_LayoutDescKind_Vec4U8,
+	RB_VertexFormat_Vec2I16Norm,
+	RB_VertexFormat_Vec2I16,
+	RB_VertexFormat_Vec4I16Norm,
+	RB_VertexFormat_Vec4I16,
+	RB_VertexFormat_Vec4U8Norm,
+	RB_VertexFormat_Vec4U8,
 }
-typedef RB_LayoutDescKind;
+typedef RB_VertexFormat;
 
 struct RB_LayoutDesc
 {
-	RB_LayoutDescKind kind;
 	uint32 offset;
-	
+	uint8 buffer_slot;
+	RB_VertexFormat format : 8;
 	uint8 divisor;
-	uint8 vbuffer_index;
 }
 typedef RB_LayoutDesc;
 
@@ -135,181 +169,166 @@ typedef RB_CullMode;
 
 enum RB_IndexType
 {
-	RB_IndexType_Uint32 = 0,
+	RB_IndexType_Null = 0,
+	
 	RB_IndexType_Uint16,
+	RB_IndexType_Uint32,
 }
 typedef RB_IndexType;
 
-enum RB_ResourceCommandKind
+struct RB_Tex2dDesc
 {
-	RB_ResourceCommandKind_Null = 0,
+	const void* pixels;
+	int32 width, height;
+	RB_TexFormat format;
 	
-	RB_ResourceCommandKind_MakeTexture2D,
-	RB_ResourceCommandKind_MakeVertexBuffer,
-	RB_ResourceCommandKind_MakeIndexBuffer,
-	RB_ResourceCommandKind_MakeUniformBuffer,
-	RB_ResourceCommandKind_MakeShader,
-	RB_ResourceCommandKind_MakeRenderTarget,
-	RB_ResourceCommandKind_MakePipeline,
-	//
-	RB_ResourceCommandKind_UpdateVertexBuffer,
-	RB_ResourceCommandKind_UpdateIndexBuffer,
-	RB_ResourceCommandKind_UpdateUniformBuffer,
-	RB_ResourceCommandKind_UpdateTexture2D,
-	//
-	RB_ResourceCommandKind_FreeTexture2D,
-	RB_ResourceCommandKind_FreeVertexBuffer,
-	RB_ResourceCommandKind_FreeIndexBuffer,
-	RB_ResourceCommandKind_FreeUniformBuffer,
-	RB_ResourceCommandKind_FreeShader,
-	RB_ResourceCommandKind_FreeRenderTarget,
-	RB_ResourceCommandKind_FreePipeline,
-}
-typedef RB_ResourceCommandKind;
-
-struct RB_ResourceCommand typedef RB_ResourceCommand;
-struct RB_ResourceCommand
-{
-	RB_ResourceCommand* next;
-	RB_ResourceCommandKind kind;
 	bool flag_dynamic : 1;
-	bool flag_subregion : 1;
-	
-	RB_Handle* handle;
-	
-	union
-	{
-		struct
-		{
-			const void* pixels;
-			int32 width, height;
-			RB_TexFormat format;
-			
-			bool flag_linear_filtering : 1;
-			bool flag_render_target : 1;
-			bool flag_not_used_in_shader : 1;
-			
-			// used if 'flag_subregion' is set and not on init.
-			int32 xoffset;
-			int32 yoffset;
-		}
-		texture_2d;
-		
-		struct
-		{
-			Buffer d3d_vs40_blob, d3d_ps40_blob;
-			Buffer d3d_vs40level91_blob, d3d_ps40level91_blob;
-			String gl_vs_src, gl_fs_src;
-		}
-		shader;
-		
-		struct
-		{
-			bool flag_blend : 1;
-			bool flag_cw_backface : 1;
-			bool flag_depth_test : 1;
-			bool flag_scissor : 1;
-			
-			RB_BlendFunc blend_source;
-			RB_BlendFunc blend_dest;
-			RB_BlendOp blend_op;
-			RB_BlendFunc blend_source_alpha;
-			RB_BlendFunc blend_dest_alpha;
-			RB_BlendOp blend_op_alpha;
-			
-			RB_FillMode fill_mode;
-			RB_CullMode cull_mode;
-			
-			RB_Handle* shader;
-			RB_LayoutDesc input_layout[RB_Limits_MaxVertexInputs];
-		}
-		pipeline;
-		
-		struct
-		{
-			const void* memory;
-			uintsize size;
-			
-			// used if 'flag_subregion' is set and not on init.
-			uintsize offset;
-			
-			// used if on 'RB_ResourceCommandKind_MakeIndexBuffer'.
-			RB_IndexType index_type;
-		}
-		buffer;
-		
-		struct
-		{
-			RB_Handle* color_textures[RB_Limits_ColorAttachPerRenderTarget];
-			RB_Handle* depth_stencil_texture;
-		}
-		render_target;
-	};
-};
-
-//~ DrawCommand
-enum RB_DrawCommandKind
-{
-	RB_DrawCommandKind_Null = 0,
-	
-	RB_DrawCommandKind_Clear,
-	RB_DrawCommandKind_ApplyPipeline,
-	RB_DrawCommandKind_ApplyRenderTarget,
-	RB_DrawCommandKind_DrawIndexed,
-	RB_DrawCommandKind_DrawInstanced,
+	// NOTE(ljre): Maybe move to RB_DrawDesc or something?
+	bool flag_linear_filtering : 1;
+	bool flag_render_target : 1;
+	// NOTE(ljre): Should be marked as 'true' for depth formats only used in render targets
+	bool flag_not_used_in_shader : 1;
 }
-typedef RB_DrawCommandKind;
+typedef RB_Tex2dDesc;
 
-struct RB_DrawCommand typedef RB_DrawCommand;
-struct RB_DrawCommand
+struct RB_ShaderDesc
 {
-	RB_DrawCommand* next;
-	RB_ResourceCommand* resources_cmd;
-	RB_DrawCommandKind kind;
-	
-	union
+	struct
 	{
-		struct
-		{
-			float32 color[4];
-			
-			bool flag_color : 1;
-			bool flag_depth : 1;
-			bool flag_stencil : 1;
-		}
-		clear;
-		
-		struct
-		{
-			RB_Handle* handle; // if NULL, then choose default
-		}
-		apply;
-		
-		struct
-		{
-			RB_Handle* ibuffer;
-			RB_Handle* ubuffer;
-			RB_Handle* textures[RB_Limits_MaxTexturesPerDrawCall];
-			RB_Handle* vbuffers[RB_Limits_MaxVertexBuffersPerDrawCall];
-			uint32 vbuffer_strides[RB_Limits_MaxVertexBuffersPerDrawCall];
-			uint32 vbuffer_offsets[RB_Limits_MaxVertexBuffersPerDrawCall];
-			
-			uint32 base_index;
-			uint32 index_count;
-			
-			// used if on 'RB_DrawCommandKind_DrawInstanced'.
-			uint32 instance_count;
-		}
-		draw_instanced;
-	};
-};
+		String vs;
+		String fs;
+	}
+	glsl;
+	struct
+	{
+		Buffer vs;
+		Buffer ps;
+	}
+	hlsl40_91;
+	struct
+	{
+		Buffer vs;
+		Buffer ps;
+	}
+	hlsl40;
+}
+typedef RB_ShaderDesc;
 
-API void RB_Init(Arena* scratch_arena, const OS_WindowGraphicsContext* graphics_context);
-API void RB_Deinit(Arena* scratch_arena);
-API bool RB_Present(Arena* scratch_arena, int32 vsync_count);
+struct RB_PipelineDesc
+{
+	bool flag_blend : 1;
+	bool flag_cw_backface : 1;
+	bool flag_depth_test : 1;
+	//bool flag_scissor : 1;
+	
+	RB_BlendFunc blend_source;
+	RB_BlendFunc blend_dest;
+	RB_BlendOp blend_op;
+	RB_BlendFunc blend_source_alpha;
+	RB_BlendFunc blend_dest_alpha;
+	RB_BlendOp blend_op_alpha;
+	
+	RB_FillMode fill_mode;
+	RB_CullMode cull_mode;
+	
+	RB_Shader shader;
+	RB_LayoutDesc input_layout[RB_Limits_PipelineMaxVertexInputs];
+}
+typedef RB_PipelineDesc;
 
-API void RB_QueryCapabilities(RB_Capabilities* out_capabilities);
-API void RB_ExecuteResourceCommands(Arena* scratch_arena, RB_ResourceCommand* commands);
-API void RB_ExecuteDrawCommands(Arena* scratch_arena, RB_DrawCommand* commands, int32 default_width, int32 default_height);
+struct RB_VBufferDesc
+{
+	bool flag_dynamic : 1;
+	
+	uintsize size;
+	const void* initial_data;
+}
+typedef RB_VBufferDesc;
+
+struct RB_IBufferDesc
+{
+	bool flag_dynamic : 1;
+	
+	uintsize size;
+	const void* initial_data;
+	RB_IndexType index_type;
+}
+typedef RB_IBufferDesc;
+
+struct RB_UBufferDesc
+{
+	uintsize size;
+	const void* initial_data;
+}
+typedef RB_UBufferDesc;
+
+struct RB_RenderTargetDesc
+{
+	RB_Tex2d color[RB_Limits_RenderTargetMaxColorAttachments];
+	RB_Tex2d depth_stencil;
+}
+typedef RB_RenderTargetDesc;
+
+API RB_Tex2d        RB_MakeTexture2D(RB_Ctx* ctx, const RB_Tex2dDesc* desc);
+API RB_VBuffer      RB_MakeVertexBuffer(RB_Ctx* ctx, const RB_VBufferDesc* desc);
+API RB_IBuffer      RB_MakeIndexBuffer(RB_Ctx* ctx, const RB_IBufferDesc* desc);
+API RB_UBuffer      RB_MakeUniformBuffer(RB_Ctx* ctx, const RB_UBufferDesc* desc);
+API RB_Shader       RB_MakeShader(RB_Ctx* ctx, const RB_ShaderDesc* desc);
+API RB_RenderTarget RB_MakeRenderTarget(RB_Ctx* ctx, const RB_RenderTargetDesc* desc);
+API RB_Pipeline     RB_MakePipeline(RB_Ctx* ctx, const RB_PipelineDesc* desc);
+
+API void RB_FreeTexture2D(RB_Ctx* ctx, RB_Tex2d res);
+API void RB_FreeVertexBuffer(RB_Ctx* ctx, RB_VBuffer res);
+API void RB_FreeIndexBuffer(RB_Ctx* ctx, RB_IBuffer res);
+API void RB_FreeUniformBuffer(RB_Ctx* ctx, RB_UBuffer res);
+API void RB_FreeShader(RB_Ctx* ctx, RB_Shader res);
+API void RB_FreeRenderTarget(RB_Ctx* ctx, RB_RenderTarget res);
+API void RB_FreePipeline(RB_Ctx* ctx, RB_Pipeline res);
+
+API void RB_UpdateVertexBuffer(RB_Ctx* ctx, RB_VBuffer res, Buffer new_data);
+API void RB_UpdateIndexBuffer(RB_Ctx* ctx, RB_IBuffer res, Buffer new_data);
+API void RB_UpdateUniformBuffer(RB_Ctx* ctx, RB_UBuffer res, Buffer new_data);
+API void RB_UpdateTexture2D(RB_Ctx* ctx, RB_Tex2d res, Buffer new_data);
+
+//~
+struct RB_BeginDesc
+{
+	int32 viewport_width;
+	int32 viewport_height;
+}
+typedef RB_BeginDesc;
+
+struct RB_ClearDesc
+{
+	float32 color[4];
+	
+	bool flag_color : 1;
+	bool flag_depth : 1;
+	bool flag_stencil : 1;
+}
+typedef RB_ClearDesc;
+
+struct RB_DrawDesc
+{
+	RB_IBuffer ibuffer;
+	RB_UBuffer ubuffer;
+	RB_Tex2d textures[RB_Limits_DrawMaxTextures];
+	
+	RB_VBuffer vbuffers[RB_Limits_DrawMaxVertexBuffers];
+	uint32 strides[RB_Limits_DrawMaxVertexBuffers];
+	uint32 offsets[RB_Limits_DrawMaxVertexBuffers];
+	
+	uint32 base_index;
+	uint32 index_count;
+	uint32 instance_count; // if 0, not instanced
+}
+typedef RB_DrawDesc;
+
+API void RB_BeginCmd(RB_Ctx* ctx, const RB_BeginDesc* desc);
+API void RB_CmdApplyPipeline(RB_Ctx* ctx, RB_Pipeline pipeline);
+API void RB_CmdApplyRenderTarget(RB_Ctx* ctx, RB_RenderTarget render_target);
+API void RB_CmdClear(RB_Ctx* ctx, const RB_ClearDesc* desc);
+API void RB_CmdDraw(RB_Ctx* ctx, const RB_DrawDesc* desc);
+API void RB_EndCmd(RB_Ctx* ctx);
 
 #endif //API_RENDERBACKEND_H

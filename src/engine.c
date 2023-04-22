@@ -28,14 +28,12 @@ static E_GlobalData global_engine;
 #include "engine_render.c"
 #include "engine_main.c"
 
-#include "renderbackend.c"
-
 //~ External
 DisableWarnings();
 
-#define memcpy Mem_Copy
-#define memset Mem_Set
-#define memcmp Mem_Compare
+//#define memcpy Mem_Copy
+//#define memset Mem_Set
+//#define memcmp Mem_Compare
 #define assert Assert
 
 #define STBI_MALLOC(sz) OS_HeapAlloc(sz)

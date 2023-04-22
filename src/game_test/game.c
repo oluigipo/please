@@ -48,7 +48,7 @@ struct G_GlobalData
 };
 
 #include "game_snake.c"
-#include "game_scene3d.c"
+//#include "game_scene3d.c"
 #include "game_stress.c"
 
 //~ NOTE(ljre): Main menu implementation
@@ -171,7 +171,11 @@ G_UpdateAndRender(void)
 	if (engine->os->window.should_close || OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
 	
-	E_DrawClear(0.2f, 0.0f, 0.4f, 1.0f);
+	RB_CmdClear(engine->renderbackend, &(RB_ClearDesc) {
+		.flag_color = true,
+		.flag_depth = true,
+		.color = { 0.2f, 0.0f, 0.4f, 1.0f },
+	});
 	
 	if (game->previous_state != game->state)
 	{
@@ -179,7 +183,7 @@ G_UpdateAndRender(void)
 		{
 			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
-			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
+			//case G_GlobalState_Scene3D: G_Scene3DInit(); break;
 			case G_GlobalState_Stress: G_StressInit(); break;
 		}
 		
@@ -193,8 +197,8 @@ G_UpdateAndRender(void)
 			float32 ui_y = 100.0f;
 			E_RectBatch batch = {
 				.arena = engine->frame_arena,
-				.textures[0] = NULL,
-				.textures[1] = &game->font.texture,
+				.textures[0] = E_WhiteTexture(),
+				.textures[1] = game->font.texture,
 				.count = 0,
 				.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 			};
@@ -264,16 +268,15 @@ G_UpdateAndRender(void)
 				static bool caps_unfolded = false;
 				if (DBG_UIPushFoldable(&debugui, Str("RenderBackend Capabilities"), &caps_unfolded))
 				{
-					RB_Capabilities caps = { 0 };
-					RB_QueryCapabilities(&caps);
+					RB_Capabilities caps = RB_QueryCapabilities(engine->renderbackend);
 					
 					const char* shader_type = "";
 					switch (caps.shader_type)
 					{
 						case 0: shader_type = ""; break;
-						case RB_ShaderType_Glsl33: shader_type = "GLSL 3.3"; break;
+						case RB_ShaderType_Glsl: shader_type = "GLSL 3.3 / ES 3.0"; break;
 						case RB_ShaderType_Hlsl40: shader_type = "HLSL vs/ps_4_0"; break;
-						case RB_ShaderType_HlslLevel91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
+						case RB_ShaderType_Hlsl40Level91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
 					}
 					
 					DBG_UIPushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
@@ -344,7 +347,7 @@ G_UpdateAndRender(void)
 		} break;
 		
 		case G_GlobalState_Snake: G_SnakeUpdateAndRender(); break;
-		case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
+		//case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
 		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	
