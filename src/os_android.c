@@ -24,6 +24,15 @@
 #   error "CONFIG_ENABLE_OPENGL is required for Android build."
 #endif
 
+struct MappedFile_
+{
+	AAsset* aasset; // NOTE(ljre): NULL if not from "assets/"
+	const void* base_address;
+	uintsize size;
+	int fd; // NOTE(ljre): 0 if from "assets/"
+}
+typedef MappedFile_;
+
 struct
 {
 	bool has_focus;
@@ -1033,6 +1042,85 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	
 	// TODO(ljre)
 	return false;
+}
+
+API bool
+OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer)
+{
+	Trace();
+	String asset_prefix = StrInit("assets/");
+	Arena* scratch_arena = GetThreadScratchArena_();
+	
+	if (String_StartsWith(path, asset_prefix))
+	{
+		String substr = String_Substr(path, asset_prefix.size, -1);
+		AAsset* asset = NULL;
+		
+		for Arena_TempScope(scratch_arena)
+		{
+			const char* cstr = Arena_PushCString(scratch_arena, substr);
+			asset = AAssetManager_open(g_android.app_state->activity->assetManager, cstr, AASSET_MODE_BUFFER);
+		}
+		
+		if (asset)
+		{
+			const void* base_address = AAsset_getBuffer(asset);
+			uintsize size = AAsset_getLength(asset);
+			
+			MappedFile_* mapdata = OS_HeapAlloc(sizeof(MappedFile_));
+			mapdata->aasset = asset;
+			mapdata->base_address = base_address;
+			mapdata->size = size;
+			
+			if (out_buffer)
+				*out_buffer = BufMake(size, base_address);
+			if (out_mapped_file)
+				*out_mapped_file = (OS_MappedFile) { mapdata };
+			
+			return true;
+		}
+		
+		return false;
+	}
+	
+	return false;
+}
+
+API bool
+OS_GetMappedFileBuffer(OS_MappedFile mapped_file, Buffer* out_buffer)
+{
+	Trace();
+	MappedFile_* mapdata = mapped_file.ptr;
+	
+	if (mapdata)
+	{
+		if (out_buffer)
+			*out_buffer = BufMake(mapdata->size, mapdata->base_address);
+		
+		return true;
+	}
+	
+	return false;
+}
+
+API void
+OS_UnmapFile(OS_MappedFile mapped_file)
+{
+	Trace();
+	MappedFile_* mapdata = mapped_file.ptr;
+	
+	if (!mapdata)
+		return;
+	
+	if (mapdata->aasset)
+	{
+		AAsset_close(mapdata->aasset);
+		OS_HeapFree(mapdata);
+	}
+	else
+	{
+		// TODO(ljre)
+	}
 }
 
 API OS_LibraryHandle

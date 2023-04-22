@@ -1,12 +1,12 @@
 struct G_Scene3DState
 {
-	RB_Handle shader;
-	RB_Handle shader_ubuffer;
-	RB_Handle pipeline;
+	RB_Shader shader;
+	RB_UBuffer shader_ubuffer;
+	RB_Pipeline pipeline;
 	
-	RB_Handle tree_model_vbuffer;
-	RB_Handle tree_model_ibuffer;
-	RB_Handle tree_model_diffuse_texture;
+	RB_VBuffer tree_model_vbuffer;
+	RB_IBuffer tree_model_ibuffer;
+	RB_Tex2d tree_model_diffuse_texture;
 	//RB_Handle tree_model_normal_texture;
 	mat4 tree_model_base_transform;
 	vec4 tree_model_base_color;
@@ -83,62 +83,45 @@ G_Scene3DInit(void)
 		.camera_pos = { 0.0f, 0.0f, 5.0f, },
 	});
 	
-	RB_ResourceCommand* first = NULL;
-	RB_ResourceCommand* last = NULL;
-	
 	// NOTE(ljre): Setup test renderer
-	first = last = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_MakeShader,
-		.handle = &s->shader,
-		.shader = {
-			.d3d_vs40_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_vs),
-			.d3d_ps40_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_ps),
-			.d3d_vs40level91_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_level91_vs),
-			.d3d_ps40level91_blob = BufInit(g_scene3d_d3d11_gametest_scene3d_level91_ps),
-			.gl_vs_src = StrInit(g_scene3d_gl_vs),
-			.gl_fs_src = StrInit(g_scene3d_gl_fs),
+	s->shader = RB_MakeShader(engine->renderbackend, &(RB_ShaderDesc) {
+		.hlsl40 = {
+			BufInit(g_scene3d_d3d11_gametest_scene3d_vs),
+			BufInit(g_scene3d_d3d11_gametest_scene3d_ps),
+		},
+		.hlsl40_91 = {
+			BufInit(g_scene3d_d3d11_gametest_scene3d_level91_vs),
+			BufInit(g_scene3d_d3d11_gametest_scene3d_level91_ps),
+		},
+		.glsl = {
+			StrInit(g_scene3d_gl_vs),
+			StrInit(g_scene3d_gl_fs),
 		},
 	});
 	
-	last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_MakePipeline,
-		.handle = &s->pipeline,
-		.pipeline = {
-			.cull_mode = RB_CullMode_Back,
-			.flag_depth_test = true,
-			
-			.shader = &s->shader,
-			.input_layout = {
-				[0] = {
-					.kind = RB_LayoutDescKind_Vec3,
-					.offset = 0,
-					.divisor = 0,
-					.vbuffer_index = 0,
-				},
-				[1] = {
-					.kind = RB_LayoutDescKind_Vec2,
-					.offset = 0,
-					.divisor = 0,
-					.vbuffer_index = 1,
-				},
-				[2] = {
-					.kind = RB_LayoutDescKind_Vec3,
-					.offset = 0,
-					.divisor = 0,
-					.vbuffer_index = 2,
-				},
+	s->pipeline = RB_MakePipeline(engine->renderbackend, &(RB_PipelineDesc) {
+		.cull_mode = RB_CullMode_Back,
+		.flag_depth_test = true,
+		
+		.shader = s->shader,
+		.input_layout = {
+			[0] = {
+				.format = RB_VertexFormat_Vec3,
+				.buffer_slot = 0,
+			},
+			[1] = {
+				.format = RB_VertexFormat_Vec2,
+				.buffer_slot = 1,
+			},
+			[2] = {
+				.format = RB_VertexFormat_Vec3,
+				.buffer_slot = 2,
 			},
 		},
 	});
 	
-	last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-		.kind = RB_ResourceCommandKind_MakeUniformBuffer,
-		.handle = &s->shader_ubuffer,
-		.flag_dynamic = true,
-		.buffer = {
-			.memory = NULL,
-			.size = sizeof(G_Scene3DUBuffer),
-		},
+	s->shader_ubuffer = RB_MakeUniformBuffer(engine->renderbackend, &(RB_UBufferDesc) {
+		.size = sizeof(G_Scene3DUBuffer),
 	});
 	
 	// NOTE(ljre): Load test model
@@ -191,13 +174,9 @@ G_Scene3DInit(void)
 		Mem_Copy(memory + s->tree_model_texcoord_offset, texcoord_buffer.data, texcoord_buffer.size);
 		Mem_Copy(memory + s->tree_model_normal_offset,   normal_buffer.data,   normal_buffer.size  );
 		
-		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-			.kind = RB_ResourceCommandKind_MakeVertexBuffer,
-			.handle = &s->tree_model_vbuffer,
-			.buffer = {
-				.memory = memory,
-				.size = total_size,
-			},
+		s->tree_model_vbuffer = RB_MakeVertexBuffer(engine->renderbackend, &(RB_VBufferDesc) {
+			.initial_data = memory,
+			.size = total_size,
 		});
 		
 		//- Misc
@@ -217,14 +196,10 @@ G_Scene3DInit(void)
 		intsize ibuffer_size = view->byte_length;
 		void* ibuffer_data = Arena_PushMemory(engine->frame_arena, gltf.buffers[view->buffer].data + view->byte_offset, ibuffer_size);
 		
-		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-			.kind = RB_ResourceCommandKind_MakeIndexBuffer,
-			.handle = &s->tree_model_ibuffer,
-			.buffer = {
-				.memory = ibuffer_data,
-				.size = ibuffer_size,
-				.index_type = s->tree_model_index_type,
-			},
+		s->tree_model_ibuffer = RB_MakeIndexBuffer(engine->renderbackend, &(RB_IBufferDesc) {
+			.initial_data = ibuffer_data,
+			.size = ibuffer_size,
+			.index_type = s->tree_model_index_type,
 		});
 		
 		//- Material
@@ -249,20 +224,14 @@ G_Scene3DInit(void)
 		void* imgdata;
 		SafeAssert(E_DecodeImage(engine->frame_arena, encoded_image, &imgdata, &imgwidth, &imgheight));
 		
-		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-			.kind = RB_ResourceCommandKind_MakeTexture2D,
-			.handle = &s->tree_model_diffuse_texture,
-			.texture_2d = {
-				.pixels = imgdata,
-				.width = imgwidth,
-				.height = imgheight,
-				.format = RB_TexFormat_RGBA8,
-				.flag_linear_filtering = true,
-			},
+		s->tree_model_diffuse_texture = RB_MakeTexture2D(engine->renderbackend, &(RB_Tex2dDesc) {
+			.pixels = imgdata,
+			.width = imgwidth,
+			.height = imgheight,
+			.format = RB_TexFormat_RGBA8,
+			.flag_linear_filtering = true,
 		});
 	}
-	
-	E_RawResourceCommands(first, last);
 }
 
 static void
@@ -311,50 +280,29 @@ G_Scene3DUpdateAndRender(void)
 		E_CalcModelMatrix3D(vec3(0), vec3(1.0f, -1.0f, 1.0f), vec3(0), ubuffer_data->model);
 		glm_mat4_mul(s->tree_model_base_transform, ubuffer_data->model, ubuffer_data->model);
 		
-		// NOTE(ljre): Issue draw commands
-		RB_DrawCommand* first = NULL;
-		RB_DrawCommand* last = NULL;
-		
-		first = last = Arena_PushStructInit(engine->frame_arena, RB_DrawCommand, {
-			.kind = RB_DrawCommandKind_ApplyPipeline,
-			.apply = { &s->pipeline },
-		});
-		
-		last = last->next = Arena_PushStructInit(engine->frame_arena, RB_DrawCommand, {
-			.kind = RB_DrawCommandKind_DrawIndexed,
-			.resources_cmd = Arena_PushStructInit(engine->frame_arena, RB_ResourceCommand, {
-				.kind = RB_ResourceCommandKind_UpdateUniformBuffer,
-				.handle = &s->shader_ubuffer,
-				.buffer = {
-					.memory = ubuffer_data,
-					.size = sizeof(*ubuffer_data),
-				},
-			}),
+		RB_UpdateUniformBuffer(engine->renderbackend, s->shader_ubuffer, BufMake(sizeof(*ubuffer_data), ubuffer_data));
+		RB_CmdApplyPipeline(engine->renderbackend, s->pipeline);
+		RB_CmdDraw(engine->renderbackend, &(RB_DrawDesc) {
+			.ibuffer = s->tree_model_ibuffer,
+			.ubuffer = s->shader_ubuffer,
+			.vbuffers = { s->tree_model_vbuffer, s->tree_model_vbuffer, s->tree_model_vbuffer },
+			.offsets = {
+				s->tree_model_position_offset,
+				s->tree_model_texcoord_offset,
+				s->tree_model_normal_offset,
+			},
+			.strides = {
+				sizeof(float32)*3,
+				sizeof(float32)*2,
+				sizeof(float32)*3,
+			},
 			
-			.draw_instanced = {
-				.ibuffer = &s->tree_model_ibuffer,
-				.ubuffer = &s->shader_ubuffer,
-				.vbuffers = { &s->tree_model_vbuffer, &s->tree_model_vbuffer, &s->tree_model_vbuffer },
-				.vbuffer_offsets = {
-					s->tree_model_position_offset,
-					s->tree_model_texcoord_offset,
-					s->tree_model_normal_offset,
-				},
-				.vbuffer_strides = {
-					sizeof(float32)*3,
-					sizeof(float32)*2,
-					sizeof(float32)*3,
-				},
-				
-				.index_count = s->tree_model_index_count,
-				
-				.textures = {
-					&s->tree_model_diffuse_texture,
-					//&s->tree_model_normal_texture,
-				},
+			.index_count = s->tree_model_index_count,
+			
+			.textures = {
+				s->tree_model_diffuse_texture,
+				//s->tree_model_normal_texture,
 			},
 		});
-		
-		E_RawDrawCommands(first, last);
 	}
 }

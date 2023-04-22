@@ -48,7 +48,7 @@ struct G_GlobalData
 };
 
 #include "game_snake.c"
-//#include "game_scene3d.c"
+#include "game_scene3d.c"
 #include "game_stress.c"
 
 //~ NOTE(ljre): Main menu implementation
@@ -81,7 +81,7 @@ G_Init(void)
 #ifdef CONFIG_ENABLE_EMBED
 	desc.ttf = BufRange(g_font_ttf_begin, g_font_ttf_end);
 #else
-	SafeAssert(OS_ReadEntireFile(Str("assets/Arial.ttf"), engine->persistent_arena, (void**)&desc.ttf.data, &desc.ttf.size));
+	SafeAssert(OS_MapFile(Str("assets/Arial.ttf"), NULL, &desc.ttf));
 #endif
 	SafeAssert(E_MakeFont(&desc, &game->font));
 	
@@ -93,7 +93,7 @@ G_Init(void)
 		ogg = BufRange(g_music_ogg_begin, g_music_ogg_end);
 		ok = true;
 #else
-		ok = OS_ReadEntireFile(Str("assets/music.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+		ok = OS_MapFile(Str("assets/music.ogg"), NULL, &ogg);
 #endif
 		
 		ok = ok && E_LoadSound(ogg, &game->music, NULL);
@@ -103,7 +103,7 @@ G_Init(void)
 		ogg = BufRange(g_luigi_ogg_begin, g_luigi_ogg_end);
 		ok = true;
 #else
-		ok = OS_ReadEntireFile(Str("assets/luigi.ogg"), engine->persistent_arena, (void**)&ogg.data, &ogg.size);
+		ok = OS_MapFile(Str("assets/luigi.ogg"), NULL, &ogg);
 #endif
 		
 		ok = ok && E_LoadSound(ogg, &game->sound_luigi, NULL);
@@ -171,6 +171,10 @@ G_UpdateAndRender(void)
 	if (engine->os->window.should_close || OS_IsPressed(engine->os->keyboard, OS_KeyboardKey_Escape))
 		engine->running = false;
 	
+	RB_BeginCmd(engine->renderbackend, &(RB_BeginDesc) {
+		.viewport_width = engine->os->window.width,
+		.viewport_height = engine->os->window.height,
+	});
 	RB_CmdClear(engine->renderbackend, &(RB_ClearDesc) {
 		.flag_color = true,
 		.flag_depth = true,
@@ -183,7 +187,7 @@ G_UpdateAndRender(void)
 		{
 			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
-			//case G_GlobalState_Scene3D: G_Scene3DInit(); break;
+			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
 			case G_GlobalState_Stress: G_StressInit(); break;
 		}
 		
@@ -204,7 +208,7 @@ G_UpdateAndRender(void)
 			};
 			
 			//- Squares
-			for (int32 i = 0; i < 100; ++i)
+			for (int32 i = 0; i < 100*1000; ++i)
 			{
 				uint64 random = Hash_IntHash64(i);
 				
@@ -347,7 +351,7 @@ G_UpdateAndRender(void)
 		} break;
 		
 		case G_GlobalState_Snake: G_SnakeUpdateAndRender(); break;
-		//case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
+		case G_GlobalState_Scene3D: G_Scene3DUpdateAndRender(); break;
 		case G_GlobalState_Stress: G_StressUpdateAndRender(); break;
 	}
 	
@@ -357,6 +361,7 @@ G_UpdateAndRender(void)
 		E_UnloadSound(game->music);
 	}
 	
+	RB_EndCmd(engine->renderbackend);
 	E_FinishFrame();
 }
 

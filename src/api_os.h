@@ -323,11 +323,6 @@ API bool OS_PleaseSetFullscreen(bool enabled);
 API bool OS_PleaseHideCursor(bool enabled);
 API bool OS_PleaseLockMouse(bool lock);
 API bool OS_PleaseTerminate(void);
-
-// everyone supports this. and probably is preferable on Android with AAssetManager.
-// Windows manages to "lazy load" a file even with the current OS_ReadEntireFile API!
-API bool OS_MapFile(String path, void** out_data, uintsize* out_size);
-API bool OS_UnmapFile(void* data, uintsize size);
 */
 
 #ifdef CONFIG_DEBUG
@@ -352,6 +347,13 @@ API void OS_VirtualRelease(void* ptr, uintsize size);
 
 API bool OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size);
 API bool OS_WriteEntireFile(String path, const void* data, uintsize size);
+
+struct OS_MappedFile
+{ void* ptr; }
+typedef OS_MappedFile;
+API bool OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer);
+API bool OS_GetMappedFileBuffer(OS_MappedFile mapped_file, Buffer* out_buffer);
+API void OS_UnmapFile(OS_MappedFile mapped_file);
 
 struct OS_LibraryHandle
 { void* ptr; }

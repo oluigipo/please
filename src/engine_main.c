@@ -4,17 +4,12 @@ E_FinishFrame(void)
 {
 	Trace();
 	
-	RB_EndCmd(global_engine.renderbackend);
 	TraceFrameEnd();
 	RB_Present(global_engine.renderbackend);
 	TraceFrameBegin();
 	
 	Arena_Clear(global_engine.frame_arena);
 	OS_PollEvents();
-	RB_BeginCmd(global_engine.renderbackend, &(RB_BeginDesc) {
-		.viewport_width = global_engine.os->window.width,
-		.viewport_height = global_engine.os->window.height,
-	});
 	
 	float64 current_time = OS_GetTimeInSeconds();
 	global_engine.delta_time = (float32)(current_time - global_engine.last_frame_time);

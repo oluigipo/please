@@ -281,20 +281,22 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 		{
 			Assert(!handle);
 			
-			Buffer vs_blob;
-			Buffer ps_blob;
+			Buffer vs_blob = resc->shader.hlsl40_91.vs;
+			Buffer ps_blob = resc->shader.hlsl40_91.ps;
 			
-			if (ctx->caps.shader_type == RB_ShaderType_Hlsl40)
+			if (resc->shader.hlsl40_93.vs.size && ctx->caps.shader_type >= RB_ShaderType_Hlsl40Level93)
+			{
+				vs_blob = resc->shader.hlsl40_93.vs;
+				ps_blob = resc->shader.hlsl40_93.ps;
+			}
+			
+			if (resc->shader.hlsl40.vs.size && ctx->caps.shader_type >= RB_ShaderType_Hlsl40)
 			{
 				vs_blob = resc->shader.hlsl40.vs;
 				ps_blob = resc->shader.hlsl40.ps;
 			}
-			else
-			{
-				vs_blob = resc->shader.hlsl40_91.vs;
-				ps_blob = resc->shader.hlsl40_91.ps;
-			}
 			
+			SafeAssert(vs_blob.size && ps_blob.size);
 			ID3D11VertexShader* vs;
 			ID3D11PixelShader* ps;
 			
@@ -988,6 +990,7 @@ RB_SetupD3d11Runtime_(RB_Ctx* ctx)
 	{
 		caps.max_texture_size = 4096;
 		caps.max_render_target_textures = 4;
+		caps.shader_type = RB_ShaderType_Hlsl40Level93;
 		caps.has_instancing = true;
 		caps.has_16bit_float = true;
 	}

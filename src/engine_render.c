@@ -107,6 +107,15 @@ static const char g_render_gl_quadfshader[] =
 "}\n"
 "\n";
 
+struct ASDASDASD
+{
+	float32 pos[2];        // +8  = 8
+	float32 scaling[2][2]; // +16 = 24
+	uint8 color[4];        // +4  = 28
+	int16 texcoords[4];    // +8  = 36
+	int16 tex[2];          // +4  = 40
+};
+
 static void
 E_InitRender_(void)
 {
@@ -231,11 +240,6 @@ E_InitRender_(void)
 				.buffer_slot = 1,
 			},
 		},
-	});
-	
-	RB_BeginCmd(global_engine.renderbackend, &(RB_BeginDesc) {
-		.viewport_width = global_engine.os->window.width,
-		.viewport_height = global_engine.os->window.height,
 	});
 }
 
@@ -755,7 +759,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	
 	for (int32 i = 0; i < ArrayLength(batch->textures); ++i)
 	{
-		if (!RB_IsValid(rb, batch->textures[i].handle))
+		if (RB_IsNull(batch->textures[i].handle))
 			int_texindex = i;
 		
 		if (RB_IsSame(rb, batch->textures[i].handle, font->texture.handle))

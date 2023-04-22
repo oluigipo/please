@@ -41,8 +41,9 @@ enum RB_ShaderType
 	RB_ShaderType_Null = 0,
 	
 	RB_ShaderType_Glsl,           // GLSL (vertex & fragment) source code for both GL3.3 and GLES3.0
-	RB_ShaderType_Hlsl40,         // vs_4_0 & ps_4_0 object code
 	RB_ShaderType_Hlsl40Level91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
+	RB_ShaderType_Hlsl40Level93,  // vs_4_0_level_9_3 & ps_4_0_level_9_3 object code
+	RB_ShaderType_Hlsl40,         // vs_4_0 & ps_4_0 object code
 }
 typedef RB_ShaderType;
 
@@ -99,7 +100,6 @@ API RB_Capabilities RB_QueryCapabilities(RB_Ctx* ctx);
 //~
 enum RB_VertexFormat
 {
-	// NOTE(ljre): These formats are all supported by GL3.3, D3D11 9_1, and GLES 3.0.
 	RB_VertexFormat_Null = 0,
 	
 	RB_VertexFormat_Scalar,
@@ -112,8 +112,10 @@ enum RB_VertexFormat
 	
 	RB_VertexFormat_Vec2I16Norm,
 	RB_VertexFormat_Vec2I16,
+	RB_VertexFormat_Vec2F16,
 	RB_VertexFormat_Vec4I16Norm,
 	RB_VertexFormat_Vec4I16,
+	RB_VertexFormat_Vec4F16,
 	RB_VertexFormat_Vec4U8Norm,
 	RB_VertexFormat_Vec4U8,
 }
@@ -204,13 +206,7 @@ struct RB_ShaderDesc
 		Buffer vs;
 		Buffer ps;
 	}
-	hlsl40_91;
-	struct
-	{
-		Buffer vs;
-		Buffer ps;
-	}
-	hlsl40;
+	hlsl40, hlsl40_93, hlsl40_91;
 }
 typedef RB_ShaderDesc;
 

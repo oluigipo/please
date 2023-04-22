@@ -173,9 +173,13 @@ RB_MakeContext(Arena* arena, const OS_WindowGraphicsContext* graphics_context)
 	
 	switch (graphics_context->api)
 	{
-		case OS_WindowGraphicsApi_Null: break;
-		case OS_WindowGraphicsApi_OpenGL: RB_SetupOpenGLRuntime_(ctx); break;
+		default: break;
+#ifdef CONFIG_ENABLE_D3D11
 		case OS_WindowGraphicsApi_Direct3D11: RB_SetupD3d11Runtime_(ctx); break;
+#endif
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: RB_SetupOpenGLRuntime_(ctx); break;
+#endif
 	}
 	
 	return ctx;

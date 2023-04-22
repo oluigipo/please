@@ -56,6 +56,15 @@ ReenableWarnings();
 #   endif
 #endif
 
+struct Win32_MappedFile
+{
+	HANDLE file;
+	HANDLE mapping;
+	const void* base_address;
+	uintsize size;
+}
+typedef Win32_MappedFile;
+
 //~ NOTE(ljre): Globals
 static OS_WindowGraphicsContext g_graphics_context;
 static OS_State g_os;
@@ -835,6 +844,102 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	
 	CloseHandle(handle);
 	return true;
+}
+
+API bool
+OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer)
+{
+	Trace(); TraceText(path);
+	
+	Arena* scratch_arena = Win32_GetThreadScratchArena();
+	HANDLE file;
+	
+	for Arena_TempScope(scratch_arena)
+	{
+		LPCWSTR wpath = Win32_StringToWide(scratch_arena, path);
+		file = CreateFileW(wpath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+	}
+	
+	if (!file)
+		return false;
+	
+	uintsize size;
+	{
+		LARGE_INTEGER large_int;
+		if (!GetFileSizeEx(file, &large_int))
+		{
+			CloseHandle(file);
+			return false;
+		}
+		
+#ifndef _WIN64
+		if (large_int.QuadPart > UINT32_MAX)
+		{
+			CloseHandle(file);
+			return false;
+		}
+#endif
+		
+		size = large_int.QuadPart;
+	}
+	
+	HANDLE mapping = CreateFileMappingW(file, NULL, PAGE_READONLY, 0, 0, NULL);
+	if (!mapping)
+	{
+		CloseHandle(file);
+		return false;
+	}
+	
+	void* base_address = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+	if (!base_address)
+	{
+		CloseHandle(mapping);
+		CloseHandle(file);
+		return false;
+	}
+	
+	Win32_MappedFile* mapdata = OS_HeapAlloc(sizeof(Win32_MappedFile));
+	mapdata->file = file;
+	mapdata->mapping = mapping;
+	mapdata->base_address = base_address;
+	mapdata->size = size;
+	
+	if (out_buffer)
+		*out_buffer = BufMake(size, base_address);
+	if (out_mapped_file)
+		*out_mapped_file = (OS_MappedFile) { mapdata };
+	
+	return true;
+}
+
+API bool
+OS_GetMappedFileBuffer(OS_MappedFile mapped_file, Buffer* out_buffer)
+{
+	Win32_MappedFile* mapdata = mapped_file.ptr;
+	
+	if (mapdata)
+	{
+		if (out_buffer)
+			*out_buffer = BufMake(mapdata->size, mapdata->base_address);
+		
+		return true;
+	}
+	
+	return false;
+}
+
+API void
+OS_UnmapFile(OS_MappedFile mapped_file)
+{
+	Win32_MappedFile* mapdata = mapped_file.ptr;
+	
+	if (mapdata)
+	{
+		UnmapViewOfFile(mapdata->base_address);
+		CloseHandle(mapdata->mapping);
+		CloseHandle(mapdata->file);
+		OS_HeapFree(mapdata);
+	}
 }
 
 API OS_LibraryHandle
