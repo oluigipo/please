@@ -4,16 +4,45 @@ E_FinishFrame(void)
 {
 	Trace();
 	
+	Arena_Clear(global_engine.frame_arena);
 	TraceFrameEnd();
 	RB_Present(global_engine.renderbackend);
 	TraceFrameBegin();
 	
-	Arena_Clear(global_engine.frame_arena);
-	OS_PollEvents();
+	uint64 frequency;
+	uint64 current_tick = OS_CurrentTick(&frequency);
 	
-	float64 current_time = OS_GetTimeInSeconds();
-	global_engine.delta_time = (float32)(current_time - global_engine.last_frame_time);
-	global_engine.last_frame_time = current_time;
+	for (intsize i = ArrayLength(global_engine.frame_snap_history)-1; i > 0; --i)
+		global_engine.frame_snap_history[i] = global_engine.frame_snap_history[i-1];
+	
+	int32 snap_values[] = { 30, 60, 120, 240 };
+	uint64 delta = current_tick - global_engine.last_frame_tick;
+	uint64 record = UINT64_MAX;
+	intsize record_index = 0;
+	
+	for (intsize i = 0; i < ArrayLength(snap_values); ++i)
+	{
+		uint64 snapped = delta * snap_values[i];
+		uint64 check = snapped < frequency ? frequency - snapped : snapped - frequency;
+		
+		if (check < record)
+		{
+			record = check;
+			record_index = i;
+		}
+	}
+	
+	global_engine.frame_snap_history[0] = snap_values[record_index];
+	global_engine.last_frame_tick = current_tick;
+	global_engine.raw_frame_tick_delta = delta;
+	
+	intsize highest_snap = snap_values[record_index];
+	for (intsize i = 1; i < ArrayLength(global_engine.frame_snap_history); ++i)
+		highest_snap = Max(highest_snap, global_engine.frame_snap_history[i]);
+	
+	global_engine.delta_time = 1.0f / (float32)highest_snap;
+	
+	OS_PollEvents();
 }
 
 //~ Entry Point
@@ -31,7 +60,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		// NOTE(ljre): Init basic stuff
 		const int32 worker_thread_count = args->thread_count-1;
 		const uintsize pagesize = 16ull << 20;
-		const uintsize sz_scratch     = 16ull << 20;
+		const uintsize sz_scratch     = 32ull << 20;
 		const uintsize sz_frame       = 32ull << 20;
 		const uintsize sz_persistent  = 64ull << 20;
 		const uintsize sz_audiothread = 256ull << 10;
@@ -105,7 +134,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		E_InitRender_();
 		
 		// NOTE(ljre): Run
-		global_engine.last_frame_time = OS_GetTimeInSeconds();
+		global_engine.last_frame_tick = OS_CurrentTick(NULL);
 		
 #ifdef CONFIG_ENABLE_HOT
 		do

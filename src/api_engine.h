@@ -60,8 +60,10 @@ struct E_GlobalData
 	uintsize game_memory_size;
 	uintsize peak_frame_arena;
 	
+	uint64 last_frame_tick;
+	uint64 raw_frame_tick_delta;
+	int32 frame_snap_history[6];
 	float32 delta_time;
-	float64 last_frame_time;
 	
 	bool running : 1;
 	bool enable_vsync : 1;

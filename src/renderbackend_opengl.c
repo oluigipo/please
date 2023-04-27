@@ -649,17 +649,24 @@ RB_OpenGLCommand_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 					//case RB_VertexFormat_Vec2:
 					//case RB_VertexFormat_Vec3:
 					//case RB_VertexFormat_Vec4:
+					//case RB_VertexFormat_Vec2F16:
+					//case RB_VertexFormat_Vec4F16:
 					{
 						uint32 count;
+						bool half;
 						
-						if (0) case RB_VertexFormat_Scalar: count = 1;
-						if (0) case RB_VertexFormat_Vec2: count = 2;
-						if (0) case RB_VertexFormat_Vec3: count = 3;
-						if (0) case RB_VertexFormat_Vec4: count = 4;
+						if (0) case RB_VertexFormat_Scalar: { count = 1; half = false; }
+						if (0) case RB_VertexFormat_Vec2: { count = 2; half = false; }
+						if (0) case RB_VertexFormat_Vec3: { count = 3; half = false; }
+						if (0) case RB_VertexFormat_Vec4: { count = 4; half = false; }
+						if (0) case RB_VertexFormat_Vec2F16: { count = 2; half = true; }
+						if (0) case RB_VertexFormat_Vec4F16: { count = 2; half = true; }
+						
+						GLenum type = half ? GL_HALF_FLOAT : GL_FLOAT;
 						
 						GL.glEnableVertexAttribArray(loc);
 						GL.glVertexAttribDivisor(loc, layout->divisor);
-						GL.glVertexAttribPointer(loc, count, GL_FLOAT, false, stride, (void*)offset);
+						GL.glVertexAttribPointer(loc, count, type, false, stride, (void*)offset);
 						
 						location += 1;
 					} break;
@@ -686,7 +693,10 @@ RB_OpenGLCommand_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 						
 						GL.glEnableVertexAttribArray(loc);
 						GL.glVertexAttribDivisor(loc, layout->divisor);
-						GL.glVertexAttribPointer(loc, count, type, norm, stride, (void*)offset);
+						if (norm)
+							GL.glVertexAttribPointer(loc, count, type, true, stride, (void*)offset);
+						else
+							GL.glVertexAttribIPointer(loc, count, type, stride, (void*)offset);
 						
 						location += 1;
 					} break;

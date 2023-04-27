@@ -77,6 +77,7 @@ struct
 	RECT monitor;
 	HWND window;
 	bool lock_cursor;
+	bool vsync_disabled;
 	HDC hdc;
 	LPCWSTR class_name;
 	HANDLE worker_threads[E_Limits_MaxWorkerThreadCount];
@@ -428,7 +429,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		else if (String_Equals(arg, Str("-no-worker-threads")))
 			g_win32.user_thread_count = 1;
 		else if (String_Equals(arg, Str("-no-vsync")))
-		{}
+			g_win32.vsync_disabled = true;
 		else if (String_StartsWith(arg, Str("-d3d11=")))
 		{
 			int32 feature_level = 0;
@@ -735,7 +736,8 @@ OS_CurrentPosixTime(void)
 API uint64
 OS_CurrentTick(uint64* out_ticks_per_second)
 {
-	*out_ticks_per_second = g_win32.time_frequency;
+	if (out_ticks_per_second)
+		*out_ticks_per_second = g_win32.time_frequency;
 	return Win32_GetTimer() - g_win32.process_started_time;
 }
 

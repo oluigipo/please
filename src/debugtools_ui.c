@@ -46,7 +46,7 @@ DBG_UIPushFoldable(DBG_UIState* state, String text, bool* is_unfolded)
 		},
 		.scaling[0][0] = dot_size - dot_pad*2,
 		.scaling[1][1] = dot_size - dot_pad*2,
-		.tex_kind = 3,
+		.tex_kind = 1,
 		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { dot_color, dot_color, dot_color, 1.0f },
 	});
@@ -118,7 +118,7 @@ DBG_UIPushButton(DBG_UIState* state, String text)
 	
 	E_PushRect(state->batch, &(E_RectBatchElem) {
 		.pos = { bbox[0], bbox[1] },
-		.tex_kind = 3,
+		.tex_kind = 1,
 		.scaling[0][0] = width + padding,
 		.scaling[1][1] = height,
 		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
@@ -148,7 +148,7 @@ DBG_UIPushProgressBar(DBG_UIState* state, float32 width, float32* ts, vec3* colo
 	
 	E_PushRect(state->batch, &(E_RectBatchElem) {
 		.pos = { state->current_pos[0], state->current_pos[1] },
-		.tex_kind = 3,
+		.tex_kind = 1,
 		.scaling[0][0] = width,
 		.scaling[1][1] = height,
 		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
@@ -159,7 +159,7 @@ DBG_UIPushProgressBar(DBG_UIState* state, float32 width, float32* ts, vec3* colo
 	{
 		E_PushRect(state->batch, &(E_RectBatchElem) {
 			.pos = { state->current_pos[0], state->current_pos[1] },
-			.tex_kind = 3,
+			.tex_kind = 1,
 			.scaling[0][0] = width * ts[i],
 			.scaling[1][1] = height,
 			.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
@@ -326,7 +326,7 @@ DBG_UIPushTextField(DBG_UIState* state, uint8* buffer, intsize buffer_cap, intsi
 	
 	E_RectBatchElem elem = {
 		.pos = { bbox[0], bbox[1] },
-		.tex_kind = 3,
+		.tex_kind = 1,
 		.scaling[0][0] = bbox[2] - bbox[0],
 		.scaling[1][1] = bbox[3] - bbox[1],
 		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },

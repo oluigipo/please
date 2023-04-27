@@ -144,7 +144,7 @@ G_MenuButton(E_RectBatch* batch, float32* inout_y, String text)
 		.pos = { button_x, button_y },
 		.scaling[0][0] = button_width,
 		.scaling[1][1] = button_height,
-		.tex_kind = 3.0f,
+		.tex_kind = 1,
 		.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 		.color = { color[0], color[1], color[2], color[3] },
 	});
@@ -208,7 +208,8 @@ G_UpdateAndRender(void)
 			};
 			
 			//- Squares
-			for (int32 i = 0; i < 100*1000; ++i)
+			static bool hundreds_enabled = false;
+			for (int32 i = 0; i < (hundreds_enabled ? 100*1000 : 100); ++i)
 			{
 				uint64 random = Hash_IntHash64(i);
 				
@@ -233,7 +234,7 @@ G_UpdateAndRender(void)
 						{ size*sinf(angle), size* cosf(angle) },
 					},
 					.tex_index = 0,
-					.tex_kind = 3,
+					.tex_kind = 1,
 					.texcoords = { 0, 0, INT16_MAX, INT16_MAX },
 					.color = { color[0], color[1], color[2], 1.0f },
 				});
@@ -261,6 +262,8 @@ G_UpdateAndRender(void)
 					E_PlaySound(game->sound_luigi, &(E_PlaySoundOptions) { 0 }, NULL);
 				if (DBG_UIPushButton(&debugui, Str("test OS_MessageBox")))
 					OS_MessageBox(Str("Title Title Title"), Str("Message Message message!!!"));
+				if (DBG_UIPushButton(&debugui, hundreds_enabled ? Str("Disable stress") : Str("Enable stress")))
+					hundreds_enabled ^= 1;
 				
 				static uint8 buffer[128] = "Click me!";
 				static intsize size = 9;
@@ -279,8 +282,9 @@ G_UpdateAndRender(void)
 					{
 						case 0: shader_type = ""; break;
 						case RB_ShaderType_Glsl: shader_type = "GLSL 3.3 / ES 3.0"; break;
-						case RB_ShaderType_Hlsl40: shader_type = "HLSL vs/ps_4_0"; break;
 						case RB_ShaderType_Hlsl40Level91: shader_type = "HLSL vs/ps_4_0_level_9_1"; break;
+						case RB_ShaderType_Hlsl40Level93: shader_type = "HLSL vs/ps_4_0_level_9_3"; break;
+						case RB_ShaderType_Hlsl40: shader_type = "HLSL vs/ps_4_0"; break;
 					}
 					
 					DBG_UIPushTextF(&debugui, "API: %S\nDriver Renderer: %S\nDriver Vendor: %S\nDriver Version: %S", caps.backend_api, caps.driver_renderer, caps.driver_vendor, caps.driver_version);
@@ -338,6 +342,23 @@ G_UpdateAndRender(void)
 							DBG_UIPopFoldable(&debugui);
 						}
 					}
+					
+					DBG_UIPopFoldable(&debugui);
+				}
+				
+				static bool timing_unfolded = false;
+				if (DBG_UIPushFoldable(&debugui, Str("Timings"), &timing_unfolded))
+				{
+					uint64 frequency;
+					OS_CurrentTick(&frequency);
+					
+					DBG_UIPushTextF(&debugui, "Raw CPU frame delta (ms): %.2f", (float64)engine->raw_frame_tick_delta / (frequency/1000));
+					DBG_UIPushTextF(&debugui, "Delta time: %f", engine->delta_time);
+					DBG_UIPushVerticalSpacing(&debugui, 24.0f);
+					DBG_UIPushTextF(&debugui, "Frame Snap History:");
+					
+					for (intsize i = 0; i < ArrayLength(engine->frame_snap_history); ++i)
+						DBG_UIPushTextF(&debugui, " - %i", engine->frame_snap_history[i]);
 					
 					DBG_UIPopFoldable(&debugui);
 				}

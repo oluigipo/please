@@ -346,6 +346,8 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 						if (0) case RB_VertexFormat_Vec4I16: format = DXGI_FORMAT_R16G16B16A16_SINT;
 						if (0) case RB_VertexFormat_Vec4U8Norm: format = DXGI_FORMAT_R8G8B8A8_UNORM;
 						if (0) case RB_VertexFormat_Vec4U8: format = DXGI_FORMAT_R8G8B8A8_UINT;
+						if (0) case RB_VertexFormat_Vec2F16: format = DXGI_FORMAT_R16G16_FLOAT;
+						if (0) case RB_VertexFormat_Vec4F16: format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 						
 						D3D11_INPUT_ELEMENT_DESC element_desc = {
 							.SemanticName = "VINPUT",

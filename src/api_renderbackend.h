@@ -40,10 +40,10 @@ enum RB_ShaderType
 {
 	RB_ShaderType_Null = 0,
 	
-	RB_ShaderType_Glsl,           // GLSL (vertex & fragment) source code for both GL3.3 and GLES3.0
 	RB_ShaderType_Hlsl40Level91,  // vs_4_0_level_9_1 & ps_4_0_level_9_1 object code
 	RB_ShaderType_Hlsl40Level93,  // vs_4_0_level_9_3 & ps_4_0_level_9_3 object code
 	RB_ShaderType_Hlsl40,         // vs_4_0 & ps_4_0 object code
+	RB_ShaderType_Glsl,           // GLSL (vertex & fragment) source code for both GL3.3 and GLES3.0
 }
 typedef RB_ShaderType;
 

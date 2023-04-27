@@ -3,8 +3,8 @@ uint8 typedef BYTE;
 
 #include <d3d11_shader_quad_vs.inc>
 #include <d3d11_shader_quad_ps.inc>
-#include <d3d11_shader_quad_level91_vs.inc>
-#include <d3d11_shader_quad_level91_ps.inc>
+#include <d3d11_shader_quad_91_vs.inc>
+#include <d3d11_shader_quad_91_ps.inc>
 
 static RB_VBuffer g_render_quadvbuf;
 static RB_IBuffer g_render_quadibuf;
@@ -12,23 +12,20 @@ static RB_UBuffer g_render_quadubuf;
 static RB_Tex2d g_render_whitetex;
 static RB_Shader g_render_quadshader;
 static RB_Pipeline g_render_quadpipeline;
-static RB_VBuffer g_render_quadelemsbuf;
-static intsize g_render_uninstanced_cached_count = 1;
 static RB_Capabilities g_render_caps;
 
 static const char g_render_gl_quadvshader[] =
 "layout (location=0) in vec2  aPos;\n"
-"layout (location=1) in vec2  aElemPos;\n"
-"layout (location=2) in mat2  aElemScaling;\n"
-"layout (location=4) in vec2  aElemTexIndex;\n"
-"layout (location=5) in vec4  aElemTexcoords;\n"
-"layout (location=6) in vec4  aElemColor;\n"
+"layout (location=1) in mat2  aScaling;\n"
+"layout (location=3) in ivec2 aTexindex;\n"
+"layout (location=4) in vec4  aTexcoords;\n"
+"layout (location=5) in vec4  aColor;\n"
 "\n"
-"out vec2  vTexcoords;\n"
-"out vec4  vColor;\n"
-"out vec2  vTexIndex;\n"
-"out vec2  vRawPos;\n"
-"out vec2  vRawScale;\n"
+"out vec2 vTexcoords;\n"
+"flat out ivec2 vTexindex;\n"
+"out vec4 vColor;\n"
+"out vec2 vScale;\n"
+"out vec2 vRawpos;\n"
 "\n"
 "layout(std140) uniform UniformBuffer {\n"
 "    mat4 uView;\n"
@@ -37,21 +34,24 @@ static const char g_render_gl_quadvshader[] =
 "};\n"
 "\n"
 "void main() {\n"
-"    gl_Position = uView * vec4(aElemPos + aElemScaling * aPos, 0.0, 1.0);\n"
-"    vTexcoords = aElemTexcoords.xy + aElemTexcoords.zw * aPos;\n"
-"    vColor = aElemColor;\n"
-"    vTexIndex = aElemTexIndex;\n"
-"    vRawPos = aPos;\n"
-"    vRawScale = vec2(length(aElemScaling[0]), length(aElemScaling[1]));\n"
+"    uint index = uint(gl_VertexID);\n"
+"    vec2 rawpos = vec2(index & 1u, index >> 1u);\n"
+"    gl_Position = uView * vec4(aPos + aScaling * rawpos, 0.0, 1.0);\n"
+"    \n"
+"    vTexcoords = aTexcoords.xy + aTexcoords.zw * rawpos;\n"
+"    vTexindex = aTexindex;\n"
+"    vColor = aColor;\n"
+"    vScale = vec2(length(aScaling[0]), length(aScaling[1]));\n"
+"    vRawpos = rawpos;\n"
 "}\n"
 "\n";
 
 static const char g_render_gl_quadfshader[] =
-"in vec2  vTexcoords;\n"
-"in vec4  vColor;\n"
-"in vec2  vTexIndex;\n"
-"in vec2  vRawPos;\n"
-"in vec2  vRawScale;\n"
+"in vec2 vTexcoords;\n"
+"in vec4 vColor;\n"
+"flat in ivec2 vTexindex;\n"
+"in vec2 vRawpos;\n"
+"in vec2 vScale;\n"
 "\n"
 "out vec4 oFragColor;\n"
 "\n"
@@ -67,7 +67,7 @@ static const char g_render_gl_quadfshader[] =
 "    vec4 color = vec4(1.0);\n"
 "    vec2 texsize;\n"
 "    \n"
-"    switch (int(vTexIndex.x)) {\n"
+"    switch (vTexindex.x) {\n"
 "        default:\n"
 "        case 0: color = texture(uTexture[0], vTexcoords); texsize = uTexsize01.xy; break;\n"
 "        case 1: color = texture(uTexture[1], vTexcoords); texsize = uTexsize01.zw; break;\n"
@@ -75,26 +75,19 @@ static const char g_render_gl_quadfshader[] =
 "        case 3: color = texture(uTexture[3], vTexcoords); texsize = uTexsize23.zw; break;\n"
 "    }\n"
 "    \n"
-"    switch (int(vTexIndex.y)) {\n"
-"        default:"
-"        case 0: break;"
-"        case 1: color = vec4(1.0, 1.0, 1.0, color.x); break;"
-"        case 2: {\n"
-"            vec2 pos = (vRawPos - 0.5) * 2.0;\n"
-"            if (dot(pos, pos) >= 1.0)\n"
-"                color.w = 0.0;\n"
-"        } break;\n"
-"        case 3: {\n"
+"    switch (vTexindex.y) {\n"
+"        default: break;\n"
+"        case 1: {\n"
 "            // Derived from: https://www.shadertoy.com/view/4llXD7\n"
-"            float r = 0.5 * min(vRawScale.x, vRawScale.y);\n"
-"            vec2 p = (vRawPos - 0.5) * 2.0 * vRawScale;\n"
-"            vec2 q = abs(p) - vRawScale + r;\n"
+"            float r = 0.5 * min(vScale.x, vScale.y);\n"
+"            vec2 p = (vRawpos - 0.5) * 2.0 * vScale;\n"
+"            vec2 q = abs(p) - vScale + r;\n"
 "            float dist = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;\n"
 "            \n"
 "            if (dist >= -1.0)\n"
 "                color.w *= max(1.0 - (dist+1.0)*0.5, 0.0);\n"
 "        } break;\n"
-"        case 4: {\n"
+"        case 2: {\n"
 "            vec2 density = fwidth(vTexcoords) * texsize;\n"
 "            float m = min(density.x, density.y);\n"
 "            float inv = 1.0 / m;\n"
@@ -107,14 +100,26 @@ static const char g_render_gl_quadfshader[] =
 "}\n"
 "\n";
 
-struct ASDASDASD
+struct E_QuadVertex_
 {
-	float32 pos[2];        // +8  = 8
-	float32 scaling[2][2]; // +16 = 24
-	uint8 color[4];        // +4  = 28
-	int16 texcoords[4];    // +8  = 36
-	int16 tex[2];          // +4  = 40
-};
+	float32 pos[2];
+	float32 scaling[2][2];
+	int16 texindex[2];
+	int16 texcoords[4];
+	uint8 color[4];
+}
+typedef E_QuadVertex_;
+
+struct E_QuadVertex91_
+{
+	float32 pos[2];
+	float32 normpos[2];
+	float32 size[2];
+	int16 texindex[2];
+	int16 texcoords[2];
+	uint8 color[4];
+}
+typedef E_QuadVertex91_;
 
 static void
 E_InitRender_(void)
@@ -132,35 +137,10 @@ E_InitRender_(void)
 		OS_DebugLog("[RB] backend: %S\n[RB] driver renderer: %S\n[RB] driver vendor: %S\n[RB] driver version: %S\n", cap.backend_api, cap.driver_renderer, cap.driver_vendor, cap.driver_version);
 	}
 	
-	int16 quadvbuf[] = {
-		0, 0,
-		0, INT16_MAX,
-		INT16_MAX, 0,
-		INT16_MAX, INT16_MAX,
-	};
-	
-	uint16 quadibuf[] = {
-		0, 1, 2,
-		2, 1, 3,
-	};
-	
 	uint32 whitetex[] = {
 		0xFFFFFFFF, 0xFFFFFFFF,
 		0xFFFFFFFF, 0xFFFFFFFF,
 	};
-	
-	g_render_quadvbuf = RB_MakeVertexBuffer(renderbackend, &(RB_VBufferDesc) {
-		.flag_dynamic = !g_render_caps.has_instancing,
-		.size = sizeof(quadvbuf),
-		.initial_data = quadvbuf,
-	});
-	
-	g_render_quadibuf = RB_MakeIndexBuffer(renderbackend, &(RB_IBufferDesc) {
-		.flag_dynamic = !g_render_caps.has_instancing,
-		.size = sizeof(quadibuf),
-		.initial_data = quadibuf,
-		.index_type = RB_IndexType_Uint16,
-	});
 	
 	g_render_whitetex = RB_MakeTexture2D(renderbackend, &(RB_Tex2dDesc) {
 		.pixels = whitetex,
@@ -169,23 +149,14 @@ E_InitRender_(void)
 		.format = RB_TexFormat_RGBA8,
 	});
 	
-	g_render_quadelemsbuf = RB_MakeVertexBuffer(renderbackend, &(RB_VBufferDesc) {
-		.flag_dynamic = true,
-		.size = sizeof(E_RectBatchElem)*1024,
-	});
-	
-	g_render_quadubuf = RB_MakeUniformBuffer(renderbackend, &(RB_UBufferDesc) {
-		.size = sizeof(mat4)+sizeof(vec2[RB_Limits_DrawMaxTextures]),
-	});
-	
 	g_render_quadshader = RB_MakeShader(renderbackend, &(RB_ShaderDesc) {
 		.hlsl40 = {
 			BufInit(g_render_d3d11_shader_quad_vs),
 			BufInit(g_render_d3d11_shader_quad_ps)
 		},
 		.hlsl40_91 = {
-			BufInit(g_render_d3d11_shader_quad_level91_vs),
-			BufInit(g_render_d3d11_shader_quad_level91_ps),
+			BufInit(g_render_d3d11_shader_quad_91_vs),
+			BufInit(g_render_d3d11_shader_quad_91_ps),
 		},
 		.glsl = {
 			StrInit(g_render_gl_quadvshader),
@@ -193,54 +164,134 @@ E_InitRender_(void)
 		},
 	});
 	
-	g_render_quadpipeline = RB_MakePipeline(renderbackend, &(RB_PipelineDesc) {
-		.flag_blend = true,
+	if (g_render_caps.shader_type >= RB_ShaderType_Hlsl40)
+	{
+		uint16 ibuf[6] = { 0, 1, 2, 2, 3, 1 };
 		
-		.blend_source = RB_BlendFunc_SrcAlpha,
-		.blend_dest = RB_BlendFunc_InvSrcAlpha,
-		.blend_op = RB_BlendOp_Add,
-		.blend_source_alpha = RB_BlendFunc_SrcAlpha,
-		.blend_dest_alpha = RB_BlendFunc_InvSrcAlpha,
-		.blend_op_alpha = RB_BlendOp_Add,
+		g_render_quadvbuf = RB_MakeVertexBuffer(renderbackend, &(RB_VBufferDesc) {
+			.flag_dynamic = true,
+			.size = sizeof(E_QuadVertex_)*1024,
+		});
 		
-		.shader = g_render_quadshader,
-		.input_layout = {
-			[0] = {
-				.format = RB_VertexFormat_Vec2I16Norm,
-				.buffer_slot = 0,
+		g_render_quadibuf = RB_MakeIndexBuffer(renderbackend, &(RB_IBufferDesc) {
+			.size = sizeof(ibuf),
+			.initial_data = ibuf,
+			.index_type = RB_IndexType_Uint16,
+		});
+		
+		g_render_quadubuf = RB_MakeUniformBuffer(renderbackend, &(RB_UBufferDesc) {
+			.size = sizeof(mat4)+sizeof(vec2[RB_Limits_DrawMaxTextures]),
+		});
+		
+		g_render_quadpipeline = RB_MakePipeline(renderbackend, &(RB_PipelineDesc) {
+			.flag_blend = true,
+			
+			.blend_source = RB_BlendFunc_SrcAlpha,
+			.blend_dest = RB_BlendFunc_InvSrcAlpha,
+			.blend_op = RB_BlendOp_Add,
+			.blend_source_alpha = RB_BlendFunc_SrcAlpha,
+			.blend_dest_alpha = RB_BlendFunc_InvSrcAlpha,
+			.blend_op_alpha = RB_BlendOp_Add,
+			
+			.shader = g_render_quadshader,
+			.input_layout = {
+				[0] = {
+					.format = RB_VertexFormat_Vec2,
+					.offset = offsetof(E_QuadVertex_, pos),
+					.divisor = 1,
+				},
+				[1] = {
+					.format = RB_VertexFormat_Mat2,
+					.offset = offsetof(E_QuadVertex_, scaling),
+					.divisor = 1,
+				},
+				[2] = {
+					.format = RB_VertexFormat_Vec2I16,
+					.offset = offsetof(E_QuadVertex_, texindex),
+					.divisor = 1,
+				},
+				[3] = {
+					.format = RB_VertexFormat_Vec4I16Norm,
+					.offset = offsetof(E_QuadVertex_, texcoords),
+					.divisor = 1,
+				},
+				[4] = {
+					.format = RB_VertexFormat_Vec4U8Norm,
+					.offset = offsetof(E_QuadVertex_, color),
+					.divisor = 1,
+				},
 			},
-			[1] = {
-				.format = RB_VertexFormat_Vec2,
-				.offset = offsetof(E_RectBatchElem, pos),
-				.divisor = g_render_caps.has_instancing,
-				.buffer_slot = 1,
+		});
+	}
+	else for Arena_TempScope(global_engine.scratch_arena)
+	{
+		intsize count = 6 * UINT16_MAX / 4;
+		uint16* ibuf = Arena_PushDirtyAligned(global_engine.scratch_arena, sizeof(uint16)*count, 4);
+		
+		for (intsize i = 0; i < UINT16_MAX / 4; ++i)
+		{
+			ibuf[i*6 + 0] = (uint16)(i*4 + 0);
+			ibuf[i*6 + 1] = (uint16)(i*4 + 1);
+			ibuf[i*6 + 2] = (uint16)(i*4 + 2);
+			ibuf[i*6 + 3] = (uint16)(i*4 + 2);
+			ibuf[i*6 + 4] = (uint16)(i*4 + 3);
+			ibuf[i*6 + 5] = (uint16)(i*4 + 1);
+		}
+		
+		g_render_quadvbuf = RB_MakeVertexBuffer(renderbackend, &(RB_VBufferDesc) {
+			.flag_dynamic = true,
+			.size = sizeof(E_QuadVertex91_)*1024,
+		});
+		
+		g_render_quadibuf = RB_MakeIndexBuffer(renderbackend, &(RB_IBufferDesc) {
+			.size = sizeof(uint16)*count,
+			.initial_data = ibuf,
+			.index_type = RB_IndexType_Uint16,
+		});
+		
+		g_render_quadubuf = RB_MakeUniformBuffer(renderbackend, &(RB_UBufferDesc) {
+			.size = sizeof(mat4)+sizeof(vec2[RB_Limits_DrawMaxTextures]),
+		});
+		
+		g_render_quadpipeline = RB_MakePipeline(renderbackend, &(RB_PipelineDesc) {
+			.flag_blend = true,
+			
+			.blend_source = RB_BlendFunc_SrcAlpha,
+			.blend_dest = RB_BlendFunc_InvSrcAlpha,
+			.blend_op = RB_BlendOp_Add,
+			.blend_source_alpha = RB_BlendFunc_SrcAlpha,
+			.blend_dest_alpha = RB_BlendFunc_InvSrcAlpha,
+			.blend_op_alpha = RB_BlendOp_Add,
+			
+			.shader = g_render_quadshader,
+			.input_layout = {
+				[0] = {
+					.format = RB_VertexFormat_Vec2,
+					.offset = offsetof(E_QuadVertex91_, pos),
+				},
+				[1] = {
+					.format = RB_VertexFormat_Vec2,
+					.offset = offsetof(E_QuadVertex91_, normpos),
+				},
+				[2] = {
+					.format = RB_VertexFormat_Vec2,
+					.offset = offsetof(E_QuadVertex91_, size),
+				},
+				[3] = {
+					.format = RB_VertexFormat_Vec2I16,
+					.offset = offsetof(E_QuadVertex91_, texindex),
+				},
+				[4] = {
+					.format = RB_VertexFormat_Vec2I16Norm,
+					.offset = offsetof(E_QuadVertex91_, texcoords),
+				},
+				[5] = {
+					.format = RB_VertexFormat_Vec4U8Norm,
+					.offset = offsetof(E_QuadVertex91_, color),
+				},
 			},
-			[2] = {
-				.format = RB_VertexFormat_Mat2,
-				.offset = offsetof(E_RectBatchElem, scaling),
-				.divisor = g_render_caps.has_instancing,
-				.buffer_slot = 1,
-			},
-			[3] = {
-				.format = RB_VertexFormat_Vec2I16,
-				.offset = offsetof(E_RectBatchElem, tex_index),
-				.divisor = g_render_caps.has_instancing,
-				.buffer_slot = 1,
-			},
-			[4] = {
-				.format = RB_VertexFormat_Vec4I16Norm,
-				.offset = offsetof(E_RectBatchElem, texcoords),
-				.divisor = g_render_caps.has_instancing,
-				.buffer_slot = 1,
-			},
-			[5] = {
-				.format = RB_VertexFormat_Vec4,
-				.offset = offsetof(E_RectBatchElem, color),
-				.divisor = g_render_caps.has_instancing,
-				.buffer_slot = 1,
-			},
-		},
-	});
+		});
+	}
 }
 
 static void
@@ -615,6 +666,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 {
 	Trace();
 	RB_Ctx* rb = global_engine.renderbackend;
+	Arena* scratch_arena = global_engine.scratch_arena;
 	
 	struct
 	{
@@ -651,90 +703,158 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	
 	RB_UpdateUniformBuffer(rb, g_render_quadubuf, BufMake(sizeof(ubuffer), &ubuffer));
 	
-	if (g_render_caps.has_instancing)
+	if (g_render_caps.shader_type >= RB_ShaderType_Hlsl40)
 	{
-		uintsize size = batch->count * sizeof(batch->elements[0]);
-		RB_UpdateVertexBuffer(rb, g_render_quadelemsbuf, BufMake(size, batch->elements));
+		intsize count = (intsize)batch->count;
+		uintsize size = sizeof(E_QuadVertex_) * count;
+		E_QuadVertex_* vertices = Arena_PushDirtyAligned(scratch_arena, size, 16);
+		
+		for (intsize i = 0; i < count; ++i)
+		{
+			E_RectBatchElem* elem = &batch->elements[i];
+			
+			vertices[i] = (E_QuadVertex_) {
+				.pos = {
+					elem->pos[0],
+					elem->pos[1],
+				},
+				.scaling = {
+					elem->scaling[0][0], elem->scaling[0][1],
+					elem->scaling[1][0], elem->scaling[1][1],
+				},
+				.color = {
+					(uint8)(255.0f*elem->color[0]),
+					(uint8)(255.0f*elem->color[1]),
+					(uint8)(255.0f*elem->color[2]),
+					(uint8)(255.0f*elem->color[3]),
+				},
+				.texcoords = {
+					elem->texcoords[0],
+					elem->texcoords[1],
+					elem->texcoords[2],
+					elem->texcoords[3],
+				},
+				.texindex = { elem->tex_index, elem->tex_kind },
+			};
+		}
+		
+		RB_UpdateVertexBuffer(rb, g_render_quadvbuf, BufMake(size, vertices));
+		Arena_Pop(scratch_arena, vertices);
 	}
 	else
 	{
-		for Arena_TempScope(global_engine.scratch_arena)
+		intsize count = (intsize)batch->count;
+		uintsize size = sizeof(E_RectBatchElem) * count * 4;
+		E_QuadVertex91_* vertices = Arena_PushDirtyAligned(scratch_arena, size, 16);
+		
+		for (intsize i = 0; i < count; ++i)
 		{
-			uintsize elements_size = sizeof(E_RectBatchElem) * batch->count * 4;
-			E_RectBatchElem* elements = Arena_PushDirty(global_engine.scratch_arena, elements_size);
+			E_RectBatchElem* elem = &batch->elements[i];
+			vec2 size = {
+				sqrtf(elem->scaling[0][0]*elem->scaling[0][0] + elem->scaling[0][1]*elem->scaling[0][1]),
+				sqrtf(elem->scaling[1][0]*elem->scaling[1][0] + elem->scaling[1][1]*elem->scaling[1][1]),
+			};
+			uint8 color[4] = {
+				(uint8)(255.0f*elem->color[0]),
+				(uint8)(255.0f*elem->color[1]),
+				(uint8)(255.0f*elem->color[2]),
+				(uint8)(255.0f*elem->color[3]),
+			};
 			
-			for (intsize i = 0; i < batch->count; ++i)
-			{
-				elements[i*4 + 0] = batch->elements[i];
-				elements[i*4 + 1] = batch->elements[i];
-				elements[i*4 + 2] = batch->elements[i];
-				elements[i*4 + 3] = batch->elements[i];
-			}
+			vertices[i*4 + 0] = (E_QuadVertex91_) {
+				.pos = { elem->pos[0], elem->pos[1] },
+				.normpos = { 0.0f, 0.0f },
+				.size = { size[0], size[1] },
+				.texindex = { elem->tex_index, elem->tex_kind },
+				.texcoords = { elem->texcoords[0], elem->texcoords[1] },
+				.color = { color[0], color[1], color[2], color[3], },
+			};
 			
-			RB_UpdateVertexBuffer(rb, g_render_quadelemsbuf, BufMake(elements_size, elements));
+			vertices[i*4 + 1] = (E_QuadVertex91_) {
+				.pos = { elem->pos[0], elem->pos[1] },
+				.normpos = { 1.0f, 0.0f },
+				.size = { size[0], size[1] },
+				.texindex = { elem->tex_index, elem->tex_kind },
+				.texcoords = { elem->texcoords[0] + elem->texcoords[2], elem->texcoords[1] },
+				.color = { color[0], color[1], color[2], color[3], },
+			};
+			
+			vertices[i*4 + 2] = (E_QuadVertex91_) {
+				.pos = { elem->pos[0], elem->pos[1] },
+				.normpos = { 0.0f, 1.0f },
+				.size = { size[0], size[1] },
+				.texindex = { elem->tex_index, elem->tex_kind },
+				.texcoords = { elem->texcoords[0], elem->texcoords[1] + elem->texcoords[3] },
+				.color = { color[0], color[1], color[2], color[3], },
+			};
+			
+			vertices[i*4 + 3] = (E_QuadVertex91_) {
+				.pos = { elem->pos[0], elem->pos[1] },
+				.normpos = { 1.0f, 1.0f },
+				.size = { size[0], size[1] },
+				.texindex = { elem->tex_index, elem->tex_kind },
+				.texcoords = { elem->texcoords[0] + elem->texcoords[2], elem->texcoords[1] + elem->texcoords[3] },
+				.color = { color[0], color[1], color[2], color[3], },
+			};
+			
+			vec2 tmp;
+			glm_mat2_mulv(elem->scaling, vertices[i*4 + 1].normpos, tmp);
+			glm_vec2_add(tmp, vertices[i*4 + 1].pos, vertices[i*4 + 1].pos);
+			glm_mat2_mulv(elem->scaling, vertices[i*4 + 2].normpos, tmp);
+			glm_vec2_add(tmp, vertices[i*4 + 2].pos, vertices[i*4 + 2].pos);
+			glm_mat2_mulv(elem->scaling, vertices[i*4 + 3].normpos, tmp);
+			glm_vec2_add(tmp, vertices[i*4 + 3].pos, vertices[i*4 + 3].pos);
 		}
 		
-		if (g_render_uninstanced_cached_count < batch->count)
-		{
-			for Arena_TempScope(global_engine.scratch_arena)
-			{
-				g_render_uninstanced_cached_count = batch->count;
-				
-				uintsize new_vertices_size = sizeof(int16) * 8 * batch->count;
-				uintsize new_indices_size = sizeof(uint16) * 6 * batch->count;
-				
-				int16* new_vertices = Arena_PushDirty(global_engine.scratch_arena, new_vertices_size);
-				uint16* new_indices = Arena_PushDirty(global_engine.scratch_arena, new_indices_size);
-				
-				alignas(16) int16 base_vertices[8] = {
-					0, 0,
-					0, INT16_MAX,
-					INT16_MAX, 0,
-					INT16_MAX, INT16_MAX,
-				};
-				
-				static_assert(sizeof(base_vertices) == 16, "making sure we can copy a whole vertex at a time");
-				
-				for (intsize i = 0; i < batch->count; ++i)
-					Mem_CopyX16(&new_vertices[i * 8], &base_vertices[0]);
-				
-				for (intsize i = 0; i < batch->count; ++i)
-				{
-					new_indices[i*6 + 0] = (uint16)(i*4 + 0);
-					new_indices[i*6 + 1] = (uint16)(i*4 + 1);
-					new_indices[i*6 + 2] = (uint16)(i*4 + 2);
-					new_indices[i*6 + 3] = (uint16)(i*4 + 2);
-					new_indices[i*6 + 4] = (uint16)(i*4 + 1);
-					new_indices[i*6 + 5] = (uint16)(i*4 + 3);
-				}
-				
-				RB_UpdateVertexBuffer(rb, g_render_quadvbuf, BufMake(new_vertices_size, new_vertices));
-				RB_UpdateIndexBuffer(rb, g_render_quadibuf, BufMake(new_indices_size, new_indices));
-			}
-		}
+		RB_UpdateVertexBuffer(rb, g_render_quadvbuf, BufMake(size, vertices));
+		Arena_Pop(scratch_arena, vertices);
 	}
 	
 	RB_CmdApplyPipeline(rb, g_render_quadpipeline);
 	
-	uint32 index_count;
-	uint32 instance_count;
+	uint32 instance_count = 0;
+	uint32 index_count = batch->count * 6;
+	uint32 offset = 0;
+	uint32 vertex_size = sizeof(E_QuadVertex_);
 	
-	if (g_render_caps.has_instancing)
+	if (g_render_caps.shader_type < RB_ShaderType_Hlsl40 && g_render_caps.shader_type >= RB_ShaderType_Hlsl40Level91)
 	{
-		index_count = 6;
-		instance_count = batch->count;
+		intsize batches = batch->count / (UINT16_MAX/4);
+		vertex_size = sizeof(E_QuadVertex91_);
+		
+		for (intsize i = 0; i < batches; ++i)
+		{
+			RB_CmdDraw(global_engine.renderbackend, &(RB_DrawDesc) {
+				.ibuffer = g_render_quadibuf,
+				.ubuffer = g_render_quadubuf,
+				.vbuffers = { g_render_quadvbuf, },
+				.strides = { vertex_size },
+				.offsets = { offset },
+				.index_count = UINT16_MAX/4*6,
+				.textures = {
+					[0] = !RB_IsNull(batch->textures[0].handle) ? batch->textures[0].handle : g_render_whitetex,
+					[1] = !RB_IsNull(batch->textures[1].handle) ? batch->textures[1].handle : g_render_whitetex,
+					[2] = !RB_IsNull(batch->textures[2].handle) ? batch->textures[2].handle : g_render_whitetex,
+					[3] = !RB_IsNull(batch->textures[3].handle) ? batch->textures[3].handle : g_render_whitetex,
+				},
+			});
+			
+			offset += vertex_size * UINT16_MAX / 4;
+			index_count -= UINT16_MAX/4*6;
+		}
 	}
 	else
 	{
-		index_count = batch->count * 6;
-		instance_count = 0;
+		instance_count = batch->count;
+		index_count = 6;
 	}
 	
 	RB_CmdDraw(global_engine.renderbackend, &(RB_DrawDesc) {
 		.ibuffer = g_render_quadibuf,
 		.ubuffer = g_render_quadubuf,
-		.vbuffers = { g_render_quadvbuf, g_render_quadelemsbuf, },
-		.strides = { sizeof(int16[2]), sizeof(E_RectBatchElem), },
+		.vbuffers = { g_render_quadvbuf },
+		.strides = { vertex_size },
+		.offsets = { offset },
 		.index_count = index_count,
 		.instance_count = instance_count,
 		.textures = {
@@ -836,7 +956,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 				[1][1] = (float32)glyph->height * scale[1],
 			},
 			.tex_index = (int16)int_texindex,
-			.tex_kind = 4,
+			.tex_kind = 2,
 			.texcoords = {
 				(int16)((float32)glyph->x * inv_bitmap_size * INT16_MAX),
 				(int16)((float32)glyph->y * inv_bitmap_size * INT16_MAX),
