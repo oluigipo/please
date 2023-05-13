@@ -33,7 +33,7 @@ struct G_GlobalData
 	G_GlobalState state;
 	G_GlobalState previous_state;
 	E_Font font;
-	Arena_Savepoint persistent_arena_save;
+	ArenaSavepoint persistent_arena_save;
 	URng_State rng;
 	
 	E_SoundHandle music;
@@ -62,7 +62,7 @@ G_Init(void)
 		OS_DebugLog("Steam user nickname: %S\n", S_GetUserNickname());
 #endif
 	
-	game = engine->game = Arena_PushStruct(engine->persistent_arena, G_GlobalData);
+	game = engine->game = ArenaPushStruct(engine->persistent_arena, G_GlobalData);
 	game->previous_state = game->state = G_GlobalState_MainMenu;
 	
 	URng_Init(&game->rng, OS_CurrentPosixTime());
@@ -109,7 +109,7 @@ G_Init(void)
 		ok = ok && E_LoadSound(ogg, &game->sound_luigi, NULL);
 	}
 	
-	game->persistent_arena_save = Arena_Save(engine->persistent_arena);
+	game->persistent_arena_save = ArenaSave(engine->persistent_arena);
 }
 
 static bool
@@ -185,7 +185,7 @@ G_UpdateAndRender(void)
 	{
 		switch (game->state)
 		{
-			case G_GlobalState_MainMenu: Arena_Restore(game->persistent_arena_save); break;
+			case G_GlobalState_MainMenu: ArenaRestore(game->persistent_arena_save); break;
 			case G_GlobalState_Snake: G_SnakeInit(); break;
 			case G_GlobalState_Scene3D: G_Scene3DInit(); break;
 			case G_GlobalState_Stress: G_StressInit(); break;
@@ -204,14 +204,14 @@ G_UpdateAndRender(void)
 				.textures[0] = E_WhiteTexture(),
 				.textures[1] = game->font.texture,
 				.count = 0,
-				.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
+				.elements = ArenaEndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 			};
 			
 			//- Squares
 			static bool hundreds_enabled = false;
 			for (int32 i = 0; i < (hundreds_enabled ? 100*1000 : 100); ++i)
 			{
-				uint64 random = Hash_IntHash64(i);
+				uint64 random = HashInt64(i);
 				
 				float32 time = (float32)OS_GetTimeInSeconds() * 0.25f + (float32)i;
 				float32 xoffset = cosf(time * 5.0f) * 100.0f;
@@ -333,7 +333,7 @@ G_UpdateAndRender(void)
 					for (int32 i = 0; i < Min(engine->os->audio.device_count, ArrayLength(devs_unfolded)); ++i)
 					{
 						const OS_AudioDeviceInfo* dev = &engine->os->audio.devices[i];
-						String text = String_PrintfLocal(256, "ID %u", dev->id);
+						String text = StringPrintfLocal(256, "ID %u", dev->id);
 						
 						if (DBG_UIPushFoldable(&debugui, text, &devs_unfolded[i]))
 						{
@@ -397,6 +397,6 @@ G_Main(E_GlobalData* data)
 	if (!game)
 		G_Init();
 	
-	for Arena_TempScope(data->scratch_arena)
+	for ArenaTempScope(data->scratch_arena)
 		G_UpdateAndRender();
 }

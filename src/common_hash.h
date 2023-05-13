@@ -3,7 +3,7 @@
 
 // NOTE(ljre): Just a normal FNV-1a implementation.
 static inline uint64
-Hash_StringHash(String memory)
+HashString(String memory)
 {
 	uint64 result = 14695981039346656037u;
 	
@@ -22,7 +22,7 @@ Hash_StringHash(String memory)
 //             Name: lowbias32.
 //             https://github.com/skeeto/hash-prospector
 static inline uint32
-Hash_IntHash32(uint32 x)
+HashInt32(uint32 x)
 {
     x ^= x >> 16;
     x *= 0x7feb352d;
@@ -36,7 +36,7 @@ Hash_IntHash32(uint32 x)
 //             Name: SplittableRandom / SplitMix64
 //             https://xoshiro.di.unimi.it/splitmix64.c
 static inline uint64
-Hash_IntHash64(uint64 x)
+HashInt64(uint64 x)
 {
     x ^= x >> 30;
     x *= 0xbf58476d1ce4e5b9;
@@ -49,7 +49,7 @@ Hash_IntHash64(uint64 x)
 // NOTE(ljre): This is a super simple implementation of "MSI hash table".
 //             https://nullprogram.com/blog/2022/08/08/
 static inline int32
-Hash_Msi(uint32 log2_of_cap, uint64 hash, int32 index)
+HashMsi(uint32 log2_of_cap, uint64 hash, int32 index)
 {
 	uint32 exp = log2_of_cap;
 	uint32 mask = (1u << exp) - 1;

@@ -283,7 +283,7 @@ Platform_ReadEntireFile(String path, uintsize* out_size, Arena* opt_arena)
 	uintsize size = (uintsize)ftell(file);
 	rewind(file);
 	
-	void* memory = opt_arena ? Arena_Push(opt_arena, size) : Platform_HeapAlloc(size);
+	void* memory = opt_arena ? ArenaPush(opt_arena, size) : Platform_HeapAlloc(size);
 	if (!memory)
 	{
 		fclose(file);

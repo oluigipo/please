@@ -6,12 +6,12 @@
 
 struct S_ScratchScope_
 {
-	Arena_Savepoint savepoint;
+	ArenaSavepoint savepoint;
 	
 	S_ScratchScope_(Arena* arena)
-	{ savepoint = Arena_Save(arena); }
+	{ savepoint = ArenaSave(arena); }
 	~S_ScratchScope_()
-	{ Arena_Restore(savepoint); }
+	{ ArenaRestore(savepoint); }
 };
 
 extern void* operator new(size_t size, void* ptr);
@@ -122,7 +122,7 @@ S_Init(uint64 desired_app_id)
 		g_steam.callbacks = new(local_callbacks) S_Callbacks_();
 		
 		const char* name = g_steam.friends->GetPersonaName();
-		uintsize name_size = Mem_Strlen(name);
+		uintsize name_size = MemoryStrlen(name);
 		g_steam.nickname = StrMake(name_size, name);
 		g_steam.userid = g_steam.user->GetSteamID();
 		
@@ -234,7 +234,7 @@ S_AchievementIsUnlocked(Arena* scratch_arena, String name, bool* out_is_unlocked
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 			result = g_steam.stats->GetAchievementAndUnlockTime(cstr_name, &is_unlocked, &unlock_date);
@@ -258,7 +258,7 @@ S_AchievementGetUnlockPercentage(Arena* scratch_arena, String name, float32* out
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 			result = g_steam.stats->GetAchievementAchievedPercent(cstr_name, &percentage);
@@ -282,7 +282,7 @@ S_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, 
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 		{
@@ -293,8 +293,8 @@ S_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, 
 			if (cstr_local_name && cstr_local_desc && cstr_is_hidden &&
 				cstr_local_name[0] && cstr_local_desc[0] && cstr_is_hidden[0])
 			{
-				local_name = StrMake(cstr_local_name, Mem_Strlen(cstr_local_name));
-				local_desc = StrMake(cstr_local_desc, Mem_Strlen(cstr_local_desc));
+				local_name = StrMake(cstr_local_name, MemoryStrlen(cstr_local_name));
+				local_desc = StrMake(cstr_local_desc, MemoryStrlen(cstr_local_desc));
 				is_hidden = (cstr_is_hidden[0] != '0');
 				
 				result = true;
@@ -322,7 +322,7 @@ S_AchievementGetIcon(Arena* scratch_arena, String name, S_ImageHandle* out_handl
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 		{
@@ -351,7 +351,7 @@ S_AchievementUnlock(Arena* scratch_arena, String name)
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 			result = g_steam.stats->SetAchievement(cstr_name);
@@ -369,7 +369,7 @@ S_ShowAchievementProgress(Arena* scratch_arena, String name, uint32 progress, ui
 	if (g_steam.initialized)
 	{
 		S_ScratchScope_ scratch(scratch_arena);
-		const char* cstr_name = Arena_PushCString(scratch_arena, name);
+		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
 			result = g_steam.stats->IndicateAchievementProgress(cstr_name, progress, max_progress);

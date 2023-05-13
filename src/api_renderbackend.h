@@ -31,9 +31,11 @@ struct RB_Tex2d { uint32 id; } typedef RB_Tex2d;
 struct RB_VBuffer { uint32 id; } typedef RB_VBuffer;
 struct RB_IBuffer { uint32 id; } typedef RB_IBuffer;
 struct RB_UBuffer { uint32 id; } typedef RB_UBuffer;
+struct RB_SBuffer { uint32 id; } typedef RB_SBuffer;
 struct RB_RenderTarget { uint32 id; } typedef RB_RenderTarget;
 struct RB_Shader { uint32 id; } typedef RB_Shader;
 struct RB_Pipeline { uint32 id; } typedef RB_Pipeline;
+struct RB_ComputeShader { uint32 id; } typedef RB_ComputeShader;
 
 //~
 enum RB_ShaderType
@@ -81,6 +83,7 @@ struct RB_Capabilities
 	bool has_32bit_index : 1;
 	bool has_separate_alpha_blend : 1;
 	bool has_compute_shaders : 1;
+	bool has_structured_buffer : 1;
 	bool has_16bit_float : 1;
 	bool has_wireframe_fillmode : 1;
 }
@@ -258,6 +261,24 @@ struct RB_UBufferDesc
 }
 typedef RB_UBufferDesc;
 
+enum RB_SBufferKind
+{
+	RB_SBufferKind_Immutable,
+	RB_SBufferKind_Dynamic,
+	RB_SBufferKind_GpuReadWrite,
+}
+typedef RB_SBufferKind;
+
+struct RB_SBufferDesc
+{
+	RB_SBufferKind kind;
+	
+	uintsize size;
+	uintsize stride;
+	const void* initial_data;
+}
+typedef RB_SBufferDesc;
+
 struct RB_RenderTargetDesc
 {
 	RB_Tex2d color[RB_Limits_RenderTargetMaxColorAttachments];
@@ -265,25 +286,37 @@ struct RB_RenderTargetDesc
 }
 typedef RB_RenderTargetDesc;
 
-API RB_Tex2d        RB_MakeTexture2D(RB_Ctx* ctx, const RB_Tex2dDesc* desc);
-API RB_VBuffer      RB_MakeVertexBuffer(RB_Ctx* ctx, const RB_VBufferDesc* desc);
-API RB_IBuffer      RB_MakeIndexBuffer(RB_Ctx* ctx, const RB_IBufferDesc* desc);
-API RB_UBuffer      RB_MakeUniformBuffer(RB_Ctx* ctx, const RB_UBufferDesc* desc);
-API RB_Shader       RB_MakeShader(RB_Ctx* ctx, const RB_ShaderDesc* desc);
-API RB_RenderTarget RB_MakeRenderTarget(RB_Ctx* ctx, const RB_RenderTargetDesc* desc);
-API RB_Pipeline     RB_MakePipeline(RB_Ctx* ctx, const RB_PipelineDesc* desc);
+struct RB_ComputeShaderDesc
+{
+	Buffer glsl;
+	Buffer hlsl40;
+}
+typedef RB_ComputeShaderDesc;
+
+API RB_Tex2d         RB_MakeTexture2D(RB_Ctx* ctx, const RB_Tex2dDesc* desc);
+API RB_VBuffer       RB_MakeVertexBuffer(RB_Ctx* ctx, const RB_VBufferDesc* desc);
+API RB_IBuffer       RB_MakeIndexBuffer(RB_Ctx* ctx, const RB_IBufferDesc* desc);
+API RB_UBuffer       RB_MakeUniformBuffer(RB_Ctx* ctx, const RB_UBufferDesc* desc);
+API RB_SBuffer       RB_MakeStructuredBuffer(RB_Ctx* ctx, const RB_SBufferDesc* desc);
+API RB_Shader        RB_MakeShader(RB_Ctx* ctx, const RB_ShaderDesc* desc);
+API RB_RenderTarget  RB_MakeRenderTarget(RB_Ctx* ctx, const RB_RenderTargetDesc* desc);
+API RB_Pipeline      RB_MakePipeline(RB_Ctx* ctx, const RB_PipelineDesc* desc);
+API RB_ComputeShader RB_MakeComputeShader(RB_Ctx* ctx, const RB_ComputeShaderDesc* desc);
 
 API void RB_FreeTexture2D(RB_Ctx* ctx, RB_Tex2d res);
 API void RB_FreeVertexBuffer(RB_Ctx* ctx, RB_VBuffer res);
 API void RB_FreeIndexBuffer(RB_Ctx* ctx, RB_IBuffer res);
 API void RB_FreeUniformBuffer(RB_Ctx* ctx, RB_UBuffer res);
+API void RB_FreeStructuredBuffer(RB_Ctx* ctx, RB_SBuffer res);
 API void RB_FreeShader(RB_Ctx* ctx, RB_Shader res);
 API void RB_FreeRenderTarget(RB_Ctx* ctx, RB_RenderTarget res);
 API void RB_FreePipeline(RB_Ctx* ctx, RB_Pipeline res);
+API void RB_FreeComputeShader(RB_Ctx* ctx, RB_ComputeShader res);
 
 API void RB_UpdateVertexBuffer(RB_Ctx* ctx, RB_VBuffer res, Buffer new_data);
 API void RB_UpdateIndexBuffer(RB_Ctx* ctx, RB_IBuffer res, Buffer new_data);
 API void RB_UpdateUniformBuffer(RB_Ctx* ctx, RB_UBuffer res, Buffer new_data);
+API void RB_UpdateStructuredBuffer(RB_Ctx* ctx, RB_SBuffer res, Buffer new_data);
 API void RB_UpdateTexture2D(RB_Ctx* ctx, RB_Tex2d res, Buffer new_data);
 
 //~
@@ -308,6 +341,7 @@ struct RB_DrawDesc
 {
 	RB_IBuffer ibuffer;
 	RB_UBuffer ubuffer;
+	RB_SBuffer sbuffer;
 	RB_Tex2d textures[RB_Limits_DrawMaxTextures];
 	
 	RB_VBuffer vbuffers[RB_Limits_DrawMaxVertexBuffers];
@@ -320,11 +354,25 @@ struct RB_DrawDesc
 }
 typedef RB_DrawDesc;
 
+struct RB_DispatchDesc
+{
+	RB_UBuffer ubuffer;
+	RB_SBuffer sbuffer;
+	RB_ComputeShader shader;
+	RB_Tex2d textures[RB_Limits_DrawMaxTextures];
+	
+	uint32 count_x;
+	uint32 count_y;
+	uint32 count_z;
+}
+typedef RB_DispatchDesc;
+
 API void RB_BeginCmd(RB_Ctx* ctx, const RB_BeginDesc* desc);
 API void RB_CmdApplyPipeline(RB_Ctx* ctx, RB_Pipeline pipeline);
 API void RB_CmdApplyRenderTarget(RB_Ctx* ctx, RB_RenderTarget render_target);
 API void RB_CmdClear(RB_Ctx* ctx, const RB_ClearDesc* desc);
 API void RB_CmdDraw(RB_Ctx* ctx, const RB_DrawDesc* desc);
+API void RB_CmdDispatch(RB_Ctx* ctx, const RB_DispatchDesc* desc);
 API void RB_EndCmd(RB_Ctx* ctx);
 
 #endif //API_RENDERBACKEND_H

@@ -28,9 +28,17 @@ struct RB_D3d11Shader_
 }
 typedef RB_D3d11Shader_;
 
+struct RB_D3d11ComputeShader_
+{
+	ID3D11ComputeShader* shader;
+	ID3D11ClassLinkage* linkage;
+}
+typedef RB_D3d11ComputeShader_;
+
 struct RB_D3d11Buffer_
 {
 	ID3D11Buffer* buffer;
+	ID3D11UnorderedAccessView* uav; // only if structured buffer
 	DXGI_FORMAT index_type; // only if index buffer
 }
 typedef RB_D3d11Buffer_;
@@ -73,6 +81,7 @@ struct RB_D3d11Runtime_
 	struct { uint32 size, first_free; RB_D3d11Shader_ data[64]; } shaderpool;
 	struct { uint32 size, first_free; RB_D3d11Pipeline_ data[64]; } pipelinepool;
 	struct { uint32 size, first_free; RB_D3d11RenderTarget_ data[64]; } rendertargetpool;
+	struct { uint32 size, first_free; RB_D3d11ComputeShader_ data[64]; } compshaderpool;
 }
 typedef RB_D3d11Runtime_;
 
@@ -217,42 +226,60 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 		//case RB_ResourceKind_MakeUniformBuffer_:
 		{
 			uint32 bind_flags;
-			bool dynamic;
+			D3D11_USAGE usage;
 			uintsize size;
 			const void* data;
-			RB_IndexType index_type = 0;
+			RB_IndexType index_type;
+			UINT misc;
 			
 			if (0) case RB_ResourceKind_MakeVertexBuffer_:
 			{
 				bind_flags = D3D11_BIND_VERTEX_BUFFER;
 				size = resc->vbuffer.size;
 				data = resc->vbuffer.initial_data;
-				dynamic = resc->vbuffer.flag_dynamic;
+				usage = resc->vbuffer.flag_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
+				misc = 0;
 			}
 			if (0) case RB_ResourceKind_MakeIndexBuffer_:
 			{
 				bind_flags = D3D11_BIND_INDEX_BUFFER;
 				size = resc->ibuffer.size;
 				data = resc->ibuffer.initial_data;
-				dynamic = resc->ibuffer.flag_dynamic;
+				usage = resc->ibuffer.flag_dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE;
 				index_type = resc->ibuffer.index_type;
+				misc = 0;
 			}
 			if (0) case RB_ResourceKind_MakeUniformBuffer_:
 			{
 				bind_flags = D3D11_BIND_CONSTANT_BUFFER;
 				size = resc->ubuffer.size;
 				data = resc->ubuffer.initial_data;
-				dynamic = true;
+				usage = D3D11_USAGE_DYNAMIC;
+				misc = 0;
+			}
+			if (0) case RB_ResourceKind_MakeStructuredBuffer_:
+			{
+				bind_flags = D3D11_BIND_CONSTANT_BUFFER;
+				size = resc->sbuffer.size;
+				data = resc->sbuffer.initial_data;
+				misc = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+				switch (resc->sbuffer.kind)
+				{
+					case RB_SBufferKind_Immutable: usage = D3D11_USAGE_IMMUTABLE; break;
+					case RB_SBufferKind_Dynamic: usage = D3D11_USAGE_DYNAMIC; break;
+					case RB_SBufferKind_GpuReadWrite: usage = D3D11_USAGE_DEFAULT; break;
+				}
 			}
 			
 			Assert(!handle);
 			SafeAssert(size <= UINT32_MAX);
 			
 			const D3D11_BUFFER_DESC buffer_desc = {
-				.Usage = (dynamic) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_IMMUTABLE,
+				.Usage = usage,
 				.ByteWidth = (uint32)size,
 				.BindFlags = bind_flags,
-				.CPUAccessFlags = (dynamic) ? D3D11_CPU_ACCESS_WRITE : 0,
+				.CPUAccessFlags = (usage == D3D11_USAGE_DYNAMIC) ? D3D11_CPU_ACCESS_WRITE : 0,
+				.MiscFlags = misc,
 			};
 			
 			const D3D11_SUBRESOURCE_DATA* buf_initial = (!data) ? NULL : &(D3D11_SUBRESOURCE_DATA) {
@@ -274,6 +301,23 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 					case RB_IndexType_Uint16: pool_data->index_type = DXGI_FORMAT_R16_UINT; break;
 					case RB_IndexType_Uint32: pool_data->index_type = DXGI_FORMAT_R32_UINT; break;
 				}
+			}
+			else if (resc->kind == RB_ResourceKind_MakeStructuredBuffer_)
+			{
+				const D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc = {
+					.Format = DXGI_FORMAT_UNKNOWN,
+					.ViewDimension = D3D11_UAV_DIMENSION_BUFFER,
+					.Buffer = {
+						.FirstElement = 0,
+						.NumElements = (UINT)(resc->sbuffer.size / resc->sbuffer.stride),
+						.Flags = 0,
+					},
+				};
+				
+				ID3D11UnorderedAccessView* uav;
+				D3d11Call(ID3D11Device_CreateUnorderedAccessView(D3d11.device, (void*)buffer, &uav_desc, &uav));
+				
+				pool_data->uav = uav;
 			}
 		} break;
 		
@@ -307,6 +351,24 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 			pool_data->vertex_shader = vs;
 			pool_data->pixel_shader = ps;
 			pool_data->vs_blob = vs_blob;
+		} break;
+		
+		case RB_ResourceKind_MakeComputeShader_:
+		{
+			Assert(!handle);
+			
+			Buffer cs_blob = resc->compute_shader.hlsl40;
+			
+			SafeAssert(cs_blob.size);
+			ID3D11ComputeShader* cs;
+			ID3D11ClassLinkage* linkage;
+			
+			D3d11Call(ID3D11Device_CreateClassLinkage(D3d11.device, &linkage));
+			D3d11Call(ID3D11Device_CreateComputeShader(D3d11.device, cs_blob.data, cs_blob.size, linkage, &cs));
+			
+			RB_D3d11ComputeShader_* pool_data = RB_PoolAlloc_(&rt->compshaderpool, &handle);
+			pool_data->shader = cs;
+			pool_data->linkage = linkage;
 		} break;
 		
 		case RB_ResourceKind_MakePipeline_:
@@ -562,12 +624,13 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 			RB_D3d11RenderTarget_* pool_data = RB_PoolAlloc_(&rt->rendertargetpool, &handle);
 			pool_data->color_count = color_count;
 			pool_data->depth_stencil_view = depth_stencil_view;
-			Mem_Copy(pool_data->color_views, color_views, sizeof(color_views[0]) * color_count);
+			MemoryCopy(pool_data->color_views, color_views, sizeof(color_views[0]) * color_count);
 		} break;
 		
 		case RB_ResourceKind_UpdateVertexBuffer_:
 		case RB_ResourceKind_UpdateIndexBuffer_:
 		case RB_ResourceKind_UpdateUniformBuffer_:
+		case RB_ResourceKind_UpdateStructuredBuffer_:
 		{
 			Assert(handle);
 			Buffer new_data = resc->update.new_data;
@@ -587,12 +650,14 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 				
 				D3d11Call(ID3D11Device_CreateBuffer(D3d11.device, &desc, NULL, &buffer));
 				pool_data->buffer = buffer;
+				
+				// TODO(ljre): Re-create UAV if structured buffer
 			}
 			
 			D3D11_MAPPED_SUBRESOURCE map;
 			D3d11Call(ID3D11DeviceContext_Map(D3d11.context, (ID3D11Resource*)buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map));
 			
-			Mem_Copy(map.pData, new_data.data, new_data.size);
+			MemoryCopy(map.pData, new_data.data, new_data.size);
 			
 			ID3D11DeviceContext_Unmap(D3d11.context, (ID3D11Resource*)buffer, 0);
 		} break;
@@ -621,7 +686,7 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 				const void* src = new_data.data + width*pixel_size*y;
 				uintsize size = width * pixel_size;
 				
-				Mem_Copy(dst, src, size);
+				MemoryCopy(dst, src, size);
 			}
 			
 			ID3D11DeviceContext_Unmap(D3d11.context, (ID3D11Resource*)texture, 0);
@@ -643,12 +708,15 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 		case RB_ResourceKind_FreeVertexBuffer_:
 		case RB_ResourceKind_FreeIndexBuffer_:
 		case RB_ResourceKind_FreeUniformBuffer_:
+		case RB_ResourceKind_FreeStructuredBuffer_:
 		{
 			Assert(handle);
 			
 			RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&rt->bufferpool, handle);
 			
 			ID3D11Buffer_Release(pool_data->buffer);
+			if (pool_data->uav)
+				ID3D11UnorderedAccessView_Release(pool_data->uav);
 			
 			RB_PoolFree_(&rt->bufferpool, handle);
 			handle = 0;
@@ -656,7 +724,28 @@ RB_D3d11Resource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 		
 		case RB_ResourceKind_FreeShader_:
 		{
-			SafeAssert(false);
+			Assert(handle);
+			
+			RB_D3d11Shader_* pool_data = RB_PoolFetch_(&rt->shaderpool, handle);
+			
+			ID3D11VertexShader_Release(pool_data->vertex_shader);
+			ID3D11PixelShader_Release(pool_data->pixel_shader);
+			
+			RB_PoolFree_(&rt->shaderpool, handle);
+			handle = 0;
+		} break;
+		
+		case RB_ResourceKind_FreeComputeShader_:
+		{
+			Assert(handle);
+			
+			RB_D3d11ComputeShader_* pool_data = RB_PoolFetch_(&rt->compshaderpool, handle);
+			
+			ID3D11ClassLinkage_Release(pool_data->linkage);
+			ID3D11ComputeShader_Release(pool_data->shader);
+			
+			RB_PoolFree_(&rt->compshaderpool, handle);
+			handle = 0;
 		} break;
 		
 		case RB_ResourceKind_FreePipeline_:
@@ -783,7 +872,7 @@ RB_D3d11Command_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 				RB_D3d11RenderTarget_* pool_data = RB_PoolFetch_(&rt->rendertargetpool, cmd->apply_render_target.handle.id);
 				color_count = pool_data->color_count;
 				depth_stencil_view = pool_data->depth_stencil_view;
-				Mem_Copy(color_views, pool_data->color_views, sizeof(color_views[0]) * color_count);
+				MemoryCopy(color_views, pool_data->color_views, sizeof(color_views[0]) * color_count);
 			}
 			
 			ID3D11DeviceContext_OMSetRenderTargets(D3d11.context, color_count, color_views, depth_stencil_view);
@@ -818,8 +907,8 @@ RB_D3d11Command_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 			
 			uint32 strides[ArrayLength(vbuffers)] = { 0 };
 			uint32 offsets[ArrayLength(vbuffers)] = { 0 };
-			Mem_Copy(strides, cmd->draw.strides, sizeof(strides));
-			Mem_Copy(offsets, cmd->draw.offsets, sizeof(offsets));
+			MemoryCopy(strides, cmd->draw.strides, sizeof(strides));
+			MemoryCopy(offsets, cmd->draw.offsets, sizeof(offsets));
 			
 			// Samplers
 			uint32 sampler_count = 0;
@@ -865,13 +954,56 @@ RB_D3d11Command_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 			else
 				ID3D11DeviceContext_DrawIndexed(D3d11.context, index_count, base_index, base_vertex);
 		} break;
+		
+		case RB_CommandKind_Dispatch_:
+		{
+			ID3D11ComputeShader* shader = RB_PoolFetch_(&rt->compshaderpool, cmd->dispatch.shader.id);
+			ID3D11UnorderedAccessView* sbuffer = NULL;
+			ID3D11Buffer* cbuffer = NULL;
+			ID3D11ShaderResourceView* textures[RB_Limits_DrawMaxTextures] = { 0 };
+			ID3D11SamplerState*  samplers[RB_Limits_DrawMaxTextures] = { 0 };
+			UINT texture_count = 0;
+			
+			if (!RB_IsNull(cmd->dispatch.ubuffer))
+			{
+				RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&rt->bufferpool, cmd->dispatch.ubuffer.id);
+				cbuffer = pool_data->buffer;
+			}
+			if (!RB_IsNull(cmd->dispatch.sbuffer))
+			{
+				RB_D3d11Buffer_* pool_data = RB_PoolFetch_(&rt->bufferpool, cmd->dispatch.sbuffer.id);
+				sbuffer = pool_data->uav;
+			}
+			for (intsize i = 0; i < ArrayLength(textures); ++i)
+			{
+				if (!RB_IsNull(cmd->dispatch.textures[i]))
+				{
+					RB_D3d11Texture2D_* pool_data = RB_PoolFetch_(&rt->texpool, cmd->dispatch.textures[i].id);
+					textures[i] = pool_data->resource_view;
+					samplers[i] = pool_data->sampler_state;
+					
+					texture_count = (UINT)(i+1);
+				}
+			}
+			
+			UINT count_x = cmd->dispatch.count_x;
+			UINT count_y = cmd->dispatch.count_y;
+			UINT count_z = cmd->dispatch.count_z;
+			
+			ID3D11DeviceContext_CSSetShader(D3d11.context, shader, NULL, 0);
+			ID3D11DeviceContext_CSSetConstantBuffers(D3d11.context, 0, !!cbuffer, cbuffer ? &cbuffer : NULL);
+			ID3D11DeviceContext_CSSetUnorderedAccessViews(D3d11.context, 0, !!sbuffer, sbuffer ? &sbuffer : NULL, (UINT[1]) { 0 });
+			ID3D11DeviceContext_CSSetShaderResources(D3d11.context, 0, texture_count, textures);
+			ID3D11DeviceContext_CSSetSamplers(D3d11.context, 0, texture_count, samplers);
+			ID3D11DeviceContext_Dispatch(D3d11.context, count_x, count_y, count_z);
+		} break;
 	}
 }
 
 static void
 RB_SetupD3d11Runtime_(RB_Ctx* ctx)
 {
-	RB_D3d11Runtime_* rt = Arena_PushStruct(ctx->arena, RB_D3d11Runtime_);
+	RB_D3d11Runtime_* rt = ArenaPushStruct(ctx->arena, RB_D3d11Runtime_);
 	ctx->rt = rt;
 	ctx->rt_is_valid_handle = RB_D3d11IsValidHandle_;
 	ctx->rt_free_ctx = RB_D3d11FreeCtx_;
@@ -1015,6 +1147,7 @@ RB_SetupD3d11Runtime_(RB_Ctx* ctx)
 		caps.max_texture_size = 16384;
 		caps.max_render_target_textures = 8;
 		caps.has_compute_shaders = true;
+		caps.has_structured_buffer = true;
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_11_1)

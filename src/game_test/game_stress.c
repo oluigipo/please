@@ -23,7 +23,7 @@ struct G_StressState
 static void
 G_StressInit(void)
 {
-	G_StressState* s = Arena_PushStruct(engine->persistent_arena, G_StressState);
+	G_StressState* s = ArenaPushStruct(engine->persistent_arena, G_StressState);
 	game->stress = s;
 	
 	

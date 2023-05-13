@@ -154,23 +154,23 @@ E_InitAudio_(void)
 	
 	audio->loaded_sounds_table_size = max_loaded_sounds;
 	audio->loaded_sounds_table_first_free = 1;
-	audio->loaded_sounds_table = Arena_PushArray(arena, E_LoadedSoundRef_, max_loaded_sounds);
+	audio->loaded_sounds_table = ArenaPushArray(arena, E_LoadedSoundRef_, max_loaded_sounds);
 	for (int32 i = 0; i < max_loaded_sounds-1; ++i)
 		audio->loaded_sounds_table[i].next_free = i+2;
 	
 	audio->playing_sounds_table_size = max_playing_sounds;
 	audio->playing_sounds_table_first_free = 1;
-	audio->playing_sounds_table = Arena_PushArray(arena, E_PlayingSoundRef_, max_playing_sounds);
+	audio->playing_sounds_table = ArenaPushArray(arena, E_PlayingSoundRef_, max_playing_sounds);
 	for (int32 i = 0; i < max_playing_sounds-1; ++i)
 		audio->playing_sounds_table[i].next_free = i+2;
 	
 	audio->playing_sounds_size = 0;
 	audio->playing_sounds_cap = max_playing_sounds;
-	audio->playing_sounds = Arena_PushArray(arena, E_PlayingSound_, max_playing_sounds);
+	audio->playing_sounds = ArenaPushArray(arena, E_PlayingSound_, max_playing_sounds);
 	
 	audio->loaded_sounds_size = 0;
 	audio->loaded_sounds_cap = max_loaded_sounds;
-	audio->loaded_sounds = Arena_PushArray(arena, E_LoadedSound_, max_loaded_sounds);
+	audio->loaded_sounds = ArenaPushArray(arena, E_LoadedSound_, max_loaded_sounds);
 	
 	OS_InitRWLock(&audio->lock);
 	
@@ -195,12 +195,12 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	if (!audio->ready)
 		return;
 	
-	Arena_Savepoint scratch_save = Arena_Save(audio->arena);
+	ArenaSavepoint scratch_save = ArenaSave(audio->arena);
 	const float32 flt_sample_rate = (float32)sample_rate;
 	const float32 default_master_volume = 0.25f;
 	
 	//- Working buffer
-	float32* working_samples = Arena_PushAligned(audio->arena, sizeof(float32)*sample_count, 16);
+	float32* working_samples = ArenaPushAligned(audio->arena, sizeof(float32)*sample_count, 16);
 	int32 working_channels = channels;
 	int32 working_sample_count = sample_count;
 	
@@ -241,7 +241,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 		}
 		
 		int32 sample_count = (int32)ceilf((float32)working_sample_count * scale);
-		float32* samples = Arena_PushAligned(audio->arena, sizeof(float32)*sample_count, 16);
+		float32* samples = ArenaPushAligned(audio->arena, sizeof(float32)*sample_count, 16);
 		
 		int32 frame_count;
 		
@@ -338,7 +338,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	}
 	
 	//- Done
-	Arena_Restore(scratch_save);
+	ArenaRestore(scratch_save);
 }
 
 //~ API
@@ -419,7 +419,7 @@ E_UnloadSound(E_SoundHandle sound)
 		
 		int32 index = audio->loaded_sounds_table[sound.index-1].index;
 		stb_vorbis_close(audio->loaded_sounds[index].vorbis);
-		Mem_Zero(&audio->loaded_sounds[index], sizeof(E_LoadedSound_));
+		MemoryZero(&audio->loaded_sounds[index], sizeof(E_LoadedSound_));
 		E_DeallocSoundHandle_(audio, sound);
 		
 		OS_UnlockExclusive(&audio->lock);

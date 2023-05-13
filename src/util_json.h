@@ -17,7 +17,7 @@ EXAMPLE USAGE
 		// NOTE(ljre): "raw name" = without processing escape sequences, etc.
 		String name = UJson_RawFieldName(&field);
 		
-		if (String_Equals(name, Str("to_print")))
+		if (StringEquals(name, Str("to_print")))
 		{
 			UJson_Value value;
 			UJson_FieldValue(&field, &value);
@@ -193,9 +193,9 @@ UJson_CalcValueKind_(const UJson_Value* value)
 			uintsize len = (uintsize)(value->end - value->begin);
 			String str = { .size = len, .data = value->begin };
 			
-			if (String_Equals(str, Str("true")) || String_Equals(str, Str("false")))
+			if (StringEquals(str, Str("true")) || StringEquals(str, Str("false")))
 				return UJson_ValueKind_Bool;
-			else if (String_Equals(str, Str("null")))
+			else if (StringEquals(str, Str("null")))
 				return UJson_ValueKind_Null;
 			else
 				return UJson_ValueKind_Invalid;
@@ -224,7 +224,7 @@ UJson_NumberValueF64(const UJson_Value* value)
 	Assert(len < 127);
 	
 	char buf[128];
-	Mem_Copy(buf, value->begin, len);
+	MemoryCopy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtod(buf, NULL);
@@ -242,7 +242,7 @@ UJson_NumberValueI64(const UJson_Value* value)
 	Assert(len < 127);
 	
 	char buf[128];
-	Mem_Copy(buf, value->begin, len);
+	MemoryCopy(buf, value->begin, len);
 	buf[len] = 0;
 	
 	return strtoll(buf, NULL, 10);
@@ -435,7 +435,7 @@ UJson_FindField(const UJson_Value* object, String name, UJson_Field* out)
 	UJson_Field field = { object };
 	while (UJson_NextField(&field))
 	{
-		if (String_Equals(UJson_RawFieldName(&field), name))
+		if (StringEquals(UJson_RawFieldName(&field), name))
 		{
 			*out = field;
 			return true;

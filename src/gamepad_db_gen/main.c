@@ -32,7 +32,7 @@ static Writing
 BeginWriting(Arena* arena)
 {
 	return (Writing) {
-		.buf = Arena_End(arena),
+		.buf = ArenaEnd(arena),
 		.arena = arena,
 		.len = 0,
 	};
@@ -44,7 +44,7 @@ Write(Writing* w, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	
-	String str = Arena_VPrintf(w->arena, fmt, args);
+	String str = ArenaVPrintf(w->arena, fmt, args);
 	w->len += str.size;
 	
 	va_end(args);
@@ -54,7 +54,7 @@ static void
 DoneWriting(Writing* w, FILE* file)
 {
 	fwrite(w->buf, 1, w->len, file);
-	Arena_Pop(w->arena, w->buf);
+	ArenaPop(w->arena, w->buf);
 	w->len = 0;
 }
 
@@ -103,7 +103,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			break;
 		if (*head == '#')
 		{
-			const uint8* found = Mem_FindByte(head, '\n', end - head);
+			const uint8* found = MemoryFindByte(head, '\n', end - head);
 			if (!found)
 				break;
 			
@@ -111,7 +111,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 			continue;
 		}
 		
-		const uint8* eol = Mem_FindByte(head, '\n', end - head);
+		const uint8* eol = MemoryFindByte(head, '\n', end - head);
 		if (!eol)
 			eol = end - 1;
 		
@@ -122,7 +122,7 @@ Process(Arena* arena, String input_data, const char* input_name, FILE* outfile)
 		
 		USdldb_Controller con;
 		String platform;
-		if (USdldb_ParseEntry(line, &con, &platform) && String_Equals(platform, Str("Windows")))
+		if (USdldb_ParseEntry(line, &con, &platform) && StringEquals(platform, Str("Windows")))
 		{
 			Write(w, "\t//%S\n\t{", con.name);
 			
@@ -186,7 +186,7 @@ main(int argc, char* argv[])
 	const char* input_fname = argv[1];
 	const char* output_fname = argv[2];
 	
-	Arena* arena = Arena_Create(32 << 20, 8 << 20);
+	Arena* arena = ArenaCreate(32 << 20, 8 << 20);
 	String input_data;
 	FILE* outfile;
 	
@@ -203,7 +203,7 @@ main(int argc, char* argv[])
 		uintsize size = ftell(file);
 		rewind(file);
 		
-		char* buf = Arena_PushAligned(arena, size + 1, 1);
+		char* buf = ArenaPushAligned(arena, size + 1, 1);
 		if (fread(buf, 1, size, file) != size)
 		{
 			fprintf(stderr, "could not read whole input file.\n");

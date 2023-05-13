@@ -224,17 +224,17 @@ UGltf_ParseDataAsset_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot* ou
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("generator")))
+		if (StringEquals(field_name, Str("generator")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->asset.generator = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("version")))
+		else if (StringEquals(field_name, Str("version")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->asset.version = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("copyright")))
+		else if (StringEquals(field_name, Str("copyright")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->asset.version = UJson_RawStringValue(&field_value);
@@ -262,17 +262,17 @@ UGltf_ParseDataNode_(Arena* arena, const UJson_Value* value, UGltf_JsonNode* out
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("mesh")))
+		else if (StringEquals(field_name, Str("mesh")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->mesh = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("translation")))
+		else if (StringEquals(field_name, Str("translation")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -286,7 +286,7 @@ UGltf_ParseDataNode_(Arena* arena, const UJson_Value* value, UGltf_JsonNode* out
 				translation[i] = (float32)UJson_NumberValueF64(&value);
 			}
 		}
-		else if (String_Equals(field_name, Str("rotation")))
+		else if (StringEquals(field_name, Str("rotation")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -300,7 +300,7 @@ UGltf_ParseDataNode_(Arena* arena, const UJson_Value* value, UGltf_JsonNode* out
 				rotation[i] = (float32)UJson_NumberValueF64(&value);
 			}
 		}
-		else if (String_Equals(field_name, Str("scale")))
+		else if (StringEquals(field_name, Str("scale")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -314,7 +314,7 @@ UGltf_ParseDataNode_(Arena* arena, const UJson_Value* value, UGltf_JsonNode* out
 				scale[i] = (float32)UJson_NumberValueF64(&value);
 			}
 		}
-		else if (String_Equals(field_name, Str("matrix")))
+		else if (StringEquals(field_name, Str("matrix")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -357,7 +357,7 @@ UGltf_ParseDataNodes_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot* ou
 	if (length == 0)
 		return false;
 	
-	out->nodes = Arena_Push(arena, sizeof(UGltf_JsonNode) * length);
+	out->nodes = ArenaPush(arena, sizeof(UGltf_JsonNode) * length);
 	out->node_count = length;
 	
 	int32 i = 0;
@@ -388,18 +388,18 @@ UGltf_ParseDataScene_(Arena* arena, const UJson_Value* value, UGltf_JsonScene* o
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("nodes")))
+		else if (StringEquals(field_name, Str("nodes")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
 			
 			uintsize length = UJson_ArrayLength(&field_value);
-			out->nodes = Arena_Push(arena, sizeof(int32) * length);
+			out->nodes = ArenaPush(arena, sizeof(int32) * length);
 			out->node_count = length;
 			
 			int32 i = 0;
@@ -429,7 +429,7 @@ UGltf_ParseDataScenes_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot* o
 	if (length == 0)
 		return false;
 	
-	out->scenes = Arena_Push(arena, sizeof(UGltf_JsonScene) * length);
+	out->scenes = ArenaPush(arena, sizeof(UGltf_JsonScene) * length);
 	out->scene_count = length;
 	
 	int32 i = 0;
@@ -459,12 +459,12 @@ UGltf_ParseDataTextureInfo_(Arena* arena, const UJson_Value* value, UGltf_JsonTe
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("index")))
+		if (StringEquals(field_name, Str("index")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->index = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("texcoord")))
+		else if (StringEquals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->texcoord = (int32)UJson_NumberValueI64(&field_value);
@@ -488,22 +488,22 @@ UGltf_ParseDataMetallicRoughness_(Arena* arena, const UJson_Value* value, UGltf_
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("metallicFactor")))
+		if (StringEquals(field_name, Str("metallicFactor")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->metalic_factor = (float32)UJson_NumberValueF64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("roughnessFactor")))
+		else if (StringEquals(field_name, Str("roughnessFactor")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->roughness_factor = (float32)UJson_NumberValueF64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("baseColorTexture")))
+		else if (StringEquals(field_name, Str("baseColorTexture")))
 		{
 			if (!UGltf_ParseDataTextureInfo_(arena, &field_value, &out->base_color_texture))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("metallicRoughnessTexture")))
+		else if (StringEquals(field_name, Str("metallicRoughnessTexture")))
 		{
 			if (!UGltf_ParseDataTextureInfo_(arena, &field_value, &out->metallic_roughness_texture))
 				return false;
@@ -527,17 +527,17 @@ UGltf_ParseDataNormalTextureInfo_(Arena* arena, const UJson_Value* value, UGltf_
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("index")))
+		if (StringEquals(field_name, Str("index")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->index = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("texcoord")))
+		else if (StringEquals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->texcoord = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("scale")))
+		else if (StringEquals(field_name, Str("scale")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->scale = (float32)UJson_NumberValueF64(&field_value);
@@ -561,17 +561,17 @@ UGltf_ParseDataOcclusionTextureInfo_(Arena* arena, const UJson_Value* value, UGl
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("index")))
+		if (StringEquals(field_name, Str("index")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->index = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("texcoord")))
+		else if (StringEquals(field_name, Str("texcoord")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->texcoord = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("strength")))
+		else if (StringEquals(field_name, Str("strength")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->strength = (float32)UJson_NumberValueF64(&field_value);
@@ -624,32 +624,32 @@ UGltf_ParseDataMaterial_(Arena* arena, const UJson_Value* value, UGltf_JsonMater
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("pbrMetallicRoughness")))
+		else if (StringEquals(field_name, Str("pbrMetallicRoughness")))
 		{
 			if (!UGltf_ParseDataMetallicRoughness_(arena, &field_value, &out->pbr_metallic_roughness))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("normalTexture")))
+		else if (StringEquals(field_name, Str("normalTexture")))
 		{
 			if (!UGltf_ParseDataNormalTextureInfo_(arena, &field_value, &out->normal_texture))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("occlusionTexture")))
+		else if (StringEquals(field_name, Str("occlusionTexture")))
 		{
 			if (!UGltf_ParseDataOcclusionTextureInfo_(arena, &field_value, &out->occlusion_texture))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("emissiveTexture")))
+		else if (StringEquals(field_name, Str("emissiveTexture")))
 		{
 			if (!UGltf_ParseDataTextureInfo_(arena, &field_value, &out->emissive_texture))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("emissiveFactor")))
+		else if (StringEquals(field_name, Str("emissiveFactor")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -666,17 +666,17 @@ UGltf_ParseDataMaterial_(Arena* arena, const UJson_Value* value, UGltf_JsonMater
 				out->emissive_factor[i] = (float32)UJson_NumberValueF64(&value);
 			}
 		}
-		else if (String_Equals(field_name, Str("alphaMode")))
+		else if (StringEquals(field_name, Str("alphaMode")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->alpha_mode = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("alphaCutoff")))
+		else if (StringEquals(field_name, Str("alphaCutoff")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->alpha_cutoff = (float32)UJson_NumberValueF64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("doubleSided")))
+		else if (StringEquals(field_name, Str("doubleSided")))
 		{
 			if (field_value.kind == UJson_ValueKind_Bool)
 				out->double_sided = UJson_BoolValue(&field_value);
@@ -696,7 +696,7 @@ UGltf_ParseDataMaterials_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot
 	if (length == 0)
 		return false;
 	
-	out->materials = Arena_Push(arena, sizeof(UGltf_JsonMaterial) * length);
+	out->materials = ArenaPush(arena, sizeof(UGltf_JsonMaterial) * length);
 	out->material_count = length;
 	
 	int32 i = 0;
@@ -730,17 +730,17 @@ UGltf_ParseDataPrimitive_(Arena* arena, const UJson_Value* value, UGltf_JsonPrim
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("indices")))
+		if (StringEquals(field_name, Str("indices")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->indices = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("mode")))
+		else if (StringEquals(field_name, Str("mode")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->mode = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("attributes")))
+		else if (StringEquals(field_name, Str("attributes")))
 		{
 			if (field_value.kind != UJson_ValueKind_Object)
 				return false;
@@ -751,22 +751,22 @@ UGltf_ParseDataPrimitive_(Arena* arena, const UJson_Value* value, UGltf_JsonPrim
 				UJson_Value attrib_field_value;
 				UJson_FieldValue(&attrib_field, &attrib_field_value);
 				
-				if (String_Equals(attrib_field_name, Str("POSITION")))
+				if (StringEquals(attrib_field_name, Str("POSITION")))
 				{
 					if (attrib_field_value.kind == UJson_ValueKind_Number)
 						out->attributes.position = (int32)UJson_NumberValueI64(&attrib_field_value);
 				}
-				else if (String_Equals(attrib_field_name, Str("NORMAL")))
+				else if (StringEquals(attrib_field_name, Str("NORMAL")))
 				{
 					if (attrib_field_value.kind == UJson_ValueKind_Number)
 						out->attributes.normal = (int32)UJson_NumberValueI64(&attrib_field_value);
 				}
-				else if (String_Equals(attrib_field_name, Str("TANGENT")))
+				else if (StringEquals(attrib_field_name, Str("TANGENT")))
 				{
 					if (attrib_field_value.kind == UJson_ValueKind_Number)
 						out->attributes.tangent = (int32)UJson_NumberValueI64(&attrib_field_value);
 				}
-				else if (String_Equals(attrib_field_name, Str("TEXCOORD_0")))
+				else if (StringEquals(attrib_field_name, Str("TEXCOORD_0")))
 				{
 					if (attrib_field_value.kind == UJson_ValueKind_Number)
 						out->attributes.texcoord_0 = (int32)UJson_NumberValueI64(&attrib_field_value);
@@ -793,18 +793,18 @@ UGltf_ParseDataMesh_(Arena* arena, const UJson_Value* value, UGltf_JsonMesh* out
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("primitives")))
+		else if (StringEquals(field_name, Str("primitives")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
 			
 			uintsize length = UJson_ArrayLength(&field_value);
-			out->primitives = Arena_Push(arena, sizeof(UGltf_JsonPrimitive) * length);
+			out->primitives = ArenaPush(arena, sizeof(UGltf_JsonPrimitive) * length);
 			out->primitive_count = length;
 			
 			int32 i = 0;
@@ -832,7 +832,7 @@ UGltf_ParseDataMeshes_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot* o
 	if (length == 0)
 		return false;
 	
-	out->meshes = Arena_Push(arena, sizeof(UGltf_JsonMesh) * length);
+	out->meshes = ArenaPush(arena, sizeof(UGltf_JsonMesh) * length);
 	out->mesh_count = length;
 	
 	int32 i = 0;
@@ -867,27 +867,27 @@ UGltf_ParseDataAccessor_(Arena* arena, const UJson_Value* value, UGltf_JsonAcces
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("type")))
+		if (StringEquals(field_name, Str("type")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->type = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("componentType")))
+		else if (StringEquals(field_name, Str("componentType")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->component_type = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("count")))
+		else if (StringEquals(field_name, Str("count")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->count = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("bufferView")))
+		else if (StringEquals(field_name, Str("bufferView")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->buffer_view = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("max")))
+		else if (StringEquals(field_name, Str("max")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -910,7 +910,7 @@ UGltf_ParseDataAccessor_(Arena* arena, const UJson_Value* value, UGltf_JsonAcces
 				out->max[i] = (float32)UJson_NumberValueF64(&index_value);
 			}
 		}
-		else if (String_Equals(field_name, Str("min")))
+		else if (StringEquals(field_name, Str("min")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -948,7 +948,7 @@ UGltf_ParseDataAccessors_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot
 	if (length == 0)
 		return false;
 	
-	out->accessors = Arena_Push(arena, sizeof(UGltf_JsonAccessor) * length);
+	out->accessors = ArenaPush(arena, sizeof(UGltf_JsonAccessor) * length);
 	out->accessor_count = length;
 	
 	int32 i = 0;
@@ -982,27 +982,27 @@ UGltf_ParseDataSampler_(Arena* arena, const UJson_Value* value, UGltf_JsonSample
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("magFilter")))
+		else if (StringEquals(field_name, Str("magFilter")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->mag_filter = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("minFilter")))
+		else if (StringEquals(field_name, Str("minFilter")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->min_filter = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("wrapS")))
+		else if (StringEquals(field_name, Str("wrapS")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->wrap_s = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("wrapT")))
+		else if (StringEquals(field_name, Str("wrapT")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->wrap_t = (int32)UJson_NumberValueI64(&field_value);
@@ -1022,7 +1022,7 @@ UGltf_ParseDataSamplers_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot*
 	if (length == 0)
 		return false;
 	
-	out->samplers = Arena_Push(arena, sizeof(UGltf_JsonSampler) * length);
+	out->samplers = ArenaPush(arena, sizeof(UGltf_JsonSampler) * length);
 	out->sampler_count = length;
 	
 	int32 i = 0;
@@ -1054,17 +1054,17 @@ UGltf_ParseDataImage_(Arena* arena, const UJson_Value* value, UGltf_JsonImage* o
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("mimeType")))
+		else if (StringEquals(field_name, Str("mimeType")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->mime_type = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("bufferView")))
+		else if (StringEquals(field_name, Str("bufferView")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->buffer_view = (int32)UJson_NumberValueI64(&field_value);
@@ -1084,7 +1084,7 @@ UGltf_ParseDataImages_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot* o
 	if (length == 0)
 		return false;
 	
-	out->images = Arena_Push(arena, sizeof(UGltf_JsonImage) * length);
+	out->images = ArenaPush(arena, sizeof(UGltf_JsonImage) * length);
 	out->image_count = length;
 	
 	int32 i = 0;
@@ -1116,17 +1116,17 @@ UGltf_ParseDataTexture_(Arena* arena, const UJson_Value* value, UGltf_JsonTextur
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("name")))
+		if (StringEquals(field_name, Str("name")))
 		{
 			if (field_value.kind == UJson_ValueKind_String)
 				out->name = UJson_RawStringValue(&field_value);
 		}
-		else if (String_Equals(field_name, Str("sampler")))
+		else if (StringEquals(field_name, Str("sampler")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->sampler = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("source")))
+		else if (StringEquals(field_name, Str("source")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->source = (int32)UJson_NumberValueI64(&field_value);
@@ -1146,7 +1146,7 @@ UGltf_ParseDataTextures_(Arena* arena, const UJson_Value* value, UGltf_JsonRoot*
 	if (length == 0)
 		return false;
 	
-	out->textures = Arena_Push(arena, sizeof(UGltf_JsonTexture) * length);
+	out->textures = ArenaPush(arena, sizeof(UGltf_JsonTexture) * length);
 	out->texture_count = length;
 	
 	int32 i = 0;
@@ -1178,17 +1178,17 @@ UGltf_ParseDataBufferView_(Arena* arena, const UJson_Value* value, UGltf_JsonBuf
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("buffer")))
+		if (StringEquals(field_name, Str("buffer")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->buffer = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("byteOffset")))
+		else if (StringEquals(field_name, Str("byteOffset")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->byte_offset = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("byteLength")))
+		else if (StringEquals(field_name, Str("byteLength")))
 		{
 			if (field_value.kind == UJson_ValueKind_Number)
 				out->byte_length = (int32)UJson_NumberValueI64(&field_value);
@@ -1208,7 +1208,7 @@ UGltf_ParseDataBufferViews_(Arena* arena, const UJson_Value* value, UGltf_JsonRo
 	if (length == 0)
 		return false;
 	
-	out->buffer_views = Arena_Push(arena, sizeof(UGltf_JsonBufferView) * length);
+	out->buffer_views = ArenaPush(arena, sizeof(UGltf_JsonBufferView) * length);
 	out->buffer_view_count = length;
 	
 	int32 i = 0;
@@ -1248,63 +1248,63 @@ UGltf_ParseData_(Arena* arena, const uint8* json_begin, const uint8* json_end,
 		UJson_Value field_value;
 		UJson_FieldValue(&field, &field_value);
 		
-		if (String_Equals(field_name, Str("asset")))
+		if (StringEquals(field_name, Str("asset")))
 		{
 			UGltf_ParseDataAsset_(arena, &field_value, out);
 		}
-		else if (String_Equals(field_name, Str("scene")))
+		else if (StringEquals(field_name, Str("scene")))
 		{
 			if (field_value.kind != UJson_ValueKind_Number)
 				out->scene = -1;
 			else
 				out->scene = (int32)UJson_NumberValueI64(&field_value);
 		}
-		else if (String_Equals(field_name, Str("scenes")))
+		else if (StringEquals(field_name, Str("scenes")))
 		{
 			if (!UGltf_ParseDataScenes_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("nodes")))
+		else if (StringEquals(field_name, Str("nodes")))
 		{
 			if (!UGltf_ParseDataNodes_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("materials")))
+		else if (StringEquals(field_name, Str("materials")))
 		{
 			if (!UGltf_ParseDataMaterials_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("meshes")))
+		else if (StringEquals(field_name, Str("meshes")))
 		{
 			if (!UGltf_ParseDataMeshes_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("accessors")))
+		else if (StringEquals(field_name, Str("accessors")))
 		{
 			if (!UGltf_ParseDataAccessors_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("samplers")))
+		else if (StringEquals(field_name, Str("samplers")))
 		{
 			if (!UGltf_ParseDataSamplers_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("images")))
+		else if (StringEquals(field_name, Str("images")))
 		{
 			if (!UGltf_ParseDataImages_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("textures")))
+		else if (StringEquals(field_name, Str("textures")))
 		{
 			if (!UGltf_ParseDataTextures_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("bufferViews")))
+		else if (StringEquals(field_name, Str("bufferViews")))
 		{
 			if (!UGltf_ParseDataBufferViews_(arena, &field_value, out))
 				return false;
 		}
-		else if (String_Equals(field_name, Str("buffers")))
+		else if (StringEquals(field_name, Str("buffers")))
 		{
 			if (field_value.kind != UJson_ValueKind_Array)
 				return false;
@@ -1313,7 +1313,7 @@ UGltf_ParseData_(Arena* arena, const uint8* json_begin, const uint8* json_end,
 			if (length == 0)
 				return false;
 			
-			out->buffers = Arena_Push(arena, sizeof(UGltf_JsonBuffer) * length);
+			out->buffers = ArenaPush(arena, sizeof(UGltf_JsonBuffer) * length);
 			out->buffer_count = length;
 			
 			int32 i = 0;

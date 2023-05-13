@@ -147,7 +147,7 @@ static const OS_KeyboardKey global_keyboard_key_table[] = {
 static inline bool
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {
-	return Mem_Compare(a, b, sizeof (GUID)) == 0;
+	return MemoryCompare(a, b, sizeof (GUID)) == 0;
 }
 
 static inline int32
@@ -789,7 +789,7 @@ DirectInputEnumDevicesCallback(const DIDEVICEINSTANCEW* instance, void* userdata
 		{
 			const GamepadMappings* map = &global_gamepadmap_database[i];
 			
-			if (Mem_Compare(guid_str, map->guid, ArrayLength(map->guid)) == 0)
+			if (MemoryCompare(guid_str, map->guid, ArrayLength(map->guid)) == 0)
 			{
 				gamepad->dinput.map = map;
 				index_of_map_being_used = i;
@@ -961,7 +961,7 @@ Win32_UpdateInputEarly(OS_State* os_state)
 	
 	// NOTE(ljre): Update text
 	os_state->text_codepoints_count = 0;
-	Mem_Zero(os_state->text_codepoints, sizeof(os_state->text_codepoints));
+	MemoryZero(os_state->text_codepoints, sizeof(os_state->text_codepoints));
 }
 
 static inline void
@@ -1018,6 +1018,6 @@ Win32_UpdateInputLate(OS_State* os_state)
 			os_state->gamepads[i] = gamepad->data;
 		}
 		else
-			Mem_Zero(&os_state->gamepads[i], sizeof(OS_GamepadState));
+			MemoryZero(&os_state->gamepads[i], sizeof(OS_GamepadState));
 	}
 }

@@ -46,10 +46,10 @@ UQoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int
 		return NULL;
 	
 	struct QoiHeader header = *(const struct QoiHeader*)data;
-	header.width = Mem_ByteSwap32(header.width);
-	header.height = Mem_ByteSwap32(header.height);
+	header.width = ByteSwap32(header.width);
+	header.height = ByteSwap32(header.height);
 	
-	if (Mem_Compare(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
+	if (MemoryCompare(header.magic, "qoif", 4) != 0 || // NOTE(ljre): Magic
 		header.channels < 3 || header.channels > 4 || header.colorspace > 1 || // NOTE(ljre): Format limitations.
 		header.colorspace != 1 || header.width > INT32_MAX || header.height > INT32_MAX) // NOTE(ljre): Our limitations.
 	{
@@ -60,7 +60,7 @@ UQoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int
 	const uint8* head = data + 14;
 	const uint8* end = data + size;
 	
-	union QoiColor* colors = Arena_PushAligned(arena, header.width * header.height * 4, 4);
+	union QoiColor* colors = ArenaPushAligned(arena, header.width * header.height * 4, 4);
 	uint32 color_index = 0;
 	bool err = false;
 	
@@ -200,14 +200,14 @@ UQoi_Parse(const uint8* data, uintsize size, Arena* arena, int32* out_width, int
 	{
 		const uint8 end_marker[8] = { 0,0,0,0, 0,0,0,1 };
 		
-		if (Mem_Compare(head, end_marker, 8) != 0)
+		if (MemoryCompare(head, end_marker, 8) != 0)
 			err = true;
 	}
 	
 	//- NOTE(ljre): Check for errors and return.
 	if (err)
 	{
-		Arena_Pop(arena, colors);
+		ArenaPop(arena, colors);
 		return NULL;
 	}
 	

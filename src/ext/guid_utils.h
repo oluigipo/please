@@ -59,7 +59,7 @@ IsXInputDevice(const GUID* guid)
             break;
         
         name[sizeof(name) - 1] = '\0';
-        if (Mem_Strstr(name, "IG_"))
+        if (MemoryStrstr(name, "IG_"))
             return true;
     }
     
@@ -70,9 +70,9 @@ IsXInputDevice(const GUID* guid)
 static bool
 ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize guid_str_size)
 {
-    if (Mem_Compare(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
+    if (MemoryCompare(&instance->guidProduct.Data4[2], "PIDVID", 6) == 0)
     {
-        String_PrintfBuffer(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
+        StringPrintfBuffer(guid_str, guid_str_size, "03000000%02x%02x0000%02x%02x000000000000",
 		(uint8) instance->guidProduct.Data1,
 		(uint8) (instance->guidProduct.Data1 >> 8),
 		(uint8) (instance->guidProduct.Data1 >> 16),
@@ -86,7 +86,7 @@ ConvertGuidToSDLGuid(const DIDEVICEINSTANCEW* instance, char* guid_str, uintsize
 		if (!WideCharToMultiByte(CP_UTF8, 0, instance->tszInstanceName, -1, name, sizeof(name), NULL, NULL))
 			return false;
 		
-		String_PrintfBuffer(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
+		StringPrintfBuffer(guid_str, guid_str_size, "05000000%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x00",
 			name[0], name[1], name[2], name[3],
 			name[4], name[5], name[6], name[7],
 			name[8], name[9], name[10]);

@@ -223,10 +223,10 @@ E_InitRender_(void)
 			},
 		});
 	}
-	else for Arena_TempScope(global_engine.scratch_arena)
+	else for ArenaTempScope(global_engine.scratch_arena)
 	{
 		intsize count = 6 * UINT16_MAX / 4;
-		uint16* ibuf = Arena_PushDirtyAligned(global_engine.scratch_arena, sizeof(uint16)*count, 4);
+		uint16* ibuf = ArenaPushDirtyAligned(global_engine.scratch_arena, sizeof(uint16)*count, 4);
 		
 		for (intsize i = 0; i < UINT16_MAX / 4; ++i)
 		{
@@ -448,7 +448,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 {
 	Trace();
 	
-	stbtt_fontinfo* stb_fontinfo = Arena_PushStruct(desc->arena, stbtt_fontinfo);
+	stbtt_fontinfo* stb_fontinfo = ArenaPushStruct(desc->arena, stbtt_fontinfo);
 	Buffer ttf = desc->ttf;
 	
 	{
@@ -464,7 +464,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	
 	{
 		Trace(); TraceName(Str("Allocate bitmap"));
-		bitmap = Arena_PushAligned(desc->arena, tex_size*tex_size, 4);
+		bitmap = ArenaPushAligned(desc->arena, tex_size*tex_size, 4);
 	}
 	
 	uint32 glyphmap_count = 0;
@@ -474,7 +474,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 	
 	{
 		Trace(); TraceName(Str("Allocate hashmap"));
-		glyphmap = Arena_PushAligned(desc->arena, sizeof(*glyphmap) << glyphmap_log2cap, 4);
+		glyphmap = ArenaPushAligned(desc->arena, sizeof(*glyphmap) << glyphmap_log2cap, 4);
 	}
 	
 	int32 ascent;
@@ -532,12 +532,12 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				glyph = &invalid_glyph;
 			else
 			{
-				uint64 hash = Hash_IntHash64(codepoint);
+				uint64 hash = HashInt64(codepoint);
 				int32 index = (int32)hash;
 				
 				for (;;)
 				{
-					index = Hash_Msi(glyphmap_log2cap, hash, index);
+					index = HashMsi(glyphmap_log2cap, hash, index);
 					glyph = &glyphmap[index];
 					
 					if (glyph->codepoint == codepoint)
@@ -604,7 +604,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 			int32 stride = tex_size;
 			
 			// NOTE(ljre): stbtt_GetGlyphSDF will alloc in the scratch arena.
-			for Arena_TempScope(global_engine.scratch_arena)
+			for ArenaTempScope(global_engine.scratch_arena)
 			{
 				int32 xoff, yoff, w, h;
 				uint8* sdf;
@@ -619,7 +619,7 @@ E_MakeFont(const E_FontDesc* desc, E_Font* out_font)
 				SafeAssert(w == width && h == height);
 				
 				for (intsize y = 0; y < height; ++y)
-					Mem_Copy(base_ptr + y * stride, sdf + y * w, width);
+					MemoryCopy(base_ptr + y * stride, sdf + y * w, width);
 			}
 		}
 	}
@@ -707,7 +707,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 	{
 		intsize count = (intsize)batch->count;
 		uintsize size = sizeof(E_QuadVertex_) * count;
-		E_QuadVertex_* vertices = Arena_PushDirtyAligned(scratch_arena, size, 16);
+		E_QuadVertex_* vertices = ArenaPushDirtyAligned(scratch_arena, size, 16);
 		
 		for (intsize i = 0; i < count; ++i)
 		{
@@ -739,13 +739,13 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		}
 		
 		RB_UpdateVertexBuffer(rb, g_render_quadvbuf, BufMake(size, vertices));
-		Arena_Pop(scratch_arena, vertices);
+		ArenaPop(scratch_arena, vertices);
 	}
 	else
 	{
 		intsize count = (intsize)batch->count;
 		uintsize size = sizeof(E_RectBatchElem) * count * 4;
-		E_QuadVertex91_* vertices = Arena_PushDirtyAligned(scratch_arena, size, 16);
+		E_QuadVertex91_* vertices = ArenaPushDirtyAligned(scratch_arena, size, 16);
 		
 		for (intsize i = 0; i < count; ++i)
 		{
@@ -807,7 +807,7 @@ E_DrawRectBatch(const E_RectBatch* batch, const E_Camera2D* cam)
 		}
 		
 		RB_UpdateVertexBuffer(rb, g_render_quadvbuf, BufMake(size, vertices));
-		Arena_Pop(scratch_arena, vertices);
+		ArenaPop(scratch_arena, vertices);
 	}
 	
 	RB_CmdApplyPipeline(rb, g_render_quadpipeline);
@@ -873,7 +873,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	
 	RB_Ctx* rb = global_engine.renderbackend;
 	Arena* arena = batch->arena;
-	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
+	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)ArenaEnd(arena));
 	
 	int32 int_texindex = -1;
 	
@@ -905,7 +905,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 	
 	uint32 codepoint;
 	int32 str_index = 0;
-	while (codepoint = String_Decode(text, &str_index), codepoint)
+	while (codepoint = StringDecode(text, &str_index), codepoint)
 	{
 		if (codepoint == ' ')
 		{
@@ -924,13 +924,13 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 			continue;
 		
 		// Hashmap find
-		uint64 hash = Hash_IntHash64(codepoint);
+		uint64 hash = HashInt64(codepoint);
 		int32 index = (int32)hash;
 		E_FontGlyphEntry* glyph = NULL;
 		
 		for (;;)
 		{
-			index = Hash_Msi(font->glyphmap_log2cap, hash, index);
+			index = HashMsi(font->glyphmap_log2cap, hash, index);
 			glyph = &font->glyphmap[index];
 			
 			if (!glyph->codepoint)
@@ -949,7 +949,7 @@ E_PushText(E_RectBatch* batch, E_Font* font, String text, vec2 pos, vec2 scale, 
 		float32 y = curr_y + (float32)(glyph->yoff + font->ascent * font->char_scale) * scale[1];
 		
 		++batch->count;
-		Arena_PushStructInit(arena, E_RectBatchElem, {
+		ArenaPushStructInit(arena, E_RectBatchElem, {
 			.pos = { x, y, },
 			.scaling = {
 				[0][0] = (float32)glyph->width * scale[0],
@@ -978,10 +978,10 @@ E_PushRect(E_RectBatch* batch, const E_RectBatchElem* rect)
 	Trace();
 	Arena* arena = batch->arena;
 	
-	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)Arena_End(arena));
+	SafeAssert(batch->elements + batch->count == (E_RectBatchElem*)ArenaEnd(arena));
 	
 	++batch->count;
-	Arena_PushStructData(arena, E_RectBatchElem, rect);
+	ArenaPushStructData(arena, E_RectBatchElem, rect);
 }
 
 API bool
@@ -1000,8 +1000,8 @@ E_DecodeImage(Arena* output_arena, Buffer image, void** out_pixels, int32* out_w
 		return false;
 	
 	uintsize total_size = width*height*4;
-	void* pixels = Arena_PushDirtyAligned(output_arena, total_size, 16);
-	Mem_Copy(pixels, temp_data, total_size);
+	void* pixels = ArenaPushDirtyAligned(output_arena, total_size, 16);
+	MemoryCopy(pixels, temp_data, total_size);
 	
 	stbi_image_free(temp_data);
 	
@@ -1028,7 +1028,7 @@ E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size)
 	
 	int32 index = 0;
 	uint32 codepoint;
-	while (codepoint = String_Decode(text, &index), codepoint)
+	while (codepoint = StringDecode(text, &index), codepoint)
 	{
 		if (codepoint == ' ')
 		{
@@ -1054,13 +1054,13 @@ E_CalcTextSize(E_Font* font, String text, vec2 scale, vec2* out_size)
 			continue;
 		
 		// Hashmap find
-		uint64 hash = Hash_IntHash64(codepoint);
+		uint64 hash = HashInt64(codepoint);
 		int32 index = (int32)hash;
 		E_FontGlyphEntry* glyph = NULL;
 		
 		for (;;)
 		{
-			index = Hash_Msi(font->glyphmap_log2cap, hash, index);
+			index = HashMsi(font->glyphmap_log2cap, hash, index);
 			glyph = &font->glyphmap[index];
 			
 			if (!glyph->codepoint)

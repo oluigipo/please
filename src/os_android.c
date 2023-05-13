@@ -58,12 +58,12 @@ struct
 static g_android;
 
 static Arena*
-GetThreadScratchArena_(void)
+GetThreadScratchArena(void)
 {
 	static thread_local Arena* this_arena;
 	
 	if (!this_arena)
-		this_arena = Arena_Create(64 << 10, 64 << 10);
+		this_arena = ArenaCreate(64 << 10, 64 << 10);
 	
 	return this_arena;
 }
@@ -489,7 +489,7 @@ AudioCallback_(AAudioStream* stream, void* user_data, void* audio_data, int32 nu
 	OS_AudioThreadProc* const user_proc = g_android.audio_user_thread_proc;
 	void* const user_proc_data          = g_android.audio_user_thread_data;
 	
-	Mem_Zero(audio_data, sizeof(int16) * sample_count);
+	MemoryZero(audio_data, sizeof(int16) * sample_count);
 	user_proc(user_proc_data, audio_data, channel_count, sample_rate, sample_count);
 	
 	return AAUDIO_CALLBACK_RESULT_CONTINUE;
@@ -863,14 +863,14 @@ API void
 OS_ExitWithErrorMessage(const char* fmt, ...)
 {
 	Trace();
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String str = Arena_VPrintf(scratch_arena, fmt, args);
-		Arena_PushData(scratch_arena, &"");
+		String str = ArenaVPrintf(scratch_arena, fmt, args);
+		ArenaPushData(scratch_arena, &"");
 		va_end(args);
 		
 		//MessageBox_("Fatal Error!", (const char*)str.data);
@@ -884,12 +884,12 @@ API void
 OS_MessageBox(String title, String message)
 {
 	Trace();
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
-		const char* title_cstr = Arena_PushCString(scratch_arena, title);
-		const char* message_cstr = Arena_PushCString(scratch_arena, message);
+		const char* title_cstr = ArenaPushCString(scratch_arena, title);
+		const char* message_cstr = ArenaPushCString(scratch_arena, message);
 		
 		MessageBox_(title_cstr, message_cstr);
 	}
@@ -1004,16 +1004,16 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 {
 	Trace();
 	String asset_prefix = StrInit("assets/");
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	if (String_StartsWith(path, asset_prefix))
+	if (StringStartsWith(path, asset_prefix))
 	{
-		String substr = String_Substr(path, asset_prefix.size, -1);
+		String substr = StringSubstr(path, asset_prefix.size, -1);
 		AAsset* asset = NULL;
 		
-		for Arena_TempScope(scratch_arena)
+		for ArenaTempScope(scratch_arena)
 		{
-			const char* cstr = Arena_PushCString(scratch_arena, substr);
+			const char* cstr = ArenaPushCString(scratch_arena, substr);
 			asset = AAssetManager_open(g_android.app_state->activity->assetManager, cstr, AASSET_MODE_BUFFER);
 		}
 		
@@ -1022,7 +1022,7 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 			const void* data = AAsset_getBuffer(asset);
 			uintsize size = AAsset_getLength(asset);
 			
-			*out_data = Arena_PushMemory(output_arena, data, size);
+			*out_data = ArenaPushMemory(output_arena, data, size);
 			*out_size = size;
 			
 			AAsset_close(asset);
@@ -1045,20 +1045,27 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 }
 
 API bool
+OS_IsFileOlderThan(String path, uint64 posix_timestamp)
+{
+	// TODO(ljre)
+	return false;
+}
+
+API bool
 OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer)
 {
 	Trace();
 	String asset_prefix = StrInit("assets/");
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	if (String_StartsWith(path, asset_prefix))
+	if (StringStartsWith(path, asset_prefix))
 	{
-		String substr = String_Substr(path, asset_prefix.size, -1);
+		String substr = StringSubstr(path, asset_prefix.size, -1);
 		AAsset* asset = NULL;
 		
-		for Arena_TempScope(scratch_arena)
+		for ArenaTempScope(scratch_arena)
 		{
-			const char* cstr = Arena_PushCString(scratch_arena, substr);
+			const char* cstr = ArenaPushCString(scratch_arena, substr);
 			asset = AAssetManager_open(g_android.app_state->activity->assetManager, cstr, AASSET_MODE_BUFFER);
 		}
 		
@@ -1128,11 +1135,11 @@ OS_LoadLibrary(String name)
 {
 	Trace();
 	OS_LibraryHandle handle = { 0 };
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
-		String str = Arena_Printf(scratch_arena, "lib%S.so%0", name);
+		String str = ArenaPrintf(scratch_arena, "lib%S.so%0", name);
 		handle.ptr = dlopen((const char*)str.data, RTLD_LAZY);
 	}
 	
@@ -1399,14 +1406,14 @@ OS_DebugMessageBox(const char* fmt, ...)
 API void
 OS_DebugLog(const char* fmt, ...)
 {
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String str = Arena_VPrintf(scratch_arena, fmt, args);
-		Arena_PushData(scratch_arena, &"");
+		String str = ArenaVPrintf(scratch_arena, fmt, args);
+		ArenaPushData(scratch_arena, &"");
 		va_end(args);
 		
 		__android_log_print(ANDROID_LOG_INFO, "NativeExample", "%s", (char*)str.data);
@@ -1416,17 +1423,17 @@ OS_DebugLog(const char* fmt, ...)
 API int
 OS_DebugLogPrintfFormat(const char* fmt, ...)
 {
-	Arena* scratch_arena = GetThreadScratchArena_();
+	Arena* scratch_arena = GetThreadScratchArena();
 	int result = 0;
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args, args2;
 		va_start(args, fmt);
 		va_copy(args2, args);
 		
 		int count = vsnprintf(NULL, 0, fmt, args2)+1;
-		char* buffer = Arena_PushDirtyAligned(scratch_arena, count, 1);
+		char* buffer = ArenaPushDirtyAligned(scratch_arena, count, 1);
 		vsnprintf(buffer, count, fmt, args);
 		
 		va_end(args);

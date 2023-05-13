@@ -115,7 +115,7 @@ Win32_WideToString(Arena* output_arena, LPWSTR wide)
 	Trace();
 	
 	int32 size = WideCharToMultiByte(CP_UTF8, 0, wide, -1, NULL, 0, NULL, NULL);
-	uint8* str = Arena_PushDirtyAligned(output_arena, size, 1);
+	uint8* str = ArenaPushDirtyAligned(output_arena, size, 1);
 	WideCharToMultiByte(CP_UTF8, 0, wide, -1, (char*)str, size, NULL, NULL);
 	
 	return StrMake(size, str);
@@ -128,7 +128,7 @@ Win32_StringToWide(Arena* output_arena, String str)
 	Assert(str.size < INT32_MAX);
 	
 	int32 size = MultiByteToWideChar(CP_UTF8, 0, (const char*)str.data, (int32)str.size, NULL, 0);
-	wchar_t* wide = Arena_PushDirtyAligned(output_arena, (size + 1) * sizeof(wchar_t), alignof(wchar_t));
+	wchar_t* wide = ArenaPushDirtyAligned(output_arena, (size + 1) * sizeof(wchar_t), alignof(wchar_t));
 	MultiByteToWideChar(CP_UTF8, 0, (const char*)str.data, (int32)str.size, wide, size);
 	wide[size] = 0;
 	
@@ -165,7 +165,7 @@ Win32_GetThreadScratchArena(void)
 	static thread_local Arena* this_arena;
 	
 	if (!this_arena)
-		this_arena = Arena_Create(64 << 10, 64 << 10);
+		this_arena = ArenaCreate(64 << 10, 64 << 10);
 	
 	return this_arena;
 }
@@ -420,32 +420,32 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	
 	for (int32 i = 1; i < g_win32.argc; ++i)
 	{
-		String arg = StrMake(Mem_Strlen(g_win32.argv[i]), g_win32.argv[i]);
+		String arg = StrMake(MemoryStrlen(g_win32.argv[i]), g_win32.argv[i]);
 		
-		if (String_Equals(arg, Str("-opengl")))
+		if (StringEquals(arg, Str("-opengl")))
 			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_OpenGL;
-		else if (String_Equals(arg, Str("-d3d11")))
+		else if (StringEquals(arg, Str("-d3d11")))
 			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_Direct3D11;
-		else if (String_Equals(arg, Str("-no-worker-threads")))
+		else if (StringEquals(arg, Str("-no-worker-threads")))
 			g_win32.user_thread_count = 1;
-		else if (String_Equals(arg, Str("-no-vsync")))
+		else if (StringEquals(arg, Str("-no-vsync")))
 			g_win32.vsync_disabled = true;
-		else if (String_StartsWith(arg, Str("-d3d11=")))
+		else if (StringStartsWith(arg, Str("-d3d11=")))
 		{
 			int32 feature_level = 0;
-			arg = String_Substr(arg, sizeof("-d3d11=")-1, -1);
+			arg = StringSubstr(arg, sizeof("-d3d11=")-1, -1);
 			
-			if (String_Equals(arg, Str("11_0")))
+			if (StringEquals(arg, Str("11_0")))
 				feature_level = 110;
-			else if (String_Equals(arg, Str("10_1")))
+			else if (StringEquals(arg, Str("10_1")))
 				feature_level = 101;
-			else if (String_Equals(arg, Str("10_0")))
+			else if (StringEquals(arg, Str("10_0")))
 				feature_level = 100;
-			else if (String_Equals(arg, Str("9_3")))
+			else if (StringEquals(arg, Str("9_3")))
 				feature_level = 93;
-			else if (String_Equals(arg, Str("9_2")))
+			else if (StringEquals(arg, Str("9_2")))
 				feature_level = 92;
-			else if (String_Equals(arg, Str("9_1")))
+			else if (StringEquals(arg, Str("9_1")))
 				feature_level = 91;
 			
 			g_win32.init_config.desired_graphics_api = OS_WindowGraphicsApi_Direct3D11;
@@ -614,7 +614,7 @@ OS_ExitWithErrorMessage(const char* fmt, ...)
 	
 	va_list args;
 	va_start(args, fmt);
-	String str = Arena_VPrintf(scratch_arena, fmt, args);
+	String str = ArenaVPrintf(scratch_arena, fmt, args);
 	va_end(args);
 	
 	wchar_t* wstr = Win32_StringToWide(scratch_arena, str);
@@ -629,7 +629,7 @@ OS_MessageBox(String title, String message)
 	Trace();
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		wchar_t* wtitle = Win32_StringToWide(scratch_arena, title);
 		wchar_t* wmessage = Win32_StringToWide(scratch_arena, message);
@@ -756,7 +756,7 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	HANDLE handle;
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		LPWSTR wpath = Win32_StringToWide(scratch_arena, path);
 		handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
@@ -780,9 +780,9 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 	}
 #endif
 	
-	Arena_Savepoint output_arena_save = Arena_Save(output_arena);
+	ArenaSavepoint output_arena_save = ArenaSave(output_arena);
 	uintsize file_size = (uintsize)large_int.QuadPart;
-	uint8* file_data = Arena_PushDirtyAligned(output_arena, file_size, 1);
+	uint8* file_data = ArenaPushDirtyAligned(output_arena, file_size, 1);
 	
 	uintsize still_to_read = file_size;
 	uint8* p = file_data;
@@ -793,7 +793,7 @@ OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* o
 		
 		if (!ReadFile(handle, p, to_read, &did_read, NULL))
 		{
-			Arena_Restore(output_arena_save);
+			ArenaRestore(output_arena_save);
 			CloseHandle(handle);
 			return false;
 		}
@@ -817,7 +817,7 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	HANDLE handle;
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		LPWSTR wpath = Win32_StringToWide(scratch_arena, path);
 		handle = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
@@ -849,6 +849,13 @@ OS_WriteEntireFile(String path, const void* data, uintsize size)
 }
 
 API bool
+OS_IsFileOlderThan(String path, uint64 posix_timestamp)
+{
+	// TODO(ljre)
+	return false;
+}
+
+API bool
 OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer)
 {
 	Trace(); TraceText(path);
@@ -856,10 +863,10 @@ OS_MapFile(String path, OS_MappedFile* out_mapped_file, Buffer* out_buffer)
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	HANDLE file;
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		LPCWSTR wpath = Win32_StringToWide(scratch_arena, path);
-		file = CreateFileW(wpath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+		file = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 	}
 	
 	if (!file)
@@ -951,9 +958,9 @@ OS_LoadLibrary(String name)
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	OS_LibraryHandle handle = { 0 };
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
-		String fullname = Arena_Printf(scratch_arena, "%S.dll", name);
+		String fullname = ArenaPrintf(scratch_arena, "%S.dll", name);
 		
 		LPCWSTR fullname_wstr = Win32_StringToWide(scratch_arena, fullname);
 		HMODULE module = Win32_LoadLibraryWide(fullname_wstr);
@@ -1076,7 +1083,7 @@ static_assert(sizeof(OS_RWLock) == sizeof(SRWLOCK), "we want to just reinterpret
 
 API void
 OS_InitRWLock(OS_RWLock* lock)
-{ Mem_Zero(lock, sizeof(*lock)); }
+{ MemoryZero(lock, sizeof(*lock)); }
 
 API void
 OS_LockShared(OS_RWLock* lock)
@@ -1269,11 +1276,11 @@ OS_DebugMessageBox(const char* fmt, ...)
 {
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String str = Arena_VPrintf(scratch_arena, fmt, args);
+		String str = ArenaVPrintf(scratch_arena, fmt, args);
 		va_end(args);
 		
 		wchar_t* wstr = Win32_StringToWide(scratch_arena, str);
@@ -1286,12 +1293,12 @@ OS_DebugLog(const char* fmt, ...)
 {
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String str = Arena_VPrintf(scratch_arena, fmt, args);
-		Arena_PushData(scratch_arena, &""); // null terminator
+		String str = ArenaVPrintf(scratch_arena, fmt, args);
+		ArenaPushData(scratch_arena, &""); // null terminator
 		va_end(args);
 		
 		if (IsDebuggerPresent())
@@ -1307,14 +1314,14 @@ OS_DebugLogPrintfFormat(const char* fmt, ...)
 	Arena* scratch_arena = Win32_GetThreadScratchArena();
 	int32 ret = 0;
 	
-	for Arena_TempScope(scratch_arena)
+	for ArenaTempScope(scratch_arena)
 	{
 		va_list args, args2;
 		va_start(args, fmt);
 		va_copy(args2, args);
 		
 		int32 len = vsnprintf(NULL, 0, fmt, args);
-		char* buffer = Arena_PushDirtyAligned(scratch_arena, len+1, 1);
+		char* buffer = ArenaPushDirtyAligned(scratch_arena, len+1, 1);
 		vsnprintf(buffer, len+1, fmt, args2);
 		
 		va_end(args);

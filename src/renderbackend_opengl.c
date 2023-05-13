@@ -135,11 +135,21 @@ RB_OpenGLResource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 	RB_OpenGLRuntime_* rt = ctx->rt;
 	uint32 handle = *resc->handle;
 	Arena* scratch_arena = ctx->arena;
-	Arena_Savepoint scratch_arena_save = Arena_Save(scratch_arena);
+	ArenaSavepoint scratch_arena_save = ArenaSave(scratch_arena);
 	
 	switch (resc->kind)
 	{
 		case 0: Assert(false); break;
+		
+		case RB_ResourceKind_MakeStructuredBuffer_:
+		case RB_ResourceKind_UpdateStructuredBuffer_:
+		case RB_ResourceKind_FreeStructuredBuffer_:
+		case RB_ResourceKind_MakeComputeShader_:
+		case RB_ResourceKind_FreeComputeShader_:
+		{
+			// NOTE(ljre): requires gl4.3 or es3.1
+			Assert(false);
+		} break;
 		
 		case RB_ResourceKind_MakeTexture2D_:
 		{
@@ -236,8 +246,8 @@ RB_OpenGLResource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 			char info[512];
 			int32 success = true;
 			
-			const char* vertex_shader_source = Arena_PushCString(scratch_arena, resc->shader.glsl.vs);
-			const char* fragment_shader_source = Arena_PushCString(scratch_arena, resc->shader.glsl.fs);
+			const char* vertex_shader_source = ArenaPushCString(scratch_arena, resc->shader.glsl.vs);
+			const char* fragment_shader_source = ArenaPushCString(scratch_arena, resc->shader.glsl.fs);
 			
 			const char* vertex_lines[] = {
 				"#version 330 core\n",
@@ -381,7 +391,7 @@ RB_OpenGLResource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 			SafeAssert(resc->pipeline.shader.id);
 			pool_data->shader_handle = resc->pipeline.shader;
 			
-			Mem_Copy(pool_data->input_layout, resc->pipeline.input_layout, sizeof(pool_data->input_layout));
+			MemoryCopy(pool_data->input_layout, resc->pipeline.input_layout, sizeof(pool_data->input_layout));
 		} break;
 		
 		//case RB_ResourceKind_UpdateVertexBuffer_:
@@ -478,7 +488,7 @@ RB_OpenGLResource_(RB_Ctx* ctx, const RB_ResourceCall_* resc)
 		} break;
 	}
 	
-	Arena_Restore(scratch_arena_save);
+	ArenaRestore(scratch_arena_save);
 	*resc->handle = handle;
 }
 
@@ -490,10 +500,15 @@ RB_OpenGLCommand_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 	switch (cmd->kind)
 	{
 		case 0: Assert(false); break;
+		case RB_CommandKind_Dispatch_:
+		{
+			// NOTE(ljre): requires gl4.3 or es3.1
+			Assert(false);
+		} break;
 		
 		case RB_CommandKind_Begin_:
 		{
-			Mem_Zero(rt->curr_input_layout, sizeof(rt->curr_input_layout));
+			MemoryZero(rt->curr_input_layout, sizeof(rt->curr_input_layout));
 			rt->curr_program_id = 0;
 			rt->curr_uniform_block_location = -1;
 			for (intsize i = 0; i < ArrayLength(rt->curr_samplers_locations); ++i)
@@ -548,7 +563,7 @@ RB_OpenGLCommand_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 			RB_OpenGLPipeline_* pool_data = RB_PoolFetch_(&rt->pipelinepool, cmd->apply_pipeline.handle.id);
 			RB_OpenGLShader_* shader_pool_data = RB_PoolFetch_(&rt->shaderpool, pool_data->shader_handle.id);
 			
-			Mem_Copy(rt->curr_input_layout, pool_data->input_layout, sizeof(rt->curr_input_layout));
+			MemoryCopy(rt->curr_input_layout, pool_data->input_layout, sizeof(rt->curr_input_layout));
 			
 			if (rt->curr_program_id != shader_pool_data->program_id)
 			{
@@ -821,7 +836,7 @@ RB_OpenGLCommand_(RB_Ctx* ctx, const RB_CommandCall_* cmd)
 static void
 RB_SetupOpenGLRuntime_(RB_Ctx* ctx)
 {
-	RB_OpenGLRuntime_* rt = Arena_PushStruct(ctx->arena, RB_OpenGLRuntime_);
+	RB_OpenGLRuntime_* rt = ArenaPushStruct(ctx->arena, RB_OpenGLRuntime_);
 	ctx->rt = rt;
 	ctx->rt_free_ctx = RB_OpenGLFreeCtx_;
 	ctx->rt_is_valid_handle = RB_OpenGLIsValidHandle_;
@@ -861,9 +876,9 @@ RB_SetupOpenGLRuntime_(RB_Ctx* ctx)
 	const uint8* vendor_cstr = GL.glGetString(GL_VENDOR);
 	const uint8* renderer_cstr = GL.glGetString(GL_RENDERER);
 	const uint8* version_cstr = GL.glGetString(GL_VERSION);
-	caps.driver_vendor = StrMake(Mem_Strlen((char*)vendor_cstr), vendor_cstr);
-	caps.driver_renderer = StrMake(Mem_Strlen((char*)renderer_cstr), renderer_cstr);
-	caps.driver_version = StrMake(Mem_Strlen((char*)version_cstr), version_cstr);
+	caps.driver_vendor = StrMake(MemoryStrlen((char*)vendor_cstr), vendor_cstr);
+	caps.driver_renderer = StrMake(MemoryStrlen((char*)renderer_cstr), renderer_cstr);
+	caps.driver_version = StrMake(MemoryStrlen((char*)version_cstr), version_cstr);
 	
 	caps.has_instancing = true;
 	caps.has_32bit_index = true;

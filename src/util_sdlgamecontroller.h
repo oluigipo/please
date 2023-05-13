@@ -99,7 +99,7 @@ USdldb_FindObjectFromName_(String name)
 	while (left < right)
 	{
 		int32 index = (left + right) / 2;
-		int32 cmp = String_Compare(name, table[index].name);
+		int32 cmp = StringCompare(name, table[index].name);
 		
 		if (cmp < 0)
 			right = index;
@@ -140,7 +140,7 @@ USdldb_ParseEntry(String line, USdldb_Controller* out_controller, String* out_pl
 	//- Name
 	{
 		const uint8* name_begin = head;
-		const uint8* name_end = Mem_FindByte(head, ',', end - head);
+		const uint8* name_end = MemoryFindByte(head, ',', end - head);
 		
 		if (!name_end)
 			return false;
@@ -170,7 +170,7 @@ USdldb_ParseEntry(String line, USdldb_Controller* out_controller, String* out_pl
 			.data = left_arg_begin
 		};
 		
-		if (String_Equals(left_arg, Str("platform")))
+		if (StringEquals(left_arg, Str("platform")))
 		{
 			if (head + 2 >= end || head[0] != ':')
 				return false;
@@ -229,7 +229,7 @@ USdldb_ParseEntry(String line, USdldb_Controller* out_controller, String* out_pl
 					return false;
 				uint32 right = *head++ - '0';
 				
-				int32 bit = Mem_BitCtz32(right);
+				int32 bit = BitCtz32(right);
 				
 				if (left >= ArrayLength(con.povs) || bit >= 4 || con.povs[left][bit] != 0)
 					return false;

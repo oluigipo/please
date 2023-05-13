@@ -4,7 +4,7 @@ E_FinishFrame(void)
 {
 	Trace();
 	
-	Arena_Clear(global_engine.frame_arena);
+	ArenaClear(global_engine.frame_arena);
 	TraceFrameEnd();
 	RB_Present(global_engine.renderbackend);
 	TraceFrameBegin();
@@ -65,10 +65,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 		const uintsize sz_persistent  = 64ull << 20;
 		const uintsize sz_audiothread = 256ull << 10;
 		
-		uintsize game_memory_size = sz_scratch + sz_frame + sz_persistent + sz_audiothread;
-		for (int32 i = 0; i < worker_thread_count; ++i)
-			game_memory_size += sz_scratch;
-		
+		uintsize game_memory_size = sz_frame + sz_persistent + sz_audiothread + sz_scratch*args->thread_count;
 		void* game_memory = OS_VirtualReserve(NULL, game_memory_size);
 		
 		global_engine.game_memory = game_memory;
@@ -83,13 +80,13 @@ OS_UserMain(const OS_UserMainArgs* args)
 			uint8* memory_head = (uint8*)game_memory;
 			uint8* memory_end = (uint8*)game_memory + game_memory_size;
 			
-			global_engine.scratch_arena = Arena_FromUncommitedMemory(memory_head, sz_scratch, pagesize);
+			global_engine.scratch_arena = ArenaFromUncommitedMemory(memory_head, sz_scratch, pagesize);
 			memory_head += sz_scratch;
 			
-			global_engine.frame_arena = Arena_FromUncommitedMemory(memory_head, sz_frame, pagesize);
+			global_engine.frame_arena = ArenaFromUncommitedMemory(memory_head, sz_frame, pagesize);
 			memory_head += sz_frame;
 			
-			global_engine.persistent_arena = Arena_FromUncommitedMemory(memory_head, sz_persistent, pagesize);
+			global_engine.persistent_arena = ArenaFromUncommitedMemory(memory_head, sz_persistent, pagesize);
 			memory_head += sz_persistent;
 			
 			for (int32 i = 0; i < worker_thread_count; ++i)
@@ -97,19 +94,19 @@ OS_UserMain(const OS_UserMainArgs* args)
 				E_ThreadCtx* ctx = &global_engine.worker_threads[i];
 				
 				ctx->id = i+1;
-				ctx->scratch_arena = Arena_FromUncommitedMemory(memory_head, sz_scratch, pagesize);
+				ctx->scratch_arena = ArenaFromUncommitedMemory(memory_head, sz_scratch, pagesize);
 				memory_head += sz_scratch;
 			}
 			
-			global_engine.audio_thread_arena = Arena_FromUncommitedMemory(memory_head, sz_audiothread, sz_audiothread);
+			global_engine.audio_thread_arena = ArenaFromUncommitedMemory(memory_head, sz_audiothread, sz_audiothread);
 			memory_head += sz_audiothread;
 			
 			Assert(memory_head == memory_end);
 		}
 		
 		// NOTE(ljre): Allocate structs
-		global_engine.thread_work_queue = Arena_PushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
-		global_engine.audio = Arena_PushStruct(global_engine.audio_thread_arena, E_AudioState);
+		global_engine.thread_work_queue = ArenaPushStruct(global_engine.persistent_arena, E_ThreadWorkQueue);
+		global_engine.audio = ArenaPushStruct(global_engine.audio_thread_arena, E_AudioState);
 		
 		if (worker_thread_count > 0)
 		{

@@ -23,6 +23,7 @@ static E_GlobalData global_engine;
 #include "util_qoi.h"
 #include "util_gltf.h"
 
+#include "engine_assets.c"
 #include "engine_audio.c"
 #include "engine_thread.c"
 #include "engine_render.c"
@@ -31,9 +32,9 @@ static E_GlobalData global_engine;
 //~ External
 DisableWarnings();
 
-//#define memcpy Mem_Copy
-//#define memset Mem_Set
-//#define memcmp Mem_Compare
+//#define memcpy MemoryCopy
+//#define memset MemorySet
+//#define memcmp MemoryCompare
 #define assert Assert
 
 #define STBI_MALLOC(sz) OS_HeapAlloc(sz)
@@ -43,12 +44,12 @@ DisableWarnings();
 #define STB_IMAGE_IMPLEMENTATION
 #include <ext/stb_image.h>
 
-#define STBTT_malloc(x,u) ((u) ? Arena_PushDirtyAligned(u, x, 16) : OS_HeapAlloc(x))
+#define STBTT_malloc(x,u) ((u) ? ArenaPushDirtyAligned(u, x, 16) : OS_HeapAlloc(x))
 #define STBTT_free(x,u) ((u) ? (void)(x) : OS_HeapFree(x))
 #define STBTT_assert Assert
-#define STBTT_strlen Mem_Strlen
-#define STBTT_memcpy Mem_Copy
-#define STBTT_memset Mem_Set
+#define STBTT_strlen MemoryStrlen
+#define STBTT_memcpy MemoryCopy
+#define STBTT_memset MemorySet
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <ext/stb_truetype.h>
 

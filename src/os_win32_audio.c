@@ -203,8 +203,8 @@ Win32_EnumerateAudioEndpoints_(void)
 			
 			if (remaining > 0)
 			{
-				Mem_Move(&g_audio.devices[i], &g_audio.devices[i + 1], sizeof(g_audio.devices[0]) * remaining);
-				Mem_Move(&g_audio.devices_info[i], &g_audio.devices_info[i + 1], sizeof(g_audio.devices_info[0]) * remaining);
+				MemoryMove(&g_audio.devices[i], &g_audio.devices[i + 1], sizeof(g_audio.devices[0]) * remaining);
+				MemoryMove(&g_audio.devices_info[i], &g_audio.devices_info[i + 1], sizeof(g_audio.devices_info[0]) * remaining);
 			}
 			
 			--g_audio.device_count;
@@ -316,9 +316,9 @@ Win32_EnumerateAudioEndpoints_(void)
 			Win32_AudioDevice* device = &g_audio.devices[i];
 			OS_AudioDeviceInfo* info = &g_audio.devices_info[i];
 			
-			info->interface_name = StrMake(Mem_Strnlen((char*)device->interface_name, ArrayLength(device->interface_name)), device->interface_name);
-			info->description = StrMake(Mem_Strnlen((char*)device->description, ArrayLength(device->description)), device->description);
-			info->name = StrMake(Mem_Strnlen((char*)device->name, ArrayLength(device->name)), device->name);
+			info->interface_name = StrMake(MemoryStrnlen((char*)device->interface_name, ArrayLength(device->interface_name)), device->interface_name);
+			info->description = StrMake(MemoryStrnlen((char*)device->description, ArrayLength(device->description)), device->description);
+			info->name = StrMake(MemoryStrnlen((char*)device->name, ArrayLength(device->name)), device->name);
 			info->id = device->id;
 		}
 	}
@@ -575,8 +575,8 @@ Win32_DeinitAudio(OS_State* os_state)
 		IMMDevice_Release(g_audio.devices[i].immdevice);
 	}
 	
-	Mem_Zero(&g_audio, sizeof(g_audio));
-	Mem_Zero(&os_state->audio, sizeof(os_state->audio));
+	MemoryZero(&g_audio, sizeof(g_audio));
+	MemoryZero(&os_state->audio, sizeof(os_state->audio));
 	
 	os_state->has_audio = false;
 }

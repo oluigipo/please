@@ -24,12 +24,12 @@ typedef Buffer;
 #define BufInitRange(begin, end) { (uintsize)((end) - (begin)), (const uint8*)(begin) }
 
 static inline int32
-Buffer_Equals(Buffer a, Buffer b)
+BufferEquals(Buffer a, Buffer b)
 {
 	if (a.size != b.size)
 		return false;
 	
-	return Mem_Compare(a.data, b.data, a.size) == 0;
+	return MemoryCompare(a.data, b.data, a.size) == 0;
 }
 
 #endif //COMMON_BUFFER_H

@@ -291,4 +291,30 @@ API bool E_QueryPlayingSoundInfo(E_PlayingSoundHandle playing_sound, E_PlayingSo
 API void E_StopAllSounds(E_SoundHandle* specific);
 API bool E_IsValidPlayingSoundHandle(E_PlayingSoundHandle playing_sound);
 
+//- Asset Group
+struct E_AssetInfo
+{
+	String filepath;
+	String name;
+}
+typedef E_AssetInfo;
+
+struct E_AssetGroup
+{
+	Arena* arena;
+	uint32 sound_count;
+	uint32 tex2d_count;
+	const E_AssetInfo* sounds_info;
+	const E_AssetInfo* tex2ds_info;
+	
+	// Runtime
+	uint64 load_time;
+	E_Tex2d* tex2ds;
+	E_SoundHandle* sounds;
+}
+typedef E_AssetGroup;
+
+API void E_LoadAssets(E_AssetGroup* asset_group);
+API void E_UnloadAssets(E_AssetGroup* asset_group);
+
 #endif //API_ENGINE_H

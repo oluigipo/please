@@ -12,22 +12,27 @@ enum RB_ResourceKind_
 	RB_ResourceKind_MakeVertexBuffer_,
 	RB_ResourceKind_MakeIndexBuffer_,
 	RB_ResourceKind_MakeUniformBuffer_,
+	RB_ResourceKind_MakeStructuredBuffer_,
 	RB_ResourceKind_MakeShader_,
 	RB_ResourceKind_MakeRenderTarget_,
 	RB_ResourceKind_MakePipeline_,
+	RB_ResourceKind_MakeComputeShader_,
 	
 	RB_ResourceKind_UpdateTexture2D_,
 	RB_ResourceKind_UpdateVertexBuffer_,
 	RB_ResourceKind_UpdateIndexBuffer_,
+	RB_ResourceKind_UpdateStructuredBuffer_,
 	RB_ResourceKind_UpdateUniformBuffer_,
 	
 	RB_ResourceKind_FreeTexture2D_,
 	RB_ResourceKind_FreeVertexBuffer_,
 	RB_ResourceKind_FreeIndexBuffer_,
 	RB_ResourceKind_FreeUniformBuffer_,
+	RB_ResourceKind_FreeStructuredBuffer_,
 	RB_ResourceKind_FreeShader_,
 	RB_ResourceKind_FreeRenderTarget_,
 	RB_ResourceKind_FreePipeline_,
+	RB_ResourceKind_FreeComputeShader_,
 }
 typedef RB_ResourceKind_;
 
@@ -40,6 +45,7 @@ enum RB_CommandKind_
 	RB_CommandKind_ApplyRenderTarget_,
 	RB_CommandKind_Clear_,
 	RB_CommandKind_Draw_,
+	RB_CommandKind_Dispatch_,
 	RB_CommandKind_End_,
 }
 typedef RB_CommandKind_;
@@ -55,9 +61,11 @@ struct RB_ResourceCall_
 		RB_VBufferDesc vbuffer;
 		RB_IBufferDesc ibuffer;
 		RB_UBufferDesc ubuffer;
+		RB_SBufferDesc sbuffer;
 		RB_ShaderDesc shader;
 		RB_RenderTargetDesc render_target;
 		RB_PipelineDesc pipeline;
+		RB_ComputeShaderDesc compute_shader;
 		
 		struct { Buffer new_data; } update;
 	};
@@ -76,6 +84,7 @@ struct RB_CommandCall_
 		struct { RB_RenderTarget handle; } apply_render_target;
 		RB_ClearDesc clear;
 		RB_DrawDesc draw;
+		RB_DispatchDesc dispatch;
 	};
 }
 typedef RB_CommandCall_;
@@ -120,7 +129,7 @@ RB_PoolAllocImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32* ou
 		SafeAssert(false);
 	
 	void* result = pool->data + (index-1) * obj_size;
-	Mem_Zero(result, obj_size);
+	MemoryZero(result, obj_size);
 	
 	*out_index = index;
 	return result;
@@ -166,7 +175,7 @@ RB_MakeContext(Arena* arena, const OS_WindowGraphicsContext* graphics_context)
 {
 	Trace();
 	
-	RB_Ctx* ctx = Arena_PushStructInit(arena, RB_Ctx, {
+	RB_Ctx* ctx = ArenaPushStructInit(arena, RB_Ctx, {
 		.arena = arena,
 		.graphics_context = graphics_context,
 	});
@@ -193,8 +202,8 @@ RB_FreeContext(RB_Ctx* ctx)
 	Arena* arena = ctx->arena;
 	
 	ctx->rt_free_ctx(ctx);
-	Mem_Zero(ctx, sizeof(RB_Ctx));
-	Arena_Pop(arena, ctx);
+	MemoryZero(ctx, sizeof(RB_Ctx));
+	ArenaPop(arena, ctx);
 }
 
 API void
@@ -286,6 +295,21 @@ RB_MakeUniformBuffer(RB_Ctx* ctx, const RB_UBufferDesc* desc)
 	return handle;
 }
 
+API RB_SBuffer
+RB_MakeStructuredBuffer(RB_Ctx* ctx, const RB_SBufferDesc* desc)
+{
+	Trace();
+	RB_SBuffer handle = { 0 };
+	
+	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
+		.kind = RB_ResourceKind_MakeStructuredBuffer_,
+		.handle = &handle.id,
+		.sbuffer = *desc,
+	});
+	
+	return handle;
+}
+
 API RB_Shader
 RB_MakeShader(RB_Ctx* ctx, const RB_ShaderDesc* desc)
 {
@@ -326,6 +350,21 @@ RB_MakePipeline(RB_Ctx* ctx, const RB_PipelineDesc* desc)
 		.kind = RB_ResourceKind_MakePipeline_,
 		.handle = &handle.id,
 		.pipeline = *desc,
+	});
+	
+	return handle;
+}
+
+API RB_ComputeShader
+RB_MakeComputeShader(RB_Ctx* ctx, const RB_ComputeShaderDesc* desc)
+{
+	Trace();
+	RB_ComputeShader handle = { 0 };
+	
+	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
+		.kind = RB_ResourceKind_MakeComputeShader_,
+		.handle = &handle.id,
+		.compute_shader = *desc,
 	});
 	
 	return handle;
@@ -372,6 +411,16 @@ RB_FreeUniformBuffer(RB_Ctx* ctx, RB_UBuffer res)
 }
 
 API void
+RB_FreeStructuredBuffer(RB_Ctx* ctx, RB_SBuffer res)
+{
+	Trace();
+	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
+		.kind = RB_ResourceKind_FreeStructuredBuffer_,
+		.handle = &res.id,
+	});
+}
+
+API void
 RB_FreeShader(RB_Ctx* ctx, RB_Shader res)
 {
 	Trace();
@@ -397,6 +446,16 @@ RB_FreePipeline(RB_Ctx* ctx, RB_Pipeline res)
 	Trace();
 	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
 		.kind = RB_ResourceKind_FreePipeline_,
+		.handle = &res.id,
+	});
+}
+
+API void
+RB_FreeComputeShader(RB_Ctx* ctx, RB_ComputeShader res)
+{
+	Trace();
+	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
+		.kind = RB_ResourceKind_FreeComputeShader_,
 		.handle = &res.id,
 	});
 }
@@ -433,6 +492,17 @@ RB_UpdateUniformBuffer(RB_Ctx* ctx, RB_UBuffer res, Buffer new_data)
 	Trace();
 	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
 		.kind = RB_ResourceKind_UpdateUniformBuffer_,
+		.handle = &res.id,
+		.update.new_data = new_data,
+	});
+}
+
+API void
+RB_UpdateStructuredBuffer(RB_Ctx* ctx, RB_SBuffer res, Buffer new_data)
+{
+	Trace();
+	ctx->rt_resource(ctx, &(RB_ResourceCall_) {
+		.kind = RB_ResourceKind_UpdateStructuredBuffer_,
 		.handle = &res.id,
 		.update.new_data = new_data,
 	});
@@ -497,6 +567,16 @@ RB_CmdDraw(RB_Ctx* ctx, const RB_DrawDesc* desc)
 	ctx->rt_cmd(ctx, &(RB_CommandCall_) {
 		.kind = RB_CommandKind_Draw_,
 		.draw = *desc,
+	});
+}
+
+API void
+RB_CmdDispatch(RB_Ctx* ctx, const RB_DispatchDesc* desc)
+{
+	Trace();
+	ctx->rt_cmd(ctx, &(RB_CommandCall_) {
+		.kind = RB_CommandKind_Dispatch_,
+		.dispatch = *desc,
 	});
 }
 

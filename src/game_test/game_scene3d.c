@@ -77,7 +77,7 @@ G_Scene3DInit(void)
 	engine->os->window.show_cursor = false;
 	engine->os->window.lock_cursor = true;
 	
-	G_Scene3DState* s = game->scene3d = Arena_PushStructInit(engine->persistent_arena, G_Scene3DState, {
+	G_Scene3DState* s = game->scene3d = ArenaPushStructInit(engine->persistent_arena, G_Scene3DState, {
 		.camera_yaw = -GLM_PIf*0.5f,
 		.camera_pitch = 0.0f,
 		.camera_pos = { 0.0f, 0.0f, 5.0f, },
@@ -169,10 +169,10 @@ G_Scene3DInit(void)
 		};
 		
 		//- Concat
-		uint8* memory = Arena_PushDirty(engine->frame_arena, total_size);
-		Mem_Copy(memory + s->tree_model_position_offset, position_buffer.data, position_buffer.size);
-		Mem_Copy(memory + s->tree_model_texcoord_offset, texcoord_buffer.data, texcoord_buffer.size);
-		Mem_Copy(memory + s->tree_model_normal_offset,   normal_buffer.data,   normal_buffer.size  );
+		uint8* memory = ArenaPushDirty(engine->frame_arena, total_size);
+		MemoryCopy(memory + s->tree_model_position_offset, position_buffer.data, position_buffer.size);
+		MemoryCopy(memory + s->tree_model_texcoord_offset, texcoord_buffer.data, texcoord_buffer.size);
+		MemoryCopy(memory + s->tree_model_normal_offset,   normal_buffer.data,   normal_buffer.size  );
 		
 		s->tree_model_vbuffer = RB_MakeVertexBuffer(engine->renderbackend, &(RB_VBufferDesc) {
 			.initial_data = memory,
@@ -194,7 +194,7 @@ G_Scene3DInit(void)
 		//- Index buffer
 		view = &gltf.buffer_views[gltf.accessors[prim->indices].buffer_view];
 		intsize ibuffer_size = view->byte_length;
-		void* ibuffer_data = Arena_PushMemory(engine->frame_arena, gltf.buffers[view->buffer].data + view->byte_offset, ibuffer_size);
+		void* ibuffer_data = ArenaPushMemory(engine->frame_arena, gltf.buffers[view->buffer].data + view->byte_offset, ibuffer_size);
 		
 		s->tree_model_ibuffer = RB_MakeIndexBuffer(engine->renderbackend, &(RB_IBufferDesc) {
 			.initial_data = ibuffer_data,
@@ -269,7 +269,7 @@ G_Scene3DUpdateAndRender(void)
 	
 	// NOTE(ljre): Run test renderer
 	{
-		G_Scene3DUBuffer* ubuffer_data = Arena_PushStruct(engine->frame_arena, G_Scene3DUBuffer);
+		G_Scene3DUBuffer* ubuffer_data = ArenaPushStruct(engine->frame_arena, G_Scene3DUBuffer);
 		
 		E_Camera3D camera = { 0 };
 		glm_vec3_copy(s->camera_pos, camera.pos);

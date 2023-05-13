@@ -73,9 +73,9 @@ Win32_D3d11SwapBuffers(int32 vsync_count)
 			SIZE_T message_length;
 			if (S_OK == IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, NULL, &message_length))
 			{
-				for Arena_TempScope(scratch_arena)
+				for ArenaTempScope(scratch_arena)
 				{
-					DXGI_INFO_QUEUE_MESSAGE* message = Arena_Push(scratch_arena, message_length);
+					DXGI_INFO_QUEUE_MESSAGE* message = ArenaPush(scratch_arena, message_length);
 					
 					IDXGIInfoQueue_GetMessage(global_direct3d_info_queue, DXGI_DEBUG_ALL, i, message, &message_length);
 					OS_DebugMessageBox("%.*s", message->DescriptionByteLength, message->pDescription);

@@ -5,7 +5,7 @@ DBG_UIBegin(E_GlobalData* engine, E_RectBatch* batch, E_Font* font, vec2 pos, ve
 		.engine = engine,
 		.batch = batch,
 		.font = font,
-		.deferred_background = Arena_PushStruct(batch->arena, E_RectBatchElem),
+		.deferred_background = ArenaPushStruct(batch->arena, E_RectBatchElem),
 		.scale = { scale[0], scale[1] },
 		.start_pos = { pos[0], pos[1] },
 		.current_pos = { pos[0] + 4.0f, pos[1] + 4.0f },
@@ -74,11 +74,11 @@ DBG_UIPopFoldable(DBG_UIState* state)
 API void
 DBG_UIPushTextF(DBG_UIState* state, const char* fmt, ...)
 {
-	for Arena_TempScope(state->engine->scratch_arena)
+	for ArenaTempScope(state->engine->scratch_arena)
 	{
 		va_list args;
 		va_start(args, fmt);
-		String text = Arena_VPrintf(state->engine->scratch_arena, fmt, args);
+		String text = ArenaVPrintf(state->engine->scratch_arena, fmt, args);
 		va_end(args);
 		
 		vec2 size = { 0 };
@@ -302,11 +302,11 @@ DBG_UIPushTextField(DBG_UIState* state, uint8* buffer, intsize buffer_cap, intsi
 				if (codepoint == '\r')
 					codepoint = '\n';
 				
-				int32 required_size = String_EncodedCodepointSize(codepoint);
+				int32 required_size = StringEncodedCodepointSize(codepoint);
 				
 				if (size + required_size <= buffer_cap)
 				{
-					String_Encode(buffer + size, required_size, codepoint);
+					StringEncode(buffer + size, required_size, codepoint);
 					size += required_size;
 				}
 				else
@@ -357,5 +357,5 @@ DBG_UIEnd(DBG_UIState* state)
 		.color = { 0.05f, 0.05f, 0.05f, 1.0f },
 	};
 	
-	Mem_Zero(state, sizeof(*state));
+	MemoryZero(state, sizeof(*state));
 }

@@ -39,7 +39,7 @@
 #   define CONFIG_ENABLE_D3D11
 #   define CONFIG_ENABLE_D3D9C
 #   if defined(CONFIG_M64)
-#       define COMMON_DONT_USE_CRT
+#       define CONFIG_DONT_USE_CRT
 #   endif
 #elif defined(CONFIG_OS_WIN32LINUX)
 #   define _CRT_SECURE_NO_WARNINGS
@@ -60,7 +60,7 @@ static inline void ___my_tracy_zone_end(TracyCZoneCtx* ctx) { TracyCZoneEnd(*ctx
 #    define TraceName(...) do { String a = (__VA_ARGS__); TracyCZoneName(TraceCat_(_ctx,__LINE__), (const char*)a.data, a.size); } while (0)
 #    define TraceText(...) do { String a = (__VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), (const char*)a.data, a.size); } while (0)
 #    define TraceColor(...) TracyCZoneColor(TraceCat_(_ctx,__LINE__), (__VA_ARGS__))
-#    define TraceF(sz, ...) do { char buf[sz]; uintsize len = String_PrintfBuffer(buf, sizeof(buf), __VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), buf, len); } while (0)
+#    define TraceF(sz, ...) do { char buf[sz]; uintsize len = StringPrintfBuffer(buf, sizeof(buf), __VA_ARGS__); TracyCZoneText(TraceCat_(_ctx,__LINE__), buf, len); } while (0)
 #    define TraceFrameBegin() TracyCFrameMarkStart(0)
 #    define TraceFrameEnd() TracyCFrameMarkEnd(0)
 #    define TraceInit() ___tracy_startup_profiler()

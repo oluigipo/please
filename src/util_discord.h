@@ -122,7 +122,7 @@ enum EDiscordResult static UDiscord_UpdateLobbyActivity(UDiscord_Client* discord
 static void
 UDiscord_PushEvent_(UDiscord_Client* discord, UDiscord_Event* event)
 {
-	UDiscord_Event* p = Arena_PushStructData(discord->events_output_arena, UDiscord_Event, event);
+	UDiscord_Event* p = ArenaPushStructData(discord->events_output_arena, UDiscord_Event, event);
 	*discord->event_list = p;
 	discord->event_list = &p->next;
 }
@@ -176,7 +176,7 @@ UDiscord_CallbackDeleteLobby_(void* event_data, enum EDiscordResult result)
 	UDiscord_PushEvent_(discord, &event);
 	
 	if (result != DiscordResult_Ok)
-		Mem_Zero(&discord->lobby, sizeof(discord->lobby));
+		MemoryZero(&discord->lobby, sizeof(discord->lobby));
 }
 
 static DISCORD_CALLBACK void
@@ -259,7 +259,7 @@ UDiscord_EventOnLobbyDelete_(void* event_data, int64 lobby_id, uint32 reason)
 	};
 	
 	UDiscord_PushEvent_(discord, &event);
-	Mem_Zero(&discord->lobby, sizeof(discord->lobby));
+	MemoryZero(&discord->lobby, sizeof(discord->lobby));
 	//OS_DebugLog("Discord: OnLobbyDelete -- %I\t%u\n", lobby_id, reason);
 }
 
@@ -338,7 +338,7 @@ UDiscord_EventOnLobbyMessage_(void* event_data, int64 lobby_id, int64 user_id, u
 		.on_lobby_message = {
 			.lobby_id = lobby_id,
 			.user_id = user_id,
-			.data = Arena_PushMemoryAligned(discord->events_output_arena, data, data_length, 8),
+			.data = ArenaPushMemoryAligned(discord->events_output_arena, data, data_length, 8),
 			.data_length = data_length,
 		},
 	};
@@ -374,7 +374,7 @@ UDiscord_EventOnNetworkMessage_(void* event_data, int64 lobby_id, int64 user_id,
 			.lobby_id = lobby_id,
 			.user_id = user_id,
 			.channel = channel_id,
-			.data = Arena_PushMemoryAligned(discord->events_output_arena, data, data_length, 8),
+			.data = ArenaPushMemoryAligned(discord->events_output_arena, data, data_length, 8),
 			.data_length = data_length,
 		},
 	};
@@ -400,7 +400,7 @@ UDiscord_EventOnActivityJoin_(void* event_data, const char* secret)
 	UDiscord_Event event = {
 		.kind = UDiscord_EventKind_OnActivityJoin,
 		.on_activity_join = {
-			.secret = Arena_PushMemoryAligned(discord->events_output_arena, secret, length, 1),
+			.secret = ArenaPushMemoryAligned(discord->events_output_arena, secret, length, 1),
 		},
 	};
 	
@@ -425,7 +425,7 @@ UDiscord_EventOnActivitySpectate_(void* event_data, const char* secret)
 	UDiscord_Event event = {
 		.kind = UDiscord_EventKind_OnActivitySpectate,
 		.on_activity_spectate = {
-			.secret = Arena_PushMemoryAligned(discord->events_output_arena, secret, length, 1),
+			.secret = ArenaPushMemoryAligned(discord->events_output_arena, secret, length, 1),
 		},
 	};
 	
@@ -501,7 +501,7 @@ UDiscord_EventOnMessage_(void* event_data, DiscordNetworkPeerId peer_id, uint8 c
 		.on_message = {
 			.peer_id = peer_id,
 			.channel = channel_id,
-			.data = Arena_PushMemoryAligned(discord->events_output_arena, data, data_length, 8),
+			.data = ArenaPushMemoryAligned(discord->events_output_arena, data, data_length, 8),
 			.data_length = data_length,
 		},
 	};
@@ -527,7 +527,7 @@ UDiscord_EventOnRouteUpdate_(void* event_data, const char* route_data)
 	UDiscord_Event event = {
 		.kind = UDiscord_EventKind_OnRouteUpdate,
 		.on_route_update = {
-			.route_data = Arena_PushMemoryAligned(discord->events_output_arena, route_data, length, 1),
+			.route_data = ArenaPushMemoryAligned(discord->events_output_arena, route_data, length, 1),
 		},
 	};
 	
@@ -650,7 +650,7 @@ UDiscord_Init(int64 appid, UDiscord_Client* discord)
 	
 	discord->appid = appid;
 	discord->connected = true;
-	Mem_Zero(&discord->lobby, sizeof(discord->lobby));
+	MemoryZero(&discord->lobby, sizeof(discord->lobby));
 	
 	discord->activities->update_activity(discord->activities, &discord->activity, discord, UDiscord_CallbackUpdateActivity_);
 	
@@ -755,8 +755,8 @@ UDiscord_UpdateLobbyActivity(UDiscord_Client* discord)
 	if (result != DiscordResult_Ok)
 		return result;
 	
-	Mem_Copy(discord->activity.secrets.join, secret, sizeof(discord->lobby.secret));
-	String_PrintfBuffer(discord->activity.party.id, sizeof(discord->activity.party.id), "%I", discord->lobby.id);
+	MemoryCopy(discord->activity.secrets.join, secret, sizeof(discord->lobby.secret));
+	StringPrintfBuffer(discord->activity.party.id, sizeof(discord->activity.party.id), "%I", discord->lobby.id);
 	discord->activity.party.size.current_size = member_count;
 	discord->activity.party.size.max_size = discord->lobby.capacity;
 	

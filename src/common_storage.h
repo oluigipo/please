@@ -69,7 +69,7 @@ Storage_MakeFromMemory(Buffer backbuffer, uint32 max_allocations)
 	
 	// Base allocation.
 	Storage_Block* blocks = (Storage_Block*)storage.backbuffer;
-	Mem_Zero(blocks, sizeof(Storage_Block) * storage.block_cap);
+	MemoryZero(blocks, sizeof(Storage_Block) * storage.block_cap);
 	
 	blocks[0].generation = 0;
 	blocks[0].next_free = 0;
@@ -221,10 +221,10 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 	SafeAssert(storage && storage->backbuffer);
 	
 	Storage_Block* storage_blocks = (Storage_Block*)storage->backbuffer;
-	Arena_Savepoint scratch_save = Arena_Save(scratch_arena);
+	ArenaSavepoint scratch_save = ArenaSave(scratch_arena);
 	
 	// Set blocks
-	Storage_Block** blocks_array = Arena_PushArray(scratch_arena, Storage_Block*, storage->block_count);
+	Storage_Block** blocks_array = ArenaPushArray(scratch_arena, Storage_Block*, storage->block_count);
 	int32 block_count = 0;
 	
 	for (intsize i = 0; i < storage->block_count; ++i)
@@ -256,7 +256,7 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 			uint32 target_offset = blocks_array[i]->offset + blocks_array[i]->size;
 			uint32 source_offset = blocks_array[i+1]->offset;
 			
-			Mem_Move(storage->backbuffer + storage->memory_offset + target_offset, storage->backbuffer + storage->memory_offset + source_offset, move_size);
+			MemoryMove(storage->backbuffer + storage->memory_offset + target_offset, storage->backbuffer + storage->memory_offset + source_offset, move_size);
 			
 			blocks_array[i+1]->offset = target_offset;
 			blocks_array[i+1]->free_size += blocks_array[i]->free_size;
@@ -265,7 +265,7 @@ Storage_Defrag(Storage* storage, Arena* scratch_arena)
 	}
 	
 	// Done
-	Arena_Restore(scratch_save);
+	ArenaRestore(scratch_save);
 }
 
 #endif //COMMON_STORAGE_H

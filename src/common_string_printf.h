@@ -3,48 +3,48 @@
 
 #include <stdarg.h>
 
-static uintsize String_VPrintfBuffer(char* buf, uintsize len, const char* fmt, va_list args);
-static uintsize String_PrintfBuffer(char* buf, uintsize len, const char* fmt, ...);
-static String String_VPrintf(char* buf, uintsize len, const char* fmt, va_list args);
-static String String_Printf(char* buf, uintsize len, const char* fmt, ...);
-static uintsize String_VPrintfSize(const char* fmt, va_list args);
-static uintsize String_PrintfSize(const char* fmt, ...);
+static uintsize StringVPrintfBuffer(char* buf, uintsize len, const char* fmt, va_list args);
+static uintsize StringPrintfBuffer(char* buf, uintsize len, const char* fmt, ...);
+static String StringVPrintf(char* buf, uintsize len, const char* fmt, va_list args);
+static String StringPrintf(char* buf, uintsize len, const char* fmt, ...);
+static uintsize StringVPrintfSize(const char* fmt, va_list args);
+static uintsize StringPrintfSize(const char* fmt, ...);
 
-#define String_VPrintfLocal(size, ...) String_VPrintf((char[size]) { 0 }, size, __VA_ARGS__)
-#define String_PrintfLocal(size, ...) String_Printf((char[size]) { 0 }, size, __VA_ARGS__)
+#define StringVPrintfLocal(size, ...) StringVPrintf((char[size]) { 0 }, size, __VA_ARGS__)
+#define StringPrintfLocal(size, ...) StringPrintf((char[size]) { 0 }, size, __VA_ARGS__)
 
 //~ NOTE(ljre): Implementation
-static uintsize String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_list args);
+static uintsize StringPrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_list args);
 
 static uintsize
-String_VPrintfBuffer(char* buf, uintsize len, const char* fmt, va_list args)
+StringVPrintfBuffer(char* buf, uintsize len, const char* fmt, va_list args)
 {
 	Assert(buf && len);
 	
-	return String_PrintfFunc_(buf, len, fmt, args);
+	return StringPrintfFunc_(buf, len, fmt, args);
 }
 
 static uintsize
-String_PrintfBuffer(char* buf, uintsize len, const char* fmt, ...)
+StringPrintfBuffer(char* buf, uintsize len, const char* fmt, ...)
 {
 	Assert(buf && len);
 	
 	va_list args;
 	va_start(args, fmt);
 	
-	uintsize result = String_PrintfFunc_(buf, len, fmt, args);
+	uintsize result = StringPrintfFunc_(buf, len, fmt, args);
 	
 	va_end(args);
 	return result;
 }
 
 static String
-String_VPrintf(char* buf, uintsize len, const char* fmt, va_list args)
+StringVPrintf(char* buf, uintsize len, const char* fmt, va_list args)
 {
 	Assert(buf && len);
 	
 	String result = {
-		String_PrintfFunc_(buf, len, fmt, args),
+		StringPrintfFunc_(buf, len, fmt, args),
 		(uint8*)buf,
 	};
 	
@@ -52,7 +52,7 @@ String_VPrintf(char* buf, uintsize len, const char* fmt, va_list args)
 }
 
 static String
-String_Printf(char* buf, uintsize len, const char* fmt, ...)
+StringPrintf(char* buf, uintsize len, const char* fmt, ...)
 {
 	Assert(buf && len);
 	
@@ -60,7 +60,7 @@ String_Printf(char* buf, uintsize len, const char* fmt, ...)
 	va_start(args, fmt);
 	
 	String result = {
-		String_PrintfFunc_(buf, len, fmt, args),
+		StringPrintfFunc_(buf, len, fmt, args),
 		(uint8*)buf,
 	};
 	
@@ -70,29 +70,29 @@ String_Printf(char* buf, uintsize len, const char* fmt, ...)
 }
 
 static uintsize
-String_VPrintfSize(const char* fmt, va_list args)
+StringVPrintfSize(const char* fmt, va_list args)
 {
-	return String_PrintfFunc_(NULL, 0, fmt, args);
+	return StringPrintfFunc_(NULL, 0, fmt, args);
 }
 
 static uintsize
-String_PrintfSize(const char* fmt, ...)
+StringPrintfSize(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
 	
-	uintsize result = String_PrintfFunc_(NULL, 0, fmt, args);
+	uintsize result = StringPrintfFunc_(NULL, 0, fmt, args);
 	
 	va_end(args);
 	return result;
 }
 
 //- NOTE(ljre): Actual implementation for snprintf alternative.
-#define String__STDSP_SPECIAL 0x7000
-static int32 String__stbsp__real_to_str(char const** start, uint32* len, char* out, int32* decimal_pos, float64 value, uint32 frac_digits);
+#define String_STDSP_SPECIAL 0x7000
+static int32 String_stbsp__real_to_str(char const** start, uint32* len, char* out, int32* decimal_pos, float64 value, uint32 frac_digits);
 
 static inline void
-String_WriteBuf_(char** p, char* end, uintsize* count, const char* restrict buf, intsize bufsize)
+StringWriteBuf_(char** p, char* end, uintsize* count, const char* restrict buf, intsize bufsize)
 {
 	Assert(bufsize >= 0);
 	
@@ -101,7 +101,7 @@ String_WriteBuf_(char** p, char* end, uintsize* count, const char* restrict buf,
 		if (end)
 		{
 			bufsize = Min(end - *p, bufsize);
-			Mem_Copy(*p, buf, bufsize);
+			MemoryCopy(*p, buf, bufsize);
 			*p += bufsize;
 		}
 		
@@ -110,7 +110,7 @@ String_WriteBuf_(char** p, char* end, uintsize* count, const char* restrict buf,
 }
 
 static inline void
-String_FillBuf_(char** p, char* end, uintsize* count, char fill, intsize fillsize)
+StringFillBuf_(char** p, char* end, uintsize* count, char fill, intsize fillsize)
 {
 	Assert(fillsize >= 0);
 	
@@ -119,7 +119,7 @@ String_FillBuf_(char** p, char* end, uintsize* count, char fill, intsize fillsiz
 		if (end)
 		{
 			fillsize = Min(end - *p, fillsize);
-			Mem_Set(*p, (uint8)fill, fillsize);
+			MemorySet(*p, (uint8)fill, fillsize);
 			*p += fillsize;
 		}
 		
@@ -128,10 +128,10 @@ String_FillBuf_(char** p, char* end, uintsize* count, char fill, intsize fillsiz
 }
 
 static uintsize
-String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_list args)
+StringPrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_list args)
 {
 	uintsize count = 0;
-	const char* fmt_end = fmt + Mem_Strlen(fmt);
+	const char* fmt_end = fmt + MemoryStrlen(fmt);
 	
 	SafeAssert(!buf ? buf_size == 0 : true);
 	
@@ -141,16 +141,16 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 	while (*fmt)
 	{
 		//- Copy leading chars
-		const char* percent_addr = (const char*)Mem_FindByte(fmt, '%', fmt_end - fmt);
+		const char* percent_addr = (const char*)MemoryFindByte(fmt, '%', fmt_end - fmt);
 		
 		if (percent_addr)
 		{
-			String_WriteBuf_(&p, p_end, &count, fmt, percent_addr - fmt);
+			StringWriteBuf_(&p, p_end, &count, fmt, percent_addr - fmt);
 			fmt = percent_addr;
 		}
 		else
 		{
-			String_WriteBuf_(&p, p_end, &count, fmt, fmt_end - fmt);
+			StringWriteBuf_(&p, p_end, &count, fmt, fmt_end - fmt);
 			fmt = fmt_end;
 			break;
 		}
@@ -229,7 +229,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				if (arg == INT64_MIN || arg == INT32_MIN && intmin[1] == '2')
 				{
 					write_buf = intmin;
-					write_count = Mem_Strlen(intmin);
+					write_count = MemoryStrlen(intmin);
 					
 					break;
 				}
@@ -333,7 +333,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				}
 				else if (trailling_padding >= 0)
 				{
-					const char* found = (const char*)Mem_FindByte(arg, 0, trailling_padding);
+					const char* found = (const char*)MemoryFindByte(arg, 0, trailling_padding);
 					
 					if (found)
 						len = found - arg;
@@ -343,7 +343,7 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 					trailling_padding = -1;
 				}
 				else
-					len = Mem_Strlen(arg);
+					len = MemoryStrlen(arg);
 				
 				write_buf = arg;
 				write_count = len;
@@ -376,9 +376,9 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				
 				static_assert(sizeof(tmpbuf) > 64 + 32, "stbsp__real_to_str takes just the final 64 bytes of the buffer because we might need to add a prefix to the string");
 				
-				bool negative = String__stbsp__real_to_str((const char**)&start, &length, tmpbuf+sizeof(tmpbuf)-64, &decimal_pos, arg, trailling_padding);
+				bool negative = String_stbsp__real_to_str((const char**)&start, &length, tmpbuf+sizeof(tmpbuf)-64, &decimal_pos, arg, trailling_padding);
 				
-				if (decimal_pos == String__STDSP_SPECIAL)
+				if (decimal_pos == String_STDSP_SPECIAL)
 				{
 					if (start[0] == 'I' && negative)
 					{
@@ -418,26 +418,26 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 				{
 					handled_write = true;
 					if (negative)
-						String_FillBuf_(&p, p_end, &count, '-', 1);
+						StringFillBuf_(&p, p_end, &count, '-', 1);
 					
 					if ((int32)length <= decimal_pos)
 					{
 						if (leading_padding != -1 && decimal_pos < leading_padding)
-							String_FillBuf_(&p, p_end, &count, '0', leading_padding - decimal_pos);
+							StringFillBuf_(&p, p_end, &count, '0', leading_padding - decimal_pos);
 						
-						String_WriteBuf_(&p, p_end, &count, start, length);
-						String_FillBuf_(&p, p_end, &count, '0', decimal_pos - length);
-						String_FillBuf_(&p, p_end, &count, '.', 1);
-						String_FillBuf_(&p, p_end, &count, '0', 2);
+						StringWriteBuf_(&p, p_end, &count, start, length);
+						StringFillBuf_(&p, p_end, &count, '0', decimal_pos - length);
+						StringFillBuf_(&p, p_end, &count, '.', 1);
+						StringFillBuf_(&p, p_end, &count, '0', 2);
 					}
 					else
 					{
 						if (leading_padding != -1 && (int32)length - decimal_pos < leading_padding)
-							String_FillBuf_(&p, p_end, &count, '0', leading_padding - (length - decimal_pos));
+							StringFillBuf_(&p, p_end, &count, '0', leading_padding - (length - decimal_pos));
 						
-						String_WriteBuf_(&p, p_end, &count, start, decimal_pos);
-						String_FillBuf_(&p, p_end, &count, '.', 1);
-						String_WriteBuf_(&p, p_end, &count, start + decimal_pos, length - decimal_pos);
+						StringWriteBuf_(&p, p_end, &count, start, decimal_pos);
+						StringFillBuf_(&p, p_end, &count, '.', 1);
+						StringWriteBuf_(&p, p_end, &count, start + decimal_pos, length - decimal_pos);
 					}
 				}
 			} break;
@@ -446,11 +446,11 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 		if (!handled_write)
 		{
 			if (prefix_char)
-				String_WriteBuf_(&p, p_end, &count, &prefix_char, 1);
+				StringWriteBuf_(&p, p_end, &count, &prefix_char, 1);
 			if (leading_padding != -1 && write_count < leading_padding)
-				String_FillBuf_(&p, p_end, &count, padding_char, leading_padding - write_count);
+				StringFillBuf_(&p, p_end, &count, padding_char, leading_padding - write_count);
 			if (write_count)
-				String_WriteBuf_(&p, p_end, &count, write_buf, write_count);
+				StringWriteBuf_(&p, p_end, &count, write_buf, write_count);
 		}
 	}
 	
@@ -459,43 +459,43 @@ String_PrintfFunc_(char* buf, uintsize buf_size, const char* restrict fmt, va_li
 
 //~ NOTE(ljre): All this code is derived from stb_sprint! Licensed under Unlicense.
 static inline void
-String__stbsp__copyfp(void* to, const void* f)
+String_stbsp__copyfp(void* to, const void* f)
 {
 	*(uint64*)to = *(uint64*)f;
 }
 
 static inline void
-String__stbsp__ddmulthi(float64* restrict oh, float64* restrict ol, float64 xh, float64 yh)
+String_stbsp__ddmulthi(float64* restrict oh, float64* restrict ol, float64 xh, float64 yh)
 {
 	float64 ahi = 0, alo, bhi = 0, blo;
 	int64 bt;
 	
 	*oh = xh * yh;
-	String__stbsp__copyfp(&bt, &xh);
+	String_stbsp__copyfp(&bt, &xh);
 	bt &= ((~(uint64)0) << 27);
-	String__stbsp__copyfp(&ahi, &bt);
+	String_stbsp__copyfp(&ahi, &bt);
 	alo = xh - ahi;
-	String__stbsp__copyfp(&bt, &yh);
+	String_stbsp__copyfp(&bt, &yh);
 	bt &= ((~(uint64)0) << 27);
-	String__stbsp__copyfp(&bhi, &bt);
+	String_stbsp__copyfp(&bhi, &bt);
 	blo = yh - bhi;
 	*ol = ((ahi * bhi - *oh) + ahi * blo + alo * bhi) + alo * blo;
 }
 
 static inline void
-String__stbsp__ddmultlos(float64* restrict oh, float64* restrict ol, float64 xh, float64 yl)
+String_stbsp__ddmultlos(float64* restrict oh, float64* restrict ol, float64 xh, float64 yl)
 {
 	*ol = *ol + (xh * yl);
 }
 
 static inline void
-String__stbsp__ddmultlo(float64* restrict oh, float64* restrict ol, float64 xh, float64 xl, float64 yh, float64 yl)
+String_stbsp__ddmultlo(float64* restrict oh, float64* restrict ol, float64 xh, float64 xl, float64 yh, float64 yl)
 {
 	*ol = *ol + (xh * yl + xl * yh);
 }
 
 static inline void
-String__stbsp__ddrenorm(float64* restrict oh, float64* restrict ol)
+String_stbsp__ddrenorm(float64* restrict oh, float64* restrict ol)
 {
 	float64 s;
 	s = *oh + *ol;
@@ -504,7 +504,7 @@ String__stbsp__ddrenorm(float64* restrict oh, float64* restrict ol)
 }
 
 static inline void
-String__stbsp__ddtoS64(int64* restrict ob, float64 xh, float64 xl)
+String_stbsp__ddtoS64(int64* restrict ob, float64 xh, float64 xl)
 {
 	float64 ahi = 0, alo, vh, t;
 	*ob = (int64)xh;
@@ -516,7 +516,7 @@ String__stbsp__ddtoS64(int64* restrict ob, float64 xh, float64 xl)
 }
 
 static void
-String__stbsp__raise_to_power10(float64* restrict ohi, float64* restrict olo, float64 d, int32 power) // power can be -323 to +350
+String_stbsp__raise_to_power10(float64* restrict ohi, float64* restrict olo, float64 d, int32 power) // power can be -323 to +350
 {
 	static float64 const stbsp__bot[23] = {
 		1e+000, 1e+001, 1e+002, 1e+003, 1e+004, 1e+005, 1e+006, 1e+007, 1e+008, 1e+009, 1e+010, 1e+011,
@@ -562,7 +562,7 @@ String__stbsp__raise_to_power10(float64* restrict ohi, float64* restrict olo, fl
 	
 	float64 ph, pl;
 	if ((power >= 0) && (power <= 22)) {
-		String__stbsp__ddmulthi(&ph, &pl, d, stbsp__bot[power]);
+		String_stbsp__ddmulthi(&ph, &pl, d, stbsp__bot[power]);
 	} else {
 		int32 e, et, eb;
 		double p2h, p2l;
@@ -580,14 +580,14 @@ String__stbsp__raise_to_power10(float64* restrict ohi, float64* restrict olo, fl
 		if (power < 0) {
 			if (eb) {
 				--eb;
-				String__stbsp__ddmulthi(&ph, &pl, d, stbsp__negbot[eb]);
-				String__stbsp__ddmultlos(&ph, &pl, d, stbsp__negboterr[eb]);
+				String_stbsp__ddmulthi(&ph, &pl, d, stbsp__negbot[eb]);
+				String_stbsp__ddmultlos(&ph, &pl, d, stbsp__negboterr[eb]);
 			}
 			if (et) {
-				String__stbsp__ddrenorm(&ph, &pl);
+				String_stbsp__ddrenorm(&ph, &pl);
 				--et;
-				String__stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__negtop[et]);
-				String__stbsp__ddmultlo(&p2h, &p2l, ph, pl, stbsp__negtop[et], stbsp__negtoperr[et]);
+				String_stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__negtop[et]);
+				String_stbsp__ddmultlo(&p2h, &p2l, ph, pl, stbsp__negtop[et], stbsp__negtoperr[et]);
 				ph = p2h;
 				pl = p2l;
 			}
@@ -597,32 +597,32 @@ String__stbsp__raise_to_power10(float64* restrict ohi, float64* restrict olo, fl
 				if (eb > 22)
 					eb = 22;
 				e -= eb;
-				String__stbsp__ddmulthi(&ph, &pl, d, stbsp__bot[eb]);
+				String_stbsp__ddmulthi(&ph, &pl, d, stbsp__bot[eb]);
 				if (e) {
-					String__stbsp__ddrenorm(&ph, &pl);
-					String__stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__bot[e]);
-					String__stbsp__ddmultlos(&p2h, &p2l, stbsp__bot[e], pl);
+					String_stbsp__ddrenorm(&ph, &pl);
+					String_stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__bot[e]);
+					String_stbsp__ddmultlos(&p2h, &p2l, stbsp__bot[e], pl);
 					ph = p2h;
 					pl = p2l;
 				}
 			}
 			if (et) {
-				String__stbsp__ddrenorm(&ph, &pl);
+				String_stbsp__ddrenorm(&ph, &pl);
 				--et;
-				String__stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__top[et]);
-				String__stbsp__ddmultlo(&p2h, &p2l, ph, pl, stbsp__top[et], stbsp__toperr[et]);
+				String_stbsp__ddmulthi(&p2h, &p2l, ph, stbsp__top[et]);
+				String_stbsp__ddmultlo(&p2h, &p2l, ph, pl, stbsp__top[et], stbsp__toperr[et]);
 				ph = p2h;
 				pl = p2l;
 			}
 		}
 	}
-	String__stbsp__ddrenorm(&ph, &pl);
+	String_stbsp__ddrenorm(&ph, &pl);
 	*ohi = ph;
 	*olo = pl;
 }
 
 static int32
-String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32* decimal_pos, float64 value, uint32 frac_digits)
+String_stbsp__real_to_str(char const** start, uint32* len, char out[64], int32* decimal_pos, float64 value, uint32 frac_digits)
 {
 	static uint64 const stbsp__powten[20] = {
 		1,
@@ -664,7 +664,7 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 	int32 expo, e, ng, tens;
 	
 	d = value;
-	String__stbsp__copyfp(&bits, &d);
+	String_stbsp__copyfp(&bits, &d);
 	
 	expo = (int32)((bits >> 52) & 2047);
 	ng = (int32)((uint64) bits >> 63);
@@ -674,7 +674,7 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 	if (expo == 2047) // is nan or inf?
 	{
 		*start = (bits & ((((uint64)1) << 52) - 1)) ? "NaN" : "Inf";
-		*decimal_pos = String__STDSP_SPECIAL;
+		*decimal_pos = String_STDSP_SPECIAL;
 		*len = 3;
 		return ng;
 	}
@@ -708,10 +708,10 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 		tens = (tens < 0) ? ((tens * 617) / 2048) : (((tens * 1233) / 4096) + 1);
 		
 		// move the significant bits into position and stick them into an int
-		String__stbsp__raise_to_power10(&ph, &pl, d, 18 - tens);
+		String_stbsp__raise_to_power10(&ph, &pl, d, 18 - tens);
 		
 		// get full as much precision from double-double as possible
-		String__stbsp__ddtoS64(&bits, ph, pl);
+		String_stbsp__ddtoS64(&bits, ph, pl);
 		
 		// check if we undershot
 		if (((uint64)bits) >= 1000000000000000000ULL/*stbsp__tento19th*/)
@@ -800,6 +800,6 @@ String__stbsp__real_to_str(char const** start, uint32* len, char out[64], int32*
 	return ng;
 }
 
-#undef String__STDSP_SPECIAL
+#undef String_STDSP_SPECIAL
 
 #endif //COMMON_STRING_PRINTF_H

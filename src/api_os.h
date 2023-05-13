@@ -10,9 +10,9 @@
 API void* OS_VirtualReserve(void* address, uintsize size);
 API bool OS_VirtualCommit(void* ptr, uintsize size);
 API void OS_VirtualRelease(void* ptr, uintsize size);
-#define Arena_OsReserve_(size) OS_VirtualReserve(0, size)
-#define Arena_OsCommit_(ptr, size) OS_VirtualCommit(ptr, size)
-#define Arena_OsFree_(ptr, size) OS_VirtualRelease(ptr, size)
+#define ArenaOsReserve_(size) OS_VirtualReserve(0, size)
+#define ArenaOsCommit_(ptr, size) OS_VirtualCommit(ptr, size)
+#define ArenaOsFree_(ptr, size) OS_VirtualRelease(ptr, size)
 
 API void OS_ExitWithErrorMessage(const char* fmt, ...);
 #define SafeAssert_OnFailure(expr, file, line, func) \
@@ -26,6 +26,7 @@ OS_ExitWithErrorMessage("Assertion Failure!\nExpr: %s\nFile: %s\nLine: %i\nFunct
 enum
 {
 	OS_Limits_MaxGamepadCount = 16,
+	OS_Limits_MaxGestureCount = 5,
 	OS_Limits_MaxWindowTitleLength = 64,
 	OS_Limits_MaxBufferedInput = 256,
 	OS_Limits_MaxCodepointsPerFrame = 64,
@@ -125,8 +126,8 @@ typedef OS_KeyboardState;
 enum OS_MouseButton
 {
 	OS_MouseButton_Left,
-	OS_MouseButton_Middle,
 	OS_MouseButton_Right,
+	OS_MouseButton_Middle,
 	OS_MouseButton_Other0,
 	OS_MouseButton_Other1,
 	OS_MouseButton_Other2,
@@ -191,6 +192,17 @@ typedef OS_GamepadState;
 #define OS_IsReleased(state, btn) (!(state).buttons[btn].is_down && (state).buttons[btn].changes & 1)
 #define OS_IsUp(state, btn) (!(state).buttons[btn].is_down)
 
+struct OS_GestureState
+{
+	bool active;
+	bool released;
+	
+	float32 start_pos[2];
+	float32 current_pos[2];
+	float32 delta[2];
+}
+typedef OS_GestureState;
+
 //~ Window State
 struct OS_WindowState
 {
@@ -250,6 +262,9 @@ struct OS_State
 	OS_GamepadState gamepads[OS_Limits_MaxGamepadCount];
 	uint16 connected_gamepads; // NOTE(ljre): Bitset
 	
+	OS_GestureState gestures[OS_Limits_MaxGestureCount];
+	int32 gesture_count;
+	
 	int16 text_codepoints_count;
 	uint32 text_codepoints[OS_Limits_MaxCodepointsPerFrame];
 	
@@ -264,7 +279,7 @@ OS_IsGamepadConnected(const OS_State* os_state, int32 index)
 
 static inline int32
 OS_ConnectedGamepadCount(const OS_State* os_state)
-{ return Mem_PopCnt64(os_state->connected_gamepads); }
+{ return PopCnt64(os_state->connected_gamepads); }
 
 static inline int32
 OS_ConnectedGamepadsIndices(const OS_State* os_state, int32 out_indices[OS_Limits_MaxGamepadCount])
@@ -274,7 +289,7 @@ OS_ConnectedGamepadsIndices(const OS_State* os_state, int32 out_indices[OS_Limit
 	
 	while (bits && count < OS_Limits_MaxGamepadCount)
 	{
-		out_indices[count++] = Mem_BitCtz64(bits);
+		out_indices[count++] = BitCtz64(bits);
 		bits &= bits-1;
 	}
 	
@@ -347,6 +362,7 @@ API void OS_VirtualRelease(void* ptr, uintsize size);
 
 API bool OS_ReadEntireFile(String path, Arena* output_arena, void** out_data, uintsize* out_size);
 API bool OS_WriteEntireFile(String path, const void* data, uintsize size);
+API bool OS_IsFileOlderThan(String path, uint64 posix_timestamp);
 
 struct OS_MappedFile
 { void* ptr; }

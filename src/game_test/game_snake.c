@@ -29,14 +29,14 @@ G_SnakeInit(void)
 {
 	Trace();
 	
-	game->snake = Arena_PushStructInit(engine->persistent_arena, G_SnakeState, {
+	game->snake = ArenaPushStructInit(engine->persistent_arena, G_SnakeState, {
 		.cell_width = 24.0f,
 		.cell_height = 24.0f,
 		.grid_width = 30,
 		.grid_height = 20,
 		.tail_size = 0,
 		.tail_cap = 600,
-		.tail = Arena_PushArray(engine->persistent_arena, G_SnakeTail, 600),
+		.tail = ArenaPushArray(engine->persistent_arena, G_SnakeTail, 600),
 		
 		.apple_x = URng_Int32Range(&game->rng, 0, 30),
 		.apple_y = URng_Int32Range(&game->rng, 0, 20),
@@ -137,7 +137,7 @@ G_SnakeUpdateAndRender(void)
 		.textures[0] = E_WhiteTexture(),
 		.textures[1] = game->font.texture,
 		.count = 0,
-		.elements = Arena_EndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
+		.elements = ArenaEndAligned(engine->frame_arena, alignof(E_RectBatchElem)),
 	};
 	
 	E_PushRect(&batch, &(E_RectBatchElem) {
@@ -216,7 +216,7 @@ G_SnakeUpdateAndRender(void)
 		gibberish[i] = buffer[chosen];
 	}
 	
-	String str = String_PrintfLocal(64, "%.*syou are %um long", gibberish_size, gibberish, s->tail_size);
+	String str = StringPrintfLocal(64, "%.*syou are %um long", gibberish_size, gibberish, s->tail_size);
 	E_PushText(&batch, &game->font, str, vec2(grid_base_x, grid_base_y - 48.0f), vec2(1.0f, 1.0f), GLM_VEC4_ONE);
 	
 	E_DrawRectBatch(&batch, NULL);

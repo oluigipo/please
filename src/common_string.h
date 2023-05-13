@@ -22,7 +22,7 @@ Buffer typedef String;
 #define StrMacro(x) StrMacro_(x)
 
 static uint32
-String_Decode(String str, int32* index)
+StringDecode(String str, int32* index)
 {
 	const uint8* head = str.data + *index;
 	const uint8* const end = str.data + str.size;
@@ -34,7 +34,7 @@ String_Decode(String str, int32* index)
 	if (!byte || byte == 0xff)
 		return 0;
 	
-	int32 size =  Mem_BitClz8(~byte);
+	int32 size =  BitClz8(~byte);
 	if (Unlikely(size == 1 || size > 4 || head + size - 1 > end))
 		return 0;
 	
@@ -58,7 +58,7 @@ String_Decode(String str, int32* index)
 }
 
 static inline uint32
-String_EncodedCodepointSize(uint32 codepoint)
+StringEncodedCodepointSize(uint32 codepoint)
 {
 	if (codepoint < 128)
 		return 1;
@@ -70,9 +70,9 @@ String_EncodedCodepointSize(uint32 codepoint)
 }
 
 static uintsize
-String_Encode(uint8* buffer, uintsize size, uint32 codepoint)
+StringEncode(uint8* buffer, uintsize size, uint32 codepoint)
 {
-	uint32 needed = String_EncodedCodepointSize(codepoint);
+	uint32 needed = StringEncodedCodepointSize(codepoint);
 	if (size < needed)
 		return 0;
 	
@@ -109,21 +109,21 @@ String_Encode(uint8* buffer, uintsize size, uint32 codepoint)
 
 // TODO(ljre): make this better (?)
 static uintsize
-String_DecodedLength(String str)
+StringDecodedLength(String str)
 {
 	uintsize len = 0;
 	
 	int32 it = 0;
-	while (String_Decode(str, &it))
+	while (StringDecode(str, &it))
 		++len;
 	
 	return len;
 }
 
 static inline int32
-String_Compare(String a, String b)
+StringCompare(String a, String b)
 {
-	int32 result = Mem_Compare(a.data, b.data, Min(a.size, b.size));
+	int32 result = MemoryCompare(a.data, b.data, Min(a.size, b.size));
 	
 	if (result == 0 && a.size != b.size)
 		return (a.size > b.size) ? 1 : -1;
@@ -132,16 +132,16 @@ String_Compare(String a, String b)
 }
 
 static inline bool
-String_Equals(String a, String b)
+StringEquals(String a, String b)
 {
 	if (a.size != b.size)
 		return false;
 	
-	return Mem_Compare(a.data, b.data, a.size) == 0;
+	return MemoryCompare(a.data, b.data, a.size) == 0;
 }
 
 static inline bool
-String_EndsWith(String check, String s)
+StringEndsWith(String check, String s)
 {
 	if (s.size > check.size)
 		return false;
@@ -151,20 +151,20 @@ String_EndsWith(String check, String s)
 		check.data + (check.size - s.size),
 	};
 	
-	return Mem_Compare(substr.data, s.data, substr.size) == 0;
+	return MemoryCompare(substr.data, s.data, substr.size) == 0;
 }
 
 static inline bool
-String_StartsWith(String check, String s)
+StringStartsWith(String check, String s)
 {
 	if (s.size > check.size)
 		return false;
 	
-	return Mem_Compare(check.data, s.data, s.size) == 0;
+	return MemoryCompare(check.data, s.data, s.size) == 0;
 }
 
 static inline String
-String_Substr(String str, intsize index, intsize size)
+StringSubstr(String str, intsize index, intsize size)
 {
 	if (index >= str.size)
 		return StrNull;
