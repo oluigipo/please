@@ -1,7 +1,7 @@
 struct E_DecodeImageAsyncData_
 {
+	alignas(64) void* pixels;
 	int32 width, height;
-	void* pixels;
 	
 	intsize asset_index;
 	Arena* output_arena;
@@ -17,19 +17,26 @@ E_DecodeImageAsync_(E_ThreadCtx* ctx, void* user_data)
 	for ArenaTempScope(ctx->scratch_arena)
 	{
 		E_DecodeImageAsyncData_* data = user_data;
+		Buffer encoded = data->mapped_contents;
 		int32 width, height;
 		void* pixels;
 		
-		if (E_DecodeImage(ctx->scratch_arena, data->mapped_contents, &pixels, &width, &height))
+		if (stbi_info_from_memory(encoded.data, (int32)encoded.size, &width, &height, &(int32){0}))
 		{
+			uintsize size = (uintsize)width*height*4;
+			
 			if (data->output_arena_lock)
 			{
 				OS_LockExclusive(data->output_arena_lock);
-				pixels = ArenaPushMemory(data->output_arena, pixels, (uintsize)width*height*4);
+				pixels = ArenaPushMemory(data->output_arena, pixels, size);
 				OS_UnlockExclusive(data->output_arena_lock);
 			}
 			else
-				pixels = ArenaPushMemory(data->output_arena, pixels, (uintsize)width*height*4);
+				pixels = ArenaPushMemory(data->output_arena, pixels, size);
+			
+			void* temp_data = stbi_load_from_memory(encoded.data, (int32)encoded.size, &width, &height, &(int32){0}, 4);
+			MemoryCopy(pixels, temp_data, size);
+			stbi_image_free(temp_data);
 			
 			data->pixels = pixels;
 			data->width = width;
@@ -41,7 +48,7 @@ E_DecodeImageAsync_(E_ThreadCtx* ctx, void* user_data)
 }
 
 API void
-E_LoadAssets(E_AssetGroup* asset_group)
+E_LoadAssets(E_AssetGroup* asset_group, Arena* scratch_arena)
 {
 	Arena* arena = asset_group->arena;
 	
@@ -53,7 +60,7 @@ E_LoadAssets(E_AssetGroup* asset_group)
 	uint64 current_time = OS_CurrentPosixTime();
 	
 	//- Textures loading
-	E_DecodeImageAsyncData_* jobs = ArenaEndAligned(arena, alignof(E_DecodeImageAsyncData_));
+	E_DecodeImageAsyncData_* jobs = ArenaEndAligned(scratch_arena, alignof(E_DecodeImageAsyncData_));
 	intsize job_count = 0;
 	
 	for (intsize i = 0; i < asset_group->tex2d_count; ++i)
@@ -65,7 +72,7 @@ E_LoadAssets(E_AssetGroup* asset_group)
 		if ((RB_IsNull(asset_group->tex2ds[i].handle) || OS_IsFileOlderThan(path, current_time)) && OS_MapFile(path, &mapped_handle, &mapped_contents))
 		{
 			++job_count;
-			ArenaPushStructInit(arena, E_DecodeImageAsyncData_, {
+			ArenaPushStructInit(scratch_arena, E_DecodeImageAsyncData_, {
 				.asset_index = i,
 				.output_arena = arena,
 				.output_arena_lock = &global_engine.mt_lock,
@@ -112,7 +119,7 @@ E_LoadAssets(E_AssetGroup* asset_group)
 		};
 	}
 	
-	ArenaPop(arena, jobs);
+	ArenaPop(scratch_arena, jobs);
 	asset_group->load_time = current_time;
 }
 

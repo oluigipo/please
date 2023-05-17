@@ -314,7 +314,7 @@ struct E_AssetGroup
 }
 typedef E_AssetGroup;
 
-API void E_LoadAssets(E_AssetGroup* asset_group);
+API void E_LoadAssets(E_AssetGroup* asset_group, Arena* scratch_arena);
 API void E_UnloadAssets(E_AssetGroup* asset_group);
 
 #endif //API_ENGINE_H

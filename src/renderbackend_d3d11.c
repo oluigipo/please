@@ -1126,7 +1126,7 @@ RB_SetupD3d11Runtime_(RB_Ctx* ctx)
 		caps.max_render_target_textures = 4;
 		caps.shader_type = RB_ShaderType_Hlsl40Level93;
 		caps.has_instancing = true;
-		caps.has_16bit_float = true;
+		caps.has_f16_formats = true;
 	}
 	
 	if (feature_level >= D3D_FEATURE_LEVEL_10_0)
@@ -1153,6 +1153,13 @@ RB_SetupD3d11Runtime_(RB_Ctx* ctx)
 	if (feature_level >= D3D_FEATURE_LEVEL_11_1)
 	{
 		
+	}
+	
+	//- Extras
+	D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT shader_min_precision_support = { 0 };
+	if (SUCCEEDED(ID3D11Device_CheckFeatureSupport(D3d11.device, D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT, &shader_min_precision_support, sizeof(shader_min_precision_support))))
+	{
+		caps.has_f16_shader_ops = !!(shader_min_precision_support.PixelShaderMinPrecision & D3D11_SHADER_MIN_PRECISION_16_BIT);
 	}
 	
 	ctx->caps = caps;

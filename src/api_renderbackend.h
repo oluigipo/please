@@ -84,7 +84,8 @@ struct RB_Capabilities
 	bool has_separate_alpha_blend : 1;
 	bool has_compute_shaders : 1;
 	bool has_structured_buffer : 1;
-	bool has_16bit_float : 1;
+	bool has_f16_formats : 1;
+	bool has_f16_shader_ops : 1;
 	bool has_wireframe_fillmode : 1;
 }
 typedef RB_Capabilities;

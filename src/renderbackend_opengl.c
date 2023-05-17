@@ -884,7 +884,8 @@ RB_SetupOpenGLRuntime_(RB_Ctx* ctx)
 	caps.has_32bit_index = true;
 	caps.has_separate_alpha_blend = true;
 	caps.has_compute_shaders = false;
-	caps.has_16bit_float = false;
+	caps.has_f16_formats = false;
+	caps.has_f16_shader_ops = false;
 	caps.has_wireframe_fillmode = !GL.is_es;
 	
 	caps.supported_texture_formats[0] |= (1 << RB_TexFormat_D16);

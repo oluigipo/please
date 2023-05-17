@@ -1,10 +1,10 @@
 struct VS_INPUT
 {
-	float2   pos : VINPUT0;
-	float2x2 scaling : VINPUT1;
-	int2     texindex : VINPUT3;
-	float4   texcoords : VINPUT4;
-	float4   color : VINPUT5;
+	float2      pos : VINPUT0;
+	float2x2    scaling : VINPUT1;
+	int2        texindex : VINPUT3;
+	float4      texcoords : VINPUT4;
+	min16float4 color : VINPUT5;
 	
 	uint vertexIndex : SV_VertexID;
 };
@@ -13,10 +13,10 @@ struct VS_OUTPUT
 {
 	float2 texcoords : TEXCOORD0;
 	float2 texindex : TEXCOORD3;
-	float4 color : COLOR0;
 	float4 position : SV_POSITION;
 	float2 rawscale : TEXCOORD2;
 	float2 rawpos : TEXCOORD1;
+	min16float4 color : COLOR0;
 };
 
 cbuffer VS_CONSTANT_BUFFER : register(b0)
@@ -44,12 +44,12 @@ VS_OUTPUT Vertex(VS_INPUT input)
 	return output;
 }
 
-Texture2D textures[4] : register(t0);
+Texture2D<min16float4> textures[4] : register(t0);
 SamplerState samplers[4] : register(s0);
 
-float4 Pixel(VS_OUTPUT input) : SV_TARGET
+min16float4 Pixel(VS_OUTPUT input) : SV_TARGET
 {
-	float4 result = 0;
+	min16float4 result = 0;
 	float2 texsize;
 	float2 uv = input.texcoords.xy;
 	int uindex = abs(int(input.texindex.x));
@@ -78,7 +78,7 @@ float4 Pixel(VS_OUTPUT input) : SV_TARGET
 			float dist = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 			
 			if (dist >= -1.0)
-				result.w *= max(1.0-(dist+1.0)*0.5, 0.0);
+				result.w *= min16float(max(1.0-(dist+1.0)*0.5, 0.0));
 		} break;
 		case 2:
 		{
@@ -86,7 +86,7 @@ float4 Pixel(VS_OUTPUT input) : SV_TARGET
 			float m = min(density.x, density.y);
 			float inv = 1.0 / m;
 			float a = (result.x - 128.0/255.0 + 24.0/255.0*m*0.5) * 255.0/24.0 * inv;
-			result = float4(1.0, 1.0, 1.0, a);
+			result = min16float4(1.0, 1.0, 1.0, a);
 		} break;
 	}
 	

@@ -300,7 +300,8 @@ G_UpdateAndRender(void)
 					_CapBool(has_32bit_index);
 					_CapBool(has_separate_alpha_blend);
 					_CapBool(has_compute_shaders);
-					_CapBool(has_16bit_float);
+					_CapBool(has_f16_formats);
+					_CapBool(has_f16_shader_ops);
 					
 #undef _CapInt
 #undef _CapBool
