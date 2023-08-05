@@ -15,7 +15,7 @@ E_FinishFrame(void)
 	for (intsize i = ArrayLength(global_engine.frame_snap_history)-1; i > 0; --i)
 		global_engine.frame_snap_history[i] = global_engine.frame_snap_history[i-1];
 	
-	int32 snap_values[] = { 30, 60, 120, 240 };
+	int32 snap_values[] = { 30, 60, 75, 120, 240 };
 	uint64 delta = current_tick - global_engine.last_frame_tick;
 	uint64 record = UINT64_MAX;
 	intsize record_index = 0;
@@ -52,9 +52,7 @@ OS_UserMain(const OS_UserMainArgs* args)
 	Trace();
 	
 	if (args->thread_id > 0)
-	{
 		E_WorkerThreadProc_(&global_engine.worker_threads[args->thread_id - 1]);
-	}
 	else
 	{
 		// NOTE(ljre): Init basic stuff

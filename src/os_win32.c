@@ -1,3 +1,7 @@
+#include "config.h"
+#include "api_os.h"
+#include "api_engine.h"
+
 #include <math.h>
 #include <ext/cglm/cglm.h>
 

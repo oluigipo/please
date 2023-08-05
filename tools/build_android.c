@@ -1,11 +1,11 @@
 #include "build.h"
 
 #ifdef ENV__DEFAULT
-#   define ENV_ANDROID_SDK "B:/programs/android/sdk"
-#   define ENV_ANDROID_NDK "B:/programs/android/ndk-r23c"
-#   define ENV_JAVA_JDK "B:/programs/jdk-17.0.6+10"
-#   define ENV_BUILD_TOOLS "B:/programs/android/sdk/build-tools/33.0.1"
-#   define ENV_PLATFORM "B:/programs/android/sdk/platforms/android-26"
+#   define ENV_ANDROID_SDK "C:/b/programs/android/sdk"
+#   define ENV_ANDROID_NDK "C:/b/programs/android/ndk-r23c"
+#   define ENV_JAVA_JDK "C:/b/programs/jdk-17.0.7+7"
+#   define ENV_BUILD_TOOLS "C:/b/programs/android/sdk/build-tools/33.0.1"
+#   define ENV_PLATFORM "C:/b/programs/android/sdk/platforms/android-26"
 #endif
 
 #ifndef ENV_ANDROID_SDK
@@ -126,7 +126,7 @@ CallNdkBuildSystem(void)
 	return !RunCommand(
 		LocalPrintf(
 		512,
-		"cd %s && \"" ENV_ANDROID_NDK "/ndk-build.cmd\" -j1 NDK_LIBS_OUT=lib\\lib NDK_PROJECT_PATH=.",
+		"cd %s && \"" ENV_ANDROID_NDK "/ndk-build.cmd\" -j8 NDK_LIBS_OUT=lib\\lib NDK_PROJECT_PATH=.",
 		g_builddir));
 }
 
