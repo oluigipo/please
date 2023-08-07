@@ -1,3 +1,3 @@
-*.c text diff=c linguist-language=c
-*.h text diff=c linguist-language=c
-*.inc text diff=c linguist-language=c
+*.c text diff=c linguist-language=c eol=lf
+*.h text diff=c linguist-language=c eol=lf
+*.inc text diff=c linguist-language=c eol=lf
