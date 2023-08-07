@@ -38,7 +38,7 @@ static inline int32 MemoryCompare(const void* left_, const void* right_, uintsiz
 
 //-
 #if defined(_MSC_VER) && !defined(__clang__)
-#   pragma optimize("", off)
+#	pragma optimize("", off)
 #endif
 static inline void*
 MemoryZeroSafe(void* restrict dst, uintsize size)
@@ -52,7 +52,7 @@ MemoryZeroSafe(void* restrict dst, uintsize size)
 	return dst;
 }
 #if defined(_MSC_VER) && !defined(__clang__)
-#   pragma optimize("", on)
+#	pragma optimize("", on)
 #endif
 
 //-
@@ -298,20 +298,20 @@ MemoryCopy(void* restrict dst, const void* restrict src, uintsize size)
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
 		if (Unlikely(size >= 4096))
 		{
-#   if defined(__clang__) || defined(__GNUC__)
+#	if defined(__clang__) || defined(__GNUC__)
 			__asm__ __volatile__ (
 				"rep movsb"
 				: "+D"(d), "+S"(s), "+c"(size)
 				:: "memory");
-#   else
+#	else
 			__movsb(d, s, size);
-#   endif
+#	endif
 			return dst;
 		}
 #endif
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 128)
 		{
@@ -327,7 +327,7 @@ MemoryCopy(void* restrict dst, const void* restrict src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 32)
 		{
@@ -411,13 +411,13 @@ MemoryMove(void* dst, const void* src, uintsize size)
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
 		if (Unlikely(size >= 4096))
 		{
-#   if defined(__clang__) || defined(__GNUC__)
+#	if defined(__clang__) || defined(__GNUC__)
 			__asm__ __volatile__("rep movsb"
 				:"+D"(d), "+S"(s), "+c"(size)
 				:: "memory");
-#   else
+#	else
 			__movsb(d, s, size);
-#   endif
+#	endif
 			return dst;
 		}
 #endif
@@ -430,7 +430,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 			goto inc_by_xmm2;
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		do
 		{
@@ -450,7 +450,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		while (size >= 128);
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 32) inc_by_xmm2:
 		{
@@ -463,7 +463,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 8) inc_by_qword:
 		{
@@ -475,7 +475,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size) inc_by_one:
 		{
@@ -492,19 +492,19 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		{
 			d += size-1;
 			s += size-1;
-#   if defined(__clang__) || defined(__GNUC__)
+#	if defined(__clang__) || defined(__GNUC__)
 			__asm__ __volatile__("std\n"
 				"rep movsb\n"
 				"cld"
 				:"+D"(d), "+S"(s), "+c"(size)
 				:: "memory");
-#   else
+#	else
 			// TODO(ljre): maybe reconsider this? I couldn't find a way for MSVC to directly
 			//     generate 'std' & 'cld' instructions. (SeT Direction flag & CLear Direction flag)
 			__writeeflags(__readeflags() | 0x0400);
 			__movsb(d, s, size);
 			__writeeflags(__readeflags() & ~(uint64)0x0400);
-#   endif
+#	endif
 			return dst;
 		}
 #endif
@@ -517,7 +517,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 			goto dec_by_xmm2;
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		do
 		{
@@ -534,7 +534,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		while (size >= 128);
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 32) dec_by_xmm2:
 		{
@@ -544,7 +544,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size >= 8) dec_by_qword:
 		{
@@ -553,7 +553,7 @@ MemoryMove(void* dst, const void* src, uintsize size)
 		}
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (size) dec_by_one:
 		{
@@ -590,20 +590,20 @@ MemorySet(void* restrict dst, uint8 byte, uintsize size)
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
 	if (Unlikely(size >= 2048))
 	{
-#   if defined(__clang__) || defined(__GNUC__)
+#	if defined(__clang__) || defined(__GNUC__)
 		__asm__ __volatile__("rep stosb"
 			:"+D"(d), "+a"(byte), "+c"(size)
 			:: "memory");
-#   elif defined(_MSC_VER)
+#	elif defined(_MSC_VER)
 		__stosb(d, byte, size);
-#   endif
+#	endif
 		
 		return dst;
 	}
 #endif
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	do
 	{
@@ -620,7 +620,7 @@ MemorySet(void* restrict dst, uint8 byte, uintsize size)
 	while (size >= 128);
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 32) xmm2_by_xmm2:
 	{
@@ -630,7 +630,7 @@ MemorySet(void* restrict dst, uint8 byte, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 8) qword_by_qword:
 	{
@@ -639,7 +639,7 @@ MemorySet(void* restrict dst, uint8 byte, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 1) one_by_one:
 	{
@@ -659,7 +659,7 @@ MemoryCompare(const void* left_, const void* right_, uintsize size)
 	const uint8* right = (const uint8*)right_;
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 16)
 	{
@@ -688,7 +688,7 @@ MemoryCompare(const void* left_, const void* right_, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size --> 0)
 	{
@@ -781,7 +781,7 @@ MemoryFindByte(const void* buffer, uint8 byte, uintsize size)
 		__m128i mask = _mm_set1_epi8(byte);
 		
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 		while (buf + 16 < end)
 		{
@@ -797,7 +797,7 @@ MemoryFindByte(const void* buffer, uint8 byte, uintsize size)
 	
 	// NOTE(ljre): Byte by byte
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (buf < end) by_byte:
 	{
@@ -831,21 +831,21 @@ MemoryZero(void* restrict dst, uintsize size)
 #if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
 	if (Unlikely(size >= 2048))
 	{
-#   if defined(__clang__) || defined(__GNUC__)
+#	if defined(__clang__) || defined(__GNUC__)
 		uint8 byte = 0;
 		__asm__ __volatile__("rep stosb"
 			:"+D"(d), "+a"(byte), "+c"(size)
 			:: "memory");
-#   elif defined(_MSC_VER)
+#	elif defined(_MSC_VER)
 		__stosb(d, 0, size);
-#   endif
+#	endif
 		
 		return dst;
 	}
 #endif
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	do
 	{
@@ -863,7 +863,7 @@ MemoryZero(void* restrict dst, uintsize size)
 	while (size >= 128);
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 32) by_xmm2:
 	{
@@ -874,7 +874,7 @@ MemoryZero(void* restrict dst, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 8) by_qword:
 	{
@@ -884,7 +884,7 @@ MemoryZero(void* restrict dst, uintsize size)
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	while (size >= 1) by_byte:
 	{
@@ -896,15 +896,15 @@ MemoryZero(void* restrict dst, uintsize size)
 	return dst;
 }
 
-#   endif
+#	endif
 
 #elif defined(CONFIG_ARCH_ARMFAMILY)
 //~ NOTE(ljre): ARM
 #ifdef CONFIG_ARCH_AARCH64
-#   include <arm_neon.h>
+#	include <arm_neon.h>
 #endif
 #ifdef CONFIG_DONT_USE_CRT
-#   error "ARM implementation needs CRT"
+#	error "ARM implementation needs CRT"
 #endif
 
 static inline int32 BitCtz64(uint64 i) { return __builtin_ctzll(i); }
@@ -949,7 +949,7 @@ MemoryCopyX16(void* restrict dst, const void* restrict src)
 #endif //CONFIG_ARCH_AARCH64
 
 #else //CONFIG_ARCH_*
-#   error "Unknown architecture"
+#	error "Unknown architecture"
 #endif //CONFIG_ARCH_*
 
 //~ NOTE(ljre): CRT polyfill

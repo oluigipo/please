@@ -25,7 +25,7 @@
 #include <dlfcn.h>
 
 #ifndef CONFIG_ENABLE_OPENGL
-#   error "CONFIG_ENABLE_OPENGL is required for Android build."
+#	error "CONFIG_ENABLE_OPENGL is required for Android build."
 #endif
 
 struct MappedFile_

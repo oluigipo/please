@@ -161,12 +161,12 @@ RB_PoolFreeImpl_(void* pool_ptr, uint32 max_size, uintsize obj_size, uint32 inde
 }
 
 #ifdef CONFIG_ENABLE_D3D11
-#   include "api_os_d3d11.h"
-#   include "renderbackend_d3d11.c"
+#	include "api_os_d3d11.h"
+#	include "renderbackend_d3d11.c"
 #endif
 #ifdef CONFIG_ENABLE_OPENGL
-#   include "api_os_opengl.h"
-#   include "renderbackend_opengl.c"
+#	include "api_os_opengl.h"
+#	include "renderbackend_opengl.c"
 #endif
 
 //~

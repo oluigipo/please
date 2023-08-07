@@ -346,9 +346,9 @@ API void OS_DebugMessageBox(const char* fmt, ...);
 API void OS_DebugLog(const char* fmt, ...);
 API int OS_DebugLogPrintfFormat(const char* fmt, ...);
 #else
-#   define OS_DebugMessageBox(...) ((void)0)
-#   define OS_DebugLog(...) ((void)0)
-#   define OS_DebugLogPrintfFormat(...) ((void)0)
+#	define OS_DebugMessageBox(...) ((void)0)
+#	define OS_DebugLog(...) ((void)0)
+#	define OS_DebugLogPrintfFormat(...) ((void)0)
 #endif
 
 //- Memory & file stuff

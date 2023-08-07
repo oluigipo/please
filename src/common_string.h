@@ -4,15 +4,15 @@
 Buffer typedef String;
 
 #ifndef __cplusplus
-#   define Str(x) (String) StrInit(x)
-#   define StrNull (String) { 0 }
-#   define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
-#   define StrRange(begin, end) (String) StrInitRange(begin, end)
+#	define Str(x) (String) StrInit(x)
+#	define StrNull (String) { 0 }
+#	define StrMake(size,data) (String) { (uintsize)(size), (const uint8*)(data) }
+#	define StrRange(begin, end) (String) StrInitRange(begin, end)
 #else
-#   define Str(x) String StrInit(x)
-#   define StrNull String {}
-#   define StrMake(size, data) String { (uintsize)(size), (const uint8*)(data) }
-#   define StrRange(begin, end) String StrInitRange(begin, end)
+#	define Str(x) String StrInit(x)
+#	define StrNull String {}
+#	define StrMake(size, data) String { (uintsize)(size), (const uint8*)(data) }
+#	define StrRange(begin, end) String StrInitRange(begin, end)
 #endif
 
 #define StrInit(x) { sizeof(x) - 1, (const uint8*)(x) }

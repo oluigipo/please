@@ -33,7 +33,7 @@ struct Storage
 typedef Storage;
 
 #ifndef Storage_GRANULARITY
-#   define Storage_GRANULARITY 128
+#	define Storage_GRANULARITY 128
 #endif
 
 static Storage Storage_MakeFromMemory(Buffer backbuffer, uint32 max_allocations);

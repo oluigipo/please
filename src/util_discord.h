@@ -6,15 +6,15 @@
 //
 //             Newer versions still do use __stdcall, but the header is updated to use the correct callconv.
 #pragma pack(push, 8)
-#   include <discord_game_sdk.h>
+#	include <discord_game_sdk.h>
 #pragma pack(pop)
 
 #ifndef DISCORD_CALLBACK
-#   define DISCORD_CALLBACK
+#	define DISCORD_CALLBACK
 #endif
 
 #ifndef DISCORD_API
-#   define DISCORD_API
+#	define DISCORD_API
 #endif
 
 enum EDiscordResult typedef DISCORD_API UDiscord_CreateProc_(DiscordVersion version, struct DiscordCreateParams* params, struct IDiscordCore** result);

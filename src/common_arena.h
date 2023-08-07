@@ -69,22 +69,22 @@ static inline ArenaSavepoint ArenaSave(Arena* arena);
 static inline void            ArenaRestore(ArenaSavepoint savepoint);
 
 #ifndef ArenaOsReserve_
-#   if defined(_WIN32)
+#	if defined(_WIN32)
 externC_ void* __stdcall VirtualAlloc(void* base, uintsize size, unsigned long type, unsigned long protect);
 externC_ int32 __stdcall VirtualFree(void* base, uintsize size, unsigned long type);
-#       define ArenaOsReserve_(size) VirtualAlloc(NULL,size,0x00002000/*MEM_RESERVE*/,0x04/*PAGE_READWRITE*/)
-#       define ArenaOsCommit_(ptr, size) VirtualAlloc(ptr,size,0x00001000/*MEM_COMMIT*/,0x04/*PAGE_READWRITE*/)
-#       define ArenaOsFree_(ptr, size) ((void)(size), VirtualFree(ptr,0,0x00008000/*MEM_RELEASE*/))
-#   elif defined(__linux__)
-#       include <sys/mman.h>
-#       define ArenaOsReserve_(size) mmap(NULL,size,PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0)
-#       define ArenaOsCommit_(ptr, size) mprotect(ptr,size,PROT_READ|PROT_WRITE)
-#       define ArenaOsFree_(ptr, size) munmap(ptr,size)
-#   endif
+#	    define ArenaOsReserve_(size) VirtualAlloc(NULL,size,0x00002000/*MEM_RESERVE*/,0x04/*PAGE_READWRITE*/)
+#	    define ArenaOsCommit_(ptr, size) VirtualAlloc(ptr,size,0x00001000/*MEM_COMMIT*/,0x04/*PAGE_READWRITE*/)
+#	    define ArenaOsFree_(ptr, size) ((void)(size), VirtualFree(ptr,0,0x00008000/*MEM_RELEASE*/))
+#	elif defined(__linux__)
+#	    include <sys/mman.h>
+#	    define ArenaOsReserve_(size) mmap(NULL,size,PROT_NONE,MAP_ANONYMOUS|MAP_PRIVATE,-1,0)
+#	    define ArenaOsCommit_(ptr, size) mprotect(ptr,size,PROT_READ|PROT_WRITE)
+#	    define ArenaOsFree_(ptr, size) munmap(ptr,size)
+#	endif
 #endif
 
 #ifndef ArenaDEFAULT_ALIGNMENT
-#   define ArenaDEFAULT_ALIGNMENT 16
+#	define ArenaDEFAULT_ALIGNMENT 16
 #endif
 
 static_assert(ArenaDEFAULT_ALIGNMENT != 0 && IsPowerOf2(ArenaDEFAULT_ALIGNMENT), "Default Arena alignment should always be non-zero and a power of two");

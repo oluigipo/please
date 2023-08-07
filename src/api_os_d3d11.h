@@ -2,11 +2,11 @@
 #define API_OS_D3D11_H
 
 #ifndef WIN32_LEAN_AND_MEAN
-#   define WIN32_LEAN_AND_MEAN
+#	define WIN32_LEAN_AND_MEAN
 #endif
 
 #ifndef COBJMACROS
-#   define COBJMACROS
+#	define COBJMACROS
 #endif
 
 #pragma push_macro("far")

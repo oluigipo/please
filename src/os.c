@@ -42,7 +42,7 @@ DisableWarnings();
 #	include <Functiondiscoverykeys_devpkey.h>
 #	include <ext/guid_utils.h>
 #	if defined(CONFIG_ENABLE_D3D11) && defined(CONFIG_DEBUG) && !defined(__GNUC__)
-#   	include <dxgidebug.h>
+#		include <dxgidebug.h>
 #	endif
 #	undef near
 #	undef far
@@ -84,11 +84,11 @@ int __declspec(dllexport) AmdPowerXpressRequestHighPerformance = 1;
 #	include "os_win32_audio.c"
 #	ifdef CONFIG_ENABLE_OPENGL
 #		include "api_os_opengl.h"
-#   	include "os_win32_opengl.c"
+#		include "os_win32_opengl.c"
 #	endif
 #	ifdef CONFIG_ENABLE_D3D11
 #		include "api_os_d3d11.h"
-#   	include "os_win32_d3d11.c"
+#		include "os_win32_d3d11.c"
 #	endif
 #elif defined(CONFIG_OS_LINUX)
 #	include "os_linux.c"

@@ -32,7 +32,7 @@ static Platform_Config global_config;
 #include "platform_linux_audio.c"
 
 #ifdef INTERNAL_ENABLE_OPENGL
-#   include "platform_linux_opengl.c"
+#	include "platform_linux_opengl.c"
 #endif
 
 //~ Entry Point

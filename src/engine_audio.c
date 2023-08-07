@@ -310,7 +310,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	__m128 mul = _mm_set1_ps(mul_float);
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 	for (; head+8 <= sample_count; head += 8)
 	{
@@ -322,7 +322,7 @@ E_AudioThreadProc_(void* user_data, int16* restrict out_buffer, int32 channels, 
 	}
 	
 #ifdef __clang__
-#   pragma clang loop unroll(disable)
+#	pragma clang loop unroll(disable)
 #endif
 #endif //CONFIG_ARCH_X86FAMILY
 	for (; head+1 <= sample_count; head += 1)
