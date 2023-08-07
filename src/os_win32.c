@@ -1,64 +1,5 @@
-#include "config.h"
-#include "api_os.h"
-#include "api_engine.h"
-
-#include <math.h>
-#include <ext/cglm/cglm.h>
-
-//- Includes
-DisableWarnings();
-
-#define WIN32_LEAN_AND_MEAN
-#define COBJMACROS
-#define DIRECTINPUT_VERSION 0x0800
-
-#define near
-#define far
-
-// General
-#include <windows.h>
-#include <dwmapi.h>
-#include <versionhelpers.h>
-#include <dbt.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <synchapi.h>
-#include <shellscalingapi.h>
-
-// Input
-#include <xinput.h>
-#include <dinput.h>
-
-// Audio
-#include <audioclient.h>
-#include <audiopolicy.h>
-#include <mmdeviceapi.h>
-#include <Functiondiscoverykeys_devpkey.h>
-
-#undef near
-#undef far
-
-#include "os_win32_guid.c"
 
 extern __declspec(dllimport) LONG WINAPI RtlGetVersion(RTL_OSVERSIONINFOW*);
-
-ReenableWarnings();
-
-#if defined(_MSC_VER)
-#   pragma comment(lib, "kernel32.lib")
-#   pragma comment(lib, "user32.lib")
-#   pragma comment(lib, "gdi32.lib")
-//#   pragma comment(lib, "hid.lib")
-#   pragma comment(lib, "ntdll.lib")
-#   if defined(CONFIG_ENABLE_STEAM)
-#       if defined(CONFIG_M64)
-#           pragma comment(lib, "lib\\steam_api64.lib")
-#       else
-#           pragma comment(lib, "lib\\steam_api.lib")
-#       endif
-#   endif
-#endif
 
 struct Win32_MappedFile
 {
@@ -84,7 +25,7 @@ struct
 	bool vsync_disabled;
 	HDC hdc;
 	LPCWSTR class_name;
-	HANDLE worker_threads[E_Limits_MaxWorkerThreadCount];
+	HANDLE worker_threads[OS_Limits_MaxWorkerThreadCount];
 	
 	int32 user_thread_count;
 	int32 argc;
@@ -98,11 +39,6 @@ struct
 	init_config;
 }
 static g_win32;
-
-#if 0
-int __declspec(dllexport) NvOptimusEnablement = 1;
-int __declspec(dllexport) AmdPowerXpressRequestHighPerformance = 1;
-#endif
 
 //~ NOTE(ljre): Utils
 static uint64
@@ -197,22 +133,14 @@ Win32_WaitForVsync(void)
 	return false;
 }
 
-//~ NOTE(ljre): Files
-#include "os_win32_input.c"
-#include "os_win32_audio.c"
-
-#ifdef CONFIG_ENABLE_OPENGL
-#   include "os_win32_opengl.c"
-#else
+#ifndef CONFIG_ENABLE_OPENGL
 static bool Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title)
 { return false; }
 static void Win32_OpenGLResizeWindow(void)
 {}
 #endif
 
-#ifdef CONFIG_ENABLE_D3D11
-#   include "os_win32_d3d11.c"
-#else
+#ifndef CONFIG_ENABLE_D3D11
 static bool Win32_CreateD3d11Window(const OS_WindowState* config, const wchar_t* title, int32 desired_feature_level)
 { return false; }
 static void Win32_D3d11ResizeWindow(void)
@@ -418,7 +346,7 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 	
 	g_win32.process_started_time = Win32_GetTimer();
 	g_win32.instance = instance;
-	g_win32.user_thread_count = Clamp(cpu_core_count/2, 1, E_Limits_MaxWorkerThreadCount);
+	g_win32.user_thread_count = Clamp(cpu_core_count/2, 1, OS_Limits_MaxWorkerThreadCount);
 	g_win32.argc = __argc;
 	g_win32.argv = (const char* const*)__argv;
 	

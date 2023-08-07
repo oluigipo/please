@@ -1,4 +1,3 @@
-#include "os_internal_gamepad_map.h"
 
 #define GAMEPAD_DEADZONE 0.3f
 
@@ -90,7 +89,7 @@ static ProcXInputSetState*        XInputSetState;
 static ProcXInputGetCapabilities* XInputGetCapabilities;
 static ProcDirectInput8Create*    DirectInput8Create;
 
-static const OS_KeyboardKey global_keyboard_key_table[] = {
+static const OS_KeyboardKey global_keyboard_key_table[256] = {
 	[0] = OS_KeyboardKey_Any,
 	
 	[VK_ESCAPE] = OS_KeyboardKey_Escape,
@@ -142,8 +141,6 @@ static const OS_KeyboardKey global_keyboard_key_table[] = {
 };
 
 //~ Functions
-#include <ext/guid_utils.h>
-
 static inline bool
 AreGUIDsEqual(const GUID* a, const GUID* b)
 {

@@ -30,6 +30,7 @@ enum
 	OS_Limits_MaxWindowTitleLength = 64,
 	OS_Limits_MaxBufferedInput = 256,
 	OS_Limits_MaxCodepointsPerFrame = 64,
+	OS_Limits_MaxWorkerThreadCount = 4,
 };
 
 //~ Graphics Context

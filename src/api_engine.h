@@ -25,7 +25,6 @@ ReenableWarnings();
 //~ Actual Api
 enum
 {
-	E_Limits_MaxWorkerThreadCount = 4,
 	E_Limits_MaxThreadWorkCount = 1024,
 	E_Limits_MaxLoadedSounds = 128,
 	E_Limits_MaxPlayingSounds = 16,
@@ -74,7 +73,7 @@ struct E_GlobalData
 	
 	intsize worker_thread_count;
 	E_ThreadWorkQueue* thread_work_queue;
-	E_ThreadCtx worker_threads[E_Limits_MaxWorkerThreadCount];
+	E_ThreadCtx worker_threads[OS_Limits_MaxWorkerThreadCount];
 };
 
 API void G_Main(E_GlobalData* data);

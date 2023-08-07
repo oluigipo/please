@@ -1,14 +1,3 @@
-#include "api_os_d3d11.h"
-
-#define near
-#define far
-
-#if defined(CONFIG_DEBUG) && !defined(__GNUC__)
-#   include <dxgidebug.h>
-#endif
-
-#undef near
-#undef far
 
 #define D3D11CreateDeviceAndSwapChain global_proc_D3D11CreateDeviceAndSwapChain
 typedef HRESULT WINAPI
