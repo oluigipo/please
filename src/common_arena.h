@@ -2,21 +2,21 @@
 #define COMMON_ARENA_H
 
 #define ArenaPushStruct(arena, Type) \
-((Type*)ArenaPushAligned(arena, sizeof(Type), alignof(Type)))
+	((Type*)ArenaPushAligned(arena, sizeof(Type), alignof(Type)))
 #define ArenaPushStructData(arena, Type, ...) \
-((Type*)MemoryCopy(ArenaPushDirtyAligned(arena, sizeof(Type), alignof(Type)), __VA_ARGS__, sizeof(Type)))
+	((Type*)MemoryCopy(ArenaPushDirtyAligned(arena, sizeof(Type), alignof(Type)), __VA_ARGS__, sizeof(Type)))
 #define ArenaPushStructInit(arena, Type, ...) \
-((Type*)ArenaPushMemoryAligned(arena, &(Type) __VA_ARGS__, sizeof(Type), alignof(Type)))
+	((Type*)ArenaPushMemoryAligned(arena, &(Type) __VA_ARGS__, sizeof(Type), alignof(Type)))
 #define ArenaPushArray(arena, Type, count) \
-((Type*)ArenaPushAligned(arena, sizeof(Type)*(count), alignof(Type)))
+	((Type*)ArenaPushAligned(arena, sizeof(Type)*(count), alignof(Type)))
 #define ArenaPushArrayData(arena, Type, data, count) \
-((Type*)MemoryCopy(ArenaPushDirtyAligned(arena, sizeof(Type)*(count), alignof(Type)), data, sizeof(Type)*(count)))
+	((Type*)MemoryCopy(ArenaPushDirtyAligned(arena, sizeof(Type)*(count), alignof(Type)), data, sizeof(Type)*(count)))
 #define ArenaPushData(arena, data) \
-MemoryCopy(ArenaPushDirtyAligned(arena, sizeof*(data), 1), data, sizeof*(data))
+	MemoryCopy(ArenaPushDirtyAligned(arena, sizeof*(data), 1), data, sizeof*(data))
 #define ArenaPushDataArray(arena, data, count) \
-MemoryCopy(ArenaPushDirtyAligned(arena, sizeof*(data)*(count), 1), data, sizeof*(data)*(count))
+	MemoryCopy(ArenaPushDirtyAligned(arena, sizeof*(data)*(count), 1), data, sizeof*(data)*(count))
 #define ArenaTempScope(arena_) \
-(ArenaSavepoint _temp__ = { arena_, (arena_)->offset }; _temp__.arena; _temp__.arena->offset = _temp__.offset, _temp__.arena = NULL)
+	(ArenaSavepoint _temp__ = { arena_, (arena_)->offset }; _temp__.arena; _temp__.arena->offset = _temp__.offset, _temp__.arena = NULL)
 
 struct Arena
 {
