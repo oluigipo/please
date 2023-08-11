@@ -183,8 +183,7 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 		
 		case WM_CHAR:
 		{
-			if ((wparam < 32 && wparam != '\r' && wparam != '\t' && wparam != '\b') ||
-			(wparam > 0x7f && wparam <= 0xa0))
+			if ((wparam < 32 && wparam != '\r' && wparam != '\t' && wparam != '\b') || (wparam > 0x7f && wparam <= 0xa0))
 				break;
 			
 			uint32 codepoint = (uint32)wparam;
