@@ -4,36 +4,36 @@
 #include "api_steam.h"
 #include <steam/steam_api.h>
 
-struct S_ScratchScope_
+struct STM_ScratchScope_
 {
 	ArenaSavepoint savepoint;
 	
-	S_ScratchScope_(Arena* arena)
+	STM_ScratchScope_(Arena* arena)
 	{ savepoint = ArenaSave(arena); }
-	~S_ScratchScope_()
+	~STM_ScratchScope_()
 	{ ArenaRestore(savepoint); }
 };
 
 extern void* operator new(size_t size, void* ptr);
 
 DisableWarnings(); // NOTE(ljre): -Winvalid-offsetof
-struct S_Callbacks_
+struct STM_Callbacks_
 {
-	STEAM_CALLBACK(S_Callbacks_, LobbyGameCreated, LobbyGameCreated_t);
-	STEAM_CALLBACK(S_Callbacks_, GameLobbyJoinRequested, GameLobbyJoinRequested_t);
-	STEAM_CALLBACK(S_Callbacks_, GameRichPresenceJoinRequested, GameRichPresenceJoinRequested_t);
-	STEAM_CALLBACK(S_Callbacks_, AvatarImageLoaded, AvatarImageLoaded_t);
-	STEAM_CALLBACK(S_Callbacks_, UserStatsReceived, UserStatsReceived_t);
+	STEAM_CALLBACK(STM_Callbacks_, LobbyGameCreated, LobbyGameCreated_t);
+	STEAM_CALLBACK(STM_Callbacks_, GameLobbyJoinRequested, GameLobbyJoinRequested_t);
+	STEAM_CALLBACK(STM_Callbacks_, GameRichPresenceJoinRequested, GameRichPresenceJoinRequested_t);
+	STEAM_CALLBACK(STM_Callbacks_, AvatarImageLoaded, AvatarImageLoaded_t);
+	STEAM_CALLBACK(STM_Callbacks_, UserStatsReceived, UserStatsReceived_t);
 	
-	CCallResult<S_Callbacks_, LobbyCreated_t> result_LobbyCreated;
-	CCallResult<S_Callbacks_, GlobalAchievementPercentagesReady_t> result_GlobalAchievementPercentagesReady;
+	CCallResult<STM_Callbacks_, LobbyCreated_t> result_LobbyCreated;
+	CCallResult<STM_Callbacks_, GlobalAchievementPercentagesReady_t> result_GlobalAchievementPercentagesReady;
 	
 	inline void LobbyCreated(LobbyCreated_t* param, bool io_failure);
 	inline void GlobalAchievementPercentagesReady(GlobalAchievementPercentagesReady_t* param, bool io_failure);
 };
 ReenableWarnings();
 
-struct S_Globals_
+struct STM_Globals_
 {
 	bool initialized;
 	
@@ -52,31 +52,31 @@ struct S_Globals_
 static g_steam;
 
 void
-S_Callbacks_::LobbyGameCreated(LobbyGameCreated_t* param)
+STM_Callbacks_::LobbyGameCreated(LobbyGameCreated_t* param)
 {
 	OS_DebugLog("[api_steam] Callback: LobbyGameCreated\n");
 }
 
 void
-S_Callbacks_::GameLobbyJoinRequested(GameLobbyJoinRequested_t* param)
+STM_Callbacks_::GameLobbyJoinRequested(GameLobbyJoinRequested_t* param)
 {
 	OS_DebugLog("[api_steam] Callback: GameLobbyJoinRequested\n");
 }
 
 void
-S_Callbacks_::GameRichPresenceJoinRequested(GameRichPresenceJoinRequested_t* param)
+STM_Callbacks_::GameRichPresenceJoinRequested(GameRichPresenceJoinRequested_t* param)
 {
 	OS_DebugLog("[api_steam] Callback: GameRichPresenceJoinRequested\n");
 }
 
 void
-S_Callbacks_::AvatarImageLoaded(AvatarImageLoaded_t* param)
+STM_Callbacks_::AvatarImageLoaded(AvatarImageLoaded_t* param)
 {
 	OS_DebugLog("[api_steam] Callback: AvatarImageLoaded\n");
 }
 
 void
-S_Callbacks_::UserStatsReceived(UserStatsReceived_t* param)
+STM_Callbacks_::UserStatsReceived(UserStatsReceived_t* param)
 {
 	OS_DebugLog("[api_steam] Callback: UserStatsReceived\n");
 	
@@ -85,20 +85,20 @@ S_Callbacks_::UserStatsReceived(UserStatsReceived_t* param)
 }
 
 inline void
-S_Callbacks_::LobbyCreated(LobbyCreated_t* param, bool io_failure)
+STM_Callbacks_::LobbyCreated(LobbyCreated_t* param, bool io_failure)
 {
 	OS_DebugLog("[api_steam] Result Callback: LobbyCreated\n");
 }
 
 inline void
-S_Callbacks_::GlobalAchievementPercentagesReady(GlobalAchievementPercentagesReady_t* param, bool io_failure)
+STM_Callbacks_::GlobalAchievementPercentagesReady(GlobalAchievementPercentagesReady_t* param, bool io_failure)
 {
 	OS_DebugLog("[api_steam] Result Callback: GlobalAchievementPercentagesReady\n");
 }
 
 //~ API
 API bool
-S_Init(uint64 desired_app_id)
+STM_Init(uint64 desired_app_id)
 {
 	Trace();
 	Assert(desired_app_id <= UINT32_MAX);
@@ -118,8 +118,8 @@ S_Init(uint64 desired_app_id)
 		g_steam.utils = SteamUtils();
 		g_steam.stats = SteamUserStats();
 		
-		alignas(S_Callbacks_) static uint8 local_callbacks[sizeof(S_Callbacks_)];
-		g_steam.callbacks = new(local_callbacks) S_Callbacks_();
+		alignas(STM_Callbacks_) static uint8 local_callbacks[sizeof(STM_Callbacks_)];
+		g_steam.callbacks = new(local_callbacks) STM_Callbacks_();
 		
 		const char* name = g_steam.friends->GetPersonaName();
 		uintsize name_size = MemoryStrlen(name);
@@ -134,7 +134,7 @@ S_Init(uint64 desired_app_id)
 }
 
 API void
-S_Update(void)
+STM_Update(void)
 {
 	Trace();
 	
@@ -145,7 +145,7 @@ S_Update(void)
 }
 
 API void
-S_Deinit(void)
+STM_Deinit(void)
 {
 	Trace();
 	
@@ -157,13 +157,13 @@ S_Deinit(void)
 }
 
 API bool
-S_IsInitialized(void)
+STM_IsInitialized(void)
 {
 	return g_steam.initialized;
 }
 
 API String
-S_GetUserNickname(void)
+STM_GetUserNickname(void)
 {
 	Trace();
 	
@@ -174,7 +174,7 @@ S_GetUserNickname(void)
 }
 
 API bool
-S_GetUserLargeAvatar(S_ImageHandle* out_handle)
+STM_GetUserLargeAvatar(STM_ImageHandle* out_handle)
 {
 	Trace();
 	
@@ -193,7 +193,7 @@ S_GetUserLargeAvatar(S_ImageHandle* out_handle)
 }
 
 API bool
-S_ImageGetSize(S_ImageHandle handle, int32* out_width, int32* out_height)
+STM_ImageGetSize(STM_ImageHandle handle, int32* out_width, int32* out_height)
 {
 	Trace();
 	uint32 width, height;
@@ -210,7 +210,7 @@ S_ImageGetSize(S_ImageHandle handle, int32* out_width, int32* out_height)
 }
 
 API bool
-S_ImageGetRgba(S_ImageHandle handle, void* out_buffer, uintsize buffer_size)
+STM_ImageGetRgba(STM_ImageHandle handle, void* out_buffer, uintsize buffer_size)
 {
 	Trace();
 	SafeAssert(buffer_size <= INT32_MAX);
@@ -222,7 +222,7 @@ S_ImageGetRgba(S_ImageHandle handle, void* out_buffer, uintsize buffer_size)
 }
 
 API bool
-S_AchievementIsUnlocked(Arena* scratch_arena, String name, bool* out_is_unlocked, uint64* out_unlock_date)
+STM_AchievementIsUnlocked(Arena* scratch_arena, String name, bool* out_is_unlocked, uint64* out_unlock_date)
 {
 	Trace();
 	bool result = false;
@@ -233,7 +233,7 @@ S_AchievementIsUnlocked(Arena* scratch_arena, String name, bool* out_is_unlocked
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -249,7 +249,7 @@ S_AchievementIsUnlocked(Arena* scratch_arena, String name, bool* out_is_unlocked
 }
 
 API bool
-S_AchievementGetUnlockPercentage(Arena* scratch_arena, String name, float32* out_percentage)
+STM_AchievementGetUnlockPercentage(Arena* scratch_arena, String name, float32* out_percentage)
 {
 	Trace();
 	bool result = false;
@@ -257,7 +257,7 @@ S_AchievementGetUnlockPercentage(Arena* scratch_arena, String name, float32* out
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -271,7 +271,7 @@ S_AchievementGetUnlockPercentage(Arena* scratch_arena, String name, float32* out
 }
 
 API bool
-S_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, String* out_local_desc, bool* out_is_hidden)
+STM_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, String* out_local_desc, bool* out_is_hidden)
 {
 	Trace();
 	bool result = false;
@@ -281,7 +281,7 @@ S_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, 
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -313,15 +313,15 @@ S_AchievementGetInfo(Arena* scratch_arena, String name, String* out_local_name, 
 }
 
 API bool
-S_AchievementGetIcon(Arena* scratch_arena, String name, S_ImageHandle* out_handle)
+STM_AchievementGetIcon(Arena* scratch_arena, String name, STM_ImageHandle* out_handle)
 {
 	Trace();
 	bool result = false;
-	S_ImageHandle handle = {};
+	STM_ImageHandle handle = {};
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -343,14 +343,14 @@ S_AchievementGetIcon(Arena* scratch_arena, String name, S_ImageHandle* out_handl
 }
 
 API bool
-S_AchievementUnlock(Arena* scratch_arena, String name)
+STM_AchievementUnlock(Arena* scratch_arena, String name)
 {
 	Trace();
 	bool result = false;
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -361,14 +361,14 @@ S_AchievementUnlock(Arena* scratch_arena, String name)
 }
 
 API bool
-S_ShowAchievementProgress(Arena* scratch_arena, String name, uint32 progress, uint32 max_progress)
+STM_ShowAchievementProgress(Arena* scratch_arena, String name, uint32 progress, uint32 max_progress)
 {
 	Trace();
 	bool result = false;
 	
 	if (g_steam.initialized)
 	{
-		S_ScratchScope_ scratch(scratch_arena);
+		STM_ScratchScope_ scratch(scratch_arena);
 		const char* cstr_name = ArenaPushCString(scratch_arena, name);
 		
 		if (cstr_name)
@@ -379,7 +379,7 @@ S_ShowAchievementProgress(Arena* scratch_arena, String name, uint32 progress, ui
 }
 
 API bool
-S_UploadNewStats(void)
+STM_UploadNewStats(void)
 {
 	Trace();
 	bool result = false;

@@ -300,28 +300,38 @@ OS_ConnectedGamepadsIndices(const OS_State* os_state, int32 out_indices[OS_Limit
 //~ Init
 void typedef OS_AudioThreadProc(void* user_data, int16* restrict out_buffer, int32 channels, int32 sample_rate, int32 sample_count);
 
-struct OS_UserMainArgs
-{
-	int32 thread_id;
-	int32 thread_count;
-	
-	int32 argc;
-	const char* const* argv;
-}
-typedef OS_UserMainArgs;
-
 struct OS_InitDesc
 {
-	// Audio thread
-	OS_AudioThreadProc* audiothread_proc;
+	void* workerthread_user_data;
 	void* audiothread_user_data;
 }
 typedef OS_InitDesc;
 
+struct OS_SetupArgs
+{
+	int32 worker_thread_count;
+	int32 argc;
+	const char* const* argv;
+	
+	void* memory;
+	uintsize memory_size;
+}
+typedef OS_SetupArgs;
+
+struct OS_AppApi
+{
+	void (*setup)(const OS_SetupArgs* args, OS_InitDesc* out_init);
+	void (*update)(OS_State* os);
+	void (*shutdown)(OS_State* os);
+	void (*pull_audio_samples)(void* user_data, int16* restrict out_samples, int32 channels, int32 sample_rate, int32 sample_count);
+	void (*worker_thread_proc)(void* user_data, int32 index);
+}
+typedef OS_AppApi;
+
 API bool OS_Init(const OS_InitDesc* desc, OS_State** out_state);
 
 //~ Functions
-API int32 OS_UserMain(const OS_UserMainArgs* args);
+API const OS_AppApi* GetAppApi(void);
 
 API void OS_PollEvents(void);
 API void OS_ExitWithErrorMessage(const char* fmt, ...);

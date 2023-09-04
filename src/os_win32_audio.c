@@ -511,7 +511,7 @@ Win32_ChangeAudioEndpoint_(uint32 id)
 static void Win32_DeinitAudio(OS_State* os_state);
 
 static bool
-Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
+Win32_InitAudio(OS_State* os_state)
 {
 	Trace();
 	
@@ -532,8 +532,8 @@ Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state)
 	if (!Win32_ChangeAudioEndpoint_(Win32_FindDefaultAudioEndpoint_()))
 		return Win32_DeinitAudio(os_state), false;
 	
-	g_audio.thread_proc = init_desc->audiothread_proc;
-	g_audio.thread_userdata = init_desc->audiothread_user_data;
+	g_audio.thread_proc = g_win32.app_api->pull_audio_samples;
+	g_audio.thread_userdata = g_win32.audiothread_user_data;
 	g_audio.thread = CreateThread(NULL, 0, Win32_AudioThreadProc_, NULL, 0, NULL);
 	if (!g_audio.thread)
 		return Win32_DeinitAudio(os_state), false;

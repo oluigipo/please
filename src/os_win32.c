@@ -31,6 +31,10 @@ struct
 	int32 argc;
 	const char* const* argv;
 	
+	const OS_AppApi* app_api;
+	void* workerthread_user_data;
+	void* audiothread_user_data;
+	
 	struct
 	{
 		OS_WindowGraphicsApi desired_graphics_api;
@@ -259,15 +263,8 @@ WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 static DWORD WINAPI
 Win32_ThreadProc_(void* user_data)
 {
-	OS_UserMainArgs user_args = {
-		.thread_id = (int32)(uintptr)user_data,
-		.thread_count = g_win32.user_thread_count,
-		
-		.argc = g_win32.argc,
-		.argv = g_win32.argv,
-	};
-	
-	return OS_UserMain(&user_args);
+	g_win32.app_api->worker_thread_proc(g_win32.workerthread_user_data, (int32)(intsize)user_data);
+	return 0;
 }
 
 //~ NOTE(ljre): Entry point
@@ -384,50 +381,22 @@ WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR cmd_args, int cmd_show)
 		}
 	}
 	
-	//- Run
-	int32 result = OS_UserMain(&(OS_UserMainArgs) {
-		.thread_id = 0,
-		.thread_count = g_win32.user_thread_count,
+	//- Call Setup
+	g_win32.app_api = GetAppApi();
+	
+	{
+		OS_InitDesc os_init = { 0 };
+		OS_SetupArgs setup = {
+			.argc = g_win32.argc,
+			.argv = g_win32.argv,
+			
+			.worker_thread_count = g_win32.user_thread_count-1,
+		};
+		g_win32.app_api->setup(&setup, &os_init);
 		
-		.argc = g_win32.argc,
-		.argv = g_win32.argv,
-	});
-	
-	//- NOTE(ljre): Free resources... or nah :P
-	//Win32_DeinitSimpleAudio();
-	Win32_DeinitAudio(&g_os);
-	
-	for (int32 i = 0; i < ArrayLength(g_win32.worker_threads); ++i)
-	{
-		if (g_win32.worker_threads[i])
-		{
-			TerminateThread(g_win32.worker_threads[i], 0);
-			g_win32.worker_threads[i] = NULL;
-		}
+		g_win32.workerthread_user_data = os_init.workerthread_user_data;
+		g_win32.audiothread_user_data = os_init.audiothread_user_data;
 	}
-	
-	switch (g_graphics_context.api)
-	{
-#ifdef CONFIG_ENABLE_OPENGL
-		case OS_WindowGraphicsApi_OpenGL: Win32_DestroyOpenGLWindow(); break;
-#endif
-#ifdef CONFIG_ENABLE_D3D11
-		case OS_WindowGraphicsApi_Direct3D11: Win32_DestroyD3d11Window(); break;
-#endif
-		default: break;
-	}
-	
-	//TraceDeinit();
-	//ExitProcess(result);
-	
-	return result;
-}
-
-//~ NOTE(ljre): API
-API bool
-OS_Init(const OS_InitDesc* desc, OS_State** out_state)
-{
-	Trace();
 	
 	// NOTE(ljre): Window class
 	{
@@ -475,18 +444,6 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 		ok = ok && created_window;
 	}
 	
-	if (g_win32.user_thread_count > 0)
-	{
-		SafeAssert(g_win32.user_thread_count < 16);
-		
-		for (int32 i = 1; i < g_win32.user_thread_count; ++i)
-		{
-			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, (void*)(uintptr)i, 0, NULL);
-			
-			g_win32.worker_threads[i] = handle;
-		}
-	}
-	
 	if (ok)
 	{
 		DEV_BROADCAST_DEVICEINTERFACE notification_filter = {
@@ -499,45 +456,76 @@ OS_Init(const OS_InitDesc* desc, OS_State** out_state)
 		
 		if (!RegisterDeviceNotification(g_win32.window, &notification_filter, DEVICE_NOTIFY_WINDOW_HANDLE))
 			OS_DebugLog("Failed to register input device notification.");
-		if (desc->audiothread_proc && !(audio_initialized_successfully = Win32_InitAudio(desc, os_state)))
+		if (g_win32.app_api->pull_audio_samples && !(audio_initialized_successfully = Win32_InitAudio(&g_os)))
 			OS_DebugLog("Failed to initialize audio.");
 		
-		if (ok)
+		for (int32 i = 1; i < g_win32.user_thread_count; ++i)
 		{
-			os_state->has_audio = audio_initialized_successfully;
-			os_state->has_keyboard = true;
-			os_state->has_mouse = true;
-			os_state->has_gestures = false;
-			os_state->has_gamepad_support = Win32_InitInput();
+			HANDLE handle = CreateThread(NULL, 0, Win32_ThreadProc_, (void*)(uintptr)i, 0, NULL);
+			g_win32.worker_threads[i] = handle;
+		}
+		
+		g_os.has_audio = audio_initialized_successfully;
+		g_os.has_keyboard = true;
+		g_os.has_mouse = true;
+		g_os.has_gestures = false;
+		g_os.has_gamepad_support = Win32_InitInput();
+		
+		g_os.window = window_state;
+		g_os.graphics_context = &g_graphics_context;
+		
+		ShowWindow(g_win32.window, SW_SHOWDEFAULT);
+	}
+	
+	//- Run
+	if (ok)
+	{
+		while (!g_os.is_terminating)
+		{
+			g_win32.app_api->update(&g_os);
 			
-			os_state->window = window_state;
-			os_state->graphics_context = &g_graphics_context;
-			*out_state = os_state;
-			
-			ShowWindow(g_win32.window, SW_SHOWDEFAULT);
+			Win32_UpdateInputEarly(&g_os);
+			MSG message;
+			while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&message);
+				DispatchMessageW(&message);
+			}
+			Win32_UpdateInputLate(&g_os);
 		}
 	}
 	
-	return ok;
-}
-
-API void
-OS_PollEvents(void)
-{
-	Trace();
-	
-	Win32_UpdateInputEarly(&g_os);
-	
-	MSG message;
-	while (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
+	//- Terminate
+	for (int32 i = 0; i < ArrayLength(g_win32.worker_threads); ++i)
 	{
-		TranslateMessage(&message);
-		DispatchMessageW(&message);
+		if (g_win32.worker_threads[i])
+		{
+			TerminateThread(g_win32.worker_threads[i], 0);
+			g_win32.worker_threads[i] = NULL;
+		}
 	}
 	
-	Win32_UpdateInputLate(&g_os);
+	g_win32.app_api->shutdown(&g_os);
+	Win32_DeinitAudio(&g_os);
+	
+	switch (g_graphics_context.api)
+	{
+#ifdef CONFIG_ENABLE_OPENGL
+		case OS_WindowGraphicsApi_OpenGL: Win32_DestroyOpenGLWindow(); break;
+#endif
+#ifdef CONFIG_ENABLE_D3D11
+		case OS_WindowGraphicsApi_Direct3D11: Win32_DestroyD3d11Window(); break;
+#endif
+		default: break;
+	}
+	
+	//TraceDeinit();
+	//ExitProcess(result);
+	
+	return ok ? 0 : 1;
 }
 
+//~ NOTE(ljre): API
 API void
 OS_ExitWithErrorMessage(const char* fmt, ...)
 {

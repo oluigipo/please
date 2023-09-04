@@ -55,7 +55,7 @@ static HMODULE Win32_LoadLibrary(const char* name);
 static HMODULE Win32_LoadLibraryWide(LPCWSTR name);
 static Arena* Win32_GetThreadScratchArena(void);
 static bool Win32_WaitForVsync(void);
-static bool Win32_InitAudio(const OS_InitDesc* init_desc, OS_State* os_state);
+static bool Win32_InitAudio(OS_State* os_state);
 static void Win32_DeinitAudio(OS_State* os_state);
 static void Win32_UpdateAudioEndpointIfNeeded(void);
 static bool Win32_CreateOpenGLWindow(const OS_WindowState* config, const wchar_t* title);
